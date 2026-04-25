@@ -1,0 +1,126 @@
+const emojiList = [
+  "😀",
+  "😂",
+  "😅",
+  "😊",
+  "😍",
+  "😎",
+  "😒",
+  "😢",
+  "😭",
+  "😡",
+  "😴",
+  "🤔",
+  "🙄",
+  "😷",
+  "🤒",
+  "🥳",
+  "🤯",
+  "🤩",
+  "🤗",
+  "🤫",
+  "🤐",
+  "😬",
+  "😇",
+  "😈",
+  "👻",
+  "💀",
+  "👽",
+  "👾",
+  "🤖",
+  "🎃",
+  "😺",
+  "😸",
+  "😹",
+  "😻",
+  "😼",
+  "😽",
+  "🙀",
+  "😿",
+  "😾",
+  "🐱",
+  "🐶",
+  "🐭",
+  "🐹",
+  "🐰",
+  "🦊",
+  "🐻",
+  "🐼",
+  "🐨",
+  "🐯",
+  "🦁",
+  "🐮",
+  "🐷",
+  "🐽",
+  "🐸",
+  "🐵",
+  "🙈",
+  "🙉",
+  "🙊",
+  "🐒",
+  "🐔",
+  "🐧",
+  "🐦",
+  "🐤",
+  "🐣",
+  "🐥",
+  "🦆",
+  "🦅",
+  "🦉",
+  "🦇",
+  "🐺",
+  "🐗",
+  "🐴",
+  "🦄",
+  "🐝",
+  "🐛",
+  "🦋",
+  "🐌",
+  "🐞",
+  "🐜",
+  "🦟",
+  "🦠",
+  "🐍",
+  "🦎",
+  "🦖",
+  "🦕",
+  "🐙",
+  "🦑",
+  "🦐",
+  "🦞",
+  "🦀",
+  "🐡",
+  "🐠",
+  "🐟",
+  "🐬",
+  "🐳",
+  "🐋",
+  "🦈",
+  "🐊",
+  "🐅",
+  "🐆",
+];
+
+export function generateRandomCname() {
+  // 随机选取一个emoji
+  const randomEmoji = emojiList[Math.floor(Math.random() * emojiList.length)];
+
+  // 获取当前时间
+  const now = new Date();
+  const day = now.getDate(); // 获取当前的"日"
+  const time = now.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }); // 格式为 hh:mm
+
+  // 返回格式化后的字符串
+  return `${randomEmoji}${day}日${time}的对话${randomEmoji}`;
+}
+
+/**
+ * 字符串增加随机4位字符
+ */
+export function append4Random(prefix) {
+  const randomId = Math.random().toString(36).slice(-4);
+  return `${prefix}-${randomId}`;
+}

@@ -1,0 +1,312 @@
+<template>
+  <div class="home-login-container">
+    <div class="hlcc-backdrop"></div>
+    <div class="hlcc-shell">
+      <div class="hlcc-toolbar">
+        <LanguageController />
+        <ThemeController />
+      </div>
+      <section class="hlcc-intro">
+        <span class="hlcc-kicker">AI API HUB</span>
+        <h1 class="hlcc-title">{{ t("login.title") }}</h1>
+        <p class="hlcc-copy">{{ t("login.description") }}</p>
+        <div class="hlcc-badges">
+          <span>Chat</span>
+          <span>Image</span>
+          <span>Local</span>
+        </div>
+      </section>
+
+      <section class="hlcc-container">
+        <div class="hlcc-header">
+          <span class="hlcc-label">{{ t("login.signInLabel") }}</span>
+          <h2>{{ t("login.signInTitle") }}</h2>
+          <p>{{ t("login.signInDescription") }}</p>
+          <p v-if="isUsingMockStorage" class="hlcc-warning">{{ t("login.mockWarning") }}</p>
+        </div>
+
+        <div class="hlcc-form">
+          <div class="hlcc-readiness">
+            <span class="hlcc-ready-dot" :class="{ mock: isUsingMockStorage }"></span>
+            <div>
+              <strong>{{ isUsingMockStorage ? t("login.browserModeTitle") : t("login.companionModeTitle") }}</strong>
+              <p>{{ isUsingMockStorage ? t("login.browserModeDescription") : t("login.companionModeDescription") }}</p>
+            </div>
+          </div>
+        </div>
+
+        <button class="hlcc-login-button" @click="onLogin">{{ t("login.loginAction") }}</button>
+      </section>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
+import { login, getModels } from "@/services";
+import { loginAPI } from "@/services/api/user-api.js";
+import { dsLoading } from "@/utils";
+import ThemeController from "@/components/ThemeController.vue";
+import LanguageController from "@/components/LanguageController.vue";
+
+const router = useRouter();
+const { t } = useI18n();
+
+const isUsingMockStorage = ref(false);
+
+const probeBackendMode = async () => {
+  const probe = await loginAPI();
+  isUsingMockStorage.value = probe?.__storageMode === "browser";
+};
+
+const onLogin = async () => {
+  dsLoading(true);
+  const flag = await login();
+  if (flag) {
+    router.push({ path: "/home" });
+    await getModels();
+  }
+  dsLoading(false);
+};
+
+onMounted(async () => {
+  await probeBackendMode();
+});
+</script>
+
+<style lang="scss" scoped>
+.home-login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100vw;
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, oklch(var(--p) / 0.2), transparent 28%),
+    radial-gradient(circle at bottom right, oklch(var(--a) / 0.18), transparent 30%);
+
+  .hlcc-backdrop {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(135deg, oklch(var(--b1) / 0.5), oklch(var(--b2) / 0.2)),
+      repeating-linear-gradient(135deg, oklch(var(--bc) / 0.03), oklch(var(--bc) / 0.03) 2px, transparent 2px, transparent 16px);
+    pointer-events: none;
+  }
+
+  .hlcc-shell {
+    position: relative;
+    width: min(1080px, 100%);
+    min-height: 620px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(360px, 440px);
+    border: 1px solid oklch(var(--bc) / 0.12);
+    border-radius: 32px;
+    overflow: hidden;
+    background: oklch(var(--b1) / 0.82);
+    box-shadow: 0 30px 90px oklch(var(--bc) / 0.12);
+    backdrop-filter: blur(20px);
+  }
+
+  .hlcc-toolbar {
+    position: absolute;
+    right: 22px;
+    top: 18px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .hlcc-intro {
+    padding: 56px 52px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 18px;
+    background:
+      radial-gradient(circle at top left, oklch(var(--p) / 0.14), transparent 38%), linear-gradient(180deg, oklch(var(--b2) / 0.84), oklch(var(--b1) / 0.62));
+  }
+
+  .hlcc-kicker {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: oklch(var(--bc) / 0.62);
+  }
+
+  .hlcc-title {
+    max-width: 560px;
+    font-size: clamp(40px, 5vw, 64px);
+    line-height: 1.04;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: oklch(var(--bc));
+  }
+
+  .hlcc-copy {
+    max-width: 520px;
+    font-size: 16px;
+    line-height: 1.75;
+    color: oklch(var(--bc) / 0.74);
+  }
+
+  .hlcc-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    span {
+      padding: 9px 14px;
+      border-radius: 999px;
+      border: 1px solid oklch(var(--bc) / 0.12);
+      background: oklch(var(--b1) / 0.64);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: oklch(var(--bc) / 0.68);
+    }
+  }
+
+  .hlcc-container {
+    padding: 48px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: oklch(var(--b1) / 0.7);
+  }
+
+  .hlcc-header {
+    margin-bottom: 28px;
+
+    .hlcc-label {
+      display: inline-block;
+      margin-bottom: 10px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: oklch(var(--bc) / 0.66);
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 32px;
+      line-height: 1.1;
+      font-weight: 800;
+      color: oklch(var(--bc));
+    }
+
+    p {
+      margin-top: 10px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: oklch(var(--bc) / 0.72);
+    }
+
+    .hlcc-warning {
+      margin-top: 12px;
+      color: oklch(var(--er));
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.6;
+    }
+  }
+
+  .hlcc-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .hlcc-readiness {
+    display: grid;
+    grid-template-columns: 12px minmax(0, 1fr);
+    gap: 12px;
+    align-items: flex-start;
+    padding: 16px 18px;
+    border-radius: 18px;
+    border: 1px solid oklch(var(--bc) / 0.12);
+    background: oklch(var(--b1) / 0.82);
+
+    strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      color: oklch(var(--bc));
+    }
+
+    p {
+      margin-top: 6px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: oklch(var(--bc) / 0.66);
+    }
+  }
+
+  .hlcc-ready-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    margin-top: 4px;
+    background: oklch(0.72 0.18 153);
+    box-shadow: 0 0 0 3px oklch(0.72 0.18 153 / 0.12);
+
+    &.mock {
+      background: oklch(0.82 0.16 87);
+      box-shadow: 0 0 0 3px oklch(0.82 0.16 87 / 0.14);
+    }
+  }
+
+  .hlcc-login-button {
+    margin-top: 24px;
+    height: 54px;
+    border-radius: 18px;
+    border: 1px solid oklch(var(--bc) / 0.12);
+    background: linear-gradient(180deg, oklch(var(--p)), oklch(var(--n)));
+    color: oklch(var(--pc));
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 16px 28px oklch(var(--bc) / 0.18);
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.18s ease,
+      border-color 0.18s ease,
+      background-color 0.18s ease;
+
+    &:hover {
+      transform: translateY(-1px);
+    }
+  }
+
+  @media (max-width: 960px) {
+    padding: 18px;
+
+    .hlcc-shell {
+      grid-template-columns: 1fr;
+      min-height: auto;
+    }
+
+    .hlcc-toolbar {
+      right: 14px;
+      top: 12px;
+    }
+
+    .hlcc-intro {
+      padding: 40px 30px 24px;
+    }
+
+    .hlcc-container {
+      padding: 28px 30px 36px;
+    }
+  }
+}
+</style>
