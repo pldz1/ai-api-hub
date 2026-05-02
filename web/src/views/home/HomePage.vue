@@ -122,7 +122,7 @@ const onGoSettings = async () => {
 
   .aiph-card {
     min-height: 220px;
-    padding: 28px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;

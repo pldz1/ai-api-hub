@@ -61,7 +61,6 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { add24 } from "@/assets/svg";
 import { defModelType, chatModelTypeList } from "@/constants";
 import { append4Random } from "@/utils";
 import ModelEditCard from "@/components/ModelEditCard.vue";

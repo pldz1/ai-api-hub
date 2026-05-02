@@ -4,12 +4,14 @@
       <AppTooltip v-if="showMenu" :text="t('header.menu')" placement="bottom">
         <AppDropdownMenu :items="menuItems" placement="bottom-start" :width="156" @select="onSelectMenuItem">
           <template #trigger="{ toggle }">
-            <button type="button" class="comphb-icon-button" @click="toggle" v-html="menu32"></button>
+            <button type="button" class="comphb-icon-button" @click="toggle">
+              <SvgIcon :src="menuIcon" />
+            </button>
           </template>
         </AppDropdownMenu>
       </AppTooltip>
       <button class="comphb-brand" @click="onBackLogin">
-        <div class="comphb-brand-mark" v-html="app32"></div>
+        <SvgIcon class="comphb-brand-mark" :src="appIcon" colored />
         <div class="comphb-brand-copy">
           <span class="comphb-brand-kicker">AI API HUB</span>
         </div>
@@ -28,12 +30,14 @@ import { useStore } from "vuex";
 import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { app32, menu32 } from "@/assets/svg";
+import appIcon from "@/assets/svg/app32.svg";
+import menuIcon from "@/assets/svg/menu32.svg";
 import ThemeController from "@/components/ThemeController.vue";
 import LanguageController from "@/components/LanguageController.vue";
 import AvatarCard from "@/components/AvatarCard.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
 import AppDropdownMenu from "@/components/AppDropdownMenu.vue";
+import SvgIcon from "@/components/SvgIcon.vue";
 
 const props = defineProps({
   showMenu: {
@@ -141,6 +145,11 @@ const onSelectMenuItem = async (item) => {
     height: 42px;
     border-radius: 14px;
     cursor: pointer;
+
+    :deep(.svg-icon) {
+      width: 32px;
+      height: 32px;
+    }
   }
 
   .comphb-brand {

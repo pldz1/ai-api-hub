@@ -4,7 +4,10 @@ import store from "@/store";
 import { dsAlert, textToHtml } from "@/utils";
 import { tr } from "@/i18n";
 import { renderBlock } from "../markdown/md-render.js";
-import { delete16, app18, copy16 } from "@/assets/svg";
+import appIcon from "@/assets/svg/app18.svg";
+import copyIcon from "@/assets/svg/copy16.svg";
+import deleteIcon from "@/assets/svg/delete16.svg";
+import { createSvgIcon } from "@/utils/svg-icon.js";
 import { deleteMessage } from "../api/chat-api.js";
 
 export class ChatElemCreator {
@@ -77,7 +80,7 @@ export class ChatElemCreator {
     const deleteButtonDiv = document.createElement("div");
     deleteButtonDiv.classList.add("chat-md-bubble-options-button", "tooltip", "tooltip-top");
     deleteButtonDiv.dataset.tip = tr("tooltip.deleteMessage");
-    deleteButtonDiv.innerHTML = delete16;
+    deleteButtonDiv.appendChild(createSvgIcon(deleteIcon, { size: "16px" }));
     optionsDiv.appendChild(deleteButtonDiv);
 
     deleteButtonDiv.addEventListener("click", async () => {
@@ -127,7 +130,7 @@ export class ChatElemCreator {
   createAssResponseElem(assistantDiv, mid, thinking = false) {
     const assistantIconDiv = document.createElement("div");
     assistantIconDiv.classList.add("cmba-assistant-icon");
-    assistantIconDiv.innerHTML = app18;
+    assistantIconDiv.appendChild(createSvgIcon(appIcon, { colored: true, size: "18px" }));
 
     const assistantContentDiv = document.createElement("div");
     assistantContentDiv.classList.add("cmba-assistant-content");
@@ -145,7 +148,7 @@ export class ChatElemCreator {
     const copyMarkdownButtonDiv = document.createElement("div");
     copyMarkdownButtonDiv.classList.add("chat-md-bubble-options-button", "tooltip", "tooltip-top");
     copyMarkdownButtonDiv.dataset.tip = tr("tooltip.copyText");
-    copyMarkdownButtonDiv.innerHTML = copy16;
+    copyMarkdownButtonDiv.appendChild(createSvgIcon(copyIcon, { size: "16px" }));
     optionsDiv.appendChild(copyMarkdownButtonDiv);
     copyMarkdownButtonDiv.addEventListener("click", async () => {
       const index = this.findMsgIndex(mid);
@@ -169,7 +172,7 @@ export class ChatElemCreator {
     const deleteButtonDiv = document.createElement("div");
     deleteButtonDiv.classList.add("chat-md-bubble-options-button", "tooltip", "tooltip-top");
     deleteButtonDiv.dataset.tip = tr("tooltip.deleteMessage");
-    deleteButtonDiv.innerHTML = delete16;
+    deleteButtonDiv.appendChild(createSvgIcon(deleteIcon, { size: "16px" }));
     optionsDiv.appendChild(deleteButtonDiv);
     deleteButtonDiv.addEventListener("click", async () => {
       this.deleteMessage(mid);

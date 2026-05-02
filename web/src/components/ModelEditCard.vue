@@ -46,7 +46,7 @@
           <label class="input input-bordered model-key-input">
             <input type="password" class="grow" v-model.trim="localModel.apiKey" />
             <button type="button" class="btn btn-ghost btn-sm" @click="copyApiKey">
-              <div v-html="copy16"></div>
+              <SvgIcon :src="copyIcon" />
             </button>
           </label>
         </div>
@@ -249,7 +249,8 @@
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { dsAlert } from "@/utils";
-import { copy16 } from "@/assets/svg";
+import copyIcon from "@/assets/svg/copy16.svg";
+import SvgIcon from "@/components/SvgIcon.vue";
 import {
   defModelType,
   apiTypeList,

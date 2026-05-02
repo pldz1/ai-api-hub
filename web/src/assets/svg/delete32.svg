@@ -1,0 +1,43 @@
+<svg
+  version="1.1"
+  xmlns="http://www.w3.org/2000/svg"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  width="32px"
+  height="32px"
+  viewBox="0 0 2 2"
+>
+  <path
+    fill="none"
+    stroke="#000000"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    x1="35.253"
+    y1="14.747"
+    x2="14.747"
+    y2="35.254"
+    d="m1.41 0.59 -0.82 0.82"
+    stroke-width="0.1"
+  />
+  <path
+    fill="none"
+    stroke="#000000"
+    stroke-linejoin="round"
+    cx="25"
+    cy="25"
+    r="23.668"
+    d="M1.946 1A0.946 0.946 0 0 1 1 1.946 0.946 0.946 0 0 1 0.054 1a0.946 0.946 0 0 1 1.892 0z"
+    stroke-width="0.1"
+  />
+  <path
+    fill="none"
+    stroke="#000000"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    x1="35.253"
+    y1="35.254"
+    x2="14.747"
+    y2="14.747"
+    d="m1.41 1.41 -0.82 -0.82"
+    stroke-width="0.1"
+  />
+</svg>

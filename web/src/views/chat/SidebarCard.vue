@@ -6,19 +6,19 @@
         <!-- 展开或者折叠 对话(chat) 列表 -->
         <AppTooltip :text="t('chat.sidebarToggle')" placement="right">
           <button class="btn csdb-btn-wh1 csdb-btn-color1" @click="onShowSidebar">
-            <div v-html="sildbar24"></div>
+            <SvgIcon :src="sidebarIcon" />
           </button>
         </AppTooltip>
         <!-- 新建一个 对话(chat) -->
         <AppTooltip :text="t('chat.newChat')" placement="right">
           <button class="btn csdb-btn-wh1 csdb-btn-color1" @click="onNewChat">
-            <div v-html="new24"></div>
+            <SvgIcon :src="newIcon" />
           </button>
         </AppTooltip>
       </div>
       <AppTooltip :text="t('chat.modelSettings')" placement="right">
         <button class="btn csdb-btn-wh1 csdb-btn-color1" @click="onShowModelSettings">
-          <div v-html="setting24"></div>
+          <SvgIcon :src="settingIcon" />
         </button>
       </AppTooltip>
     </div>
@@ -28,7 +28,7 @@
         <h2 class="font-bold">
           {{ t("chat.noChats") }}
           <br />
-          <div v-html="wao128"></div>
+          <SvgIcon class="csdb-empty-icon" :src="waoIcon" colored />
         </h2>
       </div>
       <!-- chat history list -->
@@ -53,7 +53,7 @@
               <template #trigger="{ toggle, open }">
                 <div class="csdb-chat-dropdown">
                   <button class="btn" :class="{ open }" :aria-label="t('chat.moreActions')" @click.stop="toggle">
-                    <div v-html="options24"></div>
+                    <SvgIcon :src="optionsIcon" />
                   </button>
                 </div>
               </template>
@@ -82,13 +82,18 @@
 import { useStore } from "vuex";
 import { nextTick, ref, computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { options24, sildbar24, new24, setting24, wao128 } from "@/assets/svg";
+import optionsIcon from "@/assets/svg/options24.svg";
+import sidebarIcon from "@/assets/svg/sildbar24.svg";
+import newIcon from "@/assets/svg/new24.svg";
+import settingIcon from "@/assets/svg/setting24.svg";
+import waoIcon from "@/assets/svg/wao128.svg";
 import { deleteChat, renameChat, getChatSettings } from "@/services";
 import { buildDefaultChatSettings } from "@/constants";
 import ChatSettings from "@/views/chat/ChatSettings.vue";
 import { dsAlert } from "@/utils";
 import AppTooltip from "@/components/AppTooltip.vue";
 import AppDropdownMenu from "@/components/AppDropdownMenu.vue";
+import SvgIcon from "@/components/SvgIcon.vue";
 
 const store = useStore();
 const { t } = useI18n();
@@ -238,6 +243,11 @@ const changeChatName = async () => {
       height: 40px;
       width: 40px;
       min-height: 40px;
+
+      :deep(.svg-icon) {
+        width: 24px;
+        height: 24px;
+      }
     }
 
     .csdb-chat-list {
@@ -284,6 +294,11 @@ const changeChatName = async () => {
         flex-direction: column;
         justify-content: center;
         gap: 8px;
+      }
+
+      .csdb-empty-icon {
+        width: 128px;
+        height: 128px;
       }
     }
 
@@ -381,6 +396,11 @@ const changeChatName = async () => {
 
         &:hover {
           transform: translateY(-1px) scale(1.02);
+        }
+
+        :deep(.svg-icon) {
+          width: 24px;
+          height: 24px;
         }
       }
     }

@@ -10,7 +10,7 @@
           <div class="gcms-setting-label">
             <span>{{ t("chat.instructions") }}</span>
             <AppTooltip :text="t('chat.instructionsTip')" placement="bottom">
-              <div v-html="info24"></div>
+              <SvgIcon class="gcms-info-icon" :src="infoIcon" />
             </AppTooltip>
           </div>
 
@@ -23,7 +23,7 @@
           <div class="gcms-setting-label">
             <span>{{ t("chat.historyCount") }}</span>
             <AppTooltip :text="t('chat.historyCountTip')" placement="bottom">
-              <div v-html="info24"></div>
+              <SvgIcon class="gcms-info-icon" :src="infoIcon" />
             </AppTooltip>
           </div>
           <div class="gcms-setting-content">
@@ -36,7 +36,7 @@
           <div class="gcms-setting-label">
             <span>{{ item.label || item.key }}</span>
             <AppTooltip v-if="getParamDescription(item)" :text="getParamDescription(item)" placement="bottom">
-              <div v-html="info24"></div>
+              <SvgIcon class="gcms-info-icon" :src="infoIcon" />
             </AppTooltip>
           </div>
           <div class="gcms-setting-content">
@@ -71,11 +71,12 @@
 import { useStore } from "vuex";
 import { computed, reactive, watch, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { info24 } from "@/assets/svg";
+import infoIcon from "@/assets/svg/info24.svg";
 import { dsAlert } from "@/utils";
 import { getModelChatParamDefs, mergeChatSettingsWithModel, parseChatParamValue } from "@/constants";
 import { setChatSettings } from "@/services";
 import AppTooltip from "@/components/AppTooltip.vue";
+import SvgIcon from "@/components/SvgIcon.vue";
 
 const store = useStore();
 const { t } = useI18n();
@@ -171,6 +172,11 @@ const handleClose = async () => {
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
+  }
+
+  .gcms-info-icon {
+    width: 24px;
+    height: 24px;
   }
 
   .gcms-setting-content {

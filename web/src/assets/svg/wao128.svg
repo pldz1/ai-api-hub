@@ -1,4 +1,4 @@
-export const wao128 = `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 128 128" width="128" height="128">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 128 128" width="128" height="128">
   <path style="fill:#FDDF6D;" cx="256.001" cy="256.001" r="256.001" d="M128 64a64 64 0 0 1 -64 64A64 64 0 0 1 0 64a64 64 0 0 1 128 0" />
   <path
     style="fill:#FCC56B;"
@@ -30,4 +30,4 @@ export const wao128 = `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xml
     ry="53.46"
     d="M84.216 18.616a7.464 13.366 0 0 1 -7.464 13.366 7.464 13.366 0 0 1 -7.464 -13.366 7.464 13.366 0 0 1 14.928 0"
   />
-</svg>`;
+</svg>

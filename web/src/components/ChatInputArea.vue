@@ -19,13 +19,13 @@
           <!-- 上传图片 -->
           <AppTooltip :text="t('tooltip.uploadImage')" placement="top">
             <button class="ccia-opts-button" @click="uploadImageFile">
-              <div class="ccia-icon" v-html="attach24"></div>
+              <SvgIcon class="ccia-icon" :src="attachIcon" />
             </button>
           </AppTooltip>
           <!-- 对话 -->
           <div v-if="false" class="tooltip tooltip-top" :data-tip="t('tooltip.sendOrStop')">
             <button class="ccia-opts-button">
-              <div class="ccia-icon" v-html="realTimeVoice24"></div>
+              <SvgIcon class="ccia-icon" :src="realTimeVoiceIcon" />
             </button>
           </div>
         </div>
@@ -43,9 +43,13 @@
             <AppTooltip :text="t('tooltip.sendOrStop')" placement="top">
               <button class="ccia-send-button" @click="onSendInputData">
                 <!-- send chat button -->
-                <div v-if="!props.isChatting" class="ccia-svg-icon" v-html="arrowUp32"></div>
+                <span v-if="!props.isChatting" class="ccia-svg-icon">
+                  <SvgIcon :src="arrowUpIcon" />
+                </span>
                 <!-- pause chat button -->
-                <div v-else class="ccia-svg-icon" v-html="pause32"></div>
+                <span v-else class="ccia-svg-icon">
+                  <SvgIcon :src="pauseIcon" />
+                </span>
               </button>
             </AppTooltip>
           </div>
@@ -59,11 +63,15 @@
 import { useStore } from "vuex";
 import { ref, onMounted, onBeforeUnmount, computed, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { dalle24, realTimeVoice24, attach24, arrowUp32, pause32 } from "@/assets/svg";
+import attachIcon from "@/assets/svg/attach24.svg";
+import realTimeVoiceIcon from "@/assets/svg/realTimeVoice24.svg";
+import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
+import pauseIcon from "@/assets/svg/pause32.svg";
 import { addPasteEvent, removePasetEvent, uploadImageFile, isValidUserMsg, dsAlert } from "@/utils";
 import { packUserMsg } from "@/services";
 import { debounce } from "@/utils";
 import AppTooltip from "@/components/AppTooltip.vue";
+import SvgIcon from "@/components/SvgIcon.vue";
 
 const props = defineProps({
   isChatting: {

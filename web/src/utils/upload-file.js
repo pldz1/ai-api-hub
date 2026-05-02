@@ -1,4 +1,5 @@
-import { delete32 } from "@/assets/svg";
+import deleteIcon from "@/assets/svg/delete32.svg";
+import { createSvgIcon } from "@/utils/svg-icon.js";
 
 const GlobalInputUploadEl = "gloal-file-upload-input";
 const ImageMaxMBSize = 20;
@@ -20,7 +21,7 @@ const displayImage = (base64Image) => {
 
   const deleteButtonElem = document.createElement("div");
   deleteButtonElem.classList.add("ccia-hover-button");
-  deleteButtonElem.innerHTML = delete32;
+  deleteButtonElem.appendChild(createSvgIcon(deleteIcon, { size: "32px" }));
   hoverItem.appendChild(deleteButtonElem);
 
   itemElem.appendChild(hoverItem);
