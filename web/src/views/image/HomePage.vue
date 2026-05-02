@@ -168,7 +168,7 @@ import deleteIcon from "@/assets/svg/delete16.svg";
 import editIcon from "@/assets/svg/edit24.svg";
 import saveIcon from "@/assets/svg/save18.svg";
 import { imageModelSize, defImageModelSeting } from "@/constants";
-import { AIGCClient, deleteImage, getImageList, pushImage } from "@/services";
+import { deleteImage, generateImage, getImageList, pushImage } from "@/services";
 import { copyToClipboard, dsAlert, saveToLocal } from "@/utils";
 import HeaderBar from "@/components/HeaderBar.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
@@ -185,7 +185,6 @@ const generationStatusLabel = computed(() => (isGenerating.value ? t("image.gene
 const isSendDisabled = computed(() => isGenerating.value || !imageModelSettings.value.model || promptLength.value === 0);
 
 const imageModelSettings = ref(structuredClone(defImageModelSeting));
-const imageDrawer = new AIGCClient("image");
 const isGenerating = ref(false);
 const dsAlertContainer = ref(null);
 const selectedImageId = ref(null);
@@ -222,7 +221,12 @@ const onSendImg = async () => {
   isGenerating.value = true;
 
   try {
-    const urls = await imageDrawer.generateImage(prompt, size, n);
+    const urls = await generateImage(model, {
+      prompt,
+      size,
+      n,
+      quality: imageModelSettings.value.quality,
+    });
     imageModelSettings.value.prompt = "";
 
     for (const item of urls) {
@@ -279,14 +283,6 @@ const saveTo = async () => {
     container: dsAlertContainer.value,
   });
 };
-
-watch(
-  () => imageModelSettings.value.model,
-  (newVal) => {
-    if (newVal) imageDrawer.init(newVal);
-  },
-  { immediate: true },
-);
 
 watch(
   imageList,

@@ -22,7 +22,7 @@
           <input type="text" class="input input-bordered w-full" v-model.trim="localModel.name" />
         </div>
 
-        <div class="model-form-field">
+        <div v-if="!isImageModel" class="model-form-field">
           <label>{{ t("user.modelCard.fields.apiType") }}</label>
           <select class="select select-bordered w-full" v-model="localModel.apiType">
             <option v-for="ai in apiTypeList" :key="ai.value" :value="ai.value">
@@ -31,12 +31,12 @@
           </select>
         </div>
 
-        <div v-if="isOpenAIStyle" class="model-form-field model-form-field-span">
-          <label>{{ t("user.modelCard.fields.baseUrl") }}</label>
+        <div v-if="isImageModel || isOpenAIStyle" class="model-form-field model-form-field-span">
+          <label>{{ isImageModel ? t("user.modelCard.fields.imageUrl") : t("user.modelCard.fields.baseUrl") }}</label>
           <input type="text" class="input input-bordered w-full" v-model.trim="localModel.baseURL" />
         </div>
 
-        <div v-if="isAzure" class="model-form-field model-form-field-span">
+        <div v-if="!isImageModel && isAzure" class="model-form-field model-form-field-span">
           <label>{{ t("user.modelCard.fields.endpoint") }}</label>
           <input type="text" class="input input-bordered w-full" v-model.trim="localModel.endpoint" />
         </div>
@@ -51,19 +51,19 @@
           </label>
         </div>
 
-        <div v-if="isAzure" class="model-form-field">
+        <div v-if="!isImageModel && isAzure" class="model-form-field">
           <label>{{ t("user.modelCard.fields.apiVersion") }}</label>
           <input type="text" class="input input-bordered w-full" v-model.trim="localModel.apiVersion" />
         </div>
 
-        <div v-if="isAzure" class="model-form-field">
+        <div v-if="!isImageModel && isAzure" class="model-form-field">
           <label>{{ t("user.modelCard.fields.deployment") }}</label>
           <input type="text" class="input input-bordered w-full" v-model.trim="localModel.deployment" />
         </div>
       </div>
     </section>
 
-    <section class="model-form-section">
+    <section v-if="!isImageModel" class="model-form-section">
       <div class="model-section-head">
         <h4>{{ t("user.modelCard.sections.identityTitle") }}</h4>
         <p>{{ t("user.modelCard.sections.identityDescription") }}</p>
@@ -289,6 +289,7 @@ const availableParamPresets = computed(() => {
   const existingKeys = new Set((localModel.chatParamDefs || []).map((item) => item.key).filter(Boolean));
   return chatParamPresetList.filter((item) => !existingKeys.has(item.key));
 });
+const isImageModel = computed(() => props.modelKind === "image");
 const isAzure = computed(() => localModel.apiType === "Azure OpenAI");
 const isOpenAIStyle = computed(() => localModel.apiType === "OpenAI" || localModel.apiType === "DeepSeek");
 const modelTypePlaceholder = computed(() => {
@@ -305,6 +306,16 @@ const cardTitleKey = computed(() => (props.modelKind === "image" ? "user.modelCa
 const cardSubtitleKey = computed(() => (props.modelKind === "image" ? "user.modelCard.imageSubtitle" : "user.modelCard.chatSubtitle"));
 
 function normalizeModelFields() {
+  if (isImageModel.value) {
+    localModel.apiType = "Fetch";
+    localModel.model = "";
+    localModel.modelType = "";
+    localModel.endpoint = "";
+    localModel.deployment = "";
+    localModel.apiVersion = "";
+    return;
+  }
+
   if (!localModel.modelType && localModel.model) {
     localModel.modelType = localModel.model.trim();
   }

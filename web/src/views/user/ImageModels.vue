@@ -26,8 +26,8 @@
         >
           <div class="settings-list-title">{{ imageModel.name || t("common.unnamedModel") }}</div>
           <div class="settings-list-meta">
-            <span>{{ imageModel.apiType || t("common.unsetApi") }}</span>
-            <span>{{ imageModel.modelType || t("common.unsetModelId") }}</span>
+            <span>Fetch</span>
+            <span>{{ imageModel.baseURL || t("common.unsetApi") }}</span>
           </div>
         </button>
         <div v-if="props.models.length === 0" class="settings-empty-list">
@@ -40,14 +40,14 @@
           <div class="detail-toolbar">
             <div>
               <h3>{{ currentModel.name || t("common.unnamedModel") }}</h3>
-              <p>{{ currentModel.apiType || t("user.imageModels.apiTypeHint") }}</p>
+              <p>{{ currentModel.baseURL || t("user.imageModels.apiTypeHint") }}</p>
             </div>
             <button class="btn btn-outline btn-error" @click="deleteImageModel">
               {{ t("user.imageModels.delete") }}
             </button>
           </div>
 
-          <ModelEditCard :model="currentModel" :model-suggestions="imageModelTypeList" model-kind="image" @update:model="updateCurrentModel" />
+          <ModelEditCard :model="currentModel" model-kind="image" @update:model="updateCurrentModel" />
         </template>
 
         <div v-else class="settings-empty-detail">
@@ -61,7 +61,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { defModelType, imageModelTypeList } from "@/constants";
+import { defModelType } from "@/constants";
 import { append4Random } from "@/utils";
 import ModelEditCard from "@/components/ModelEditCard.vue";
 
@@ -101,8 +101,8 @@ const updateCurrentModel = (nextModel) => {
 const addImageModel = () => {
   const nextModel = cloneModel(defModelType);
   nextModel.name = append4Random("图像模型");
-  nextModel.apiType = "OpenAI";
-  nextModel.baseURL = "https://api.openai.com/v1";
+  nextModel.apiType = "Fetch";
+  nextModel.baseURL = "";
 
   const nextModels = [...props.models, nextModel];
   updateModels(nextModels);
@@ -251,6 +251,16 @@ watch(
   margin-top: 8px;
   font-size: 11px;
   color: oklch(var(--bc) / 0.65);
+
+  span {
+    display: -webkit-box;
+    max-width: 100%;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+  }
 }
 
 .settings-empty-list,
