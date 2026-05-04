@@ -13,12 +13,19 @@ export const defModelType = {
   deployment: "",
   apiVersion: "",
   chatParamDefs: [],
+  imageParamDefs: [],
 };
 
 export const apiTypeList = [
   { value: "OpenAI", name: "OpenAI" },
   { value: "Azure OpenAI", name: "Azure OpenAI" },
   { value: "DeepSeek", name: "DeepSeek" },
+];
+
+export const imageApiTypeList = [
+  { value: "OpenAI", name: "OpenAI" },
+  { value: "Fetch", name: "Fetch" },
+  { value: "Azure OpenAI", name: "Azure OpenAI" },
 ];
 
 export const chatModelTypeList = [
@@ -68,6 +75,12 @@ export const chatParamTypeList = [
   { value: "string", name: "String" },
   { value: "array", name: "Array" },
   { value: "boolean", name: "Boolean" },
+];
+
+export const imageParamTypeList = [
+  ...chatParamTypeList,
+  { value: "object", name: "Object" },
+  { value: "image", name: "Image" },
 ];
 
 export const chatParamPresetList = [
@@ -149,6 +162,49 @@ export const chatParamPresetList = [
   },
 ];
 
+export const imageParamPresetList = [
+  {
+    key: "quality",
+    label: "quality",
+    type: "string",
+    description: "图像质量参数，例如 auto、low、medium、high、standard、hd。",
+    defaultValue: "auto",
+    placeholder: "auto",
+  },
+  {
+    key: "output_format",
+    label: "output_format",
+    type: "string",
+    description: "返回图片格式，例如 png、jpeg、webp。",
+    defaultValue: "png",
+    placeholder: "png",
+  },
+  {
+    key: "background",
+    label: "background",
+    type: "string",
+    description: "背景设置，例如 auto、transparent、opaque。",
+    defaultValue: "",
+    placeholder: "auto",
+  },
+  {
+    key: "moderation",
+    label: "moderation",
+    type: "string",
+    description: "内容审核强度，例如 auto、low。",
+    defaultValue: "",
+    placeholder: "auto",
+  },
+  {
+    key: "image",
+    label: "image",
+    type: "image",
+    description: "随请求携带的输入图像，发送为 { filename, content_type, data }。",
+    defaultValue: null,
+    placeholder: "image/png",
+  },
+];
+
 export const defChatModelSettings = {
   passedMsgLen: 10,
   prompts: [{ role: "system", content: [{ type: "text", text: "As an AI assistant, please make your responses more engaging by including lively emojis." }] }],
@@ -156,6 +212,10 @@ export const defChatModelSettings = {
 
 function getChatParamPreset(key = "") {
   return chatParamPresetList.find((item) => item.key === key) || null;
+}
+
+function getImageParamPreset(key = "") {
+  return imageParamPresetList.find((item) => item.key === key) || null;
 }
 
 export function parseChatParamValue(type = "string", value = undefined, fallback = undefined) {
@@ -188,13 +248,60 @@ export function parseChatParamValue(type = "string", value = undefined, fallback
     return fallback;
   }
 
+  if (type === "object") {
+    if (value && typeof value === "object" && !Array.isArray(value)) return value;
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : fallback;
+      } catch {
+        return fallback;
+      }
+    }
+    return fallback;
+  }
+
+  if (type === "image") {
+    if (value && typeof value === "object" && !Array.isArray(value) && value.filename && value.content_type && value.data) return value;
+    return fallback;
+  }
+
   return String(value);
+}
+
+function hasMeaningfulParamValue(type = "string", value = undefined) {
+  if (value === undefined || value === null) return false;
+  if (type === "string" && value === "") return false;
+  if (type === "array") return Array.isArray(value);
+  if (type === "object") return typeof value === "object" && !Array.isArray(value) && Object.keys(value).length > 0;
+  if (type === "image") return Boolean(value?.filename && value?.content_type && value?.data);
+  return true;
 }
 
 export function normalizeChatParamDef(def = {}) {
   const preset = getChatParamPreset(def.key);
   const nextType = def.type || preset?.type || "string";
   const nextDefaultValue = parseChatParamValue(nextType, def.defaultValue, cloneJson(preset?.defaultValue ?? ""));
+
+  return {
+    key: String(def.key || preset?.key || "").trim(),
+    label: String(def.label || preset?.label || def.key || "").trim(),
+    type: nextType,
+    description: String(def.description || preset?.description || "").trim(),
+    descriptionKey: String(def.descriptionKey || preset?.descriptionKey || "").trim(),
+    placeholder: String(def.placeholder || preset?.placeholder || "").trim(),
+    defaultValue: nextDefaultValue,
+    min: parseChatParamValue("number", def.min, preset?.min ?? 0),
+    max: parseChatParamValue("number", def.max, preset?.max ?? 1),
+    step: parseChatParamValue("number", def.step, preset?.step ?? 1),
+  };
+}
+
+export function normalizeImageParamDef(def = {}) {
+  const preset = getImageParamPreset(def.key);
+  const nextType = def.type || preset?.type || "string";
+  const fallbackDefaultValue = Object.prototype.hasOwnProperty.call(preset || {}, "defaultValue") ? cloneJson(preset.defaultValue) : "";
+  const nextDefaultValue = parseChatParamValue(nextType, def.defaultValue, fallbackDefaultValue);
 
   return {
     key: String(def.key || preset?.key || "").trim(),
@@ -239,6 +346,64 @@ export function getModelChatParamDefs(model = {}) {
   const seen = new Set();
 
   return defs.map((item) => normalizeChatParamDef(item)).filter((item) => item.key && !seen.has(item.key) && (seen.add(item.key), true));
+}
+
+export function getDefaultImageParamDefs() {
+  return ["quality", "output_format"].map((key) => normalizeImageParamDef({ key }));
+}
+
+export function getModelImageParamDefs(model = {}) {
+  const defs = Array.isArray(model?.imageParamDefs) && model.imageParamDefs.length > 0 ? model.imageParamDefs : getDefaultImageParamDefs();
+  const seen = new Set();
+
+  return defs.map((item) => normalizeImageParamDef(item)).filter((item) => item.key && !seen.has(item.key) && (seen.add(item.key), true));
+}
+
+export function buildDefaultImageSettings(model = null) {
+  const settings = cloneJson(defImageModelSeting);
+  const defs = getModelImageParamDefs(model || {});
+
+  defs.forEach((item) => {
+    settings[item.key] = cloneJson(item.defaultValue);
+  });
+
+  return settings;
+}
+
+export function mergeImageSettingsWithModel(model = null, settings = {}) {
+  const mergedSettings = {
+    ...buildDefaultImageSettings(model),
+    ...(settings || {}),
+  };
+
+  const defs = getModelImageParamDefs(model || {});
+  defs.forEach((item) => {
+    mergedSettings[item.key] = parseChatParamValue(item.type, mergedSettings[item.key], cloneJson(item.defaultValue));
+  });
+
+  if (!Number.isFinite(Number(mergedSettings.n)) || Number(mergedSettings.n) < 1) {
+    mergedSettings.n = defImageModelSeting.n;
+  } else {
+    mergedSettings.n = Number(mergedSettings.n);
+  }
+
+  return mergedSettings;
+}
+
+export function buildImageGenerationParams(model = null, settings = {}) {
+  const defs = getModelImageParamDefs(model || {});
+  const mergedSettings = mergeImageSettingsWithModel(model, settings);
+  const params = {};
+
+  defs.forEach((item) => {
+    const value = parseChatParamValue(item.type, mergedSettings[item.key], cloneJson(item.defaultValue));
+
+    if (!hasMeaningfulParamValue(item.type, value)) return;
+
+    params[item.key] = value;
+  });
+
+  return params;
 }
 
 export function buildDefaultChatSettings(model = null) {

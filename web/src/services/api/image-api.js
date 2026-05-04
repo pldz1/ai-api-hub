@@ -3,7 +3,7 @@ import { apiRequest } from "./axios-request.js";
 import { dsAlert, getUuid } from "@/utils";
 import { tr } from "@/i18n";
 
-const DEFAULT_IMAGE_QUALITY = "low";
+const DEFAULT_IMAGE_QUALITY = "auto";
 const DEFAULT_IMAGE_OUTPUT_FORMAT = "png";
 
 function trimTrailingSlash(value = "") {
@@ -17,6 +17,23 @@ function buildImageGenerationRequest(model, params) {
   const n = params?.n || 1;
   const quality = params?.quality || DEFAULT_IMAGE_QUALITY;
   const outputFormat = params?.outputFormat || DEFAULT_IMAGE_OUTPUT_FORMAT;
+  const imageModel = model?.model || model?.modelType;
+  const extraParams = Object.fromEntries(
+    Object.entries(params || {}).filter(([key, value]) => {
+      if (["prompt", "size", "n", "quality", "outputFormat"].includes(key)) return false;
+      if (value === undefined || value === null || value === "") return false;
+      return true;
+    }),
+  );
+  const baseBody = {
+    model: imageModel || undefined,
+    size,
+    quality,
+    output_format: outputFormat,
+    n,
+    prompt,
+    ...extraParams,
+  };
 
   if (apiType === "Fetch") {
     const url = String(model?.baseURL || "").trim();
@@ -29,16 +46,10 @@ function buildImageGenerationRequest(model, params) {
       url,
       headers: {
         accept: "application/json",
-        "api-key": model.apiKey,
+        authorization: `Bearer ${model.apiKey}`,
         "content-type": "application/json",
       },
-      body: {
-        size,
-        quality,
-        output_format: outputFormat,
-        n,
-        prompt,
-      },
+      body: baseBody,
     };
   }
 
@@ -58,19 +69,12 @@ function buildImageGenerationRequest(model, params) {
         "api-key": model.apiKey,
         "content-type": "application/json",
       },
-      body: {
-        size,
-        quality,
-        output_format: outputFormat,
-        n,
-        prompt,
-      },
+      body: baseBody,
     };
   }
 
   if (apiType === "OpenAI") {
     const baseURL = trimTrailingSlash(model?.baseURL || "https://api.openai.com/v1");
-    const imageModel = model?.model || model?.modelType;
 
     if (!baseURL || !model?.apiKey || !imageModel) {
       throw new Error("OpenAI 图像模型配置不完整");
@@ -83,14 +87,7 @@ function buildImageGenerationRequest(model, params) {
         authorization: `Bearer ${model.apiKey}`,
         "content-type": "application/json",
       },
-      body: {
-        model: imageModel,
-        size,
-        quality,
-        output_format: outputFormat,
-        n,
-        prompt,
-      },
+      body: baseBody,
     };
   }
 
@@ -100,10 +97,14 @@ function buildImageGenerationRequest(model, params) {
 function normalizeImageGenerationData(data) {
   if (!Array.isArray(data?.data)) {
     const message = data?.error?.message || data?.message || JSON.stringify(data);
-    return [{ type: "text", data: message || "图像接口返回格式无效" }];
+    return {
+      images: [{ type: "text", data: message || "图像接口返回格式无效" }],
+      usage: normalizeImageUsage(data?.usage),
+      raw: data,
+    };
   }
 
-  return data.data.map((item) => {
+  const images = data.data.map((item) => {
     if (item?.url) {
       return { type: "url", data: item.url };
     }
@@ -114,6 +115,33 @@ function normalizeImageGenerationData(data) {
 
     return { type: "text", data: item?.error?.message || "图像接口未返回图片数据" };
   });
+
+  return {
+    images,
+    usage: normalizeImageUsage(data?.usage),
+    raw: data,
+  };
+}
+
+function normalizeImageUsage(usage = null) {
+  if (!usage || typeof usage !== "object") {
+    return {
+      input_tokens: 0,
+      output_tokens: 0,
+      total_tokens: 0,
+    };
+  }
+
+  const inputTokens = Number(usage.input_tokens ?? usage.prompt_tokens ?? 0);
+  const outputTokens = Number(usage.output_tokens ?? usage.completion_tokens ?? 0);
+  const totalTokens = Number(usage.total_tokens ?? inputTokens + outputTokens);
+
+  return {
+    ...usage,
+    input_tokens: Number.isFinite(inputTokens) ? inputTokens : 0,
+    output_tokens: Number.isFinite(outputTokens) ? outputTokens : 0,
+    total_tokens: Number.isFinite(totalTokens) ? totalTokens : 0,
+  };
 }
 
 /**
@@ -146,7 +174,7 @@ export const deleteImageAPI = (id) =>
  * 生成图片
  * @param {T_ModelType} model - 当前选择的图像模型配置
  * @param {{ prompt: string, size: string, n: number, quality?: string, outputFormat?: string }} params - 生成参数
- * @returns {Promise<Array<{ type: string, data: string }>>} 返回包含图片 URL/base64 data URL 或错误信息的数组
+ * @returns {Promise<{ images: Array<{ type: string, data: string }>, usage: object, raw?: object }>} 返回 OpenAI 格式归一化后的图片与 token 统计
  */
 export async function generateImage(model, params) {
   try {
@@ -161,12 +189,12 @@ export async function generateImage(model, params) {
 
     if (!res.ok) {
       const message = data?.error?.message || data?.message || `${res.status} ${res.statusText}`;
-      return [{ type: "text", data: message }];
+      return { images: [{ type: "text", data: message }], usage: normalizeImageUsage(data?.usage), raw: data };
     }
 
     return normalizeImageGenerationData(data);
   } catch (err) {
-    return [{ type: "text", data: String(err) }];
+    return { images: [{ type: "text", data: String(err) }], usage: normalizeImageUsage() };
   }
 }
 

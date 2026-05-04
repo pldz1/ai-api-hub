@@ -1,4 +1,4 @@
-import { defModelType, getModelChatParamDefs } from "@/constants";
+import { defModelType, getModelChatParamDefs, getModelImageParamDefs } from "@/constants";
 
 const USER_SESSION_KEY = "ai.api.hub.workspace-session.v1";
 export const WORKSPACE_ID = "__workspace__";
@@ -117,16 +117,17 @@ export const UserState = {
    * 设置全部模型
    */
   setModels(data) {
-    const normalizeModels = (items = [], withChatParamDefs = false) =>
+    const normalizeModels = (items = [], kind = "") =>
       items.map((item) => ({
         ...structuredClone(defModelType),
         ...item,
-        chatParamDefs: withChatParamDefs ? getModelChatParamDefs(item) : Array.isArray(item?.chatParamDefs) ? item.chatParamDefs : [],
+        chatParamDefs: kind === "chat" ? getModelChatParamDefs(item) : Array.isArray(item?.chatParamDefs) ? item.chatParamDefs : [],
+        imageParamDefs: kind === "image" ? getModelImageParamDefs(item) : Array.isArray(item?.imageParamDefs) ? item.imageParamDefs : [],
       }));
 
     this.models = {
-      chat: normalizeModels(data?.chat, true),
-      image: normalizeModels(data?.image),
+      chat: normalizeModels(data?.chat, "chat"),
+      image: normalizeModels(data?.image, "image"),
       rtaudio: normalizeModels(data?.rtaudio),
     };
   },
