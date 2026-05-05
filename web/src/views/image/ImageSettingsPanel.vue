@@ -1,10 +1,7 @@
 <template>
   <aside class="settings-panel">
     <div class="settings-header">
-      <h2>{{ t("image.settingsTitle") }}</h2>
-      <button type="button" class="btn btn-sm btn-outline" :disabled="!settings.model" @click="emit('open-settings')">
-        {{ t("image.modelSettings") }}
-      </button>
+      <h2>{{ mode === "edit" ? t("image.editSettingsTitle") : t("image.settingsTitle") }}</h2>
     </div>
 
     <div class="setting-block">
@@ -67,9 +64,13 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  mode: {
+    type: String,
+    default: "generation",
+  },
 });
 
-const emit = defineEmits(["update:settings", "open-settings"]);
+const emit = defineEmits(["update:settings"]);
 const { t } = useI18n();
 
 const selectedModelIndex = computed(() => props.imageModels.indexOf(props.settings.model));
@@ -125,16 +126,11 @@ const sizeShapeClass = (value) => {
     font-weight: 800;
   }
 
-  .btn {
-    min-height: 34px;
-    border-radius: 12px;
-    white-space: nowrap;
-  }
 }
 
 .setting-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
 }
 

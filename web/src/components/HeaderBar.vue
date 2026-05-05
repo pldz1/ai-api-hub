@@ -5,13 +5,13 @@
         <AppDropdownMenu :items="menuItems" placement="bottom-start" :width="156" @select="onSelectMenuItem">
           <template #trigger="{ toggle }">
             <button type="button" class="comphb-icon-button" @click="toggle">
-              <SvgIcon :src="menuIcon" />
+              <SvgIcon :src="menuIcon" style="width: 28px; height: 28px" />
             </button>
           </template>
         </AppDropdownMenu>
       </AppTooltip>
       <button class="comphb-brand" @click="onBackLogin">
-        <SvgIcon class="comphb-brand-mark" :src="appIcon" colored />
+        <SvgIcon class="comphb-brand-mark" :src="appIcon" colored style="width: 28px; height: 28px" />
         <div class="comphb-brand-copy">
           <span class="comphb-brand-kicker">AI API HUB</span>
         </div>
@@ -32,6 +32,9 @@ import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import appIcon from "@/assets/svg/app32.svg";
 import menuIcon from "@/assets/svg/menu32.svg";
+import navChatIcon from "@/assets/svg/navChat24.svg";
+import navImageIcon from "@/assets/svg/navImage24.svg";
+import navSettingsIcon from "@/assets/svg/navSettings24.svg";
 import ThemeController from "@/components/ThemeController.vue";
 import LanguageController from "@/components/LanguageController.vue";
 import AvatarCard from "@/components/AvatarCard.vue";
@@ -52,9 +55,9 @@ const { t } = useI18n();
 
 const showMenu = props.showMenu;
 const menuItems = computed(() => [
-  { key: "chat", label: t("header.chat") },
-  { key: "image", label: t("header.image") },
-  { key: "settings", label: t("header.settings") },
+  { key: "chat", label: t("header.chat"), icon: navChatIcon },
+  { key: "image", label: t("header.image"), icon: navImageIcon },
+  { key: "settings", label: t("header.settings"), icon: navSettingsIcon },
 ]);
 
 /**

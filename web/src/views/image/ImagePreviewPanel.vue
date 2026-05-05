@@ -27,6 +27,10 @@
         <SvgIcon class="toolbar-icon" :src="saveIcon" />
         <span>{{ t("image.saveLocal") }}</span>
       </button>
+      <button v-if="showEditAction" type="button" class="btn btn-sm btn-outline preview-action" @click="emit('edit-image', selectedImage)">
+        <SvgIcon class="toolbar-icon" :src="editIcon" />
+        <span>{{ t("image.editImageAction") }}</span>
+      </button>
       <button type="button" class="btn btn-sm btn-outline btn-error preview-action" @click="emit('delete')">
         <SvgIcon class="toolbar-icon" :src="deleteIcon" />
         <span>{{ t("image.deleteImage") }}</span>
@@ -102,9 +106,13 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  showEditAction: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-const emit = defineEmits(["copy", "save", "delete"]);
+const emit = defineEmits(["copy", "save", "delete", "edit-image"]);
 const selectedImageRef = ref(null);
 const zoomLevel = ref(1);
 const { t } = useI18n();

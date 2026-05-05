@@ -7,7 +7,8 @@
       <slot v-if="$slots.default" :close="closeMenu" />
       <template v-else>
         <button v-for="item in items" :key="item.key" class="app-dropdown-item" :class="{ active: item.active, danger: item.danger }" @click="selectItem(item)">
-          {{ item.label }}
+          <SvgIcon v-if="item.icon" class="app-dropdown-item-icon" :src="item.icon" />
+          <span class="app-dropdown-item-label">{{ item.label }}</span>
         </button>
       </template>
     </div>
@@ -18,6 +19,7 @@
 defineOptions({ inheritAttrs: false });
 
 import { computed, nextTick, onBeforeUnmount, ref, useAttrs } from "vue";
+import SvgIcon from "@/components/SvgIcon.vue";
 
 const props = defineProps({
   items: {
@@ -136,7 +138,9 @@ onBeforeUnmount(() => {
 
 .app-dropdown-item {
   width: 100%;
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 10px 12px;
   border: none;
   border-radius: 10px;
@@ -151,9 +155,25 @@ onBeforeUnmount(() => {
     transform 0.18s ease;
 }
 
+.app-dropdown-item-icon {
+  width: 18px;
+  height: 18px;
+  color: oklch(var(--bc) / 0.62);
+}
+
+.app-dropdown-item-label {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .app-dropdown-item:hover,
 .app-dropdown-item.active {
   background: oklch(var(--b2) / 0.92);
+  color: oklch(var(--bc));
+}
+
+.app-dropdown-item:hover .app-dropdown-item-icon,
+.app-dropdown-item.active .app-dropdown-item-icon {
   color: oklch(var(--bc));
 }
 

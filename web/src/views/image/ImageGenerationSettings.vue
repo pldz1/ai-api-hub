@@ -84,6 +84,10 @@ import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 
 const props = defineProps({
+  mode: {
+    type: String,
+    default: "generation",
+  },
   model: {
     type: Object,
     default: null,
@@ -96,7 +100,11 @@ const props = defineProps({
 
 const emit = defineEmits(["update:settings"]);
 const { t } = useI18n();
-const activeParamDefs = computed(() => getModelImageParamDefs(props.model || {}));
+const activeParamDefs = computed(() => {
+  const defs = getModelImageParamDefs(props.model || {});
+  if (props.mode === "edit") return defs;
+  return defs.filter((item) => item.type !== "image");
+});
 const modelSettings = reactive({});
 const jsonFieldInputs = reactive({});
 

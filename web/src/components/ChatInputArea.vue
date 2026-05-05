@@ -67,7 +67,7 @@ import attachIcon from "@/assets/svg/attach24.svg";
 import realTimeVoiceIcon from "@/assets/svg/realTimeVoice24.svg";
 import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import pauseIcon from "@/assets/svg/pause32.svg";
-import { addPasteEvent, removePasetEvent, uploadImageFile, isValidUserMsg, dsAlert } from "@/utils";
+import { addPasteEvent, removePasteEvent, uploadImageFile, isValidUserMsg, dsAlert } from "@/utils";
 import { packUserMsg } from "@/services";
 import { debounce } from "@/utils";
 import AppTooltip from "@/components/AppTooltip.vue";
@@ -166,7 +166,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  removePasetEvent("component-chat-input-area");
+  removePasteEvent("component-chat-input-area");
 });
 </script>
 

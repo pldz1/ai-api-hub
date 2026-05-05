@@ -13,7 +13,7 @@ import { computed } from "vue";
 import { useStore } from "vuex";
 import { useI18n } from "vue-i18n";
 import AppTooltip from "@/components/AppTooltip.vue";
-import { WORKSPACE_ID } from "@/store/user.js";
+import { WORKSPACE_ID } from "@/store/user";
 
 const store = useStore();
 const { t } = useI18n();

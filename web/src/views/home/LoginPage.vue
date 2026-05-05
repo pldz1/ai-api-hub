@@ -46,7 +46,7 @@ import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { login, getModels } from "@/services";
-import { loginAPI } from "@/services/api/user-api.js";
+import { loginAPI } from "@/services/api/user-api";
 import { dsLoading } from "@/utils";
 import ThemeController from "@/components/ThemeController.vue";
 import LanguageController from "@/components/LanguageController.vue";

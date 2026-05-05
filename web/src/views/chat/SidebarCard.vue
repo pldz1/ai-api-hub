@@ -83,7 +83,7 @@ import { useStore } from "vuex";
 import { nextTick, ref, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import optionsIcon from "@/assets/svg/options24.svg";
-import sidebarIcon from "@/assets/svg/sildbar24.svg";
+import sidebarIcon from "@/assets/svg/sidebar24.svg";
 import newIcon from "@/assets/svg/new24.svg";
 import settingIcon from "@/assets/svg/setting24.svg";
 import waoIcon from "@/assets/svg/wao128.svg";

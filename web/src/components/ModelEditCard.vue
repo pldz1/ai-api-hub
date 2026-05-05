@@ -1,9 +1,14 @@
 <template>
-  <div class="model-form-card">
+  <div class="model-form-card" :class="{ 'image-model-form': isImageModel }">
     <div class="model-form-header">
       <div>
         <h3>{{ t(cardTitleKey) }}</h3>
         <p>{{ t(cardSubtitleKey) }}</p>
+        <div v-if="isImageModel" class="model-capability-row">
+          <span>{{ activeProtocolLabel }}</span>
+          <span>{{ hasImageInputParam ? t("user.modelCard.imageInputEnabled") : t("user.modelCard.imageInputDisabled") }}</span>
+          <span>{{ activeParamDefs.length }} {{ t("user.modelCard.paramCountSuffix") }}</span>
+        </div>
       </div>
       <div v-if="props.modelKind === 'chat' && localModel.modelType" class="model-behavior-chip">
         {{ modelBehaviorHint }}
@@ -22,7 +27,7 @@
           <input type="text" class="input input-bordered w-full" v-model.trim="localModel.name" />
         </div>
 
-        <div class="model-form-field">
+        <div v-if="!isImageModel" class="model-form-field">
           <label>{{ t("user.modelCard.fields.apiType") }}</label>
           <select class="select select-bordered w-full" v-model="localModel.apiType">
             <option v-for="ai in availableApiTypeList" :key="ai.value" :value="ai.value">
@@ -31,50 +36,11 @@
           </select>
         </div>
 
-        <div v-if="isFetch || isOpenAIStyle" class="model-form-field model-form-field-span">
-          <label>{{ isImageModel ? t("user.modelCard.fields.imageUrl") : t("user.modelCard.fields.baseUrl") }}</label>
-          <input type="text" class="input input-bordered w-full" v-model.trim="localModel.baseURL" />
-        </div>
-
-        <div v-if="isAzure" class="model-form-field model-form-field-span">
-          <label>{{ t("user.modelCard.fields.endpoint") }}</label>
-          <input type="text" class="input input-bordered w-full" v-model.trim="localModel.endpoint" />
-        </div>
-
-        <div class="model-form-field model-form-field-span">
-          <label>{{ t("user.modelCard.fields.apiKey") }}</label>
-          <label class="input input-bordered model-key-input">
-            <input type="password" class="grow" v-model.trim="localModel.apiKey" />
-            <button type="button" class="btn btn-ghost btn-sm" @click="copyApiKey">
-              <SvgIcon :src="copyIcon" />
-            </button>
-          </label>
-        </div>
-
-        <div v-if="isAzure" class="model-form-field">
-          <label>{{ t("user.modelCard.fields.apiVersion") }}</label>
-          <input type="text" class="input input-bordered w-full" v-model.trim="localModel.apiVersion" />
-        </div>
-
-        <div v-if="isAzure" class="model-form-field">
-          <label>{{ t("user.modelCard.fields.deployment") }}</label>
-          <input type="text" class="input input-bordered w-full" v-model.trim="localModel.deployment" />
-        </div>
-      </div>
-    </section>
-
-    <section class="model-form-section">
-      <div class="model-section-head">
-        <h4>{{ t("user.modelCard.sections.identityTitle") }}</h4>
-        <p>{{ t("user.modelCard.sections.identityDescription") }}</p>
-      </div>
-
-      <div class="model-form-grid">
-        <div class="model-form-field model-form-field-span">
-          <label>{{ t("user.modelCard.fields.modelId") }}</label>
+        <div v-if="!isAzure || isImageModel" class="model-form-field model-form-field-span">
+          <label>{{ isImageModel ? t("user.modelCard.fields.modelOverride") : t("user.modelCard.fields.model") }}</label>
           <input type="text" class="input input-bordered w-full" :placeholder="modelTypePlaceholder" v-model.trim="localModel.modelType" />
           <div class="model-field-help">
-            {{ t("user.modelCard.modelIdHelp") }}
+            {{ isImageModel ? t("user.modelCard.imageModelHelp") : t("user.modelCard.chatModelHelp") }}
           </div>
           <div class="model-suggestion-list">
             <button
@@ -90,10 +56,49 @@
           </div>
         </div>
 
-        <div v-if="isOpenAIStyle && resolvedModelId" class="model-form-field model-form-field-span">
-          <label>{{ t("user.modelCard.fields.resolvedModel") }}</label>
+        <div v-if="isOpenAIStyle || isImageModel" class="model-form-field model-form-field-span">
+          <label>{{ isImageModel ? t("user.modelCard.fields.imageUrl") : t("user.modelCard.fields.baseUrl") }}</label>
+          <input type="text" class="input input-bordered w-full" v-model.trim="localModel.baseURL" />
+          <div v-if="isImageModel" class="model-field-help">
+            {{ t("user.modelCard.imageBaseUrlHelp") }}
+          </div>
+        </div>
+
+        <div v-if="isAzure && !isImageModel" class="model-form-field model-form-field-span">
+          <label>{{ t("user.modelCard.fields.endpoint") }}</label>
+          <input type="text" class="input input-bordered w-full" v-model.trim="localModel.endpoint" />
+          <div v-if="isImageModel" class="model-field-help">
+            {{ t("user.modelCard.azureEndpointHelp") }}
+          </div>
+        </div>
+
+        <div v-if="isAzure && !isImageModel" class="model-form-field">
+          <label>{{ t("user.modelCard.fields.apiVersion") }}</label>
+          <input type="text" class="input input-bordered w-full" v-model.trim="localModel.apiVersion" />
+          <div v-if="isImageModel" class="model-field-help">
+            {{ t("user.modelCard.azureApiVersionHelp") }}
+          </div>
+        </div>
+
+        <div v-if="isAzure && !isImageModel" class="model-form-field">
+          <label>{{ t("user.modelCard.fields.deployment") }}</label>
+          <input type="text" class="input input-bordered w-full" v-model.trim="localModel.deployment" />
+        </div>
+
+        <div class="model-form-field model-form-field-span">
+          <label>{{ t("user.modelCard.fields.apiKey") }}</label>
+          <label class="input input-bordered model-key-input">
+            <input type="password" class="grow" v-model.trim="localModel.apiKey" />
+            <button type="button" class="btn btn-ghost btn-sm" @click="copyApiKey">
+              <SvgIcon :src="copyIcon" />
+            </button>
+          </label>
+        </div>
+
+        <div v-if="requestSummary" class="model-form-field model-form-field-span">
+          <label>{{ t("user.modelCard.fields.requestTarget") }}</label>
           <div class="model-info-card">
-            {{ t("user.modelCard.resolvedModelPrefix") }} <code>{{ resolvedModelId }}</code>
+            {{ requestSummary }}
           </div>
         </div>
       </div>
@@ -200,7 +205,7 @@
                     class="textarea textarea-bordered w-full"
                     :value="formatJsonParamValue(item.defaultValue, item.type)"
                     :placeholder="getJsonPlaceholder(item)"
-                    @input="updateJsonParamDefault(index, $event.target.value)"
+                    @input="updateJsonParamDefault(index, ($event.target as HTMLTextAreaElement).value)"
                   ></textarea>
                   <div v-else-if="item.type === 'image'" class="model-info-card">
                     {{ t("user.modelCard.imageParamDefaultHelp") }}
@@ -248,12 +253,13 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { dsAlert } from "@/utils";
 import copyIcon from "@/assets/svg/copy16.svg";
 import SvgIcon from "@/components/SvgIcon.vue";
+import type { ImageOperation, ModelConfig, ModelDraftConfig, ModelKind, ModelParamDef, SelectOption } from "@/types/model";
 import {
   defModelType,
   apiTypeList,
@@ -265,67 +271,91 @@ import {
   getChatModelInfo,
   getModelChatParamDefs,
   getModelImageParamDefs,
+  getModelRequestId,
+  normalizeChatModelConfig,
   normalizeChatParamDef,
+  normalizeImageModelConfig,
   normalizeImageParamDef,
   parseChatParamValue,
 } from "@/constants";
 
-const props = defineProps({
-  model: {
-    type: Object,
-    default: () => structuredClone(defModelType),
+const props = withDefaults(
+  defineProps<{
+    model?: Partial<ModelDraftConfig>;
+    modelSuggestions?: SelectOption[];
+    modelKind?: ModelKind;
+    imageOperation?: ImageOperation;
+  }>(),
+  {
+    model: () => structuredClone(defModelType),
+    modelSuggestions: () => [],
+    modelKind: "chat",
+    imageOperation: "generation",
   },
-  modelSuggestions: {
-    type: Array,
-    default: () => [],
-  },
-  modelKind: {
-    type: String,
-    default: "chat",
-  },
-});
+);
 
-const emit = defineEmits(["update:model"]);
+const emit = defineEmits<{
+  "update:model": [model: ModelConfig];
+}>();
 const { t } = useI18n();
-const localModel = reactive(structuredClone(defModelType));
-const expandedParamKeys = ref([]);
+const localModel = reactive<ModelDraftConfig>(structuredClone(defModelType));
+const expandedParamKeys = ref<string[]>([]);
 let isSyncingFromProps = false;
 let lastModelSnapshot = "";
 
 const visibleModelSuggestions = computed(() => props.modelSuggestions.slice(0, 10));
 const availableApiTypeList = computed(() => (isImageModel.value ? imageApiTypeList : apiTypeList));
 const activeParamDefs = computed(() => (isImageModel.value ? localModel.imageParamDefs || [] : localModel.chatParamDefs || []));
-const activeParamTypeList = computed(() => (isImageModel.value ? imageParamTypeList : chatParamTypeList));
+const activeParamTypeList = computed(() => {
+  if (!isImageModel.value) return chatParamTypeList;
+  return props.imageOperation === "edit" ? imageParamTypeList : imageParamTypeList.filter((item) => item.value !== "image");
+});
 const availableParamPresets = computed(() => {
   const existingKeys = new Set(activeParamDefs.value.map((item) => item.key).filter(Boolean));
   const presetList = isImageModel.value ? imageParamPresetList : chatParamPresetList;
-  return presetList.filter((item) => !existingKeys.has(item.key));
+  return presetList.filter((item) => !existingKeys.has(item.key) && (props.imageOperation === "edit" || item.type !== "image"));
 });
 const isImageModel = computed(() => props.modelKind === "image");
-const isAzure = computed(() => localModel.apiType === "Azure OpenAI");
-const isFetch = computed(() => localModel.apiType === "Fetch");
-const isOpenAIStyle = computed(() => localModel.apiType === "OpenAI" || localModel.apiType === "DeepSeek");
+const isAzure = computed(() => !isImageModel.value && localModel.apiType === "Azure OpenAI");
+const isOpenAIStyle = computed(() => isImageModel.value || localModel.apiType === "OpenAI" || localModel.apiType === "DeepSeek");
 const isParamConfigurable = computed(() => props.modelKind === "chat" || props.modelKind === "image");
+const hasImageInputParam = computed(() => isImageModel.value && activeParamDefs.value.some((item) => item.type === "image"));
+const activeProtocolLabel = computed(() => (isAzure.value ? "Azure OpenAI" : "OpenAI"));
 const modelTypePlaceholder = computed(() => {
   return props.modelKind === "image" ? t("user.modelCard.placeholders.imageModelId") : t("user.modelCard.placeholders.chatModelId");
 });
-const resolvedModelId = computed(() => (localModel.model || localModel.modelType || "").trim());
+const resolvedModelId = computed(() => getModelRequestId(localModel));
 const modelBehaviorHint = computed(() => {
   const modelInfo = getChatModelInfo(localModel.modelType, localModel.apiType);
   const modeText = modelInfo.isReasonModel ? t("user.modelCard.behavior.reasoning") : t("user.modelCard.behavior.chat");
   const formatText = modelInfo.msgTypeVersion === "v1" ? t("user.modelCard.behavior.v1") : t("user.modelCard.behavior.v2");
   return `${modeText} · ${formatText}`;
 });
+const requestSummary = computed(() => {
+  if (isImageModel.value) {
+    return localModel.baseURL ? t("user.modelCard.imageRequestTarget", { url: localModel.baseURL }) : "";
+  }
+
+  if (isAzure.value) {
+    if (!localModel.deployment) return "";
+    return t("user.modelCard.azureRequestTarget", { deployment: localModel.deployment });
+  }
+
+  if (!resolvedModelId.value) return "";
+  return t("user.modelCard.openAIRequestTarget", { model: resolvedModelId.value });
+});
 const cardTitleKey = computed(() => (props.modelKind === "image" ? "user.modelCard.imageTitle" : "user.modelCard.chatTitle"));
 const cardSubtitleKey = computed(() => (props.modelKind === "image" ? "user.modelCard.imageSubtitle" : "user.modelCard.chatSubtitle"));
 
 function normalizeModelFields() {
   if (isImageModel.value) {
-    localModel.apiType = localModel.apiType || "OpenAI";
-    if (!localModel.modelType && localModel.model) {
-      localModel.modelType = localModel.model.trim();
-    }
-    localModel.model = (localModel.modelType || localModel.model || "").trim();
+    localModel.apiType = "OpenAI";
+    localModel.endpoint = "";
+    localModel.deployment = "";
+    localModel.apiVersion = "";
+    localModel.imageOperation = props.imageOperation;
+    localModel.modelType = (localModel.modelType || localModel.model || "").trim();
+    localModel.model = localModel.modelType;
     return;
   }
 
@@ -333,26 +363,39 @@ function normalizeModelFields() {
     localModel.modelType = localModel.model.trim();
   }
 
-  if (isOpenAIStyle.value || props.modelKind === "image") {
+  if (isAzure.value) {
+    localModel.baseURL = "";
+    localModel.model = "";
+    return;
+  }
+
+  if (isOpenAIStyle.value) {
+    localModel.endpoint = "";
+    localModel.deployment = "";
+    localModel.apiVersion = "";
     localModel.model = (localModel.modelType || localModel.model || "").trim();
   }
 }
 
-function createModelPayload() {
+function createModelPayload(): ModelConfig {
   normalizeModelFields();
-  const payload = {
+  if (props.modelKind === "image") {
+    return normalizeImageModelConfig(
+      {
+        ...JSON.parse(JSON.stringify(localModel)),
+        imageParamDefs: (localModel.imageParamDefs || []).map((item) => normalizeImageParamDef(item)).filter((item) => item.key),
+      },
+      props.imageOperation,
+    );
+  }
+
+  return normalizeChatModelConfig({
     ...JSON.parse(JSON.stringify(localModel)),
-  };
-
-  payload.chatParamDefs =
-    props.modelKind === "chat" ? (localModel.chatParamDefs || []).map((item) => normalizeChatParamDef(item)).filter((item) => item.key) : [];
-  payload.imageParamDefs =
-    props.modelKind === "image" ? (localModel.imageParamDefs || []).map((item) => normalizeImageParamDef(item)).filter((item) => item.key) : [];
-
-  return payload;
+    chatParamDefs: (localModel.chatParamDefs || []).map((item) => normalizeChatParamDef(item)).filter((item) => item.key),
+  });
 }
 
-function syncFromProps(model) {
+function syncFromProps(model?: Partial<ModelDraftConfig>) {
   isSyncingFromProps = true;
   Object.assign(localModel, structuredClone(defModelType), model || {});
   localModel.chatParamDefs = props.modelKind === "chat" ? getModelChatParamDefs(model || {}) : Array.isArray(model?.chatParamDefs) ? model.chatParamDefs : [];
@@ -372,7 +415,7 @@ function emitModelUpdate() {
   emit("update:model", nextModel);
 }
 
-const applySuggestedModel = (value) => {
+const applySuggestedModel = (value: string) => {
   localModel.modelType = value;
 };
 
@@ -385,22 +428,22 @@ const addParamDef = (presetKey = "") => {
   expandedParamKeys.value = [...new Set([...expandedParamKeys.value, getParamUiKey(nextDef, nextDefs.length - 1)])];
 };
 
-const removeChatParamDef = (index) => {
+const removeChatParamDef = (index: number) => {
   const targetKey = isImageModel.value ? "imageParamDefs" : "chatParamDefs";
   localModel[targetKey] = (localModel[targetKey] || []).filter((_, itemIndex) => itemIndex !== index);
   syncExpandedParamKeys();
 };
 
-const getParamUiKey = (item, index) => `${index}:${item?.key || "param"}`;
+const getParamUiKey = (item: Partial<ModelParamDef>, index: number) => `${index}:${item?.key || "param"}`;
 
 const syncExpandedParamKeys = () => {
   const currentKeys = activeParamDefs.value.map((item, index) => getParamUiKey(item, index));
   expandedParamKeys.value = expandedParamKeys.value.filter((key) => currentKeys.includes(key));
 };
 
-const isParamExpanded = (item, index) => expandedParamKeys.value.includes(getParamUiKey(item, index));
+const isParamExpanded = (item: Partial<ModelParamDef>, index: number) => expandedParamKeys.value.includes(getParamUiKey(item, index));
 
-const toggleParamExpanded = (item, index) => {
+const toggleParamExpanded = (item: Partial<ModelParamDef>, index: number) => {
   const uiKey = getParamUiKey(item, index);
   expandedParamKeys.value = isParamExpanded(item, index) ? expandedParamKeys.value.filter((key) => key !== uiKey) : [...expandedParamKeys.value, uiKey];
 };
@@ -413,17 +456,17 @@ const collapseAllParams = () => {
   expandedParamKeys.value = [];
 };
 
-const formatJsonParamValue = (value, type = "array") => {
+const formatJsonParamValue = (value: unknown, type = "array") => {
   if (type === "array") return Array.isArray(value) ? JSON.stringify(value) : "[]";
   return value && typeof value === "object" && !Array.isArray(value) ? JSON.stringify(value, null, 2) : "{}";
 };
 
-const getJsonPlaceholder = (item) => {
+const getJsonPlaceholder = (item: Partial<ModelParamDef>) => {
   if (item?.placeholder) return item.placeholder;
   return item?.type === "object" ? t("user.modelCard.placeholders.objectValue") : t("user.modelCard.placeholders.arrayValue");
 };
 
-const updateJsonParamDefault = (index, rawValue) => {
+const updateJsonParamDefault = (index: number, rawValue: string) => {
   const targetKey = isImageModel.value ? "imageParamDefs" : "chatParamDefs";
   const nextDefs = [...(localModel[targetKey] || [])];
   const type = nextDefs[index]?.type || "array";
@@ -470,6 +513,14 @@ watch(
   box-shadow:
     0 12px 32px oklch(var(--n) / 0.04),
     inset 0 1px 0 oklch(var(--b1) / 0.92);
+}
+
+.image-model-form {
+  padding: 20px;
+
+  .model-form-section {
+    margin-top: 14px;
+  }
 }
 
 .model-form-section {
@@ -522,6 +573,23 @@ watch(
   }
 }
 
+.model-capability-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+
+  span {
+    border-radius: 999px;
+    padding: 5px 9px;
+    border: 1px solid oklch(var(--bc) / 0.07);
+    background: oklch(var(--b1) / 0.72);
+    color: oklch(var(--bc) / 0.66);
+    font-size: 11px;
+    font-weight: 700;
+  }
+}
+
 .model-behavior-chip {
   flex-shrink: 0;
   border-radius: 999px;
@@ -548,6 +616,21 @@ watch(
     font-weight: 600;
     color: oklch(var(--bc) / 0.85);
   }
+}
+
+.image-model-form .model-form-field {
+  gap: 6px;
+}
+
+.image-model-form :deep(.input),
+.image-model-form :deep(.select) {
+  min-height: 46px;
+  border-radius: 14px;
+}
+
+.image-model-form .model-form-section-accent {
+  border-color: oklch(var(--su) / 0.18);
+  background: linear-gradient(180deg, oklch(var(--b1) / 0.9), oklch(var(--su) / 0.045));
 }
 
 .model-form-field-span {

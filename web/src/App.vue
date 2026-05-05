@@ -9,7 +9,7 @@
     </main>
     <AppFooter />
   </div>
-  <input id="gloal-file-upload-input" type="file" style="display: none" />
+  <input id="global-file-upload-input" type="file" style="display: none" />
 </template>
 
 <script setup>
