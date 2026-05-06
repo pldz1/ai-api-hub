@@ -62,6 +62,22 @@ const mutations = {
     state.setCurChatId(data);
   },
 
+  SET_CURRENT_CONVERSATION(state, data) {
+    state.setCurConversation(data);
+  },
+
+  SET_CURRENT_CONVERSATION_MODEL(state, data) {
+    state.setCurConversationFromModel(data);
+  },
+
+  SET_INPUT_CAPABILITY(state, data) {
+    state.setInputCapability(data);
+  },
+
+  RESET_INPUT_CAPABILITIES(state) {
+    state.resetInputCapabilities();
+  },
+
   /** @param {state} state */
   PUSH_MESSAGES(state, data) {
     state.pushMessages(data);
@@ -145,6 +161,22 @@ const actions = {
 
   async setCurChatId({ commit }, data) {
     commit("SET_CURRENT_CHAT_ID", data);
+  },
+
+  async setCurConversation({ commit }, data) {
+    commit("SET_CURRENT_CONVERSATION", data);
+  },
+
+  async setCurConversationModel({ commit }, data) {
+    commit("SET_CURRENT_CONVERSATION_MODEL", data);
+  },
+
+  async setInputCapability({ commit }, data) {
+    commit("SET_INPUT_CAPABILITY", data);
+  },
+
+  async resetInputCapabilities({ commit }) {
+    commit("RESET_INPUT_CAPABILITIES");
   },
 
   async pushMessages({ commit }, data) {

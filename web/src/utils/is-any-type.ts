@@ -117,7 +117,7 @@ export const getModelSettingValidationError = (data) => {
   };
 
   const validateChatModel = (item, key, index) => {
-    if (!["OpenAI", "Azure OpenAI", "DeepSeek", ""].includes(item.apiType)) {
+    if (!["OpenAI", "Azure OpenAI", ""].includes(item.apiType)) {
       return `${key}[${index}] apiType 无效`;
     }
 

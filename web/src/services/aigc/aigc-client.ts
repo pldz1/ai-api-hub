@@ -1,12 +1,11 @@
 // @ts-nocheck
 import store from "@/store";
 import { dsAlert } from "@/utils";
-import { buildChatCompletionParams, getChatModelInfo, getModelDeployment, getModelRequestId, isAzureChatModel, isOpenAIChatModel } from "@/constants";
+import { buildChatCompletionParams, getChatModelInfo, getModelDeployment, getModelFromSnapshot, getModelRequestId, isAzureChatModel, isOpenAIChatModel } from "@/constants";
 import { tr } from "@/i18n";
 
 import { OpenAIClient } from "./openai";
 import { AzureOpenAIClient } from "./azure-openai";
-import { DeepSeekClient } from "./deepseek";
 import { packMessageV1, packMessageV2 } from "../chat/message";
 
 export class AIGCClient {
@@ -21,7 +20,7 @@ export class AIGCClient {
   }
 
   init(model = null) {
-    const actModel = this.type == "chat" ? store.state.curChatModel : model;
+    const actModel = this.type == "chat" ? getModelFromSnapshot(store.state.curConversation?.modelSnapshot) || store.state.curChatModel : model;
     if (!actModel) return;
 
     if (isOpenAIChatModel(actModel) && actModel.apiType == "OpenAI") {
@@ -31,10 +30,6 @@ export class AIGCClient {
     else if (isAzureChatModel(actModel)) {
       this.client = new AzureOpenAIClient(actModel.endpoint, actModel.apiKey, getModelDeployment(actModel), actModel.apiVersion);
     }
-
-    else if (isOpenAIChatModel(actModel) && actModel.apiType == "DeepSeek") {
-      this.client = new DeepSeekClient(actModel.baseURL, actModel.apiKey, getModelRequestId(actModel));
-    }
   }
 
   resolveModelId(model) {
@@ -42,7 +37,7 @@ export class AIGCClient {
   }
 
   async chat(data, callback = (response) => console.log(response)) {
-    const model = store.state.curChatModel;
+    const model = getModelFromSnapshot(store.state.curConversation?.modelSnapshot) || store.state.curChatModel;
     const hasRequestTarget = isAzureChatModel(model) ? Boolean(getModelDeployment(model)) : Boolean(getModelRequestId(model));
     if (!this.client || !model.name || !model.apiKey || !hasRequestTarget) {
       dsAlert({
@@ -57,10 +52,12 @@ export class AIGCClient {
     }
 
     const modelInfo = getChatModelInfo(model.modelType, model.apiType);
+    const turnCapabilities = data[data.length - 1]?.meta?.usedCapabilities || {};
     // 对于思考模型, 不要上下文并且要保证拿到的消息的格式
     if (modelInfo.isReasonModel) {
       try {
-        await this.client.chat(data, this.getChatParams(model), callback);
+        const messages = this.getChatMessages(data, modelInfo.msgTypeVersion);
+        await this.client.chat(messages, this.getChatParams(model, turnCapabilities), callback);
         return true;
       } catch (err) {
         dsAlert({ type: "warn", message: tr("toast.modelRequestFailed", { error: String(err) }) });
@@ -74,7 +71,7 @@ export class AIGCClient {
       // 对于对话类型的模型, 要拿系统的指令和对话的参数去做请求
       try {
         const messages = this.getChatMessages(data, modelInfo.msgTypeVersion);
-        const params = this.getChatParams();
+        const params = this.getChatParams(model, turnCapabilities);
         await this.client.chat(messages, params, callback);
         return true;
       } catch (err) {
@@ -106,8 +103,12 @@ export class AIGCClient {
   /**
    * 从store里拿出基本的对话模型要的参数
    */
-  getChatParams() {
-    return buildChatCompletionParams(store.state.curChatModel, store.state.curChatModelSettings);
+  getChatParams(model = null, turnCapabilities = {}) {
+    const activeModel = model || getModelFromSnapshot(store.state.curConversation?.modelSnapshot) || store.state.curChatModel;
+    return {
+      ...buildChatCompletionParams(activeModel, store.state.curChatModelSettings),
+      webSearch: Boolean(turnCapabilities.webSearch),
+    };
   }
 
   /**

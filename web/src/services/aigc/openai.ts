@@ -6,6 +6,58 @@ export class OpenAIClient {
     this.init(baseURL, apiKey, model);
   }
 
+  getResponsesParams(messages, params = {}) {
+    const { max_completion_tokens, max_tokens, reasoning_effort, verbosity } = params || {};
+    const input = messages
+      .map((message) => {
+        const text = Array.isArray(message.content)
+          ? message.content
+              .map((part) => {
+                if (part.type === "text") return part.text || "";
+                if (part.type === "image_url") return "[Image input attached]";
+                return "";
+              })
+              .filter(Boolean)
+              .join("\n")
+          : String(message.content || "");
+        return `${message.role}: ${text}`;
+      })
+      .filter(Boolean)
+      .join("\n\n");
+
+    const responseParams = {
+      model: this.model,
+      input,
+      tools: [{ type: "web_search" }],
+    };
+
+    if (max_completion_tokens || max_tokens) responseParams.max_output_tokens = max_completion_tokens || max_tokens;
+    if (reasoning_effort) responseParams.reasoning = { effort: reasoning_effort };
+    if (verbosity) responseParams.text = { verbosity };
+
+    return responseParams;
+  }
+
+  async chatWithWebSearch(messages, params = {}, callback = null) {
+    if (this.client == null) {
+      if (callback) await callback({ flag: false, content: "模型初始化失败, 无法向服务器发送消息.", reasoning_content: "" });
+      return;
+    }
+
+    try {
+      const response = await this.client.responses.create(this.getResponsesParams(messages, params));
+      if (callback) {
+        await callback({
+          flag: true,
+          content: response.output_text || "",
+          reasoning_content: "",
+        });
+      }
+    } catch (err) {
+      if (callback) await callback({ flag: false, content: String(err), reasoning_content: "" });
+    }
+  }
+
   init(baseURL, apiKey, model) {
     this.baseURL = baseURL;
     this.apiKey = apiKey;
@@ -45,10 +97,11 @@ export class OpenAIClient {
     }
 
     try {
+      const { webSearch, ...requestParams } = params || {};
       const results = await this.client.chat.completions.create({
         model: this.model,
         messages: messages,
-        ...params,
+        ...requestParams,
       });
 
       for await (const chunk of results) {
@@ -75,10 +128,11 @@ export class OpenAIClient {
     }
 
     try {
+      const { webSearch, ...requestParams } = params || {};
       const results = await this.client.chat.completions.create({
         model: this.model,
         messages: messages,
-        ...params,
+        ...requestParams,
       });
 
       return {
@@ -105,12 +159,18 @@ export class OpenAIClient {
    * });
    */
   async chat(messages, params = {}, callback = null) {
-    if (params?.stream) {
-      for await (const response of this.chatStream(messages, params)) {
+    const { webSearch, ...nextParams } = params || {};
+    if (webSearch) {
+      await this.chatWithWebSearch(messages, nextParams, callback);
+      return;
+    }
+
+    if (nextParams?.stream) {
+      for await (const response of this.chatStream(messages, nextParams)) {
         if (callback) await callback(response);
       }
     } else {
-      const response = await this.chatSync(messages, params);
+      const response = await this.chatSync(messages, nextParams);
       if (callback) await callback(response);
     }
   }

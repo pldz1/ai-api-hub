@@ -61,6 +61,7 @@ export class ChatDrawer extends ChatElemCreator {
    */
   async chat(data) {
     this.removeListener();
+    this.client.init();
 
     const chatData = { ...data, mid: getUuid("msg") };
     this.draw([chatData]);

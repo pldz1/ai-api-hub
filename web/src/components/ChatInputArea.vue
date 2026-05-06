@@ -17,7 +17,7 @@
         <!-- 丰富对话功能 -->
         <div class="ccia-chat-opts">
           <!-- 上传图片 -->
-          <AppTooltip :text="t('tooltip.uploadImage')" placement="top">
+          <AppTooltip v-if="activeCapabilities.imageInput" :text="t('tooltip.uploadImage')" placement="top">
             <button class="ccia-opts-button" @click="uploadImageFile">
               <SvgIcon class="ccia-icon" :src="attachIcon" />
             </button>
@@ -32,12 +32,15 @@
 
         <!-- 对话内容的发送或者暂停按钮位置 -->
         <div class="ccia-chat-model-info">
-          <select class="select" v-model="selectedModel" @change="onSelectChatModel">
+          <select v-if="!curChatId" class="select" v-model="selectedModel">
             <option disabled :value="null">{{ t("input.selectChatModel") }}</option>
-            <option v-for="m in chatModels" :key="m" :value="m">
+            <option v-for="m in chatModels" :key="m.name" :value="m">
               {{ m.name }}
             </option>
           </select>
+          <div v-else class="ccia-model-lock">
+            {{ lockedModelName }}
+          </div>
 
           <div class="ccia-chat-button">
             <AppTooltip :text="t('tooltip.sendOrStop')" placement="top">
@@ -55,6 +58,19 @@
           </div>
         </div>
       </div>
+
+      <div class="ccia-capability-bar">
+        <div class="ccia-capability-summary">
+          <span class="ccia-capability-label">{{ curChatId ? "Model" : "New chat model" }}</span>
+          <span class="ccia-capability-model">{{ capabilityModelName }}</span>
+        </div>
+        <div class="ccia-capability-actions">
+          <label v-for="item in visibleTurnCapabilities" :key="item.key" class="ccia-capability-chip" :class="{ active: inputCapabilities[item.key] }">
+            <input type="checkbox" :checked="inputCapabilities[item.key]" @change="onToggleCapability(item.key, $event.target.checked)" />
+            <span>{{ item.label }}</span>
+          </label>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -70,6 +86,7 @@ import pauseIcon from "@/assets/svg/pause32.svg";
 import { addPasteEvent, removePasteEvent, uploadImageFile, isValidUserMsg, dsAlert } from "@/utils";
 import { packUserMsg } from "@/services";
 import { debounce } from "@/utils";
+import { capabilityLabels, chatTurnCapabilityKeys, createConversationModelSnapshot, getEffectiveCapabilities } from "@/constants";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 
@@ -90,26 +107,30 @@ const cciaTextareaRef = ref(null);
 const store = useStore();
 const { t } = useI18n();
 const chatModels = computed(() => store.state.models.chat);
-const curChatModel = computed(() => store.state.curChatModel);
+const curChatId = computed(() => store.state.curChatId);
+const curConversation = computed(() => store.state.curConversation);
+const inputCapabilities = computed(() => store.state.inputCapabilities);
 const selectedModel = ref(null);
-
-/**
- * 监听当前模型的标签
- */
-watch(
-  () => curChatModel.value,
-  async (newVal) => {
-    selectedModel.value = { ...newVal };
-  },
-  { deep: true },
+const draftSnapshot = computed(() => createConversationModelSnapshot(selectedModel.value));
+const activeSnapshot = computed(() => curConversation.value?.modelSnapshot || draftSnapshot.value);
+const activeCapabilities = computed(() =>
+  getEffectiveCapabilities(activeSnapshot.value?.supportedCapabilities, activeSnapshot.value?.enabledCapabilities, inputCapabilities.value),
 );
-
-/**
- * 选择当前的对话模型
- */
-const onSelectChatModel = async () => {
-  store.dispatch("setCurChatModel", selectedModel.value);
-};
+const lockedModelName = computed(() => curConversation.value?.modelSnapshot?.displayName || "Locked model");
+const capabilityModelName = computed(() => activeSnapshot.value?.displayName || "No model selected");
+const visibleTurnCapabilities = computed(() =>
+  chatTurnCapabilityKeys
+    .filter((key) => key !== "imageInput")
+    .filter((key) => Boolean(activeSnapshot.value?.supportedCapabilities?.[key] && activeSnapshot.value?.enabledCapabilities?.[key]))
+    .map((key) => ({ key, label: capabilityLabels[key] })),
+);
+watch(
+  () => chatModels.value,
+  (models) => {
+    if (!selectedModel.value && models.length > 0) selectedModel.value = models[0];
+  },
+  { deep: true, immediate: true },
+);
 
 /**
  * 发送有效的问题, 或者是暂停对话
@@ -120,11 +141,40 @@ const onSendInputData = async () => {
     return;
   }
 
-  const data = packUserMsg("ccia-chat-input-imgs", inputText.value);
+  if (!curChatId.value && !selectedModel.value) {
+    dsAlert({ type: "warn", message: t("input.selectChatModel") });
+    return;
+  }
+
+  if (!curChatId.value && !draftSnapshot.value) {
+    dsAlert({ type: "warn", message: t("toast.modelInitCheck") });
+    return;
+  }
+
+  if (curChatId.value && !curConversation.value?.modelSnapshot) {
+    dsAlert({ type: "warn", message: t("toast.modelInitCheck") });
+    return;
+  }
+
+  if (!curChatId.value) {
+    const confirmed = window.confirm(`Start this chat with "${draftSnapshot.value.displayName}"? This model cannot be changed later in this conversation.`);
+    if (!confirmed) return;
+  }
+
+  const data = packUserMsg("ccia-chat-input-imgs", inputText.value, activeCapabilities.value.imageInput);
   const flag = isValidUserMsg(data);
   if (flag) {
     inputText.value = "";
-    emit("on-start", data);
+    emit("on-start", {
+      message: {
+        ...data,
+        meta: {
+          usedCapabilities: activeCapabilities.value,
+        },
+      },
+      model: selectedModel.value,
+    });
+    await store.dispatch("resetInputCapabilities");
 
     // 输入框回退原来大小
     if (cciaTextareaRef.value) cciaTextareaRef.value.style.height = "";
@@ -132,6 +182,10 @@ const onSendInputData = async () => {
     dsAlert({ type: "error", message: t("toast.invalidQuestion") });
     return;
   }
+};
+
+const onToggleCapability = async (key, value) => {
+  await store.dispatch("setInputCapability", { key, value });
 };
 
 /**
@@ -162,12 +216,20 @@ const onEnterKeydown = async (event) => {
 };
 
 onMounted(() => {
-  addPasteEvent("component-chat-input-area");
+  if (activeCapabilities.value.imageInput) addPasteEvent("component-chat-input-area");
 });
 
 onBeforeUnmount(() => {
   removePasteEvent("component-chat-input-area");
 });
+
+watch(
+  () => activeCapabilities.value.imageInput,
+  (enabled) => {
+    removePasteEvent("component-chat-input-area");
+    if (enabled) addPasteEvent("component-chat-input-area");
+  },
+);
 </script>
 
 <style lang="scss" scoped>
@@ -202,7 +264,7 @@ onBeforeUnmount(() => {
 
     .ccia-chat-model-info {
       height: 36px;
-      width: 320px;
+      width: 360px;
       display: flex;
       flex-direction: row;
       align-items: center;
@@ -217,6 +279,22 @@ onBeforeUnmount(() => {
         border: 1px solid oklch(var(--bc) / 0.2);
         background-color: transparent;
         text-align: center;
+      }
+
+      .ccia-model-lock {
+        max-width: 220px;
+        height: 32px;
+        padding: 0 12px;
+        display: flex;
+        align-items: center;
+        border-radius: 18px;
+        border: 1px solid oklch(var(--bc) / 0.16);
+        color: oklch(var(--bc) / 0.72);
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        background: oklch(var(--b1) / 0.54);
       }
 
       .ccia-chat-button {
@@ -236,6 +314,78 @@ onBeforeUnmount(() => {
       width: 100%;
       display: flex;
       flex-direction: column;
+    }
+
+    .ccia-capability-bar {
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 6px 0 2px 0;
+      color: oklch(var(--bc) / 0.62);
+      font-size: 12px;
+    }
+
+    .ccia-capability-summary {
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ccia-capability-label {
+      color: oklch(var(--bc) / 0.45);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .ccia-capability-model {
+      max-width: 180px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 600;
+      color: oklch(var(--bc) / 0.72);
+    }
+
+    .ccia-capability-actions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .ccia-capability-chip {
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: 1px solid oklch(var(--bc) / 0.1);
+      background: transparent;
+      cursor: pointer;
+      user-select: none;
+      transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+
+      input {
+        width: 12px;
+        height: 12px;
+        accent-color: oklch(var(--p));
+      }
+
+      &.active {
+        color: oklch(var(--p));
+        border-color: oklch(var(--p) / 0.34);
+        background: oklch(var(--p) / 0.08);
+      }
     }
 
     .ccia-input-opts {

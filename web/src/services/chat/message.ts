@@ -3,10 +3,10 @@
  * 打包用户要发送的消息
  * 主要是组合图像到要发到对话的消息里
  *  */
-export function packUserMsg(id, texts) {
+export function packUserMsg(id, texts, allowImages = true) {
   const res = { role: "user", content: [{ type: "text", text: texts }] };
   const imgContainer = document.getElementById(id);
-  if (imgContainer) {
+  if (imgContainer && allowImages) {
     const imgs = imgContainer.getElementsByTagName("img");
     for (let i = 0; i < imgs.length; i++) {
       res.content.push({
@@ -16,6 +16,7 @@ export function packUserMsg(id, texts) {
     }
     imgContainer.innerHTML = "";
   }
+  if (imgContainer && !allowImages) imgContainer.innerHTML = "";
   return res;
 }
 

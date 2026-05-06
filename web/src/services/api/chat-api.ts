@@ -1,5 +1,5 @@
 import store from "@/store";
-import { mergeChatSettingsWithModel } from "@/constants";
+import { createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/constants";
 import { apiRequest } from "./axios-request";
 import { dsAlert, isValidChatInfoArray, getUuid, generateRandomCname } from "@/utils";
 import { tr } from "@/i18n";
@@ -65,6 +65,26 @@ export const addMessageAPI = (cid, mid, message) => apiRequest("post", "/_api/ch
  */
 export const deleteMessageAPI = (cid, mid) => apiRequest("post", "/_api/chat/deleteMessage", { cid, mid });
 
+function parseChatSettingsPayload(rawData) {
+  if (!rawData) return { modelSnapshot: null, settings: {} };
+  const parsed = typeof rawData === "string" ? JSON.parse(rawData) : rawData;
+  if (parsed && typeof parsed === "object" && "settings" in parsed) {
+    return {
+      modelSnapshot: parsed.modelSnapshot || null,
+      settings: parsed.settings || {},
+    };
+  }
+  return { modelSnapshot: null, settings: parsed || {} };
+}
+
+function buildChatSettingsPayload() {
+  return {
+    version: 2,
+    modelSnapshot: store.state.curConversation?.modelSnapshot || createConversationModelSnapshot(store.state.curChatModel),
+    settings: store.state.curChatModelSettings,
+  };
+}
+
 /**
  * 获得全部对话历史
  */
@@ -99,9 +119,19 @@ export async function getChatSettings() {
     dsAlert({ type: "error", message: tr("toast.chatSettingsFetchFailed", { error: res.log }) });
     return false;
   } else {
-    const validData = res.data
-      ? mergeChatSettingsWithModel(store.state.curChatModel, JSON.parse(res.data))
-      : mergeChatSettingsWithModel(store.state.curChatModel, {});
+    const payload = parseChatSettingsPayload(res.data);
+    const fallbackModel = store.state.models.chat?.[0] || store.state.curChatModel;
+    const modelSnapshot = payload.modelSnapshot || createConversationModelSnapshot(fallbackModel);
+    const conversation = modelSnapshot
+      ? {
+          id: cid,
+          title: store.state.chatList.find((item) => item.cid === cid)?.cname || "",
+          modelSnapshot,
+        }
+      : null;
+    await store.dispatch("setCurConversation", conversation);
+    const model = getModelFromSnapshot(modelSnapshot) || store.state.curChatModel;
+    const validData = mergeChatSettingsWithModel(model, payload.settings || {});
     await store.dispatch("setCurChatModelSettings", validData);
     return true;
   }
@@ -115,8 +145,7 @@ export async function setChatSettings() {
   const cid = store.state.curChatId;
   if (!cid) return false;
 
-  const curChatModelSettings = store.state.curChatModelSettings;
-  const data = JSON.stringify(curChatModelSettings);
+  const data = JSON.stringify(buildChatSettingsPayload());
 
   const res = await setChatSettingsAPI(cid, data);
   if (!res.flag) {
@@ -138,15 +167,26 @@ export async function setChatSettings() {
  * @param {string|null} name - 可选参数，指定新对话的名称。若为空，则随机生成。
  * @returns {Promise<boolean>} 新增对话是否成功。
  */
-export async function addChat(name = null) {
+export async function addChat(name = null, model = null) {
   const chatId = getUuid("chat");
   const chatName = name || generateRandomCname();
+  const modelSnapshot = createConversationModelSnapshot(model || store.state.curConversation?.modelSnapshot?.modelConfig || store.state.curChatModel || store.state.models.chat?.[0]);
 
   const chatList = [...store.state.chatList, { cid: chatId, cname: chatName }];
   // 封装本地更新操作
   const updateLocalChatState = async () => {
     await store.dispatch("resetChatList", chatList);
     await store.dispatch("setCurChatId", chatId);
+    await store.dispatch(
+      "setCurConversation",
+      modelSnapshot
+        ? {
+            id: chatId,
+            title: chatName,
+            modelSnapshot,
+          }
+        : null,
+    );
   };
 
   try {

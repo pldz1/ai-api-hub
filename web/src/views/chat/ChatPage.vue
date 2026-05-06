@@ -17,7 +17,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from "vue";
+import { onMounted } from "vue";
 import { useStore } from "vuex";
 import { getChatList, getChatInsTemplateList } from "@/services";
 
@@ -27,17 +27,10 @@ import HeaderBar from "@/components/HeaderBar.vue";
 import ImageModal from "@/components/ImageModal.vue";
 
 const store = useStore();
-const curChatModel = computed(() => store.state.curChatModel);
-const models = computed(() => store.state.models);
-
 onMounted(async () => {
   await getChatList();
   await getChatInsTemplateList();
   await store.dispatch("resetMessages");
-
-  if (!curChatModel.value.apiKey && !curChatModel.value.name && models.value.chat.length > 0) {
-    await store.dispatch("setCurChatModel", models.value.chat[0]);
-  }
 });
 </script>
 

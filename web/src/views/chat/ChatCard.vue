@@ -26,7 +26,7 @@ const isChatting = ref(false);
 const innerRef = ref(null);
 
 const drawer = new ChatDrawer(true);
-const curChatModel = computed(() => store.state.curChatModel);
+const curConversation = computed(() => store.state.curConversation);
 const curChatId = computed(() => store.state.curChatId);
 const isShowTemplate = ref(true);
 
@@ -51,20 +51,22 @@ watch(
 );
 
 watch(
-  () => curChatModel.value,
+  () => curConversation.value?.modelSnapshot?.modelConfigId,
   () => {
     drawer.aigcInit();
   },
-  { deep: true, immediate: true },
+  { immediate: true },
 );
 
 /** 向服务器发送数据 */
-const onStartChat = async (message) => {
+const onStartChat = async (payload) => {
   isShowTemplate.value = false;
+  const message = payload?.message || payload;
+  const selectedModel = payload?.model || null;
 
   // 新建对话
   if (!curChatId.value) {
-    await addChat();
+    await addChat(null, selectedModel);
   }
   isChatting.value = true;
   await drawer.chat(message);

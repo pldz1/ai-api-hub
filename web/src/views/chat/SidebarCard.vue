@@ -108,6 +108,7 @@ const editChatName = ref("");
 const editChatNameInputElRef = ref(null);
 const isShowChatScrollbar = ref(false);
 const curChatModel = computed(() => store.state.curChatModel);
+const curConversation = computed(() => store.state.curConversation);
 
 /**
  * 回是否开关侧边栏的布尔量
@@ -122,6 +123,7 @@ const onShowSidebar = () => {
 const onNewChat = async () => {
   store.dispatch("setCurChatModelSettings", buildDefaultChatSettings(curChatModel.value));
   await store.dispatch("setCurChatId", "");
+  await store.dispatch("setCurConversation", null);
   await store.dispatch("resetMessages");
 };
 
@@ -129,7 +131,7 @@ const onNewChat = async () => {
  * 打开模型设置界面
  */
 const onShowModelSettings = () => {
-  if (!curChatModel.value.name) {
+  if (!curConversation.value?.modelSnapshot) {
     dsAlert({ type: "warn", message: t("chat.chooseModelFirst") });
     return;
   } else global_chat_model_settings.showModal();
@@ -153,6 +155,7 @@ const onDeleteChat = async (chatId, closeMenu) => {
   if (chatId) await deleteChat(chatId);
   if (chatId == cid.value) {
     await store.dispatch("setCurChatId", "");
+    await store.dispatch("setCurConversation", null);
   }
   isShowOptionCid.value = "";
   editChatName.value = "";

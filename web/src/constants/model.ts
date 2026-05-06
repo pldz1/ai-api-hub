@@ -3,10 +3,12 @@ import type {
   ChatModelConfig,
   ChatModelOption,
   ChatModelSettings,
+  ConversationModelSnapshot,
   ImageModelConfig,
   ImageModelSettings,
   ImageOperation,
   ModelConfig,
+  ModelCapabilities,
   ModelDraftConfig,
   ModelParamDef,
   ModelParamType,
@@ -34,14 +36,15 @@ export const defModelType: ModelDraftConfig = {
   chatParamDefs: [],
   imageParamDefs: [],
   imageOperation: "",
+  enabledCapabilities: {},
 };
 
 export function isAzureChatModel(model: Partial<ModelDraftConfig> | null | undefined): model is Partial<ModelDraftConfig> & { apiType: "Azure OpenAI" } {
   return model?.apiType === "Azure OpenAI";
 }
 
-export function isOpenAIChatModel(model: Partial<ModelDraftConfig> | null | undefined): model is Partial<ModelDraftConfig> & { apiType: "OpenAI" | "DeepSeek" } {
-  return model?.apiType === "OpenAI" || model?.apiType === "DeepSeek";
+export function isOpenAIChatModel(model: Partial<ModelDraftConfig> | null | undefined): model is Partial<ModelDraftConfig> & { apiType: "OpenAI" } {
+  return model?.apiType === "OpenAI";
 }
 
 export function getModelRequestId(model: Partial<ModelDraftConfig> | null | undefined): string {
@@ -63,7 +66,7 @@ function normalizeModelDraft(model: Partial<ModelDraftConfig> | null | undefined
 
 export function normalizeChatModelConfig(model: Partial<ModelDraftConfig> | null | undefined = {}): ChatModelConfig {
   const draft = normalizeModelDraft(model);
-  const apiType = draft.apiType === "Azure OpenAI" || draft.apiType === "DeepSeek" ? draft.apiType : "OpenAI";
+  const apiType = draft.apiType === "Azure OpenAI" ? draft.apiType : "OpenAI";
   const modelType = String(draft.modelType || draft.model || "").trim();
   const chatParamDefs = getModelChatParamDefs({ ...draft, apiType, modelType });
 
@@ -79,6 +82,7 @@ export function normalizeChatModelConfig(model: Partial<ModelDraftConfig> | null
       chatParamDefs,
       imageParamDefs: [],
       imageOperation: "",
+      enabledCapabilities: draft.enabledCapabilities,
     };
   }
 
@@ -92,6 +96,7 @@ export function normalizeChatModelConfig(model: Partial<ModelDraftConfig> | null
     chatParamDefs,
     imageParamDefs: [],
     imageOperation: "",
+    enabledCapabilities: draft.enabledCapabilities,
   };
 }
 
@@ -112,13 +117,13 @@ export function normalizeImageModelConfig(model: Partial<ModelDraftConfig> | nul
     chatParamDefs: [],
     imageParamDefs,
     imageOperation,
+    enabledCapabilities: draft.enabledCapabilities,
   };
 }
 
 export const apiTypeList: SelectOption<ApiType>[] = [
   { value: "OpenAI", name: "OpenAI" },
   { value: "Azure OpenAI", name: "Azure OpenAI" },
-  { value: "DeepSeek", name: "DeepSeek" },
 ];
 
 export const imageApiTypeList: SelectOption<"OpenAI">[] = [
@@ -126,9 +131,13 @@ export const imageApiTypeList: SelectOption<"OpenAI">[] = [
 ];
 
 export const chatModelTypeList: ChatModelOption[] = [
+  { value: "gpt-5.5", name: "gpt-5.5", isReasonModel: false, msgTypeVersion: "v2" },
+  { value: "gpt-5.5-pro", name: "gpt-5.5-pro", isReasonModel: false, msgTypeVersion: "v2" },
   { value: "gpt-5.4", name: "gpt-5.4", isReasonModel: false, msgTypeVersion: "v2" },
+  { value: "gpt-5.4-pro", name: "gpt-5.4-pro", isReasonModel: false, msgTypeVersion: "v2" },
   { value: "gpt-5.4-mini", name: "gpt-5.4-mini", isReasonModel: false, msgTypeVersion: "v2" },
   { value: "gpt-5.4-nano", name: "gpt-5.4-nano", isReasonModel: false, msgTypeVersion: "v2" },
+  { value: "gpt-5.2", name: "gpt-5.2", isReasonModel: false, msgTypeVersion: "v2" },
   { value: "gpt-5", name: "gpt-5", isReasonModel: false, msgTypeVersion: "v2" },
   { value: "gpt-5-mini", name: "gpt-5-mini", isReasonModel: false, msgTypeVersion: "v2" },
   { value: "gpt-5-nano", name: "gpt-5-nano", isReasonModel: false, msgTypeVersion: "v2" },
@@ -141,9 +150,118 @@ export const chatModelTypeList: ChatModelOption[] = [
   { value: "o3", name: "o3", isReasonModel: true, msgTypeVersion: "v1" },
   { value: "o3-mini", name: "o3-mini", isReasonModel: true, msgTypeVersion: "v1" },
   { value: "o4-mini", name: "o4-mini", isReasonModel: true, msgTypeVersion: "v1" },
-  { value: "deepseek-v3", name: "deepseek-v3", isReasonModel: false, msgTypeVersion: "v1" },
-  { value: "deepseek-r1", name: "deepseek-r1", isReasonModel: true, msgTypeVersion: "v1" },
 ];
+
+export const defaultModelCapabilities: ModelCapabilities = {
+  textInput: true,
+  imageInput: false,
+  fileInput: false,
+  webSearch: false,
+  functionCalling: false,
+  structuredOutput: false,
+  imageGeneration: false,
+};
+
+export const capabilityLabels: Record<keyof ModelCapabilities, string> = {
+  textInput: "Text",
+  imageInput: "Image",
+  fileInput: "Files",
+  webSearch: "Web",
+  functionCalling: "Tools",
+  structuredOutput: "JSON",
+  imageGeneration: "Image Gen",
+};
+
+export const chatConfigurableCapabilityKeys: (keyof ModelCapabilities)[] = ["imageInput", "webSearch", "functionCalling", "structuredOutput"];
+export const chatTurnCapabilityKeys: (keyof ModelCapabilities)[] = ["webSearch", "functionCalling", "structuredOutput"];
+
+export function getChatModelCapabilities(modelType = "", apiType = "OpenAI"): ModelCapabilities {
+  const normalizedType = (modelType || "").trim().toLowerCase();
+  const normalizedApiType = (apiType || "").trim().toLowerCase();
+  const isAzure = normalizedApiType === "azure openai";
+  const isGpt5 = /^gpt-5(\.|-|$)/.test(normalizedType);
+  const isGpt4 = /^gpt-4/.test(normalizedType);
+  const isModernGpt = isGpt5 || isGpt4;
+  const isMiniNano = /(-mini|-nano)$/.test(normalizedType);
+  const isReasoning = getChatModelInfo(modelType, apiType).isReasonModel;
+
+  return {
+    ...defaultModelCapabilities,
+    imageInput: isModernGpt && !/^gpt-4\.1-nano$/.test(normalizedType),
+    fileInput: isGpt5 || /^gpt-4\.1/.test(normalizedType),
+    webSearch: isModernGpt && !isMiniNano,
+    functionCalling: isModernGpt || isReasoning,
+    structuredOutput: isModernGpt || isReasoning,
+    imageGeneration: false,
+  };
+}
+
+export function normalizeModelCapabilities(
+  capabilities: Partial<ModelCapabilities> | null | undefined = {},
+  supported: ModelCapabilities = defaultModelCapabilities,
+): ModelCapabilities {
+  const next = { ...defaultModelCapabilities };
+  (Object.keys(next) as (keyof ModelCapabilities)[]).forEach((key) => {
+    next[key] = Boolean(supported[key] && (capabilities?.[key] ?? supported[key]));
+  });
+  next.textInput = true;
+  return next;
+}
+
+export function getEffectiveCapabilities(
+  supported: Partial<ModelCapabilities> | null | undefined,
+  enabled: Partial<ModelCapabilities> | null | undefined,
+  turnOptions: Partial<ModelCapabilities> | null | undefined = {},
+): ModelCapabilities {
+  const supportedCaps = normalizeModelCapabilities(supported, { ...defaultModelCapabilities, ...supported, textInput: true });
+  const enabledCaps = normalizeModelCapabilities(enabled, supportedCaps);
+  const next = { ...defaultModelCapabilities };
+  (Object.keys(next) as (keyof ModelCapabilities)[]).forEach((key) => {
+    if (key === "textInput") {
+      next[key] = true;
+    } else if (chatTurnCapabilityKeys.includes(key)) {
+      next[key] = Boolean(supportedCaps[key] && enabledCaps[key] && turnOptions?.[key]);
+    } else {
+      next[key] = Boolean(supportedCaps[key] && enabledCaps[key]);
+    }
+  });
+  return next;
+}
+
+export function createConversationModelSnapshot(model: Partial<ModelDraftConfig> | null | undefined): ConversationModelSnapshot | null {
+  const normalizedModel = normalizeChatModelConfig(model);
+  if (!normalizedModel?.name || !normalizedModel?.apiKey) return null;
+
+  const modelConfigId = `${normalizedModel.apiType}:${normalizedModel.name}:${normalizedModel.modelType}:${getModelDeployment(normalizedModel) || getModelRequestId(normalizedModel)}`;
+  const supportedCapabilities = getChatModelCapabilities(normalizedModel.modelType, normalizedModel.apiType);
+  const enabledCapabilities = normalizeModelCapabilities((normalizedModel as any).enabledCapabilities, supportedCapabilities);
+
+  return {
+    modelConfigId,
+    catalogModelId: normalizedModel.modelType,
+    displayName: normalizedModel.name || normalizedModel.modelType,
+    provider: normalizedModel.apiType,
+    request: isAzureChatModel(normalizedModel)
+      ? {
+          endpoint: normalizedModel.endpoint,
+          deployment: normalizedModel.deployment,
+          apiVersion: normalizedModel.apiVersion,
+        }
+      : {
+          baseURL: normalizedModel.baseURL,
+          model: normalizedModel.model,
+        },
+    apiKey: normalizedModel.apiKey,
+    supportedCapabilities,
+    enabledCapabilities,
+    chatParamDefs: normalizedModel.chatParamDefs,
+    modelConfig: normalizedModel,
+  };
+}
+
+export function getModelFromSnapshot(snapshot: ConversationModelSnapshot | null | undefined): ChatModelConfig | null {
+  return snapshot?.modelConfig ? normalizeChatModelConfig(snapshot.modelConfig) : null;
+}
 
 export function getChatModelInfo(modelType = "", apiType = ""): ChatModelOption {
   const normalizedType = (modelType || "").trim().toLowerCase();
@@ -152,12 +270,8 @@ export function getChatModelInfo(modelType = "", apiType = ""): ChatModelOption 
   const exactMatch = chatModelTypeList.find((item) => item.value === normalizedType);
   if (exactMatch) return exactMatch;
 
-  if (/^(o1|o3|o4)(-|$)/.test(normalizedType) || normalizedType.includes("deepseek-r1")) {
+  if (/^(o1|o3|o4)(-|$)/.test(normalizedType)) {
     return { value: modelType, name: modelType, isReasonModel: true, msgTypeVersion: "v2" };
-  }
-
-  if (normalizedApiType === "deepseek") {
-    return { value: modelType, name: modelType, isReasonModel: false, msgTypeVersion: "v2" };
   }
 
   if (/^gpt-3\.5/.test(normalizedType)) {
@@ -195,10 +309,10 @@ export const chatParamPresetList: LooseParamDef[] = [
     key: "max_completion_tokens",
     label: "max_completion_tokens",
     type: "number",
-    description: "限制单次补全文本的输出长度。",
+    description: "限制单次补全文本的输出长度，包含可见输出和推理 token。",
     defaultValue: 2000,
     min: 0,
-    max: 12800,
+    max: 128000,
     step: 1,
   },
   {
@@ -253,7 +367,15 @@ export const chatParamPresetList: LooseParamDef[] = [
     key: "reasoning_effort",
     label: "reasoning_effort",
     type: "string",
-    description: "推理力度，例如 low / medium / high。",
+    description: "推理力度，例如 none / low / medium / high / xhigh。",
+    defaultValue: "medium",
+    placeholder: "none / low / medium / high / xhigh",
+  },
+  {
+    key: "verbosity",
+    label: "verbosity",
+    type: "string",
+    description: "控制输出详略程度，例如 low / medium / high。",
     defaultValue: "medium",
     placeholder: "low / medium / high",
   },
@@ -423,34 +545,41 @@ export function normalizeImageParamDef(def: LooseParamDef = {}): ModelParamDef {
 }
 
 export function getDefaultChatParamDefs(modelType = "", apiType = ""): ModelParamDef[] {
+  return getChatParamKeysForModel(modelType, apiType).map((key) => normalizeChatParamDef({ key }));
+}
+
+export function getChatParamKeysForModel(modelType = "", apiType = ""): string[] {
   const normalizedType = (modelType || "").trim().toLowerCase();
   const modelInfo = getChatModelInfo(modelType, apiType);
 
-  const keys = ["temperature", "top_p", "frequency_penalty", "presence_penalty", "stop"];
-
-  if (
-    /^gpt-4\.1/.test(normalizedType) ||
-    /^gpt-4o/.test(normalizedType) ||
-    /^gpt-3\.5/.test(normalizedType) ||
-    normalizedType.startsWith("deepseek-v3") ||
-    (apiType || "").trim().toLowerCase() === "azure openai"
-  ) {
-    keys.unshift("max_tokens");
+  if (/^gpt-5(\.|-|$)/.test(normalizedType)) {
+    return ["max_completion_tokens", "reasoning_effort", "verbosity"];
   }
 
-  if (/^gpt-5(\.|-|$)/.test(normalizedType) || modelInfo.isReasonModel) {
-    return keys.filter((key) => key !== "max_tokens").map((key) => normalizeChatParamDef({ key }));
+  if (modelInfo.isReasonModel) {
+    return ["max_completion_tokens", "reasoning_effort"];
   }
 
-  return keys.map((key) => normalizeChatParamDef({ key }));
+  if (/^gpt-4\.1/.test(normalizedType) || /^gpt-4o/.test(normalizedType) || /^gpt-3\.5/.test(normalizedType)) {
+    return ["max_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty", "stop"];
+  }
+
+  return ["temperature", "top_p", "frequency_penalty", "presence_penalty", "stop"];
+}
+
+export function isChatParamSupportedForModel(key = "", modelType = "", apiType = ""): boolean {
+  return getChatParamKeysForModel(modelType, apiType).includes(key);
 }
 
 export function getModelChatParamDefs(model: LooseModelConfig = {}): ModelParamDef[] {
   const defs =
     Array.isArray(model?.chatParamDefs) && model.chatParamDefs.length > 0 ? model.chatParamDefs : getDefaultChatParamDefs(model?.modelType, model?.apiType);
   const seen = new Set();
+  const supportedKeys = new Set(getChatParamKeysForModel(model?.modelType, model?.apiType));
 
-  return defs.map((item) => normalizeChatParamDef(item)).filter((item) => item.key && !seen.has(item.key) && (seen.add(item.key), true));
+  return defs
+    .map((item) => normalizeChatParamDef(item))
+    .filter((item) => item.key && supportedKeys.has(item.key) && !seen.has(item.key) && (seen.add(item.key), true));
 }
 
 export function getDefaultImageParamDefs(): ModelParamDef[] {

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { AzureOpenAI } from "openai";
+import { AzureOpenAI, OpenAI } from "openai";
 
 export class AzureOpenAIClient {
   constructor(endpoint, apiKey, deployment, apiVersion) {
@@ -13,8 +13,9 @@ export class AzureOpenAIClient {
     this.apiVersion = apiVersion;
 
     this.client = null;
+    this.responsesClient = null;
 
-    if (apiKey && apiVersion)
+    if (apiKey && apiVersion) {
       this.client = new AzureOpenAI({
         endpoint,
         apiKey,
@@ -22,6 +23,12 @@ export class AzureOpenAIClient {
         apiVersion,
         dangerouslyAllowBrowser: true,
       });
+      this.responsesClient = new OpenAI({
+        baseURL: `${String(endpoint || "").replace(/\/+$/, "")}/openai/v1/`,
+        apiKey,
+        dangerouslyAllowBrowser: true,
+      });
+    }
   }
 
   update(endpoint, apiKey, deployment, apiVersion) {
@@ -36,6 +43,59 @@ export class AzureOpenAIClient {
     this.deployment = "";
     this.apiVersion = "";
     this.client = null;
+    this.responsesClient = null;
+  }
+
+  getResponsesParams(messages, params = {}) {
+    const { max_completion_tokens, max_tokens, reasoning_effort, verbosity } = params || {};
+    const input = messages
+      .map((message) => {
+        const text = Array.isArray(message.content)
+          ? message.content
+              .map((part) => {
+                if (part.type === "text") return part.text || "";
+                if (part.type === "image_url") return "[Image input attached]";
+                return "";
+              })
+              .filter(Boolean)
+              .join("\n")
+          : String(message.content || "");
+        return `${message.role}: ${text}`;
+      })
+      .filter(Boolean)
+      .join("\n\n");
+
+    const responseParams = {
+      model: this.deployment,
+      input,
+      tools: [{ type: "web_search" }],
+    };
+
+    if (max_completion_tokens || max_tokens) responseParams.max_output_tokens = max_completion_tokens || max_tokens;
+    if (reasoning_effort) responseParams.reasoning = { effort: reasoning_effort };
+    if (verbosity) responseParams.text = { verbosity };
+
+    return responseParams;
+  }
+
+  async chatWithWebSearch(messages, params = {}, callback = null) {
+    if (this.responsesClient == null) {
+      if (callback) await callback({ flag: false, content: "模型初始化失败, 无法向服务器发送消息.", reasoning_content: "" });
+      return;
+    }
+
+    try {
+      const response = await this.responsesClient.responses.create(this.getResponsesParams(messages, params));
+      if (callback) {
+        await callback({
+          flag: true,
+          content: response.output_text || "",
+          reasoning_content: "",
+        });
+      }
+    } catch (err) {
+      if (callback) await callback({ flag: false, content: String(err), reasoning_content: "" });
+    }
   }
 
   /**
@@ -50,9 +110,10 @@ export class AzureOpenAIClient {
     }
 
     try {
+      const { webSearch, ...requestParams } = params || {};
       const results = await this.client.chat.completions.create({
         messages: messages,
-        ...params,
+        ...requestParams,
       });
 
       for await (const chunk of results) {
@@ -78,9 +139,10 @@ export class AzureOpenAIClient {
     }
 
     try {
+      const { webSearch, ...requestParams } = params || {};
       const results = await this.client.chat.completions.create({
         messages: messages,
-        ...params,
+        ...requestParams,
       });
 
       return {
@@ -107,12 +169,18 @@ export class AzureOpenAIClient {
    * });
    */
   async chat(messages, params = {}, callback = null) {
-    if (params?.stream) {
-      for await (const response of this.chatStream(messages, params)) {
+    const { webSearch, ...nextParams } = params || {};
+    if (webSearch) {
+      await this.chatWithWebSearch(messages, nextParams, callback);
+      return;
+    }
+
+    if (nextParams?.stream) {
+      for await (const response of this.chatStream(messages, nextParams)) {
         if (callback) await callback(response);
       }
     } else {
-      const response = await this.chatSync(messages, params);
+      const response = await this.chatSync(messages, nextParams);
       if (callback) await callback(response);
     }
   }

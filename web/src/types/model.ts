@@ -1,4 +1,4 @@
-export type ApiType = "OpenAI" | "Azure OpenAI" | "DeepSeek" | "";
+export type ApiType = "OpenAI" | "Azure OpenAI" | "";
 export type ChatApiType = Exclude<ApiType, "">;
 export type ModelKind = "chat" | "image";
 export type ImageOperation = "generation" | "edit";
@@ -13,6 +13,16 @@ export interface SelectOption<TValue extends string = string> {
 export interface ChatModelOption extends SelectOption {
   isReasonModel: boolean;
   msgTypeVersion: "v1" | "v2";
+}
+
+export interface ModelCapabilities {
+  textInput: boolean;
+  imageInput: boolean;
+  fileInput: boolean;
+  webSearch: boolean;
+  functionCalling: boolean;
+  structuredOutput: boolean;
+  imageGeneration: boolean;
 }
 
 export interface ImageParamValue {
@@ -43,10 +53,11 @@ export interface BaseModelConfig {
   chatParamDefs: ModelParamDef[];
   imageParamDefs: ModelParamDef[];
   imageOperation: ImageOperation | "";
+  enabledCapabilities?: Partial<ModelCapabilities>;
 }
 
 export interface OpenAIChatModelConfig extends BaseModelConfig {
-  apiType: "OpenAI" | "DeepSeek";
+  apiType: "OpenAI";
   baseURL: string;
   model: string;
   endpoint?: "";
@@ -76,6 +87,25 @@ export interface OpenAIImageModelConfig extends BaseModelConfig {
 export type ChatModelConfig = OpenAIChatModelConfig | AzureChatModelConfig;
 export type ImageModelConfig = OpenAIImageModelConfig;
 export type ModelConfig = ChatModelConfig | ImageModelConfig;
+
+export interface ConversationModelSnapshot {
+  modelConfigId: string;
+  catalogModelId: string;
+  displayName: string;
+  provider: ChatApiType;
+  request: {
+    model?: string;
+    baseURL?: string;
+    endpoint?: string;
+    deployment?: string;
+    apiVersion?: string;
+  };
+  apiKey: string;
+  supportedCapabilities: ModelCapabilities;
+  enabledCapabilities: ModelCapabilities;
+  chatParamDefs: ModelParamDef[];
+  modelConfig: ChatModelConfig;
+}
 
 export interface ModelDraftConfig extends BaseModelConfig {
   apiType: ApiType;

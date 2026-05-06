@@ -104,6 +104,26 @@
       </div>
     </section>
 
+    <section v-if="!isImageModel" class="model-form-section">
+      <div class="model-section-head">
+        <h4>Capabilities</h4>
+        <p>Choose which supported model capabilities are available in chat input.</p>
+      </div>
+
+      <div class="model-capability-grid">
+        <label v-for="item in chatCapabilityRows" :key="item.key" class="model-capability-toggle" :class="{ disabled: !item.supported }">
+          <input
+            type="checkbox"
+            :checked="item.enabled"
+            :disabled="!item.supported"
+            @change="setCapability(item.key, ($event.target as HTMLInputElement).checked)"
+          />
+          <span>{{ item.label }}</span>
+          <small>{{ item.supported ? "Supported" : "Unsupported" }}</small>
+        </label>
+      </div>
+    </section>
+
     <section v-if="isParamConfigurable" class="model-form-section model-form-section-accent">
       <div class="model-section-head">
         <h4>{{ isImageModel ? t("user.modelCard.sections.imageParamsTitle") : t("user.modelCard.sections.chatParamsTitle") }}</h4>
@@ -263,15 +283,19 @@ import type { ImageOperation, ModelConfig, ModelDraftConfig, ModelKind, ModelPar
 import {
   defModelType,
   apiTypeList,
+  capabilityLabels,
+  chatConfigurableCapabilityKeys,
   imageApiTypeList,
   chatParamPresetList,
   chatParamTypeList,
   imageParamTypeList,
   imageParamPresetList,
   getChatModelInfo,
+  getChatModelCapabilities,
   getModelChatParamDefs,
   getModelImageParamDefs,
   getModelRequestId,
+  isChatParamSupportedForModel,
   normalizeChatModelConfig,
   normalizeChatParamDef,
   normalizeImageModelConfig,
@@ -313,11 +337,16 @@ const activeParamTypeList = computed(() => {
 const availableParamPresets = computed(() => {
   const existingKeys = new Set(activeParamDefs.value.map((item) => item.key).filter(Boolean));
   const presetList = isImageModel.value ? imageParamPresetList : chatParamPresetList;
-  return presetList.filter((item) => !existingKeys.has(item.key) && (props.imageOperation === "edit" || item.type !== "image"));
+  return presetList.filter(
+    (item) =>
+      !existingKeys.has(item.key) &&
+      (isImageModel.value || isChatParamSupportedForModel(item.key, localModel.modelType, localModel.apiType)) &&
+      (props.imageOperation === "edit" || item.type !== "image"),
+  );
 });
 const isImageModel = computed(() => props.modelKind === "image");
 const isAzure = computed(() => !isImageModel.value && localModel.apiType === "Azure OpenAI");
-const isOpenAIStyle = computed(() => isImageModel.value || localModel.apiType === "OpenAI" || localModel.apiType === "DeepSeek");
+const isOpenAIStyle = computed(() => isImageModel.value || localModel.apiType === "OpenAI");
 const isParamConfigurable = computed(() => props.modelKind === "chat" || props.modelKind === "image");
 const hasImageInputParam = computed(() => isImageModel.value && activeParamDefs.value.some((item) => item.type === "image"));
 const activeProtocolLabel = computed(() => (isAzure.value ? "Azure OpenAI" : "OpenAI"));
@@ -346,6 +375,15 @@ const requestSummary = computed(() => {
 });
 const cardTitleKey = computed(() => (props.modelKind === "image" ? "user.modelCard.imageTitle" : "user.modelCard.chatTitle"));
 const cardSubtitleKey = computed(() => (props.modelKind === "image" ? "user.modelCard.imageSubtitle" : "user.modelCard.chatSubtitle"));
+const supportedChatCapabilities = computed(() => getChatModelCapabilities(localModel.modelType, localModel.apiType));
+const chatCapabilityRows = computed(() =>
+  chatConfigurableCapabilityKeys.map((key) => ({
+    key,
+    label: capabilityLabels[key],
+    supported: supportedChatCapabilities.value[key],
+    enabled: Boolean(supportedChatCapabilities.value[key] && (localModel.enabledCapabilities?.[key] ?? supportedChatCapabilities.value[key])),
+  })),
+);
 
 function normalizeModelFields() {
   if (isImageModel.value) {
@@ -377,6 +415,13 @@ function normalizeModelFields() {
   }
 }
 
+function setCapability(key: string, value: boolean) {
+  localModel.enabledCapabilities = {
+    ...(localModel.enabledCapabilities || {}),
+    [key]: value,
+  };
+}
+
 function createModelPayload(): ModelConfig {
   normalizeModelFields();
   if (props.modelKind === "image") {
@@ -398,6 +443,7 @@ function createModelPayload(): ModelConfig {
 function syncFromProps(model?: Partial<ModelDraftConfig>) {
   isSyncingFromProps = true;
   Object.assign(localModel, structuredClone(defModelType), model || {});
+  localModel.enabledCapabilities = { ...(model?.enabledCapabilities || {}) };
   localModel.chatParamDefs = props.modelKind === "chat" ? getModelChatParamDefs(model || {}) : Array.isArray(model?.chatParamDefs) ? model.chatParamDefs : [];
   localModel.imageParamDefs = props.modelKind === "image" ? getModelImageParamDefs(model || {}) : Array.isArray(model?.imageParamDefs) ? model.imageParamDefs : [];
   normalizeModelFields();
@@ -587,6 +633,45 @@ watch(
     color: oklch(var(--bc) / 0.66);
     font-size: 11px;
     font-weight: 700;
+  }
+}
+
+.model-capability-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.model-capability-toggle {
+  min-width: 0;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid oklch(var(--bc) / 0.1);
+  background: oklch(var(--b1) / 0.62);
+
+  input {
+    grid-row: span 2;
+    accent-color: oklch(var(--p));
+  }
+
+  span {
+    font-size: 12px;
+    font-weight: 700;
+    color: oklch(var(--bc) / 0.82);
+  }
+
+  small {
+    font-size: 11px;
+    color: oklch(var(--bc) / 0.5);
+  }
+
+  &.disabled {
+    opacity: 0.55;
   }
 }
 
