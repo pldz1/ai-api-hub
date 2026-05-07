@@ -7,7 +7,7 @@ export class OpenAIClient {
   }
 
   getResponsesParams(messages, params = {}) {
-    const { max_completion_tokens, max_tokens, reasoning_effort, verbosity } = params || {};
+    const { max_completion_tokens, max_tokens, reasoning_effort, reasoningBoost, verbosity } = params || {};
     const input = messages
       .map((message) => {
         const text = Array.isArray(message.content)
@@ -32,7 +32,7 @@ export class OpenAIClient {
     };
 
     if (max_completion_tokens || max_tokens) responseParams.max_output_tokens = max_completion_tokens || max_tokens;
-    if (reasoning_effort) responseParams.reasoning = { effort: reasoning_effort };
+    if (reasoningBoost || reasoning_effort) responseParams.reasoning = { effort: reasoningBoost ? "high" : reasoning_effort };
     if (verbosity) responseParams.text = { verbosity };
 
     return responseParams;
@@ -97,7 +97,8 @@ export class OpenAIClient {
     }
 
     try {
-      const { webSearch, ...requestParams } = params || {};
+      const { webSearch, reasoningBoost, ...requestParams } = params || {};
+      if (reasoningBoost && "reasoning_effort" in requestParams) requestParams.reasoning_effort = "high";
       const results = await this.client.chat.completions.create({
         model: this.model,
         messages: messages,
@@ -128,7 +129,8 @@ export class OpenAIClient {
     }
 
     try {
-      const { webSearch, ...requestParams } = params || {};
+      const { webSearch, reasoningBoost, ...requestParams } = params || {};
+      if (reasoningBoost && "reasoning_effort" in requestParams) requestParams.reasoning_effort = "high";
       const results = await this.client.chat.completions.create({
         model: this.model,
         messages: messages,

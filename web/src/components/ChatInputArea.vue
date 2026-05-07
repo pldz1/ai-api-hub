@@ -13,25 +13,13 @@
         ></textarea>
       </div>
 
-      <div class="ccia-input-opts">
-        <!-- 丰富对话功能 -->
-        <div class="ccia-chat-opts">
-          <!-- 上传图片 -->
+      <div class="ccia-input-footer">
+        <div class="ccia-footer-left">
           <AppTooltip v-if="activeCapabilities.imageInput" :text="t('tooltip.uploadImage')" placement="top">
-            <button class="ccia-opts-button" @click="uploadImageFile">
-              <SvgIcon class="ccia-icon" :src="attachIcon" />
+            <button class="ccia-icon-button" @click="uploadImageFile" type="button">
+              <span class="ccia-icon ccia-icon-attach" aria-hidden="true"></span>
             </button>
           </AppTooltip>
-          <!-- 对话 -->
-          <div v-if="false" class="tooltip tooltip-top" :data-tip="t('tooltip.sendOrStop')">
-            <button class="ccia-opts-button">
-              <SvgIcon class="ccia-icon" :src="realTimeVoiceIcon" />
-            </button>
-          </div>
-        </div>
-
-        <!-- 对话内容的发送或者暂停按钮位置 -->
-        <div class="ccia-chat-model-info">
           <select v-if="!curChatId" class="select" v-model="selectedModel">
             <option disabled :value="null">{{ t("input.selectChatModel") }}</option>
             <option v-for="m in chatModels" :key="m.name" :value="m">
@@ -41,34 +29,25 @@
           <div v-else class="ccia-model-lock">
             {{ lockedModelName }}
           </div>
-
-          <div class="ccia-chat-button">
-            <AppTooltip :text="t('tooltip.sendOrStop')" placement="top">
-              <button class="ccia-send-button" @click="onSendInputData">
-                <!-- send chat button -->
-                <span v-if="!props.isChatting" class="ccia-svg-icon">
-                  <SvgIcon :src="arrowUpIcon" />
-                </span>
-                <!-- pause chat button -->
-                <span v-else class="ccia-svg-icon">
-                  <SvgIcon :src="pauseIcon" />
-                </span>
-              </button>
-            </AppTooltip>
-          </div>
         </div>
-      </div>
 
-      <div class="ccia-capability-bar">
-        <div class="ccia-capability-summary">
-          <span class="ccia-capability-label">{{ curChatId ? "Model" : "New chat model" }}</span>
-          <span class="ccia-capability-model">{{ capabilityModelName }}</span>
-        </div>
-        <div class="ccia-capability-actions">
+        <div class="ccia-footer-right">
+          <span v-if="activeCapabilities.imageInput" class="ccia-capability-chip ccia-capability-status active">
+            Image
+          </span>
           <label v-for="item in visibleTurnCapabilities" :key="item.key" class="ccia-capability-chip" :class="{ active: inputCapabilities[item.key] }">
             <input type="checkbox" :checked="inputCapabilities[item.key]" @change="onToggleCapability(item.key, $event.target.checked)" />
             <span>{{ item.label }}</span>
           </label>
+          <label v-if="supportsReasoning" class="ccia-capability-chip" :class="{ active: inputCapabilities.reasoning }">
+            <input type="checkbox" :checked="inputCapabilities.reasoning" @change="onToggleCapability('reasoning', $event.target.checked)" />
+            <span>Think</span>
+          </label>
+          <AppTooltip :text="t('tooltip.sendOrStop')" placement="top">
+            <button class="ccia-send-button" :class="{ stopping: props.isChatting }" @click="onSendInputData" type="button">
+              <span class="ccia-send-icon" aria-hidden="true"></span>
+            </button>
+          </AppTooltip>
         </div>
       </div>
     </div>
@@ -79,16 +58,11 @@
 import { useStore } from "vuex";
 import { ref, onMounted, onBeforeUnmount, computed, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import attachIcon from "@/assets/svg/attach24.svg";
-import realTimeVoiceIcon from "@/assets/svg/realTimeVoice24.svg";
-import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
-import pauseIcon from "@/assets/svg/pause32.svg";
 import { addPasteEvent, removePasteEvent, uploadImageFile, isValidUserMsg, dsAlert } from "@/utils";
 import { packUserMsg } from "@/services";
 import { debounce } from "@/utils";
 import { capabilityLabels, chatTurnCapabilityKeys, createConversationModelSnapshot, getEffectiveCapabilities } from "@/constants";
 import AppTooltip from "@/components/AppTooltip.vue";
-import SvgIcon from "@/components/SvgIcon.vue";
 
 const props = defineProps({
   isChatting: {
@@ -116,6 +90,7 @@ const activeSnapshot = computed(() => curConversation.value?.modelSnapshot || dr
 const activeCapabilities = computed(() =>
   getEffectiveCapabilities(activeSnapshot.value?.supportedCapabilities, activeSnapshot.value?.enabledCapabilities, inputCapabilities.value),
 );
+const supportsReasoning = computed(() => Boolean(activeSnapshot.value?.chatParamDefs?.some((item) => item.key === "reasoning_effort")));
 const lockedModelName = computed(() => curConversation.value?.modelSnapshot?.displayName || "Locked model");
 const capabilityModelName = computed(() => activeSnapshot.value?.displayName || "No model selected");
 const visibleTurnCapabilities = computed(() =>
@@ -169,7 +144,10 @@ const onSendInputData = async () => {
       message: {
         ...data,
         meta: {
-          usedCapabilities: activeCapabilities.value,
+          usedCapabilities: {
+            ...activeCapabilities.value,
+            reasoning: Boolean(inputCapabilities.value.reasoning),
+          },
         },
       },
       model: selectedModel.value,
@@ -243,71 +221,105 @@ watch(
 
   .ccia-input-card {
     width: calc(100% - 40px);
-    background-color: oklch(var(--b2));
-    border-radius: 24px;
-    padding: 8px 20px;
-    border: 1px solid oklch(var(--bc) / 0.5);
+    background-color: oklch(var(--b1) / 0.92);
+    border-radius: 22px;
+    padding: 14px 16px 10px;
+    border: 1px solid oklch(var(--bc) / 0.18);
+    box-shadow: 0 18px 42px oklch(var(--bc) / 0.08);
 
     .ccia-custom-textarea {
-      padding: 8px 0px 4px 0px;
+      padding: 4px 6px 8px;
       border: none;
       outline: none;
-      background-color: oklch(var(--b2));
+      background-color: transparent;
       resize: none;
       box-shadow: initial;
       border-radius: initial;
-      min-height: 54px;
+      min-height: 52px;
       max-height: 208px;
       line-height: 1.5;
-      font-size: 14px;
+      font-size: 15px;
     }
 
-    .ccia-chat-model-info {
-      height: 36px;
-      width: 360px;
+    .ccia-input-footer {
+      min-height: 36px;
       display: flex;
-      flex-direction: row;
       align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .ccia-footer-left,
+    .ccia-footer-right {
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .ccia-footer-left {
+      justify-content: flex-start;
+    }
+
+    .ccia-footer-right {
       justify-content: flex-end;
+    }
 
       .select {
-        height: 36px;
+        height: 34px;
         min-width: 0px;
         min-height: 0px;
-        width: fit-content;
-        border-radius: 36px;
-        border: 1px solid oklch(var(--bc) / 0.2);
+        max-width: 240px;
+        border-radius: 17px;
+        border: 1px solid oklch(var(--bc) / 0.14);
         background-color: transparent;
         text-align: center;
       }
 
       .ccia-model-lock {
         max-width: 220px;
-        height: 32px;
+        height: 30px;
         padding: 0 12px;
         display: flex;
         align-items: center;
-        border-radius: 18px;
-        border: 1px solid oklch(var(--bc) / 0.16);
+        border-radius: 15px;
+        border: 1px solid oklch(var(--bc) / 0.1);
         color: oklch(var(--bc) / 0.72);
         font-size: 12px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        background: oklch(var(--b1) / 0.54);
+        background: oklch(var(--b2) / 0.64);
       }
-
-      .ccia-chat-button {
-        margin-left: 8px;
-      }
-    }
 
     .ccia-send-button {
-      height: 32;
-      width: 32;
-      border-radius: 16px;
-      background-color: transparent;
+      height: 34px;
+      width: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background-color: oklch(var(--p));
+      color: oklch(var(--b1));
       border: none;
+      box-shadow: 0 8px 18px oklch(var(--p) / 0.24);
+      transition:
+        transform 0.15s ease,
+        background-color 0.15s ease,
+        box-shadow 0.15s ease;
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 22px oklch(var(--p) / 0.28);
+      }
+
+      &.stopping {
+        background-color: oklch(var(--er));
+        color: oklch(var(--b1));
+        box-shadow: 0 8px 18px oklch(var(--er) / 0.2);
+      }
+
     }
 
     .ccia-input-area {
@@ -316,58 +328,17 @@ watch(
       flex-direction: column;
     }
 
-    .ccia-capability-bar {
-      min-height: 34px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      padding: 6px 0 2px 0;
-      color: oklch(var(--bc) / 0.62);
-      font-size: 12px;
-    }
-
-    .ccia-capability-summary {
-      min-width: 0;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .ccia-capability-label {
-      color: oklch(var(--bc) / 0.45);
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .ccia-capability-model {
-      max-width: 180px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-weight: 600;
-      color: oklch(var(--bc) / 0.72);
-    }
-
-    .ccia-capability-actions {
-      display: inline-flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
     .ccia-capability-chip {
-      height: 28px;
+      height: 30px;
       display: inline-flex;
       align-items: center;
       gap: 6px;
       padding: 0 10px;
-      border-radius: 8px;
+      border-radius: 15px;
       border: 1px solid oklch(var(--bc) / 0.1);
-      background: transparent;
+      background: oklch(var(--b2) / 0.36);
+      color: oklch(var(--bc) / 0.62);
+      font-size: 12px;
       cursor: pointer;
       user-select: none;
       transition:
@@ -388,40 +359,64 @@ watch(
       }
     }
 
-    .ccia-input-opts {
-      display: flex;
-      justify-content: space-between;
-      flex-direction: row;
+    .ccia-capability-status {
+      cursor: default;
+      user-select: none;
+    }
+
+    .ccia-icon-button {
+      height: 32px;
+      width: 32px;
+      display: inline-flex;
       align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background-color: transparent;
+      border: 1px solid transparent;
+      color: oklch(var(--bc) / 0.72);
 
-      .ccia-opts-button {
-        height: 32px;
-        width: 32px;
-        background-color: transparent;
-        border: none;
-        margin-left: 8px;
+      &:hover {
+        background-color: oklch(var(--b2) / 0.72);
+        border-color: oklch(var(--bc) / 0.08);
+      }
 
-        .ccia-icon {
-          min-width: 32px;
-          min-height: 32px;
-          max-width: 32px;
-          max-height: 32px;
-          border-radius: 16px;
-          display: flex;
-          align-items: center;
-          color: oklch(var(--bc));
-        }
+      .ccia-icon {
+        width: 22px;
+        height: 22px;
+        display: inline-block;
+        background-color: currentColor;
+        mask-position: center;
+        mask-repeat: no-repeat;
+        mask-size: contain;
+        -webkit-mask-position: center;
+        -webkit-mask-repeat: no-repeat;
+        -webkit-mask-size: contain;
+      }
+
+      .ccia-icon-attach {
+        mask-image: url("../assets/svg/attach24.svg");
+        -webkit-mask-image: url("../assets/svg/attach24.svg");
       }
     }
 
-    .ccia-svg-icon {
-      color: oklch(var(--bc));
-      background-color: oklch(var(--b3));
-      min-width: 32px;
-      min-height: 32px;
-      max-width: 32px;
-      max-height: 32px;
-      border-radius: 16px;
+    .ccia-send-icon {
+      width: 20px;
+      height: 20px;
+      display: inline-block;
+      background-color: currentColor;
+      mask-image: url("../assets/svg/arrowUp32.svg");
+      mask-position: center;
+      mask-repeat: no-repeat;
+      mask-size: contain;
+      -webkit-mask-image: url("../assets/svg/arrowUp32.svg");
+      -webkit-mask-position: center;
+      -webkit-mask-repeat: no-repeat;
+      -webkit-mask-size: contain;
+    }
+
+    .ccia-send-button.stopping .ccia-send-icon {
+      mask-image: url("../assets/svg/pause32.svg");
+      -webkit-mask-image: url("../assets/svg/pause32.svg");
     }
   }
 }

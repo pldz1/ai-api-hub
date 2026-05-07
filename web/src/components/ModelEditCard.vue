@@ -107,20 +107,15 @@
     <section v-if="!isImageModel" class="model-form-section">
       <div class="model-section-head">
         <h4>Capabilities</h4>
-        <p>Choose which supported model capabilities are available in chat input.</p>
+        <p>Built-in model capabilities. Image is persistent input support; Thinking and Web are optional per-message actions.</p>
       </div>
 
       <div class="model-capability-grid">
-        <label v-for="item in chatCapabilityRows" :key="item.key" class="model-capability-toggle" :class="{ disabled: !item.supported }">
-          <input
-            type="checkbox"
-            :checked="item.enabled"
-            :disabled="!item.supported"
-            @change="setCapability(item.key, ($event.target as HTMLInputElement).checked)"
-          />
+        <div v-for="item in chatCapabilityRows" :key="item.key" class="model-capability-toggle" :class="{ disabled: !item.supported }">
+          <span class="model-capability-indicator" :class="{ active: item.supported }"></span>
           <span>{{ item.label }}</span>
           <small>{{ item.supported ? "Supported" : "Unsupported" }}</small>
-        </label>
+        </div>
       </div>
     </section>
 
@@ -284,7 +279,7 @@ import {
   defModelType,
   apiTypeList,
   capabilityLabels,
-  chatConfigurableCapabilityKeys,
+  chatDisplayedCapabilityKeys,
   imageApiTypeList,
   chatParamPresetList,
   chatParamTypeList,
@@ -377,11 +372,10 @@ const cardTitleKey = computed(() => (props.modelKind === "image" ? "user.modelCa
 const cardSubtitleKey = computed(() => (props.modelKind === "image" ? "user.modelCard.imageSubtitle" : "user.modelCard.chatSubtitle"));
 const supportedChatCapabilities = computed(() => getChatModelCapabilities(localModel.modelType, localModel.apiType));
 const chatCapabilityRows = computed(() =>
-  chatConfigurableCapabilityKeys.map((key) => ({
+  chatDisplayedCapabilityKeys.map((key) => ({
     key,
     label: capabilityLabels[key],
     supported: supportedChatCapabilities.value[key],
-    enabled: Boolean(supportedChatCapabilities.value[key] && (localModel.enabledCapabilities?.[key] ?? supportedChatCapabilities.value[key])),
   })),
 );
 
@@ -413,13 +407,6 @@ function normalizeModelFields() {
     localModel.apiVersion = "";
     localModel.model = (localModel.modelType || localModel.model || "").trim();
   }
-}
-
-function setCapability(key: string, value: boolean) {
-  localModel.enabledCapabilities = {
-    ...(localModel.enabledCapabilities || {}),
-    [key]: value,
-  };
 }
 
 function createModelPayload(): ModelConfig {
@@ -654,9 +641,18 @@ watch(
   border: 1px solid oklch(var(--bc) / 0.1);
   background: oklch(var(--b1) / 0.62);
 
-  input {
+  .model-capability-indicator {
+    width: 11px;
+    height: 11px;
     grid-row: span 2;
-    accent-color: oklch(var(--p));
+    border-radius: 50%;
+    border: 1px solid oklch(var(--bc) / 0.24);
+
+    &.active {
+      border-color: oklch(var(--p) / 0.36);
+      background: oklch(var(--p));
+      box-shadow: 0 0 0 3px oklch(var(--p) / 0.1);
+    }
   }
 
   span {

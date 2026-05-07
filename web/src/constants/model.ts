@@ -157,6 +157,7 @@ export const defaultModelCapabilities: ModelCapabilities = {
   imageInput: false,
   fileInput: false,
   webSearch: false,
+  reasoning: false,
   functionCalling: false,
   structuredOutput: false,
   imageGeneration: false,
@@ -167,13 +168,14 @@ export const capabilityLabels: Record<keyof ModelCapabilities, string> = {
   imageInput: "Image",
   fileInput: "Files",
   webSearch: "Web",
+  reasoning: "Thinking",
   functionCalling: "Tools",
   structuredOutput: "JSON",
   imageGeneration: "Image Gen",
 };
 
-export const chatConfigurableCapabilityKeys: (keyof ModelCapabilities)[] = ["imageInput", "webSearch", "functionCalling", "structuredOutput"];
-export const chatTurnCapabilityKeys: (keyof ModelCapabilities)[] = ["webSearch", "functionCalling", "structuredOutput"];
+export const chatTurnCapabilityKeys: (keyof ModelCapabilities)[] = ["webSearch"];
+export const chatDisplayedCapabilityKeys: (keyof ModelCapabilities)[] = ["imageInput", "reasoning", "webSearch"];
 
 export function getChatModelCapabilities(modelType = "", apiType = "OpenAI"): ModelCapabilities {
   const normalizedType = (modelType || "").trim().toLowerCase();
@@ -190,6 +192,7 @@ export function getChatModelCapabilities(modelType = "", apiType = "OpenAI"): Mo
     imageInput: isModernGpt && !/^gpt-4\.1-nano$/.test(normalizedType),
     fileInput: isGpt5 || /^gpt-4\.1/.test(normalizedType),
     webSearch: isModernGpt && !isMiniNano,
+    reasoning: isGpt5 || isReasoning,
     functionCalling: isModernGpt || isReasoning,
     structuredOutput: isModernGpt || isReasoning,
     imageGeneration: false,

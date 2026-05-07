@@ -108,6 +108,7 @@ export class AIGCClient {
     return {
       ...buildChatCompletionParams(activeModel, store.state.curChatModelSettings),
       webSearch: Boolean(turnCapabilities.webSearch),
+      reasoningBoost: Boolean(turnCapabilities.reasoning),
     };
   }
 

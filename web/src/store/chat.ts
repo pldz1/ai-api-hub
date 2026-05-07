@@ -28,6 +28,7 @@ export const ChatState = {
   inputCapabilities: {
     ...defaultModelCapabilities,
     textInput: true,
+    reasoning: false,
   },
 
   /**
@@ -98,6 +99,7 @@ export const ChatState = {
     const enabled = this.curConversation?.modelSnapshot?.enabledCapabilities || defaultModelCapabilities;
     this.inputCapabilities = normalizeModelCapabilities(enabled, supported);
     this.inputCapabilities.textInput = true;
+    this.inputCapabilities.reasoning = false;
     chatTurnCapabilityKeys.forEach((key) => {
       this.inputCapabilities[key] = false;
     });

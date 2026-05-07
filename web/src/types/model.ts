@@ -20,6 +20,7 @@ export interface ModelCapabilities {
   imageInput: boolean;
   fileInput: boolean;
   webSearch: boolean;
+  reasoning: boolean;
   functionCalling: boolean;
   structuredOutput: boolean;
   imageGeneration: boolean;
