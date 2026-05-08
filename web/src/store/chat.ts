@@ -8,6 +8,24 @@ import {
   normalizeModelCapabilities,
 } from "@/constants";
 
+const emptyTokenUsage = () => ({
+  input_tokens: 0,
+  output_tokens: 0,
+  total_tokens: 0,
+});
+
+function normalizeTokenUsage(data: Record<string, unknown> = {}) {
+  const inputTokens = Number(data?.input_tokens ?? data?.prompt_tokens ?? data?.inputTokens ?? data?.promptTokens ?? 0);
+  const outputTokens = Number(data?.output_tokens ?? data?.completion_tokens ?? data?.outputTokens ?? data?.completionTokens ?? 0);
+  const totalTokens = Number(data?.total_tokens ?? data?.totalTokens ?? data?.total ?? inputTokens + outputTokens);
+
+  return {
+    input_tokens: Number.isFinite(inputTokens) ? inputTokens : 0,
+    output_tokens: Number.isFinite(outputTokens) ? outputTokens : 0,
+    total_tokens: Number.isFinite(totalTokens) ? totalTokens : 0,
+  };
+}
+
 /**
  * 表示聊天信息存储的对象。
  */
@@ -42,6 +60,17 @@ export const ChatState = {
    */
 
   messages: [],
+
+  /**
+   * 本次前端会话内累计 token。仅保存在内存中，不持久化。
+   */
+  sessionTokenTotal: 0,
+  sessionTokenUsage: emptyTokenUsage(),
+
+  /**
+   * 当前请求是否还在等待模型开始返回。仅用于实时 UI。
+   */
+  llmRequestPending: false,
 
   /**
    * 设置对话的列表
@@ -105,11 +134,40 @@ export const ChatState = {
     });
   },
 
+  setLlmRequestPending(data) {
+    this.llmRequestPending = Boolean(data);
+  },
+
+  addSessionTokens(data) {
+    const usage = normalizeTokenUsage(data);
+    if (usage.total_tokens <= 0) return;
+    this.sessionTokenUsage = {
+      input_tokens: this.sessionTokenUsage.input_tokens + usage.input_tokens,
+      output_tokens: this.sessionTokenUsage.output_tokens + usage.output_tokens,
+      total_tokens: this.sessionTokenUsage.total_tokens + usage.total_tokens,
+    };
+    this.sessionTokenTotal = this.sessionTokenUsage.total_tokens;
+  },
+
+  recalculateSessionTokens() {
+    this.sessionTokenUsage = emptyTokenUsage();
+    this.sessionTokenTotal = 0;
+    this.messages.forEach((message) => {
+      if (message?.token_usage) this.addSessionTokens(message.token_usage);
+    });
+  },
+
+  resetSessionTokens() {
+    this.sessionTokenTotal = 0;
+    this.sessionTokenUsage = emptyTokenUsage();
+  },
+
   /**
    * 向对话数组末尾添加消息
    */
   pushMessages(msg) {
     this.messages.push(msg);
+    if (msg?.token_usage) this.addSessionTokens(msg.token_usage);
   },
 
   /**
@@ -117,6 +175,7 @@ export const ChatState = {
    */
   spliceMessages(index) {
     this.messages.splice(index, 1);
+    this.recalculateSessionTokens();
   },
 
   /**
@@ -125,5 +184,7 @@ export const ChatState = {
 
   resetMessages() {
     this.messages = [];
+    this.resetSessionTokens();
+    this.setLlmRequestPending(false);
   },
 };

@@ -1,13 +1,16 @@
 import markdownIt from "./md-config";
 import { buildCodeBlock, deepCloneAndUpdate } from "./code-block";
 
-/** 渲染markdown的 HTML Element. */
-export function renderBlock(className, el, data) {
+/**
+ * Render markdown into an existing element while preserving DOM nodes that did
+ * not change. This keeps streaming chat output from flickering on every chunk.
+ */
+export function renderBlock(className: string, el: HTMLElement, data: string): void {
   const tmpDiv = document.createElement("div");
   tmpDiv.className = className;
-  // 只渲染当前的块
+  // Render only the current block.
   tmpDiv.innerHTML = markdownIt.render(data);
   buildCodeBlock(tmpDiv);
-  // 这里不再拼接 htmlData，而是每次渲染独立的块
+  // Keep each render independent instead of appending previous HTML.
   deepCloneAndUpdate(el, tmpDiv);
 }

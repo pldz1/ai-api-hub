@@ -14,7 +14,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-top: 1px solid oklch(var(--bc) / 0.05);
   background: transparent !important;
   background-image: none !important;
   backdrop-filter: none;

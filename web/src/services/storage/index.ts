@@ -2,11 +2,23 @@ import store from "@/store";
 import { requestBrowserStorage } from "./providers/browser-storage";
 import { requestPythonServer, shouldUseBrowserFallback } from "./providers/python-server";
 import { STORAGE_MODE, normalizeHostUrl, withStorageMeta } from "./constants";
+import type { ApiMethod, ApiResponse, RequestBody, RequestHeaders, StorageMode } from "@/services/types";
 
-let activeStorageMode = STORAGE_MODE.UNKNOWN;
-let activeHost = null;
+let activeStorageMode: StorageMode = STORAGE_MODE.UNKNOWN;
+let activeHost: string | null = null;
 
-function syncStorageContext(hostUrl) {
+interface StorageRequest {
+  method: ApiMethod;
+  endpoint: string;
+  body?: RequestBody;
+  headers?: RequestHeaders;
+  timeout?: number;
+}
+
+/**
+ * Reset backend detection when the configured companion host changes.
+ */
+function syncStorageContext(hostUrl: string): void {
   const normalizedHost = normalizeHostUrl(hostUrl);
   if (activeHost !== normalizedHost) {
     activeHost = normalizedHost;
@@ -15,37 +27,50 @@ function syncStorageContext(hostUrl) {
   }
 }
 
-async function useBrowserStorage(endpoint, body) {
+async function useBrowserStorage<TData = unknown>(endpoint: string, body: RequestBody): Promise<ApiResponse<TData>> {
   activeStorageMode = STORAGE_MODE.BROWSER;
   store.dispatch("setStorageMode", STORAGE_MODE.BROWSER);
-  return withStorageMeta(await requestBrowserStorage(endpoint, body), STORAGE_MODE.BROWSER);
+  return withStorageMeta(await requestBrowserStorage<TData>(endpoint, body), STORAGE_MODE.BROWSER);
 }
 
-export async function requestStorage({ method, endpoint, body = {}, headers = { "Content-Type": "application/json" }, timeout = 180000 }) {
+/**
+ * Storage router.
+ *
+ * Tries the Python companion service first, remembers the active backend, and
+ * falls back to browser storage when the companion service is unavailable.
+ */
+export async function requestStorage<TData = unknown>({
+  method,
+  endpoint,
+  body = {},
+  headers = { "Content-Type": "application/json" },
+  timeout = 180000,
+}: StorageRequest): Promise<ApiResponse<TData>> {
   const hostUrl = normalizeHostUrl(store.state.hostUrl);
   syncStorageContext(hostUrl);
 
   if (activeStorageMode === STORAGE_MODE.BROWSER) {
-    return useBrowserStorage(endpoint, body);
+    return useBrowserStorage<TData>(endpoint, body);
   }
 
   try {
     const result = await requestPythonServer({ method, endpoint, body, headers, timeout, hostUrl });
     activeStorageMode = STORAGE_MODE.SERVER;
     store.dispatch("setStorageMode", STORAGE_MODE.SERVER);
-    return withStorageMeta(result, STORAGE_MODE.SERVER);
+    return withStorageMeta(result as ApiResponse<TData>, STORAGE_MODE.SERVER);
   } catch (error) {
     if (shouldUseBrowserFallback(error)) {
       console.warn(`Python companion unavailable, falling back to browser storage for ${endpoint}.`);
-      return useBrowserStorage(endpoint, body);
+      return useBrowserStorage<TData>(endpoint, body);
     }
 
-    if (error.code === "ECONNABORTED") {
+    const requestError = error as { code?: string; message?: string };
+    if (requestError.code === "ECONNABORTED") {
       console.error("Request timeout!");
     } else {
-      console.error(error.message);
+      console.error(requestError.message);
     }
 
-    return withStorageMeta({ data: error.message || "Request failed!" }, STORAGE_MODE.UNKNOWN);
+    return withStorageMeta({ flag: false, log: requestError.message || "Request failed!", data: requestError.message || "Request failed!" } as ApiResponse<TData>, STORAGE_MODE.UNKNOWN);
   }
 }

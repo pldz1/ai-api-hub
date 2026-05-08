@@ -132,10 +132,18 @@ export const getModelSettingValidationError = (data) => {
   };
 
   const validateImageModel = (item, key, index) => {
-    const commonError = requireFields(item, ["name", "apiType", "baseURL", "apiKey", "model", "imageParamDefs", "imageOperation"], key, index);
+    if (!["OpenAI", "Azure OpenAI", ""].includes(item.apiType)) {
+      return `${key}[${index}] apiType 无效`;
+    }
+
+    const commonError = requireFields(item, ["name", "apiType", "apiKey", "imageParamDefs", "imageOperation"], key, index);
     if (commonError) return commonError;
-    if (item.apiType && item.apiType !== "OpenAI") return `${key}[${index}] 图像模型只支持 OpenAI apiType`;
-    return "";
+
+    if (item.apiType === "Azure OpenAI") {
+      return requireFields(item, ["endpoint", "deployment", "apiVersion"], key, index);
+    }
+
+    return requireFields(item, ["baseURL", "model"], key, index);
   };
 
   for (const key of [...expectedKeys, ...(hasLegacyImage ? ["image"] : []), ...(hasImageGeneration ? ["imageGeneration"] : []), ...(hasImageEdit ? ["imageEdit"] : [])]) {

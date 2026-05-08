@@ -1,17 +1,25 @@
 // @ts-nocheck
+import type { ChatPromptContent, ChatPromptMessage, PackedPartChatMessage, PackedTextChatMessage } from "@/services/types";
+
 /**
- * 打包用户要发送的消息
- * 主要是组合图像到要发到对话的消息里
- *  */
-export function packUserMsg(id, texts, allowImages = true) {
-  const res = { role: "user", content: [{ type: "text", text: texts }] };
+ * Chat message packing helpers.
+ *
+ * The UI stores messages in one normalized shape, while older provider configs
+ * still expect either plain strings or the OpenAI content-part format.
+ */
+
+/**
+ * Pack a user message with text and image content.
+ */
+export function packUserMsg(id: string, texts: string, allowImages: boolean = true): ChatPromptMessage {
+  const res: ChatPromptMessage = { role: "user", content: [{ type: "text", text: texts }] };
   const imgContainer = document.getElementById(id);
   if (imgContainer && allowImages) {
     const imgs = imgContainer.getElementsByTagName("img");
     for (let i = 0; i < imgs.length; i++) {
       res.content.push({
         type: "image_url",
-        image_url: { url: imgs[i].getAttribute("src"), detail: "low" },
+        image_url: { url: imgs[i].getAttribute("src") || "", detail: "low" },
       });
     }
     imgContainer.innerHTML = "";
@@ -20,22 +28,21 @@ export function packUserMsg(id, texts, allowImages = true) {
   return res;
 }
 
-/**
- *
- */
-export function packMessageV1(data) {
+/** Pack messages for older text-only chat completion providers. */
+export function packMessageV1(data: ChatPromptMessage[]): PackedTextChatMessage[] {
   const messages = data.map((entry) => ({
     role: entry.role,
-    content: entry.content[0].text,
+    content: entry.content[0]?.type === "text" ? entry.content[0].text : "",
   }));
 
   return messages;
 }
 
-export function packMessageV2(data) {
+/** Pack messages with OpenAI-style content parts, including image inputs. */
+export function packMessageV2(data: ChatPromptMessage[]): PackedPartChatMessage[] {
   const messages = data.map((entry) => ({
     role: entry.role,
-    content: entry.content,
+    content: entry.content as ChatPromptContent[],
   }));
 
   return messages;

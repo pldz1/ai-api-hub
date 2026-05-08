@@ -13,10 +13,12 @@ export interface SelectOption<TValue extends string = string> {
 export interface ChatModelOption extends SelectOption {
   isReasonModel: boolean;
   msgTypeVersion: "v1" | "v2";
+  capabilities: Pick<ModelCapabilities, "webSearch" | "reasoning" | "imageRead">;
 }
 
 export interface ModelCapabilities {
   textInput: boolean;
+  imageRead: boolean;
   imageInput: boolean;
   fileInput: boolean;
   webSearch: boolean;
@@ -85,8 +87,18 @@ export interface OpenAIImageModelConfig extends BaseModelConfig {
   imageOperation: ImageOperation;
 }
 
+export interface AzureImageModelConfig extends BaseModelConfig {
+  apiType: "Azure OpenAI";
+  endpoint: string;
+  deployment: string;
+  apiVersion: string;
+  baseURL?: "";
+  model?: "";
+  imageOperation: ImageOperation;
+}
+
 export type ChatModelConfig = OpenAIChatModelConfig | AzureChatModelConfig;
-export type ImageModelConfig = OpenAIImageModelConfig;
+export type ImageModelConfig = OpenAIImageModelConfig | AzureImageModelConfig;
 export type ModelConfig = ChatModelConfig | ImageModelConfig;
 
 export interface ConversationModelSnapshot {
@@ -107,6 +119,23 @@ export interface ConversationModelSnapshot {
   chatParamDefs: ModelParamDef[];
   modelConfig: ChatModelConfig;
 }
+
+export interface OpenAIProviderConfig {
+  provider: "OpenAI";
+  baseURL: string;
+  apiKey: string;
+  model: string;
+}
+
+export interface AzureOpenAIProviderConfig {
+  provider: "Azure OpenAI";
+  endpoint: string;
+  apiKey: string;
+  deploymentName: string;
+  apiVersion: string;
+}
+
+export type ChatProviderConfig = OpenAIProviderConfig | AzureOpenAIProviderConfig;
 
 export interface ModelDraftConfig extends BaseModelConfig {
   apiType: ApiType;

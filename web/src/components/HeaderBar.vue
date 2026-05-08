@@ -35,12 +35,12 @@ import menuIcon from "@/assets/svg/menu32.svg";
 import navChatIcon from "@/assets/svg/navChat24.svg";
 import navImageIcon from "@/assets/svg/navImage24.svg";
 import navSettingsIcon from "@/assets/svg/navSettings24.svg";
-import ThemeController from "@/components/ThemeController.vue";
-import LanguageController from "@/components/LanguageController.vue";
-import AvatarCard from "@/components/AvatarCard.vue";
-import AppTooltip from "@/components/AppTooltip.vue";
-import AppDropdownMenu from "@/components/AppDropdownMenu.vue";
-import SvgIcon from "@/components/SvgIcon.vue";
+import ThemeController from "@/components/header/ThemeController.vue";
+import LanguageController from "@/components/header/LanguageController.vue";
+import AvatarCard from "@/components/header/AvatarCard.vue";
+import AppTooltip from "@/components/base/AppTooltip.vue";
+import AppDropdownMenu from "@/components/base/AppDropdownMenu.vue";
+import SvgIcon from "@/components/base/SvgIcon.vue";
 
 const props = defineProps({
   showMenu: {
@@ -125,6 +125,10 @@ const onSelectMenuItem = async (item) => {
   }
 
   .comphb-icon-button {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -141,13 +145,6 @@ const onSelectMenuItem = async (item) => {
       box-shadow: 0 10px 24px oklch(var(--bc) / 0.1);
       background: oklch(var(--b1) / 0.96);
     }
-  }
-
-  .comphb-icon-button {
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
-    cursor: pointer;
 
     :deep(.svg-icon) {
       width: 32px;
@@ -193,22 +190,8 @@ const onSelectMenuItem = async (item) => {
     color: oklch(var(--bc) / 0.62);
   }
 
-  .comphb-avatar-trigger {
-    border: none;
-    background: transparent;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-  }
-
   @media (max-width: 960px) {
     padding: 10px 14px;
-
-    .comphb-nav {
-      display: none;
-    }
   }
 
   @media (max-width: 640px) {

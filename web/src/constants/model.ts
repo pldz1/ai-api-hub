@@ -102,14 +102,31 @@ export function normalizeChatModelConfig(model: Partial<ModelDraftConfig> | null
 
 export function normalizeImageModelConfig(model: Partial<ModelDraftConfig> | null | undefined = {}, imageOperation: ImageOperation = "generation"): ImageModelConfig {
   const draft = normalizeModelDraft(model);
+  const apiType = draft.apiType === "Azure OpenAI" ? draft.apiType : "OpenAI";
   const modelType = String(draft.modelType || draft.model || "").trim();
-  const imageParamDefs = getModelImageParamDefs({ ...draft, apiType: "OpenAI", modelType, imageOperation }).filter(
+  const imageParamDefs = getModelImageParamDefs({ ...draft, apiType, modelType, imageOperation }).filter(
     (item) => imageOperation === "edit" || item.type !== "image",
   );
 
+  if (apiType === "Azure OpenAI") {
+    return {
+      name: draft.name,
+      apiType,
+      endpoint: draft.endpoint,
+      deployment: draft.deployment,
+      apiVersion: draft.apiVersion,
+      apiKey: draft.apiKey,
+      modelType,
+      chatParamDefs: [],
+      imageParamDefs,
+      imageOperation,
+      enabledCapabilities: draft.enabledCapabilities,
+    };
+  }
+
   return {
     name: draft.name,
-    apiType: "OpenAI",
+    apiType,
     baseURL: draft.baseURL,
     apiKey: draft.apiKey,
     modelType,
@@ -126,34 +143,44 @@ export const apiTypeList: SelectOption<ApiType>[] = [
   { value: "Azure OpenAI", name: "Azure OpenAI" },
 ];
 
-export const imageApiTypeList: SelectOption<"OpenAI">[] = [
+export const imageApiTypeList: SelectOption<ApiType>[] = [
   { value: "OpenAI", name: "OpenAI" },
+  { value: "Azure OpenAI", name: "Azure OpenAI" },
 ];
 
+const chatOption = (
+  value: string,
+  capabilities: Pick<ModelCapabilities, "webSearch" | "reasoning" | "imageRead">,
+  msgTypeVersion: "v1" | "v2" = "v2",
+): ChatModelOption => ({
+  value,
+  name: value,
+  isReasonModel: capabilities.reasoning,
+  msgTypeVersion,
+  capabilities,
+});
+
 export const chatModelTypeList: ChatModelOption[] = [
-  { value: "gpt-5.5", name: "gpt-5.5", isReasonModel: false, msgTypeVersion: "v2" },
-  { value: "gpt-5.5-pro", name: "gpt-5.5-pro", isReasonModel: false, msgTypeVersion: "v2" },
-  { value: "gpt-5.4", name: "gpt-5.4", isReasonModel: false, msgTypeVersion: "v2" },
-  { value: "gpt-5.4-pro", name: "gpt-5.4-pro", isReasonModel: false, msgTypeVersion: "v2" },
-  { value: "gpt-5.4-mini", name: "gpt-5.4-mini", isReasonModel: false, msgTypeVersion: "v2" },
-  { value: "gpt-5.4-nano", name: "gpt-5.4-nano", isReasonModel: false, msgTypeVersion: "v2" },
-  { value: "gpt-5.2", name: "gpt-5.2", isReasonModel: false, msgTypeVersion: "v2" },
-  { value: "gpt-5", name: "gpt-5", isReasonModel: false, msgTypeVersion: "v2" },
-  { value: "gpt-5-mini", name: "gpt-5-mini", isReasonModel: false, msgTypeVersion: "v2" },
-  { value: "gpt-5-nano", name: "gpt-5-nano", isReasonModel: false, msgTypeVersion: "v2" },
-  { value: "gpt-4.1", name: "gpt-4.1", isReasonModel: false, msgTypeVersion: "v2" },
-  { value: "gpt-4.1-mini", name: "gpt-4.1-mini", isReasonModel: false, msgTypeVersion: "v2" },
-  { value: "gpt-4.1-nano", name: "gpt-4.1-nano", isReasonModel: false, msgTypeVersion: "v2" },
-  { value: "gpt-4o", name: "gpt-4o", isReasonModel: false, msgTypeVersion: "v2" },
-  { value: "gpt-4o-mini", name: "gpt-4o-mini", isReasonModel: false, msgTypeVersion: "v2" },
-  { value: "o1", name: "o1", isReasonModel: true, msgTypeVersion: "v1" },
-  { value: "o3", name: "o3", isReasonModel: true, msgTypeVersion: "v1" },
-  { value: "o3-mini", name: "o3-mini", isReasonModel: true, msgTypeVersion: "v1" },
-  { value: "o4-mini", name: "o4-mini", isReasonModel: true, msgTypeVersion: "v1" },
+  chatOption("gpt-5.5", { webSearch: true, reasoning: true, imageRead: true }),
+  chatOption("gpt-5.5-pro", { webSearch: true, reasoning: true, imageRead: true }),
+  chatOption("gpt-5.4", { webSearch: true, reasoning: true, imageRead: true }),
+  chatOption("gpt-5.4-pro", { webSearch: true, reasoning: true, imageRead: true }),
+  chatOption("gpt-5.4-mini", { webSearch: false, reasoning: true, imageRead: true }),
+  chatOption("gpt-5.4-nano", { webSearch: false, reasoning: true, imageRead: false }),
+  chatOption("gpt-5.2", { webSearch: true, reasoning: true, imageRead: true }),
+  chatOption("gpt-5", { webSearch: true, reasoning: true, imageRead: true }),
+  chatOption("gpt-5-mini", { webSearch: false, reasoning: true, imageRead: true }),
+  chatOption("gpt-5-nano", { webSearch: false, reasoning: true, imageRead: false }),
+  chatOption("gpt-4.1", { webSearch: true, reasoning: false, imageRead: true }),
+  chatOption("gpt-4.1-mini", { webSearch: false, reasoning: false, imageRead: true }),
+  chatOption("gpt-4.1-nano", { webSearch: false, reasoning: false, imageRead: false }),
+  chatOption("gpt-4o", { webSearch: true, reasoning: false, imageRead: true }),
+  chatOption("gpt-4o-mini", { webSearch: false, reasoning: false, imageRead: true }),
 ];
 
 export const defaultModelCapabilities: ModelCapabilities = {
   textInput: true,
+  imageRead: false,
   imageInput: false,
   fileInput: false,
   webSearch: false,
@@ -165,6 +192,7 @@ export const defaultModelCapabilities: ModelCapabilities = {
 
 export const capabilityLabels: Record<keyof ModelCapabilities, string> = {
   textInput: "Text",
+  imageRead: "Image",
   imageInput: "Image",
   fileInput: "Files",
   webSearch: "Web",
@@ -174,8 +202,8 @@ export const capabilityLabels: Record<keyof ModelCapabilities, string> = {
   imageGeneration: "Image Gen",
 };
 
-export const chatTurnCapabilityKeys: (keyof ModelCapabilities)[] = ["webSearch"];
-export const chatDisplayedCapabilityKeys: (keyof ModelCapabilities)[] = ["imageInput", "reasoning", "webSearch"];
+export const chatTurnCapabilityKeys: (keyof ModelCapabilities)[] = ["webSearch", "reasoning"];
+export const chatDisplayedCapabilityKeys: (keyof ModelCapabilities)[] = ["reasoning", "webSearch", "imageRead"];
 
 export function getChatModelCapabilities(modelType = "", apiType = "OpenAI"): ModelCapabilities {
   const normalizedType = (modelType || "").trim().toLowerCase();
@@ -185,11 +213,13 @@ export function getChatModelCapabilities(modelType = "", apiType = "OpenAI"): Mo
   const isGpt4 = /^gpt-4/.test(normalizedType);
   const isModernGpt = isGpt5 || isGpt4;
   const isMiniNano = /(-mini|-nano)$/.test(normalizedType);
+  const isNano = /-nano$/.test(normalizedType);
   const isReasoning = getChatModelInfo(modelType, apiType).isReasonModel;
 
   return {
     ...defaultModelCapabilities,
-    imageInput: isModernGpt && !/^gpt-4\.1-nano$/.test(normalizedType),
+    imageRead: isModernGpt && !isNano,
+    imageInput: isModernGpt && !isNano,
     fileInput: isGpt5 || /^gpt-4\.1/.test(normalizedType),
     webSearch: isModernGpt && !isMiniNano,
     reasoning: isGpt5 || isReasoning,
@@ -204,10 +234,21 @@ export function normalizeModelCapabilities(
   supported: ModelCapabilities = defaultModelCapabilities,
 ): ModelCapabilities {
   const next = { ...defaultModelCapabilities };
+  const normalizedSupported = {
+    ...supported,
+    imageRead: supported.imageRead || supported.imageInput,
+    imageInput: supported.imageInput || supported.imageRead,
+  };
+  const normalizedCapabilities = {
+    ...(capabilities || {}),
+    imageRead: capabilities?.imageRead ?? capabilities?.imageInput,
+    imageInput: capabilities?.imageInput ?? capabilities?.imageRead,
+  };
   (Object.keys(next) as (keyof ModelCapabilities)[]).forEach((key) => {
-    next[key] = Boolean(supported[key] && (capabilities?.[key] ?? supported[key]));
+    next[key] = Boolean(normalizedSupported[key] && (normalizedCapabilities?.[key] ?? normalizedSupported[key]));
   });
   next.textInput = true;
+  next.imageInput = next.imageRead;
   return next;
 }
 
@@ -274,14 +315,18 @@ export function getChatModelInfo(modelType = "", apiType = ""): ChatModelOption 
   if (exactMatch) return exactMatch;
 
   if (/^(o1|o3|o4)(-|$)/.test(normalizedType)) {
-    return { value: modelType, name: modelType, isReasonModel: true, msgTypeVersion: "v2" };
+    return chatOption(modelType, { webSearch: false, reasoning: true, imageRead: false });
   }
 
   if (/^gpt-3\.5/.test(normalizedType)) {
-    return { value: modelType, name: modelType, isReasonModel: false, msgTypeVersion: "v1" };
+    return chatOption(modelType, { webSearch: false, reasoning: false, imageRead: false }, "v1");
   }
 
-  return { value: modelType, name: modelType, isReasonModel: false, msgTypeVersion: "v2" };
+  return chatOption(modelType, {
+    webSearch: /^gpt-4|^gpt-5/.test(normalizedType) && !/(-mini|-nano)$/.test(normalizedType),
+    reasoning: /^gpt-5/.test(normalizedType),
+    imageRead: /^gpt-4|^gpt-5/.test(normalizedType) && !/-nano$/.test(normalizedType),
+  });
 }
 
 export const chatParamTypeList: SelectOption<ModelParamType>[] = [

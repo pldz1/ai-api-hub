@@ -220,6 +220,17 @@ const messages = {
     input: {
       chatPlaceholder: "请输入对话内容",
       selectChatModel: "选择对话模型",
+      lockedModel: "已锁定模型",
+      tokenUsage: "Tokens: {total}（输入: {input} | 输出: {output}）",
+      confirmStartChatTitle: "确认对话模型",
+      confirmStartChat: "使用“{model}”开始此对话？本轮对话开始后不能再切换模型。",
+      confirmStartChatCancel: "取消",
+      confirmStartChatConfirm: "开始对话",
+      capabilities: {
+        imageRead: "图片",
+        webSearch: "联网",
+        reasoning: "思考",
+      },
       hostUrlPlaceholder: "http://127.0.0.1:20088",
     },
     user: {
@@ -605,6 +616,17 @@ const messages = {
     input: {
       chatPlaceholder: "Type your message",
       selectChatModel: "Choose a chat model",
+      lockedModel: "Locked model",
+      tokenUsage: "Tokens: {total} (Input: {input} | Output: {output})",
+      confirmStartChatTitle: "Confirm chat model",
+      confirmStartChat: 'Start this chat with "{model}"? This model cannot be changed later in this conversation.',
+      confirmStartChatCancel: "Cancel",
+      confirmStartChatConfirm: "Start chat",
+      capabilities: {
+        imageRead: "Image",
+        webSearch: "Web",
+        reasoning: "Thinking",
+      },
       hostUrlPlaceholder: "http://127.0.0.1:20088",
     },
     user: {

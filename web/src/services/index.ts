@@ -1,10 +1,10 @@
-export * from "./aigc/openai";
-export * from "./aigc/azure-openai";
-export * from "./aigc/aigc-client";
-export * from "./aigc/deepseek";
-export * from "./api/user-api";
-export * from "./api/chat-api";
-export * from "./api/image-api";
+/**
+ * Public service surface for views and stores.
+ *
+ * Keep feature internals behind their directory indexes so callers do not need
+ * to know whether a function talks to storage, a model provider, or the DOM.
+ */
+export * from "./user";
+export * from "./chat";
+export * from "./image";
 export * from "./markdown/md-render";
-export * from "./chat/draw";
-export * from "./chat/message";

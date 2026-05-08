@@ -46,10 +46,10 @@ import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { login, getModels } from "@/services";
-import { loginAPI } from "@/services/api/user-api";
+import { loginAPI } from "@/services/user";
 import { dsLoading } from "@/utils";
-import ThemeController from "@/components/ThemeController.vue";
-import LanguageController from "@/components/LanguageController.vue";
+import ThemeController from "@/components/header/ThemeController.vue";
+import LanguageController from "@/components/header/LanguageController.vue";
 
 const router = useRouter();
 const { t } = useI18n();

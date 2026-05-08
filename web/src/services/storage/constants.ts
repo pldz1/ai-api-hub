@@ -1,14 +1,18 @@
+import type { ApiResponse, StorageMode } from "@/services/types";
+
 export const STORAGE_MODE = {
   UNKNOWN: "unknown",
   SERVER: "server",
   BROWSER: "browser",
-};
+} as const;
 
-export function normalizeHostUrl(hostUrl) {
+/** Normalize user-configured companion service host before backend detection. */
+export function normalizeHostUrl(hostUrl: string | null | undefined): string {
   return hostUrl || "";
 }
 
-export function withStorageMeta(result, mode) {
+/** Attach backend metadata so the UI can display the current storage mode. */
+export function withStorageMeta<TData = unknown>(result: ApiResponse<TData>, mode: StorageMode): ApiResponse<TData> {
   if (result && typeof result === "object") {
     return {
       ...result,

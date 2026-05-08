@@ -78,6 +78,18 @@ const mutations = {
     state.resetInputCapabilities();
   },
 
+  SET_LLM_REQUEST_PENDING(state, data) {
+    state.setLlmRequestPending(data);
+  },
+
+  ADD_SESSION_TOKENS(state, data) {
+    state.addSessionTokens(data);
+  },
+
+  RESET_SESSION_TOKENS(state) {
+    state.resetSessionTokens();
+  },
+
   /** @param {state} state */
   PUSH_MESSAGES(state, data) {
     state.pushMessages(data);
@@ -177,6 +189,18 @@ const actions = {
 
   async resetInputCapabilities({ commit }) {
     commit("RESET_INPUT_CAPABILITIES");
+  },
+
+  async setLlmRequestPending({ commit }, data) {
+    commit("SET_LLM_REQUEST_PENDING", data);
+  },
+
+  async addSessionTokens({ commit }, data) {
+    commit("ADD_SESSION_TOKENS", data);
+  },
+
+  async resetSessionTokens({ commit }) {
+    commit("RESET_SESSION_TOKENS");
   },
 
   async pushMessages({ commit }, data) {

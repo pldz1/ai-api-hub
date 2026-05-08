@@ -1,0 +1,142 @@
+<template>
+  <div class="chat-card-container">
+    <!-- 显示markdown的问答区域 -->
+    <ChatInsTemplate v-show="isShowTemplate" @on-update="onDrawTemplateIns"></ChatInsTemplate>
+    <div class="ccdc-messages-container">
+      <div id="chat-messages-container" class="cccd-scroll-window" ref="innerRef"></div>
+    </div>
+    <!-- 输入问题 -->
+    <div class="cccd-input-area">
+      <ChatInputArea :is-chatting="isChatting" :model-selection-readonly="isModelSelectionReadonly" @on-start="onStartChat" @on-stop="onStopChat"></ChatInputArea>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { useStore } from "vuex";
+import { dsLoading } from "@/utils";
+import { ref, watch, computed, onMounted, nextTick } from "vue";
+import { ChatDrawer, addChat, getAllMessage } from "@/services";
+
+import ChatInputArea from "@/views/chat/components/ChatInputArea.vue";
+import ChatInsTemplate from "@/views/chat/components/ChatInsTemplate.vue";
+
+const store = useStore();
+const isChatting = ref(false);
+const innerRef = ref(null);
+
+const drawer = new ChatDrawer(true);
+const curConversation = computed(() => store.state.curConversation);
+const curChatId = computed(() => store.state.curChatId);
+const isModelSelectionReadonly = computed(() => Boolean(curConversation.value?.modelSnapshot && (curChatId.value || store.state.messages.length > 0)));
+const isShowTemplate = ref(true);
+
+watch(
+  () => curChatId.value,
+  async (newVal) => {
+    dsLoading(true);
+    drawer.removeAllElem();
+    await nextTick();
+
+    // 判读对话的 id, 来显示不同的内容.
+    if (!newVal) {
+      // 如果是空的对话 id, 那么就认为是新的对话.
+      isShowTemplate.value = true;
+    } else {
+      isShowTemplate.value = false;
+      getAllMessage(drawer.draw);
+    }
+
+    dsLoading(false);
+  },
+);
+
+watch(
+  () => curConversation.value?.modelSnapshot?.modelConfigId,
+  () => {
+    drawer.chatClientInit();
+  },
+  { immediate: true },
+);
+
+/** 向服务器发送数据 */
+const onStartChat = async (payload) => {
+  isShowTemplate.value = false;
+  const message = payload?.message || payload;
+  const selectedModel = payload?.model || null;
+
+  // 新建对话
+  if (!curChatId.value) {
+    await addChat(null, selectedModel);
+  }
+  isChatting.value = true;
+  await drawer.chat(message);
+  isChatting.value = false;
+};
+
+/**
+ * 停止接受消息
+ * */
+const onStopChat = async () => {
+  drawer.stop();
+  isChatting.value = false;
+};
+
+/**
+ * 绘制对话指令的内容, 这个不会放进store
+ */
+const onDrawTemplateIns = (messages) => {
+  drawer.draw(messages);
+};
+
+onMounted(() => {
+  drawer.init("chat-messages-container");
+});
+</script>
+
+<style lang="scss" scoped>
+.chat-card-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 1px solid oklch(var(--bc) / 0.12);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top right, oklch(var(--a) / 0.08), transparent 26%),
+    radial-gradient(circle at bottom left, oklch(var(--p) / 0.05), transparent 24%), linear-gradient(180deg, oklch(var(--b1) / 0.9), oklch(var(--b2) / 0.86));
+  box-shadow: 0 22px 52px oklch(var(--bc) / 0.08);
+  overflow: hidden;
+
+  .ccdc-messages-container,
+  .chat-template-display-card,
+  .cccd-input-area {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(880px, calc(100% - 72px));
+    max-width: min(880px, calc(100% - 72px));
+  }
+
+  .ccdc-messages-container {
+    top: 20px;
+    height: calc(100% - 156px);
+    z-index: 100;
+  }
+
+  .cccd-scroll-window {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 6px;
+  }
+
+  .cccd-input-area {
+    bottom: 18px;
+    z-index: 201;
+    display: flex;
+    justify-content: center;
+  }
+}
+</style>

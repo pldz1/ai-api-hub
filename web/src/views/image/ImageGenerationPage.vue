@@ -3,7 +3,7 @@
 </template>
 
 <script setup>
-import ImageStudio from "@/views/image/ImageStudio.vue";
+import ImageStudio from "@/views/image/components/ImageStudio.vue";
 
 const emit = defineEmits(["switch-to-edit"]);
 </script>

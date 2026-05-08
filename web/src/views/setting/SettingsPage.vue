@@ -4,14 +4,14 @@
       <HeaderBar />
     </div>
     <div class="settings-page-content">
-      <UserSettings />
+      <SettingsWorkspace />
     </div>
   </div>
 </template>
 
 <script setup>
 import HeaderBar from "@/components/HeaderBar.vue";
-import UserSettings from "@/views/setting/UserSettings.vue";
+import SettingsWorkspace from "@/views/setting/SettingsWorkspace.vue";
 </script>
 
 <style lang="scss" scoped>

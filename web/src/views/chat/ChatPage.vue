@@ -21,10 +21,10 @@ import { onMounted } from "vue";
 import { useStore } from "vuex";
 import { getChatList, getChatInsTemplateList } from "@/services";
 
-import SidebarCard from "@/views/chat/SidebarCard.vue";
-import ChatCard from "@/views/chat/ChatCard.vue";
+import SidebarCard from "@/views/chat/components/SidebarCard.vue";
+import ChatCard from "@/views/chat/components/ChatCard.vue";
 import HeaderBar from "@/components/HeaderBar.vue";
-import ImageModal from "@/components/ImageModal.vue";
+import ImageModal from "@/views/chat/components/ImageModal.vue";
 
 const store = useStore();
 onMounted(async () => {

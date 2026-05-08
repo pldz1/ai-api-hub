@@ -1,4 +1,5 @@
 import MarkdownIt from "markdown-it";
+import type Token from "markdown-it/lib/token";
 import emoji from "markdown-it-emoji";
 import deflist from "markdown-it-deflist";
 import footnote from "markdown-it-footnote";
@@ -9,23 +10,21 @@ import container from "markdown-it-container";
 import toc from "markdown-it-toc-done-right";
 
 /**
- * 对渲染出来的link额外处理
+ * Add external-link behavior to rendered markdown links.
  */
-function addTargetBlankToLinks(markdownIt) {
+function addTargetBlankToLinks(markdownIt: MarkdownIt): void {
   const defaultRender =
     markdownIt.renderer.rules.link_open ||
-    function (tokens, idx, options, env, self) {
+    function (tokens: Token[], idx: number, options: MarkdownIt.Options, env: unknown, self: MarkdownIt.Renderer) {
       return self.renderToken(tokens, idx, options);
     };
 
-  markdownIt.renderer.rules.link_open = function (tokens, idx, options, env, self) {
-    // 为所有链接添加 target="_blank"
+  markdownIt.renderer.rules.link_open = function (tokens: Token[], idx: number, options: MarkdownIt.Options, env: unknown, self: MarkdownIt.Renderer) {
+    // Add target="_blank" to every rendered link.
     const aIndex = tokens[idx].attrIndex("target");
     if (aIndex < 0) {
-      // 添加新的属性
       tokens[idx].attrPush(["target", "_blank"]);
     } else {
-      // 修改已有的属性
       tokens[idx].attrs[aIndex][1] = "_blank";
     }
     return defaultRender(tokens, idx, options, env, self);
