@@ -1,5 +1,5 @@
 import type {
-  ApiType,
+  ModelProvider,
   ChatModelConfig,
   ChatModelOption,
   ChatModelSettings,
@@ -7,9 +7,8 @@ import type {
   ImageModelConfig,
   ImageModelSettings,
   ImageOperation,
-  ModelConfig,
   ModelCapabilities,
-  ModelDraftConfig,
+  ModelFormDraft,
   ModelParamDef,
   ModelParamType,
   ParamDefaultValue,
@@ -21,11 +20,16 @@ function cloneJson<T>(data: T): T {
 }
 
 type LooseParamDef = Partial<ModelParamDef> & { key?: string };
-type LooseModelConfig = Partial<ModelDraftConfig>;
+type LegacyModelProviderConfig = { apiType?: ModelProvider; provider?: ModelProvider };
+type LooseModelConfig = Partial<ModelFormDraft> &
+  LegacyModelProviderConfig & {
+    chatParamDefs?: ModelParamDef[];
+    imageParamDefs?: ModelParamDef[];
+  };
 
-export const defModelType: ModelDraftConfig = {
+export const defaultModelFormDraft: ModelFormDraft = {
   name: "",
-  apiType: "",
+  provider: "",
   baseURL: "",
   endpoint: "",
   apiKey: "",
@@ -33,47 +37,53 @@ export const defModelType: ModelDraftConfig = {
   model: "",
   deployment: "",
   apiVersion: "",
-  chatParamDefs: [],
-  imageParamDefs: [],
   imageOperation: "",
   enabledCapabilities: {},
 };
 
-export function isAzureChatModel(model: Partial<ModelDraftConfig> | null | undefined): model is Partial<ModelDraftConfig> & { apiType: "Azure OpenAI" } {
-  return model?.apiType === "Azure OpenAI";
+export function isAzureChatModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "Azure OpenAI" } {
+  return getLegacyProvider(model) === "Azure OpenAI";
 }
 
-export function isOpenAIChatModel(model: Partial<ModelDraftConfig> | null | undefined): model is Partial<ModelDraftConfig> & { apiType: "OpenAI" } {
-  return model?.apiType === "OpenAI";
+export function isOpenAIChatModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "OpenAI" } {
+  return getLegacyProvider(model) === "OpenAI";
 }
 
-export function getModelRequestId(model: Partial<ModelDraftConfig> | null | undefined): string {
+export function isAnthropicChatModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "Anthropic" | "Azure AI Foundry" } {
+  const provider = getLegacyProvider(model);
+  return provider === "Anthropic" || provider === "Azure AI Foundry";
+}
+
+export function getModelRequestId(model: Partial<ModelFormDraft> | null | undefined): string {
   return String(model?.model || model?.modelType || "").trim();
 }
 
-export function getModelDeployment(model: Partial<ModelDraftConfig> | null | undefined): string {
+export function getModelDeployment(model: Partial<ModelFormDraft> | null | undefined): string {
   return String(model?.deployment || "").trim();
 }
 
-function normalizeModelDraft(model: Partial<ModelDraftConfig> | null | undefined = {}): ModelDraftConfig {
+function getLegacyProvider(model: LooseModelConfig | null | undefined = {}): ModelProvider {
+  return (model?.provider || model?.apiType || "") as ModelProvider;
+}
+
+function normalizeModelFormDraft(model: LooseModelConfig | null | undefined = {}): ModelFormDraft {
   return {
-    ...cloneJson(defModelType),
+    ...cloneJson(defaultModelFormDraft),
     ...(model || {}),
-    chatParamDefs: Array.isArray(model?.chatParamDefs) ? model.chatParamDefs : [],
-    imageParamDefs: Array.isArray(model?.imageParamDefs) ? model.imageParamDefs : [],
+    provider: getLegacyProvider(model),
   };
 }
 
-export function normalizeChatModelConfig(model: Partial<ModelDraftConfig> | null | undefined = {}): ChatModelConfig {
-  const draft = normalizeModelDraft(model);
-  const apiType = draft.apiType === "Azure OpenAI" ? draft.apiType : "OpenAI";
+export function normalizeChatModelConfig(model: LooseModelConfig | null | undefined = {}): ChatModelConfig {
+  const draft = normalizeModelFormDraft(model);
+  const provider = draft.provider === "Azure OpenAI" || draft.provider === "Anthropic" || draft.provider === "Azure AI Foundry" ? draft.provider : "OpenAI";
   const modelType = String(draft.modelType || draft.model || "").trim();
-  const chatParamDefs = getModelChatParamDefs({ ...draft, apiType, modelType });
+  const chatParamDefs = getDefaultChatParamDefs(modelType, provider);
 
-  if (apiType === "Azure OpenAI") {
+  if (provider === "Azure OpenAI") {
     return {
       name: draft.name,
-      apiType,
+      provider,
       endpoint: draft.endpoint,
       deployment: draft.deployment,
       apiVersion: draft.apiVersion,
@@ -88,7 +98,7 @@ export function normalizeChatModelConfig(model: Partial<ModelDraftConfig> | null
 
   return {
     name: draft.name,
-    apiType,
+    provider,
     baseURL: draft.baseURL,
     apiKey: draft.apiKey,
     modelType,
@@ -100,18 +110,18 @@ export function normalizeChatModelConfig(model: Partial<ModelDraftConfig> | null
   };
 }
 
-export function normalizeImageModelConfig(model: Partial<ModelDraftConfig> | null | undefined = {}, imageOperation: ImageOperation = "generation"): ImageModelConfig {
-  const draft = normalizeModelDraft(model);
-  const apiType = draft.apiType === "Azure OpenAI" ? draft.apiType : "OpenAI";
+export function normalizeImageModelConfig(model: LooseModelConfig | null | undefined = {}, imageOperation: ImageOperation = "generation"): ImageModelConfig {
+  const draft = normalizeModelFormDraft(model);
+  const provider = draft.provider === "Azure OpenAI" ? draft.provider : "OpenAI";
   const modelType = String(draft.modelType || draft.model || "").trim();
-  const imageParamDefs = getModelImageParamDefs({ ...draft, apiType, modelType, imageOperation }).filter(
+  const imageParamDefs = getModelImageParamDefs({ provider, modelType, imageOperation, imageParamDefs: [] }).filter(
     (item) => imageOperation === "edit" || item.type !== "image",
   );
 
-  if (apiType === "Azure OpenAI") {
+  if (provider === "Azure OpenAI") {
     return {
       name: draft.name,
-      apiType,
+      provider,
       endpoint: draft.endpoint,
       deployment: draft.deployment,
       apiVersion: draft.apiVersion,
@@ -126,7 +136,7 @@ export function normalizeImageModelConfig(model: Partial<ModelDraftConfig> | nul
 
   return {
     name: draft.name,
-    apiType,
+    provider,
     baseURL: draft.baseURL,
     apiKey: draft.apiKey,
     modelType,
@@ -138,12 +148,14 @@ export function normalizeImageModelConfig(model: Partial<ModelDraftConfig> | nul
   };
 }
 
-export const apiTypeList: SelectOption<ApiType>[] = [
+export const providerList: SelectOption<ModelProvider>[] = [
   { value: "OpenAI", name: "OpenAI" },
   { value: "Azure OpenAI", name: "Azure OpenAI" },
+  { value: "Anthropic", name: "Anthropic Direct" },
+  { value: "Azure AI Foundry", name: "Azure AI Foundry" },
 ];
 
-export const imageApiTypeList: SelectOption<ApiType>[] = [
+export const imageModelProviderList: SelectOption<ModelProvider>[] = [
   { value: "OpenAI", name: "OpenAI" },
   { value: "Azure OpenAI", name: "Azure OpenAI" },
 ];
@@ -176,6 +188,9 @@ export const chatModelTypeList: ChatModelOption[] = [
   chatOption("gpt-4.1-nano", { webSearch: false, reasoning: false, imageRead: false }),
   chatOption("gpt-4o", { webSearch: true, reasoning: false, imageRead: true }),
   chatOption("gpt-4o-mini", { webSearch: false, reasoning: false, imageRead: true }),
+  chatOption("claude-opus-4-7", { webSearch: false, reasoning: false, imageRead: true }),
+  chatOption("claude-sonnet-4-6", { webSearch: false, reasoning: false, imageRead: true }),
+  chatOption("claude-haiku-4-5", { webSearch: false, reasoning: false, imageRead: true }),
 ];
 
 export const defaultModelCapabilities: ModelCapabilities = {
@@ -205,26 +220,27 @@ export const capabilityLabels: Record<keyof ModelCapabilities, string> = {
 export const chatTurnCapabilityKeys: (keyof ModelCapabilities)[] = ["webSearch", "reasoning"];
 export const chatDisplayedCapabilityKeys: (keyof ModelCapabilities)[] = ["reasoning", "webSearch", "imageRead"];
 
-export function getChatModelCapabilities(modelType = "", apiType = "OpenAI"): ModelCapabilities {
+export function getChatModelCapabilities(modelType = "", provider = "OpenAI"): ModelCapabilities {
   const normalizedType = (modelType || "").trim().toLowerCase();
-  const normalizedApiType = (apiType || "").trim().toLowerCase();
-  const isAzure = normalizedApiType === "azure openai";
+  const normalizedModelProvider = (provider || "").trim().toLowerCase();
+  const isAzure = normalizedModelProvider === "azure openai";
+  const isClaude = normalizedModelProvider === "anthropic" || normalizedModelProvider === "azure ai foundry" || /^claude-/.test(normalizedType);
   const isGpt5 = /^gpt-5(\.|-|$)/.test(normalizedType);
   const isGpt4 = /^gpt-4/.test(normalizedType);
   const isModernGpt = isGpt5 || isGpt4;
   const isMiniNano = /(-mini|-nano)$/.test(normalizedType);
   const isNano = /-nano$/.test(normalizedType);
-  const isReasoning = getChatModelInfo(modelType, apiType).isReasonModel;
+  const isReasoning = getChatModelInfo(modelType, provider).isReasonModel;
 
   return {
     ...defaultModelCapabilities,
-    imageRead: isModernGpt && !isNano,
-    imageInput: isModernGpt && !isNano,
-    fileInput: isGpt5 || /^gpt-4\.1/.test(normalizedType),
-    webSearch: isModernGpt && !isMiniNano,
-    reasoning: isGpt5 || isReasoning,
-    functionCalling: isModernGpt || isReasoning,
-    structuredOutput: isModernGpt || isReasoning,
+    imageRead: isClaude || (isModernGpt && !isNano),
+    imageInput: isClaude || (isModernGpt && !isNano),
+    fileInput: !isClaude && (isGpt5 || /^gpt-4\.1/.test(normalizedType)),
+    webSearch: !isClaude && isModernGpt && !isMiniNano,
+    reasoning: !isClaude && (isGpt5 || isReasoning),
+    functionCalling: isClaude || isModernGpt || isReasoning,
+    structuredOutput: isClaude || isModernGpt || isReasoning,
     imageGeneration: false,
   };
 }
@@ -272,19 +288,19 @@ export function getEffectiveCapabilities(
   return next;
 }
 
-export function createConversationModelSnapshot(model: Partial<ModelDraftConfig> | null | undefined): ConversationModelSnapshot | null {
+export function createConversationModelSnapshot(model: Partial<ModelFormDraft> | null | undefined): ConversationModelSnapshot | null {
   const normalizedModel = normalizeChatModelConfig(model);
   if (!normalizedModel?.name || !normalizedModel?.apiKey) return null;
 
-  const modelConfigId = `${normalizedModel.apiType}:${normalizedModel.name}:${normalizedModel.modelType}:${getModelDeployment(normalizedModel) || getModelRequestId(normalizedModel)}`;
-  const supportedCapabilities = getChatModelCapabilities(normalizedModel.modelType, normalizedModel.apiType);
+  const modelConfigId = `${normalizedModel.provider}:${normalizedModel.name}:${normalizedModel.modelType}:${getModelDeployment(normalizedModel) || getModelRequestId(normalizedModel)}`;
+  const supportedCapabilities = getChatModelCapabilities(normalizedModel.modelType, normalizedModel.provider);
   const enabledCapabilities = normalizeModelCapabilities((normalizedModel as any).enabledCapabilities, supportedCapabilities);
 
   return {
     modelConfigId,
     catalogModelId: normalizedModel.modelType,
     displayName: normalizedModel.name || normalizedModel.modelType,
-    provider: normalizedModel.apiType,
+    provider: normalizedModel.provider,
     request: isAzureChatModel(normalizedModel)
       ? {
           endpoint: normalizedModel.endpoint,
@@ -307,9 +323,9 @@ export function getModelFromSnapshot(snapshot: ConversationModelSnapshot | null 
   return snapshot?.modelConfig ? normalizeChatModelConfig(snapshot.modelConfig) : null;
 }
 
-export function getChatModelInfo(modelType = "", apiType = ""): ChatModelOption {
+export function getChatModelInfo(modelType = "", provider = ""): ChatModelOption {
   const normalizedType = (modelType || "").trim().toLowerCase();
-  const normalizedApiType = (apiType || "").trim().toLowerCase();
+  const normalizedModelProvider = (provider || "").trim().toLowerCase();
 
   const exactMatch = chatModelTypeList.find((item) => item.value === normalizedType);
   if (exactMatch) return exactMatch;
@@ -493,14 +509,18 @@ function getImageParamPreset(key = ""): LooseParamDef | null {
   return imageParamPresetList.find((item) => item.key === key) || null;
 }
 
-export function parseChatParamValue<T = ParamDefaultValue>(type: ModelParamType | string = "string", value: unknown = undefined, fallback: T = undefined as T): T {
+export function parseChatParamValue<T = ParamDefaultValue>(
+  type: ModelParamType | string = "string",
+  value: unknown = undefined,
+  fallback: T = undefined as T,
+): T {
   if (value === undefined || value === null || value === "") {
     return fallback;
   }
 
   if (type === "number") {
-      const nextValue = Number(value);
-      return (Number.isFinite(nextValue) ? nextValue : fallback) as T;
+    const nextValue = Number(value);
+    return (Number.isFinite(nextValue) ? nextValue : fallback) as T;
   }
 
   if (type === "boolean") {
@@ -592,13 +612,18 @@ export function normalizeImageParamDef(def: LooseParamDef = {}): ModelParamDef {
   };
 }
 
-export function getDefaultChatParamDefs(modelType = "", apiType = ""): ModelParamDef[] {
-  return getChatParamKeysForModel(modelType, apiType).map((key) => normalizeChatParamDef({ key }));
+export function getDefaultChatParamDefs(modelType = "", provider = ""): ModelParamDef[] {
+  return getChatParamKeysForModel(modelType, provider).map((key) => normalizeChatParamDef({ key }));
 }
 
-export function getChatParamKeysForModel(modelType = "", apiType = ""): string[] {
+export function getChatParamKeysForModel(modelType = "", provider = ""): string[] {
   const normalizedType = (modelType || "").trim().toLowerCase();
-  const modelInfo = getChatModelInfo(modelType, apiType);
+  const normalizedModelProvider = (provider || "").trim().toLowerCase();
+  const modelInfo = getChatModelInfo(modelType, provider);
+
+  if (normalizedModelProvider === "anthropic" || normalizedModelProvider === "azure ai foundry" || /^claude-/.test(normalizedType)) {
+    return ["max_tokens", "temperature", "top_p", "stop"];
+  }
 
   if (/^gpt-5(\.|-|$)/.test(normalizedType)) {
     return ["max_completion_tokens", "reasoning_effort", "verbosity"];
@@ -615,15 +640,16 @@ export function getChatParamKeysForModel(modelType = "", apiType = ""): string[]
   return ["temperature", "top_p", "frequency_penalty", "presence_penalty", "stop"];
 }
 
-export function isChatParamSupportedForModel(key = "", modelType = "", apiType = ""): boolean {
-  return getChatParamKeysForModel(modelType, apiType).includes(key);
+export function isChatParamSupportedForModel(key = "", modelType = "", provider = ""): boolean {
+  return getChatParamKeysForModel(modelType, provider).includes(key);
 }
 
 export function getModelChatParamDefs(model: LooseModelConfig = {}): ModelParamDef[] {
+  const provider = getLegacyProvider(model);
   const defs =
-    Array.isArray(model?.chatParamDefs) && model.chatParamDefs.length > 0 ? model.chatParamDefs : getDefaultChatParamDefs(model?.modelType, model?.apiType);
+    Array.isArray(model?.chatParamDefs) && model.chatParamDefs.length > 0 ? model.chatParamDefs : getDefaultChatParamDefs(model?.modelType, provider);
   const seen = new Set();
-  const supportedKeys = new Set(getChatParamKeysForModel(model?.modelType, model?.apiType));
+  const supportedKeys = new Set(getChatParamKeysForModel(model?.modelType, provider));
 
   return defs
     .map((item) => normalizeChatParamDef(item))
@@ -640,13 +666,14 @@ export function getDefaultImageEditParamDefs(): ModelParamDef[] {
 
 export function getModelImageParamDefs(model: LooseModelConfig = {}): ModelParamDef[] {
   const defaultDefs = model?.imageOperation === "edit" ? getDefaultImageEditParamDefs() : getDefaultImageParamDefs();
-  const configuredDefs = Array.isArray(model?.imageParamDefs) && model.imageParamDefs.length > 0 ? model.imageParamDefs : defaultDefs;
+  const supportedKeys = new Set(imageParamPresetList.map((item) => item.key).filter(Boolean));
+  const configuredDefs =
+    Array.isArray(model?.imageParamDefs) && model.imageParamDefs.length > 0
+      ? model.imageParamDefs.filter((item) => item.key && supportedKeys.has(item.key))
+      : defaultDefs;
   const defs =
     model?.imageOperation === "edit"
-      ? [
-          ...configuredDefs,
-          ...getDefaultImageEditParamDefs().filter((defaultDef) => !configuredDefs.some((item) => item.key === defaultDef.key)),
-        ]
+      ? [...configuredDefs, ...getDefaultImageEditParamDefs().filter((defaultDef) => !configuredDefs.some((item) => item.key === defaultDef.key))]
       : configuredDefs;
   const seen = new Set();
 
@@ -665,9 +692,17 @@ export function buildDefaultImageSettings(model: LooseModelConfig | null = null)
 }
 
 export function mergeImageSettingsWithModel(model: LooseModelConfig | null = null, settings: Partial<ImageModelSettings> = {}): ImageModelSettings {
+  const coreSettings: Partial<ImageModelSettings> = {
+    model: settings.model ?? null,
+    prompt: typeof settings.prompt === "string" ? settings.prompt : defImageModelSeting.prompt,
+    size: typeof settings.size === "string" && settings.size ? settings.size : defImageModelSeting.size,
+    image: settings.image ?? null,
+    mask: settings.mask ?? null,
+    n: settings.n ?? defImageModelSeting.n,
+  };
   const mergedSettings = {
     ...buildDefaultImageSettings(model),
-    ...(settings || {}),
+    ...coreSettings,
   };
 
   const defs = getModelImageParamDefs(model || {});
@@ -712,9 +747,13 @@ export function buildDefaultChatSettings(model: LooseModelConfig | null = null):
 }
 
 export function mergeChatSettingsWithModel(model: LooseModelConfig | null = null, settings: Partial<ChatModelSettings> = {}): ChatModelSettings {
+  const coreSettings: Partial<ChatModelSettings> = {
+    prompts: Array.isArray(settings.prompts) ? settings.prompts : undefined,
+    passedMsgLen: settings.passedMsgLen,
+  };
   const mergedSettings = {
     ...buildDefaultChatSettings(model),
-    ...(settings || {}),
+    ...coreSettings,
   };
 
   const defs = getModelChatParamDefs(model || {});

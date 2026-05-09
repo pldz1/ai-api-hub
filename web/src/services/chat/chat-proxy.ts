@@ -1,6 +1,15 @@
 import store from "@/store";
 import { dsAlert } from "@/utils";
-import { buildChatCompletionParams, getChatModelInfo, getModelDeployment, getModelFromSnapshot, getModelRequestId, isAzureChatModel, isOpenAIChatModel } from "@/constants";
+import {
+  buildChatCompletionParams,
+  getChatModelInfo,
+  getModelDeployment,
+  getModelFromSnapshot,
+  getModelRequestId,
+  isAnthropicChatModel,
+  isAzureChatModel,
+  isOpenAIChatModel,
+} from "@/constants";
 import { tr } from "@/i18n";
 import type { ChatModelConfig, ModelCapabilities } from "@/types/model";
 import type { ChatCallback, ChatPromptMessage, PackedChatMessage } from "@/services/types";
@@ -28,7 +37,7 @@ export class ChatProxy {
     const actModel = model || getModelFromSnapshot(store.state.curConversation?.modelSnapshot) || store.state.curChatModel;
     if (!actModel) return;
 
-    if (isOpenAIChatModel(actModel) || isAzureChatModel(actModel)) {
+    if (isOpenAIChatModel(actModel) || isAzureChatModel(actModel) || isAnthropicChatModel(actModel)) {
       const config = createChatProviderConfig(actModel as ChatModelConfig);
       this.executor = config ? createChatExecutor(config) : null;
     }
@@ -53,7 +62,7 @@ export class ChatProxy {
       return false;
     }
 
-    const modelInfo = getChatModelInfo(model.modelType, model.apiType);
+    const modelInfo = getChatModelInfo(model.modelType, model.provider);
     const turnCapabilities: Partial<ModelCapabilities> = data[data.length - 1]?.meta?.usedCapabilities || {};
 
     try {

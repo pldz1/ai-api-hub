@@ -9,7 +9,7 @@ export { buildOpenAIImageRequest, generateOpenAIImage } from "./openai";
 
 export async function generateImageByProvider(model: ImageProviderModel, params: ImageGenerationParams): Promise<ImageGenerationResult> {
   try {
-    if (model?.apiType === "Azure OpenAI") {
+    if (model?.provider === "Azure OpenAI") {
       return await generateAzureOpenAIImage(model, params);
     }
 

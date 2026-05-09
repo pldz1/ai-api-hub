@@ -1,15 +1,72 @@
-// @ts-nocheck
-import { AzureOpenAI, OpenAI } from "openai";
 import { normalizeUsage } from "./usage";
+import { requestJson, streamJsonEvents, type JsonObject } from "./sse-client";
 import type { ChatCallback, ChatProviderResponse, PackedChatMessage } from "@/services/types";
 
-/**
- * Azure OpenAI chat provider client.
- *
- * Uses Azure chat completions for normal turns and an OpenAI-compatible
- * Responses client for web-search-enabled turns.
- */
+function trimTrailingSlash(value = ""): string {
+  return String(value || "").replace(/\/+$/, "");
+}
+
+function appendApiVersion(url: string, apiVersion: string): string {
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}api-version=${encodeURIComponent(apiVersion)}`;
+}
+
+function messagesToResponsesInput(messages: PackedChatMessage[]): string {
+  return messages
+    .map((message) => {
+      const text = Array.isArray(message.content)
+        ? message.content
+            .map((part) => {
+              if (part.type === "text") return part.text || "";
+              if (part.type === "image_url") return "[Image input attached]";
+              return "";
+            })
+            .filter(Boolean)
+            .join("\n")
+        : String(message.content || "");
+      return `${message.role}: ${text}`;
+    })
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function normalizeAzureParams(params: Record<string, unknown> = {}, stream = true): JsonObject {
+  const { stream: _stream, stream_options, webSearch, reasoningBoost, ...requestParams } = params || {};
+  if (reasoningBoost && "reasoning_effort" in requestParams) requestParams.reasoning_effort = "high";
+  if (stream && stream_options) requestParams.stream_options = stream_options;
+  return requestParams;
+}
+
+function responseFromChatChunk(chunk: JsonObject): ChatProviderResponse {
+  const choice = Array.isArray(chunk.choices) ? (chunk.choices[0] as JsonObject | undefined) : undefined;
+  const delta = (choice?.delta || {}) as JsonObject;
+
+  return {
+    flag: true,
+    content: String(delta.content || ""),
+    reasoning_content: String(delta.reasoning_content || ""),
+    usage: normalizeUsage(chunk.usage as JsonObject | null | undefined),
+  };
+}
+
+function responseFromChatCompletion(data: JsonObject): ChatProviderResponse {
+  const choice = Array.isArray(data.choices) ? (data.choices[0] as JsonObject | undefined) : undefined;
+  const message = (choice?.message || {}) as JsonObject;
+
+  return {
+    flag: true,
+    content: String(message.content || ""),
+    reasoning_content: String(message.reasoning_content || ""),
+    usage: normalizeUsage(data.usage as JsonObject | null | undefined),
+  };
+}
+
 export class AzureOpenAIClient {
+  endpoint = "";
+  apiKey = "";
+  deployment = "";
+  apiVersion = "";
+
   constructor(endpoint: string, apiKey: string, deploymentName: string, apiVersion: string) {
     this.init(endpoint, apiKey, deploymentName, apiVersion);
   }
@@ -19,28 +76,10 @@ export class AzureOpenAIClient {
     this.apiKey = apiKey;
     this.deployment = deploymentName;
     this.apiVersion = apiVersion;
-
-    this.client = null;
-    this.responsesClient = null;
-
-    if (apiKey && apiVersion) {
-      this.client = new AzureOpenAI({
-        endpoint,
-        apiKey,
-        deployment: deploymentName,
-        apiVersion,
-        dangerouslyAllowBrowser: true,
-      });
-      this.responsesClient = new OpenAI({
-        baseURL: `${String(endpoint || "").replace(/\/+$/, "")}/openai/v1/`,
-        apiKey,
-        dangerouslyAllowBrowser: true,
-      });
-    }
   }
 
   update(endpoint: string, apiKey: string, deploymentName: string, apiVersion: string): void {
-    if (endpoint !== this.endpoint || apiKey !== this.apiKey || deploymentName !== this.deployment || apiVersion != this.apiVersion) {
+    if (endpoint !== this.endpoint || apiKey !== this.apiKey || deploymentName !== this.deployment || apiVersion !== this.apiVersion) {
       this.init(endpoint, apiKey, deploymentName, apiVersion);
     }
   }
@@ -50,32 +89,29 @@ export class AzureOpenAIClient {
     this.apiKey = "";
     this.deployment = "";
     this.apiVersion = "";
-    this.client = null;
-    this.responsesClient = null;
   }
 
-  getResponsesParams(messages: PackedChatMessage[], params: Record<string, unknown> = {}): Record<string, unknown> {
-    const { max_completion_tokens, max_tokens, reasoning_effort, reasoningBoost, verbosity } = params || {};
-    const input = messages
-      .map((message) => {
-        const text = Array.isArray(message.content)
-          ? message.content
-              .map((part) => {
-                if (part.type === "text") return part.text || "";
-                if (part.type === "image_url") return "[Image input attached]";
-                return "";
-              })
-              .filter(Boolean)
-              .join("\n")
-          : String(message.content || "");
-        return `${message.role}: ${text}`;
-      })
-      .filter(Boolean)
-      .join("\n\n");
+  getHeaders(): Record<string, string> {
+    return {
+      "api-key": this.apiKey,
+    };
+  }
 
-    const responseParams = {
+  getChatCompletionsUrl(): string {
+    const path = `${trimTrailingSlash(this.endpoint)}/openai/deployments/${encodeURIComponent(this.deployment)}/chat/completions`;
+    return appendApiVersion(path, this.apiVersion);
+  }
+
+  getResponsesUrl(): string {
+    const path = `${trimTrailingSlash(this.endpoint)}/openai/v1/responses`;
+    return appendApiVersion(path, this.apiVersion);
+  }
+
+  getResponsesParams(messages: PackedChatMessage[], params: Record<string, unknown> = {}): JsonObject {
+    const { max_completion_tokens, max_tokens, reasoning_effort, reasoningBoost, verbosity } = params || {};
+    const responseParams: JsonObject = {
       model: this.deployment,
-      input,
+      input: messagesToResponsesInput(messages),
       tools: [{ type: "web_search" }],
     };
 
@@ -87,19 +123,22 @@ export class AzureOpenAIClient {
   }
 
   async chatWithWebSearch(messages: PackedChatMessage[], params: Record<string, unknown> = {}, callback: ChatCallback | null = null): Promise<void> {
-    if (this.responsesClient == null) {
+    if (!this.apiKey || !this.deployment || !this.apiVersion) {
       if (callback) await callback({ flag: false, content: "模型初始化失败, 无法向服务器发送消息.", reasoning_content: "" });
       return;
     }
 
     try {
-      const response = await this.responsesClient.responses.create(this.getResponsesParams(messages, params));
+      const response = await requestJson<JsonObject>(this.getResponsesUrl(), {
+        headers: this.getHeaders(),
+        body: this.getResponsesParams(messages, params),
+      });
       if (callback) {
         await callback({
           flag: true,
-          content: response.output_text || "",
+          content: String(response.output_text || ""),
           reasoning_content: "",
-          usage: normalizeUsage(response.usage),
+          usage: normalizeUsage(response.usage as JsonObject | null | undefined),
         });
       }
     } catch (err) {
@@ -107,66 +146,47 @@ export class AzureOpenAIClient {
     }
   }
 
-  /**
-   * Stream chat completion chunks from the Azure OpenAI client.
-   */
-  async *chatStream(messages: PackedChatMessage[], params: Record<string, unknown>): AsyncGenerator<ChatProviderResponse | string> {
-    if (this.client == null) {
-      yield "模型初始化失败, 无法向服务器发送消息.";
+  async chatStream(messages: PackedChatMessage[], params: Record<string, unknown>, callback: ChatCallback | null = null): Promise<void> {
+    if (!this.apiKey || !this.deployment || !this.apiVersion) {
+      if (callback) await callback({ flag: false, content: "模型初始化失败, 无法向服务器发送消息.", reasoning_content: "" });
       return;
     }
 
     try {
-      const { webSearch, reasoningBoost, ...requestParams } = params || {};
-      if (reasoningBoost && "reasoning_effort" in requestParams) requestParams.reasoning_effort = "high";
-      const results = await this.client.chat.completions.create({
-        messages: messages,
-        ...requestParams,
+      await streamJsonEvents(this.getChatCompletionsUrl(), {
+        headers: this.getHeaders(),
+        body: {
+          messages,
+          ...normalizeAzureParams(params, true),
+          stream: true,
+        },
+        async onEvent(chunk) {
+          if (callback) await callback(responseFromChatChunk(chunk));
+        },
       });
-
-      for await (const chunk of results) {
-        yield {
-          flag: true,
-          content: chunk.choices[0]?.delta?.content || "",
-          reasoning_content: chunk.choices[0]?.delta?.reasoning_content || "",
-          usage: normalizeUsage(chunk.usage),
-        };
-      }
     } catch (err) {
-      yield { flag: false, content: String(err), reasoning_content: "" };
+      if (callback) await callback({ flag: false, content: String(err), reasoning_content: "" });
     }
   }
 
-  /**
-   * Request a non-streaming chat completion.
-   */
-  async chatSync(messages: PackedChatMessage[], params: Record<string, unknown>): Promise<ChatProviderResponse | string> {
-    if (this.client == null) {
-      return "模型初始化失败, 无法向服务器发送消息.";
-    }
+  async chatSync(messages: PackedChatMessage[], params: Record<string, unknown>): Promise<ChatProviderResponse> {
+    if (!this.apiKey || !this.deployment || !this.apiVersion) return { flag: false, content: "模型初始化失败, 无法向服务器发送消息.", reasoning_content: "" };
 
     try {
-      const { webSearch, reasoningBoost, ...requestParams } = params || {};
-      if (reasoningBoost && "reasoning_effort" in requestParams) requestParams.reasoning_effort = "high";
-      const results = await this.client.chat.completions.create({
-        messages: messages,
-        ...requestParams,
+      const response = await requestJson<JsonObject>(this.getChatCompletionsUrl(), {
+        headers: this.getHeaders(),
+        body: {
+          messages,
+          ...normalizeAzureParams(params, false),
+          stream: false,
+        },
       });
-
-      return {
-        flag: true,
-        content: results.choices[0]?.message?.content || "",
-        reasoning_content: results.choices[0]?.message?.reasoning_content || "",
-        usage: normalizeUsage(results.usage),
-      };
+      return responseFromChatCompletion(response);
     } catch (err) {
       return { flag: false, content: String(err), reasoning_content: "" };
     }
   }
 
-  /**
-   * Run a chat request and forward responses to the callback.
-   */
   async chat(messages: PackedChatMessage[], params: Record<string, unknown> = {}, callback: ChatCallback | null = null): Promise<void> {
     const { webSearch, ...nextParams } = params || {};
     if (webSearch) {
@@ -174,14 +194,12 @@ export class AzureOpenAIClient {
       return;
     }
 
-    if (nextParams?.stream) {
-      for await (const response of this.chatStream(messages, nextParams)) {
-        if (callback) await callback(response);
-      }
-    } else {
-      const response = await this.chatSync(messages, nextParams);
-      if (callback) await callback(response);
+    if (nextParams.stream !== false) {
+      await this.chatStream(messages, nextParams, callback);
+      return;
     }
-  }
 
+    const response = await this.chatSync(messages, nextParams);
+    if (callback) await callback(response);
+  }
 }

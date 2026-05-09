@@ -1,12 +1,7 @@
 <template>
   <div class="image-studio" ref="dsAlertContainer">
     <div class="image-studio-main">
-      <ImageSettingsPanel
-        :mode="mode"
-        :settings="imageModelSettings"
-        :image-models="imageModels"
-        @update:settings="updateImageSettings"
-      />
+      <ImageSettingsPanel :mode="mode" :settings="imageModelSettings" :image-models="imageModels" @update:settings="updateImageSettings" />
 
       <ImagePreviewPanel
         ref="previewPanelRef"
@@ -44,8 +39,6 @@
       />
     </div>
   </div>
-
-  <ImageGenerationSettings :mode="mode" :model="imageModelSettings.model" :settings="imageModelSettings" @update:settings="updateImageSettings" />
 </template>
 
 <script setup>
@@ -55,7 +48,6 @@ import { useI18n } from "vue-i18n";
 import { buildDefaultImageSettings, buildImageGenerationParams, defImageModelSeting, getModelImageParamDefs, mergeImageSettingsWithModel } from "@/constants";
 import { deleteImage, generateImage, getImageList, pushImage } from "@/services";
 import { copyToClipboard, dsAlert, saveToLocal } from "@/utils";
-import ImageGenerationSettings from "@/views/image/components/ImageGenerationSettings.vue";
 import ImagePreviewPanel from "@/views/image/components/ImagePreviewPanel.vue";
 import ImageSettingsPanel from "@/views/image/components/ImageSettingsPanel.vue";
 import ImageWorkspacePanel from "@/views/image/components/ImageWorkspacePanel.vue";
@@ -180,13 +172,10 @@ const convertImageBlobToPng = (blob) => {
       canvas.height = image.naturalHeight || image.height;
       const ctx = canvas.getContext("2d");
       ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(
-        (pngBlob) => {
-          URL.revokeObjectURL(objectUrl);
-          pngBlob ? resolve(pngBlob) : reject(new Error("PNG conversion failed"));
-        },
-        "image/png",
-      );
+      canvas.toBlob((pngBlob) => {
+        URL.revokeObjectURL(objectUrl);
+        pngBlob ? resolve(pngBlob) : reject(new Error("PNG conversion failed"));
+      }, "image/png");
     };
     image.onerror = () => {
       URL.revokeObjectURL(objectUrl);

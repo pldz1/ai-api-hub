@@ -26,14 +26,15 @@
         >
           <div class="settings-list-title-row">
             <div class="settings-list-title">{{ imageModel.name || t("common.unnamedModel") }}</div>
-            <span class="api-chip">{{ modelApiLabel(imageModel) }}</span>
+            <span class="provider-chip">{{ modelProviderLabel(imageModel) }}</span>
           </div>
           <div class="settings-list-meta">
             <span>{{ imageModel.baseURL || t("user.modelCard.fields.imageUrl") }}</span>
           </div>
           <div class="settings-list-badges">
-            <span>{{ modelParamCount(imageModel) }} {{ t("user.imageModels.paramsBadge") }}</span>
-            <span :class="{ active: supportsImageInput(imageModel) }">{{ supportsImageInput(imageModel) ? t("user.imageModels.inputImageBadge") : t("user.imageModels.textOnlyBadge") }}</span>
+            <span :class="{ active: supportsImageInput(imageModel) }">{{
+              supportsImageInput(imageModel) ? t("user.imageModels.inputImageBadge") : t("user.imageModels.textOnlyBadge")
+            }}</span>
           </div>
         </button>
         <div v-if="props.models.length === 0" class="settings-empty-list">
@@ -53,7 +54,13 @@
             </button>
           </div>
 
-          <ModelEditCard :model="currentModel" :model-suggestions="imageModelTypeList" model-kind="image" :image-operation="modelOperation" @update:model="updateCurrentModel" />
+          <ModelEditCard
+            :model="currentModel"
+            :model-suggestions="imageModelTypeList"
+            model-kind="image"
+            :image-operation="modelOperation"
+            @update:model="updateCurrentModel"
+          />
         </template>
 
         <div v-else class="settings-empty-detail">
@@ -67,7 +74,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { defModelType, imageModelTypeList, normalizeImageModelConfig } from "@/constants";
+import { defaultModelFormDraft, getModelImageParamDefs, imageModelTypeList, normalizeImageModelConfig } from "@/constants";
 import { append4Random } from "@/utils";
 import ModelEditCard from "@/views/setting/components/ModelEditCard.vue";
 import type { ImageModelConfig, ImageOperation, ModelConfig } from "@/types/model";
@@ -100,15 +107,13 @@ const currentModel = computed(() => {
 const detailSummary = computed(() => {
   if (!currentModel.value) return "";
   const modelId = currentModel.value.modelType || currentModel.value.model || t("common.unsetModelId");
-  return `${modelApiLabel(currentModel.value)} · ${currentModel.value.baseURL || modelId}`;
+  return `${modelProviderLabel(currentModel.value)} · ${currentModel.value.baseURL || modelId}`;
 });
 
-const modelApiLabel = (model: ImageModelConfig) => model?.apiType || "OpenAI";
-
-const modelParamCount = (model: ImageModelConfig) => (Array.isArray(model?.imageParamDefs) ? model.imageParamDefs.length : 0);
+const modelProviderLabel = (model: ImageModelConfig) => model?.provider || "OpenAI";
 
 const supportsImageInput = (model: ImageModelConfig) => {
-  return Array.isArray(model?.imageParamDefs) && model.imageParamDefs.some((item) => item.type === "image");
+  return getModelImageParamDefs(model).some((item) => item.type === "image");
 };
 
 const selectIndex = (index: number) => {
@@ -130,9 +135,9 @@ const updateCurrentModel = (nextModel: ModelConfig) => {
 const addImageModel = () => {
   const nextModel = normalizeImageModelConfig(
     {
-      ...defModelType,
+      ...defaultModelFormDraft,
       name: append4Random("图像模型"),
-      apiType: "OpenAI",
+      provider: "OpenAI",
       baseURL: "https://api.openai.com/v1",
       modelType: "",
       model: "",
@@ -194,7 +199,7 @@ watch(
   gap: 10px;
 }
 
-.api-chip {
+.provider-chip {
   flex: 0 0 auto;
   border-radius: 999px;
   padding: 3px 8px;

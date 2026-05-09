@@ -1,5 +1,5 @@
-export type ApiType = "OpenAI" | "Azure OpenAI" | "";
-export type ChatApiType = Exclude<ApiType, "">;
+export type ModelProvider = "OpenAI" | "Azure OpenAI" | "Anthropic" | "Azure AI Foundry" | "";
+export type ChatModelProvider = Exclude<ModelProvider, "">;
 export type ModelKind = "chat" | "image";
 export type ImageOperation = "generation" | "edit";
 export type ChatMessageRole = "system" | "user" | "assistant";
@@ -49,18 +49,27 @@ export interface ModelParamDef {
   step: number;
 }
 
-export interface BaseModelConfig {
+export interface ModelConfigBase {
   name: string;
   apiKey: string;
   modelType: string;
-  chatParamDefs: ModelParamDef[];
-  imageParamDefs: ModelParamDef[];
-  imageOperation: ImageOperation | "";
   enabledCapabilities?: Partial<ModelCapabilities>;
 }
 
-export interface OpenAIChatModelConfig extends BaseModelConfig {
-  apiType: "OpenAI";
+export interface ChatModelBase extends ModelConfigBase {
+  chatParamDefs: ModelParamDef[];
+  imageParamDefs?: [];
+  imageOperation?: "";
+}
+
+export interface ImageModelBase extends ModelConfigBase {
+  chatParamDefs?: [];
+  imageParamDefs: ModelParamDef[];
+  imageOperation: ImageOperation;
+}
+
+export interface OpenAIModelProviderConfig {
+  provider: "OpenAI";
   baseURL: string;
   model: string;
   endpoint?: "";
@@ -68,8 +77,8 @@ export interface OpenAIChatModelConfig extends BaseModelConfig {
   apiVersion?: "";
 }
 
-export interface AzureChatModelConfig extends BaseModelConfig {
-  apiType: "Azure OpenAI";
+export interface AzureOpenAIModelProviderConfig {
+  provider: "Azure OpenAI";
   endpoint: string;
   deployment: string;
   apiVersion: string;
@@ -77,35 +86,27 @@ export interface AzureChatModelConfig extends BaseModelConfig {
   model?: "";
 }
 
-export interface OpenAIImageModelConfig extends BaseModelConfig {
-  apiType: "OpenAI";
+export interface AnthropicModelProviderConfig {
+  provider: "Anthropic" | "Azure AI Foundry";
   baseURL: string;
   model: string;
   endpoint?: "";
   deployment?: "";
   apiVersion?: "";
-  imageOperation: ImageOperation;
 }
 
-export interface AzureImageModelConfig extends BaseModelConfig {
-  apiType: "Azure OpenAI";
-  endpoint: string;
-  deployment: string;
-  apiVersion: string;
-  baseURL?: "";
-  model?: "";
-  imageOperation: ImageOperation;
-}
-
-export type ChatModelConfig = OpenAIChatModelConfig | AzureChatModelConfig;
-export type ImageModelConfig = OpenAIImageModelConfig | AzureImageModelConfig;
+export type ChatModelConfig =
+  | (ChatModelBase & OpenAIModelProviderConfig)
+  | (ChatModelBase & AzureOpenAIModelProviderConfig)
+  | (ChatModelBase & AnthropicModelProviderConfig);
+export type ImageModelConfig = (ImageModelBase & OpenAIModelProviderConfig) | (ImageModelBase & AzureOpenAIModelProviderConfig);
 export type ModelConfig = ChatModelConfig | ImageModelConfig;
 
 export interface ConversationModelSnapshot {
   modelConfigId: string;
   catalogModelId: string;
   displayName: string;
-  provider: ChatApiType;
+  provider: ChatModelProvider;
   request: {
     model?: string;
     baseURL?: string;
@@ -135,15 +136,27 @@ export interface AzureOpenAIProviderConfig {
   apiVersion: string;
 }
 
-export type ChatProviderConfig = OpenAIProviderConfig | AzureOpenAIProviderConfig;
+export interface AnthropicProviderConfig {
+  provider: "Anthropic" | "Azure AI Foundry";
+  baseURL: string;
+  apiKey: string;
+  model: string;
+}
 
-export interface ModelDraftConfig extends BaseModelConfig {
-  apiType: ApiType;
+export type ChatProviderConfig = OpenAIProviderConfig | AzureOpenAIProviderConfig | AnthropicProviderConfig;
+
+export interface ModelFormDraft {
+  name: string;
+  provider: ModelProvider;
   baseURL: string;
   endpoint: string;
+  apiKey: string;
+  modelType: string;
   model: string;
   deployment: string;
   apiVersion: string;
+  imageOperation: ImageOperation | "";
+  enabledCapabilities?: Partial<ModelCapabilities>;
 }
 
 export interface ModelSettings {
@@ -151,7 +164,7 @@ export interface ModelSettings {
   imageGeneration: ImageModelConfig[];
   imageEdit: ImageModelConfig[];
   image: ImageModelConfig[];
-  rtaudio: ModelDraftConfig[];
+  rtaudio: ModelFormDraft[];
 }
 
 export interface PromptContent {

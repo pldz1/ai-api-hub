@@ -1,10 +1,12 @@
-import { getModelDeployment, getModelRequestId, isAzureChatModel, isOpenAIChatModel } from "@/constants";
+import { getModelDeployment, getModelRequestId, isAnthropicChatModel, isAzureChatModel, isOpenAIChatModel } from "@/constants";
 import type { ChatModelConfig, ChatProviderConfig } from "@/types/model";
 import type { ChatCallback, PackedChatMessage } from "@/services/types";
 
 import { AzureOpenAIClient } from "./azure-openai";
+import { AnthropicClient } from "./anthropic";
 import { OpenAIClient } from "./openai";
 
+export { AnthropicClient } from "./anthropic";
 export { AzureOpenAIClient } from "./azure-openai";
 export { DeepSeekClient } from "./deepseek";
 export { OpenAIClient } from "./openai";
@@ -37,12 +39,25 @@ export function createChatProviderConfig(model: ChatModelConfig): ChatProviderCo
     };
   }
 
+  if (isAnthropicChatModel(model)) {
+    return {
+      provider: model.provider,
+      baseURL: model.baseURL,
+      apiKey: model.apiKey,
+      model: getModelRequestId(model),
+    };
+  }
+
   return null;
 }
 
 export function createChatExecutor(config: ChatProviderConfig): ChatExecutor {
   if (config.provider === "Azure OpenAI") {
     return new AzureOpenAIClient(config.endpoint, config.apiKey, config.deploymentName, config.apiVersion);
+  }
+
+  if (config.provider === "Anthropic" || config.provider === "Azure AI Foundry") {
+    return new AnthropicClient(config.baseURL, config.apiKey, config.model, config.provider);
   }
 
   return new OpenAIClient(config.baseURL, config.apiKey, config.model);

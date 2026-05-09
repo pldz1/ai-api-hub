@@ -117,14 +117,16 @@ export const getModelSettingValidationError = (data) => {
   };
 
   const validateChatModel = (item, key, index) => {
-    if (!["OpenAI", "Azure OpenAI", ""].includes(item.apiType)) {
-      return `${key}[${index}] apiType 无效`;
+    const provider = item.provider || item.apiType || "";
+    if (!["OpenAI", "Azure OpenAI", "Anthropic", "Azure AI Foundry", ""].includes(provider)) {
+      return `${key}[${index}] provider 无效`;
     }
 
-    const commonError = requireFields(item, ["name", "apiType", "apiKey", "modelType", "chatParamDefs"], key, index);
+    const commonError = requireFields(item, ["name", "apiKey", "modelType", "chatParamDefs"], key, index);
     if (commonError) return commonError;
+    if (!("provider" in item) && !("apiType" in item)) return `${key}[${index}] 缺少字段: provider`;
 
-    if (item.apiType === "Azure OpenAI") {
+    if (provider === "Azure OpenAI") {
       return requireFields(item, ["endpoint", "deployment", "apiVersion"], key, index);
     }
 
@@ -132,21 +134,28 @@ export const getModelSettingValidationError = (data) => {
   };
 
   const validateImageModel = (item, key, index) => {
-    if (!["OpenAI", "Azure OpenAI", ""].includes(item.apiType)) {
-      return `${key}[${index}] apiType 无效`;
+    const provider = item.provider || item.apiType || "";
+    if (!["OpenAI", "Azure OpenAI", ""].includes(provider)) {
+      return `${key}[${index}] provider 无效`;
     }
 
-    const commonError = requireFields(item, ["name", "apiType", "apiKey", "imageParamDefs", "imageOperation"], key, index);
+    const commonError = requireFields(item, ["name", "apiKey", "imageParamDefs", "imageOperation"], key, index);
     if (commonError) return commonError;
+    if (!("provider" in item) && !("apiType" in item)) return `${key}[${index}] 缺少字段: provider`;
 
-    if (item.apiType === "Azure OpenAI") {
+    if (provider === "Azure OpenAI") {
       return requireFields(item, ["endpoint", "deployment", "apiVersion"], key, index);
     }
 
     return requireFields(item, ["baseURL", "model"], key, index);
   };
 
-  for (const key of [...expectedKeys, ...(hasLegacyImage ? ["image"] : []), ...(hasImageGeneration ? ["imageGeneration"] : []), ...(hasImageEdit ? ["imageEdit"] : [])]) {
+  for (const key of [
+    ...expectedKeys,
+    ...(hasLegacyImage ? ["image"] : []),
+    ...(hasImageGeneration ? ["imageGeneration"] : []),
+    ...(hasImageEdit ? ["imageEdit"] : []),
+  ]) {
     for (let index = 0; index < data[key].length; index++) {
       const item = data[key][index];
       if (!item || typeof item !== "object") {

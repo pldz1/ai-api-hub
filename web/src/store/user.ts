@@ -1,4 +1,4 @@
-import { defModelType, normalizeChatModelConfig, normalizeImageModelConfig } from "@/constants";
+import { defaultModelFormDraft, normalizeChatModelConfig, normalizeImageModelConfig } from "@/constants";
 
 const USER_SESSION_KEY = "ai.api.hub.workspace-session.v1";
 export const WORKSPACE_ID = "__workspace__";
@@ -73,7 +73,7 @@ export const UserState = {
   /**
    * 当前的对话模型信息
    */
-  curChatModel: structuredClone(defModelType),
+  curChatModel: structuredClone(defaultModelFormDraft),
 
   /**
    * 当前工作区有的对话指令
@@ -123,7 +123,7 @@ export const UserState = {
         if (kind === "chat") return normalizeChatModelConfig(item);
         if (kind === "image") return normalizeImageModelConfig(item, imageOperation || item?.imageOperation || "generation");
         return {
-          ...structuredClone(defModelType),
+          ...structuredClone(defaultModelFormDraft),
           ...item,
         };
       });
@@ -151,7 +151,7 @@ export const UserState = {
    * 设置当前对话模型的信息
    */
   setCurChatModel(data) {
-    this.curChatModel = data ? normalizeChatModelConfig(data) : structuredClone(defModelType);
+    this.curChatModel = data ? normalizeChatModelConfig(data) : structuredClone(defaultModelFormDraft);
   },
 
   /**

@@ -1,7 +1,7 @@
 import { requestStorage } from "@/services/storage";
 import type { ApiMethod, ApiResponse, RequestBody, RequestHeaders } from "@/services/types";
 
-const LONGTIME = 180000;
+const LONGTIME = 3600000;
 
 /**
  * Service-layer transport adapter.

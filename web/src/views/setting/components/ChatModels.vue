@@ -26,7 +26,7 @@
         >
           <div class="settings-list-title">{{ chatModel.name || t("common.unnamedModel") }}</div>
           <div class="settings-list-meta">
-            <span>{{ chatModel.apiType || t("common.unsetApi") }}</span>
+            <span>{{ chatModel.provider || t("common.unsetProvider") }}</span>
             <span>{{ chatModel.modelType || t("common.unsetModelId") }}</span>
           </div>
         </button>
@@ -40,7 +40,7 @@
           <div class="detail-toolbar">
             <div>
               <h3>{{ currentModel.name || t("common.unnamedModel") }}</h3>
-              <p>{{ currentModel.apiType || t("user.chatModels.apiTypeHint") }}</p>
+              <p>{{ currentModel.provider || t("user.chatModels.providerHint") }}</p>
             </div>
             <button class="btn btn-outline btn-error" @click="deleteChatModel">
               {{ t("user.chatModels.delete") }}
@@ -61,7 +61,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { defModelType, chatModelTypeList, normalizeChatModelConfig } from "@/constants";
+import { defaultModelFormDraft, chatModelTypeList, normalizeChatModelConfig } from "@/constants";
 import { append4Random } from "@/utils";
 import ModelEditCard from "@/views/setting/components/ModelEditCard.vue";
 import type { ChatModelConfig, ModelConfig } from "@/types/model";
@@ -99,9 +99,9 @@ const updateCurrentModel = (nextModel: ModelConfig) => {
 
 const addChatModel = () => {
   const nextModel = normalizeChatModelConfig({
-    ...defModelType,
+    ...defaultModelFormDraft,
     name: append4Random("对话模型"),
-    apiType: "OpenAI",
+    provider: "OpenAI",
     baseURL: "https://api.openai.com/v1",
     modelType: "gpt-5.5",
     model: "gpt-5.5",
