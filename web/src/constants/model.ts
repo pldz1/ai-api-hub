@@ -11,6 +11,7 @@ import type {
   ModelFormDraft,
   ModelParamDef,
   ModelParamType,
+  ModelSettings,
   ParamDefaultValue,
   SelectOption,
 } from "@/types/model";
@@ -26,6 +27,10 @@ type LooseModelConfig = Partial<ModelFormDraft> &
     chatParamDefs?: ModelParamDef[];
     imageParamDefs?: ModelParamDef[];
   };
+type LooseModelSettings = Partial<ModelSettings> & {
+  image?: unknown[];
+  rtaudio?: unknown[];
+};
 
 export const defaultModelFormDraft: ModelFormDraft = {
   name: "",
@@ -78,7 +83,7 @@ export function normalizeChatModelConfig(model: LooseModelConfig | null | undefi
   const draft = normalizeModelFormDraft(model);
   const provider = draft.provider === "Azure OpenAI" || draft.provider === "Anthropic" || draft.provider === "Azure AI Foundry" ? draft.provider : "OpenAI";
   const modelType = String(draft.modelType || draft.model || "").trim();
-  const chatParamDefs = getDefaultChatParamDefs(modelType, provider);
+  const chatParamDefs = getModelChatParamDefs({ ...(model || {}), provider, modelType });
 
   if (provider === "Azure OpenAI") {
     return {
@@ -114,7 +119,7 @@ export function normalizeImageModelConfig(model: LooseModelConfig | null | undef
   const draft = normalizeModelFormDraft(model);
   const provider = draft.provider === "Azure OpenAI" ? draft.provider : "OpenAI";
   const modelType = String(draft.modelType || draft.model || "").trim();
-  const imageParamDefs = getModelImageParamDefs({ provider, modelType, imageOperation, imageParamDefs: [] }).filter(
+  const imageParamDefs = getModelImageParamDefs({ ...(model || {}), provider, modelType, imageOperation }).filter(
     (item) => imageOperation === "edit" || item.type !== "image",
   );
 
@@ -146,6 +151,123 @@ export function normalizeImageModelConfig(model: LooseModelConfig | null | undef
     imageOperation,
     enabledCapabilities: draft.enabledCapabilities,
   };
+}
+
+export function normalizeModelSettings(data: LooseModelSettings | null | undefined = {}): ModelSettings {
+  const normalizeModels = (items: unknown[] = [], kind = "", imageOperation: ImageOperation | "" = "") =>
+    (Array.isArray(items) ? items : []).map((item) => {
+      if (kind === "chat") return normalizeChatModelConfig(item as LooseModelConfig);
+      if (kind === "image") return normalizeImageModelConfig(item as LooseModelConfig, imageOperation || (item as LooseModelConfig)?.imageOperation || "generation");
+      const plainItem = item && typeof item === "object" ? item : {};
+      return {
+        ...cloneJson(defaultModelFormDraft),
+        ...plainItem,
+      };
+    });
+
+  const legacyImageModels = Array.isArray(data?.image) ? data.image : [];
+  const imageGenerationModels = Array.isArray(data?.imageGeneration) ? data.imageGeneration : legacyImageModels;
+  const imageEditModels = Array.isArray(data?.imageEdit) ? data.imageEdit : legacyImageModels;
+
+  return {
+    chat: normalizeModels(data?.chat, "chat") as ChatModelConfig[],
+    imageGeneration: normalizeModels(imageGenerationModels, "image", "generation") as ImageModelConfig[],
+    imageEdit: normalizeModels(imageEditModels, "image", "edit") as ImageModelConfig[],
+    image: normalizeModels(imageGenerationModels, "image", "generation") as ImageModelConfig[],
+    rtaudio: normalizeModels(data?.rtaudio) as ModelFormDraft[],
+  };
+}
+
+function hasCapabilityOverrides(model: Partial<ModelFormDraft> | null | undefined = {}): boolean {
+  return Boolean(model?.enabledCapabilities && Object.keys(model.enabledCapabilities).length > 0);
+}
+
+function hasCustomChatParamDefs(model: ChatModelConfig): boolean {
+  const currentDefs = getModelChatParamDefs(model);
+  const defaultDefs = getDefaultChatParamDefs(model.modelType, model.provider);
+  return JSON.stringify(currentDefs) !== JSON.stringify(defaultDefs);
+}
+
+function hasCustomImageParamDefs(model: ImageModelConfig): boolean {
+  const currentDefs = getModelImageParamDefs(model);
+  const defaultDefs = getModelImageParamDefs({
+    provider: model.provider,
+    modelType: model.modelType,
+    imageOperation: model.imageOperation,
+    imageParamDefs: [],
+  });
+  return JSON.stringify(currentDefs) !== JSON.stringify(defaultDefs);
+}
+
+function serializeChatModel(model: Partial<ModelFormDraft> | ChatModelConfig): Record<string, unknown> {
+  const normalizedModel = normalizeChatModelConfig(model as LooseModelConfig);
+  const payload: Record<string, unknown> = {
+    name: normalizedModel.name,
+    provider: normalizedModel.provider,
+    apiKey: normalizedModel.apiKey,
+    modelType: normalizedModel.modelType,
+  };
+
+  if (isAzureChatModel(normalizedModel)) {
+    payload.endpoint = normalizedModel.endpoint;
+    payload.deployment = normalizedModel.deployment;
+    payload.apiVersion = normalizedModel.apiVersion;
+  } else {
+    payload.baseURL = normalizedModel.baseURL;
+  }
+
+  if (hasCapabilityOverrides(normalizedModel)) {
+    payload.enabledCapabilities = cloneJson(normalizedModel.enabledCapabilities);
+  }
+
+  if (hasCustomChatParamDefs(normalizedModel)) {
+    payload.chatParamDefs = cloneJson(getModelChatParamDefs(normalizedModel));
+  }
+
+  return payload;
+}
+
+function serializeImageModel(model: Partial<ModelFormDraft> | ImageModelConfig, imageOperation: ImageOperation): Record<string, unknown> {
+  const normalizedModel = normalizeImageModelConfig(model as LooseModelConfig, imageOperation);
+  const payload: Record<string, unknown> = {
+    name: normalizedModel.name,
+    provider: normalizedModel.provider,
+    apiKey: normalizedModel.apiKey,
+    modelType: normalizedModel.modelType,
+  };
+
+  if (normalizedModel.provider === "Azure OpenAI") {
+    payload.endpoint = normalizedModel.endpoint;
+    payload.deployment = normalizedModel.deployment;
+    payload.apiVersion = normalizedModel.apiVersion;
+  } else {
+    payload.baseURL = normalizedModel.baseURL;
+  }
+
+  if (hasCapabilityOverrides(normalizedModel)) {
+    payload.enabledCapabilities = cloneJson(normalizedModel.enabledCapabilities);
+  }
+
+  if (hasCustomImageParamDefs(normalizedModel)) {
+    payload.imageParamDefs = cloneJson(getModelImageParamDefs(normalizedModel));
+  }
+
+  return payload;
+}
+
+export function serializeModelSettings(data: LooseModelSettings | null | undefined = {}): Record<string, unknown> {
+  const normalized = normalizeModelSettings(data);
+  const payload: Record<string, unknown> = {
+    chat: normalized.chat.map((item) => serializeChatModel(item)),
+    imageGeneration: normalized.imageGeneration.map((item) => serializeImageModel(item, "generation")),
+    imageEdit: normalized.imageEdit.map((item) => serializeImageModel(item, "edit")),
+  };
+
+  if (Array.isArray(normalized.rtaudio) && normalized.rtaudio.length > 0) {
+    payload.rtaudio = cloneJson(normalized.rtaudio);
+  }
+
+  return payload;
 }
 
 export const providerList: SelectOption<ModelProvider>[] = [

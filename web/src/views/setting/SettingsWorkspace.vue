@@ -79,6 +79,7 @@ import ChatModels from "@/views/setting/components/ChatModels.vue";
 import ImageModels from "@/views/setting/components/ImageModels.vue";
 import ChatInsTemplateList from "@/views/setting/components/ChatInsTemplateList.vue";
 import AppSettings from "@/views/setting/components/AppSettings.vue";
+import { normalizeModelSettings, serializeModelSettings } from "@/constants";
 import { getModels, getChatInsTemplateList, setModels, setChatInsTemplateList } from "@/services";
 import { uploadJsonFile, isValidModelSetting, getModelSettingValidationError, dsAlert } from "@/utils";
 import type { ChatModelConfig, ImageModelConfig, ModelSettings } from "@/types/model";
@@ -242,7 +243,7 @@ async function persistDraft() {
 }
 
 async function exportSettings() {
-  const jsonStr = JSON.stringify(draftModels.value, null, 2);
+  const jsonStr = JSON.stringify(serializeModelSettings(draftModels.value), null, 2);
   const blob = new Blob([jsonStr], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -281,10 +282,7 @@ async function importSettings() {
     return;
   }
 
-  draftModels.value = {
-    ...emptyModelSettings(),
-    ...(clonePlainData(jsonData) as ModelSettings),
-  };
+  draftModels.value = normalizeModelSettings(clonePlainData(jsonData) as ModelSettings);
   dsAlert({ type: "success", message: t("user.importSuccess") });
 }
 

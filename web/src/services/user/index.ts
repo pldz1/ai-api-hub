@@ -1,4 +1,5 @@
 import store from "@/store";
+import { serializeModelSettings } from "@/constants";
 import { apiRequest } from "../transport/request";
 import { dsAlert, isArrayTypeStr, isValidModelSetting } from "@/utils";
 import { tr } from "@/i18n";
@@ -97,7 +98,7 @@ export async function getModels(updateStore: boolean = true): Promise<ModelSetti
  */
 export async function setModels(): Promise<boolean> {
   const models = store.state.models;
-  const res = await setModelsAPI(JSON.stringify(models));
+  const res = await setModelsAPI(JSON.stringify(serializeModelSettings(models)));
   if (!res.flag) {
     dsAlert({ type: "error", message: tr("toast.userModelsSaveFailed", { error: res.log }) });
     return false;

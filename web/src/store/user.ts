@@ -1,4 +1,4 @@
-import { defaultModelFormDraft, normalizeChatModelConfig, normalizeImageModelConfig } from "@/constants";
+import { defaultModelFormDraft, normalizeChatModelConfig, normalizeModelSettings } from "@/constants";
 
 const USER_SESSION_KEY = "ai.api.hub.workspace-session.v1";
 export const WORKSPACE_ID = "__workspace__";
@@ -118,26 +118,7 @@ export const UserState = {
    * 设置全部模型
    */
   setModels(data) {
-    const normalizeModels = (items = [], kind = "", imageOperation = "") =>
-      items.map((item) => {
-        if (kind === "chat") return normalizeChatModelConfig(item);
-        if (kind === "image") return normalizeImageModelConfig(item, imageOperation || item?.imageOperation || "generation");
-        return {
-          ...structuredClone(defaultModelFormDraft),
-          ...item,
-        };
-      });
-    const legacyImageModels = Array.isArray(data?.image) ? data.image : [];
-    const imageGenerationModels = Array.isArray(data?.imageGeneration) ? data.imageGeneration : legacyImageModels;
-    const imageEditModels = Array.isArray(data?.imageEdit) ? data.imageEdit : legacyImageModels;
-
-    this.models = {
-      chat: normalizeModels(data?.chat, "chat"),
-      imageGeneration: normalizeModels(imageGenerationModels, "image", "generation"),
-      imageEdit: normalizeModels(imageEditModels, "image", "edit"),
-      image: normalizeModels(imageGenerationModels, "image", "generation"),
-      rtaudio: normalizeModels(data?.rtaudio),
-    };
+    this.models = normalizeModelSettings(data);
   },
 
   /**

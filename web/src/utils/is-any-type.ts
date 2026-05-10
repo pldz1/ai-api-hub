@@ -84,36 +84,42 @@ export function isValidChatInfoArray(data) {
  * 判断 json 的数据, 是不是有效的模型设置
  */
 export const getModelSettingValidationError = (data) => {
-  const expectedKeys = ["chat", "rtaudio"];
-
   if (typeof data !== "object" || data === null) {
     return "顶层不是有效对象";
   }
 
-  // 所有指定 key 都必须存在且是数组
-  for (const key of expectedKeys) {
-    if (!(key in data)) {
-      return `缺少顶层字段: ${key}`;
-    }
+  const topLevelKeys = ["chat", "image", "imageGeneration", "imageEdit", "rtaudio"];
+  const presentKeys = topLevelKeys.filter((key) => key in data);
+
+  if (presentKeys.length === 0) {
+    return "缺少模型列表字段";
+  }
+
+  for (const key of presentKeys) {
     if (!Array.isArray(data[key])) {
       return `字段 ${key} 不是数组`;
     }
   }
 
-  const hasImageGeneration = Array.isArray(data.imageGeneration);
-  const hasImageEdit = Array.isArray(data.imageEdit);
-  const hasLegacyImage = Array.isArray(data.image);
-  if (!hasLegacyImage && (!hasImageGeneration || !hasImageEdit)) {
-    return "缺少图像模型字段: image 或 imageGeneration/imageEdit";
-  }
+  const hasOwn = (item, field) => Object.prototype.hasOwnProperty.call(item, field);
 
   const requireFields = (item, fields, key, index) => {
     for (const field of fields) {
-      if (!(field in item)) {
+      if (!hasOwn(item, field)) {
         return `${key}[${index}] 缺少字段: ${field}`;
       }
     }
     return "";
+  };
+
+  const requireAnyField = (item, fields, key, index) => {
+    if (fields.some((field) => hasOwn(item, field))) return "";
+    return `${key}[${index}] 缺少字段: ${fields.join(" / ")}`;
+  };
+
+  const validateOptionalArrayField = (item, field, key, index) => {
+    if (!hasOwn(item, field)) return "";
+    return Array.isArray(item[field]) ? "" : `${key}[${index}] 字段 ${field} 不是数组`;
   };
 
   const validateChatModel = (item, key, index) => {
@@ -122,15 +128,21 @@ export const getModelSettingValidationError = (data) => {
       return `${key}[${index}] provider 无效`;
     }
 
-    const commonError = requireFields(item, ["name", "apiKey", "modelType", "chatParamDefs"], key, index);
+    const commonError = requireFields(item, ["name", "apiKey"], key, index);
     if (commonError) return commonError;
-    if (!("provider" in item) && !("apiType" in item)) return `${key}[${index}] 缺少字段: provider`;
+    if (!hasOwn(item, "provider") && !hasOwn(item, "apiType")) return `${key}[${index}] 缺少字段: provider`;
+
+    const modelFieldError = requireAnyField(item, ["modelType", "model"], key, index);
+    if (modelFieldError) return modelFieldError;
+
+    const chatParamDefsError = validateOptionalArrayField(item, "chatParamDefs", key, index);
+    if (chatParamDefsError) return chatParamDefsError;
 
     if (provider === "Azure OpenAI") {
       return requireFields(item, ["endpoint", "deployment", "apiVersion"], key, index);
     }
 
-    return requireFields(item, ["baseURL", "model"], key, index);
+    return requireFields(item, ["baseURL"], key, index);
   };
 
   const validateImageModel = (item, key, index) => {
@@ -139,23 +151,28 @@ export const getModelSettingValidationError = (data) => {
       return `${key}[${index}] provider 无效`;
     }
 
-    const commonError = requireFields(item, ["name", "apiKey", "imageParamDefs", "imageOperation"], key, index);
+    const commonError = requireFields(item, ["name", "apiKey"], key, index);
     if (commonError) return commonError;
-    if (!("provider" in item) && !("apiType" in item)) return `${key}[${index}] 缺少字段: provider`;
+    if (!hasOwn(item, "provider") && !hasOwn(item, "apiType")) return `${key}[${index}] 缺少字段: provider`;
+
+    const modelFieldError = requireAnyField(item, ["modelType", "model"], key, index);
+    if (modelFieldError) return modelFieldError;
+
+    const imageParamDefsError = validateOptionalArrayField(item, "imageParamDefs", key, index);
+    if (imageParamDefsError) return imageParamDefsError;
+
+    if (hasOwn(item, "imageOperation") && !["generation", "edit", ""].includes(item.imageOperation)) {
+      return `${key}[${index}] imageOperation 无效`;
+    }
 
     if (provider === "Azure OpenAI") {
       return requireFields(item, ["endpoint", "deployment", "apiVersion"], key, index);
     }
 
-    return requireFields(item, ["baseURL", "model"], key, index);
+    return requireFields(item, ["baseURL"], key, index);
   };
 
-  for (const key of [
-    ...expectedKeys,
-    ...(hasLegacyImage ? ["image"] : []),
-    ...(hasImageGeneration ? ["imageGeneration"] : []),
-    ...(hasImageEdit ? ["imageEdit"] : []),
-  ]) {
+  for (const key of presentKeys) {
     for (let index = 0; index < data[key].length; index++) {
       const item = data[key][index];
       if (!item || typeof item !== "object") {
