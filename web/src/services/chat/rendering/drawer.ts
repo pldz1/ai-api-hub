@@ -97,7 +97,7 @@ export class ChatDrawer extends ChatElemCreator {
         this.draw([
           {
             role: "assistant",
-            content: [{ type: "text", text: "请求超时,无有效内容！" }],
+            content: [{ type: "text", text: tr("chat.timeoutNoContent") }],
           },
         ]);
       } else {

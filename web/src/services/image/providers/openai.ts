@@ -1,4 +1,5 @@
 import { buildImageFormData, buildImageRequestBody, IMAGE_OPERATION_ENDPOINT, sendImageRequest, trimTrailingSlash } from "./common";
+import { tr } from "@/i18n";
 import type { ImageGenerationParams, ImageGenerationResult, ImageProviderModel, ImageRequest } from "@/services/types";
 
 function resolveImageEndpointUrl(url: string = "", hasInputImage: boolean = false): string {
@@ -25,7 +26,7 @@ export function buildOpenAIImageRequest(model: ImageProviderModel, params: Image
   const url = buildOpenAIImageEndpointUrl(model?.baseURL, hasInputImage);
 
   if (!url || !model?.apiKey) {
-    throw new Error("OpenAI 图像模型配置不完整");
+    throw new Error(tr("image.providerConfigIncomplete", { provider: "OpenAI" }));
   }
 
   return {

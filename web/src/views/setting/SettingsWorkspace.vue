@@ -81,7 +81,7 @@ import ChatInsTemplateList from "@/views/setting/components/ChatInsTemplateList.
 import AppSettings from "@/views/setting/components/AppSettings.vue";
 import { normalizeModelSettings, serializeModelSettings } from "@/constants";
 import { getModels, getChatInsTemplateList, setModels, setChatInsTemplateList } from "@/services";
-import { uploadJsonFile, isValidModelSetting, getModelSettingValidationError, dsAlert } from "@/utils";
+import { uploadJsonFile, isValidSettingsImport, getSettingsImportValidationError, isSettingsImportPackage, dsAlert } from "@/utils";
 import type { ChatModelConfig, ImageModelConfig, ModelSettings } from "@/types/model";
 
 const store = useStore();
@@ -114,6 +114,15 @@ const settingGroups = computed(() => [
 
 const activeTab = ref("chat-models");
 const emptyModelSettings = (): ModelSettings => ({ chat: [], imageGeneration: [], imageEdit: [], image: [], rtaudio: [] });
+
+interface ImportedSettingsPackage {
+  schema?: string;
+  version?: number;
+  exportedAt?: string;
+  models: Partial<ModelSettings>;
+  templates?: unknown[];
+  hostUrl?: string;
+}
 
 const draftModels = ref<ModelSettings>(emptyModelSettings());
 const draftTemplates = ref<unknown[]>([]);
@@ -243,7 +252,15 @@ async function persistDraft() {
 }
 
 async function exportSettings() {
-  const jsonStr = JSON.stringify(serializeModelSettings(draftModels.value), null, 2);
+  const payload: ImportedSettingsPackage = {
+    schema: "ai-api-hub/settings",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    models: serializeModelSettings(draftModels.value) as Partial<ModelSettings>,
+    templates: clonePlainData(draftTemplates.value),
+    hostUrl: draftHostUrl.value,
+  };
+  const jsonStr = JSON.stringify(payload, null, 2);
   const blob = new Blob([jsonStr], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -272,8 +289,8 @@ async function importSettings() {
     return;
   }
 
-  if (!isValidModelSetting(jsonData)) {
-    const validationError = getModelSettingValidationError(jsonData);
+  if (!isValidSettingsImport(jsonData)) {
+    const validationError = getSettingsImportValidationError(jsonData);
     dsAlert({
       duration: 5000,
       type: "error",
@@ -282,7 +299,19 @@ async function importSettings() {
     return;
   }
 
-  draftModels.value = normalizeModelSettings(clonePlainData(jsonData) as ModelSettings);
+  if (isSettingsImportPackage(jsonData)) {
+    const importedPackage = clonePlainData(jsonData) as ImportedSettingsPackage;
+    draftModels.value = normalizeModelSettings(importedPackage.models);
+    if (Array.isArray(importedPackage.templates)) {
+      draftTemplates.value = clonePlainData(importedPackage.templates);
+    }
+    if (typeof importedPackage.hostUrl === "string") {
+      draftHostUrl.value = importedPackage.hostUrl;
+    }
+  } else {
+    draftModels.value = normalizeModelSettings(clonePlainData(jsonData) as ModelSettings);
+  }
+
   dsAlert({ type: "success", message: t("user.importSuccess") });
 }
 

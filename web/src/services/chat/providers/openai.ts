@@ -1,5 +1,6 @@
 import { normalizeUsage } from "./usage";
 import { requestJson, streamJsonEvents, type JsonObject } from "./sse-client";
+import { tr } from "@/i18n";
 import type { ChatCallback, ChatProviderResponse, PackedChatMessage } from "@/services/types";
 
 function trimTrailingSlash(value = ""): string {
@@ -120,7 +121,7 @@ export class OpenAIClient {
 
   async chatWithWebSearch(messages: PackedChatMessage[], params: Record<string, unknown> = {}, callback: ChatCallback | null = null): Promise<void> {
     if (!this.apiKey || !this.model) {
-      if (callback) await callback({ flag: false, content: "模型初始化失败, 无法向服务器发送消息.", reasoning_content: "" });
+      if (callback) await callback({ flag: false, content: tr("toast.chatProviderNotReady"), reasoning_content: "" });
       return;
     }
 
@@ -144,7 +145,7 @@ export class OpenAIClient {
 
   async chatStream(messages: PackedChatMessage[], params: Record<string, unknown>, callback: ChatCallback | null = null): Promise<void> {
     if (!this.apiKey || !this.model) {
-      if (callback) await callback({ flag: false, content: "模型初始化失败, 无法向服务器发送消息.", reasoning_content: "" });
+      if (callback) await callback({ flag: false, content: tr("toast.chatProviderNotReady"), reasoning_content: "" });
       return;
     }
 
@@ -167,7 +168,7 @@ export class OpenAIClient {
   }
 
   async chatSync(messages: PackedChatMessage[], params: Record<string, unknown>): Promise<ChatProviderResponse> {
-    if (!this.apiKey || !this.model) return { flag: false, content: "模型初始化失败, 无法向服务器发送消息.", reasoning_content: "" };
+    if (!this.apiKey || !this.model) return { flag: false, content: tr("toast.chatProviderNotReady"), reasoning_content: "" };
 
     try {
       const response = await requestJson<JsonObject>(this.getChatCompletionsUrl(), {

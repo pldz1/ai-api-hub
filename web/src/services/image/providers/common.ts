@@ -1,4 +1,5 @@
 import { getModelRequestId } from "@/constants";
+import { tr } from "@/i18n";
 import type { ImageGenerationParams, ImageGenerationResult, ImageParamValue, ImageProviderModel, ImageRequest, RequestBody, TokenUsage } from "@/services/types";
 
 export const DEFAULT_IMAGE_QUALITY = "auto";
@@ -127,7 +128,7 @@ export function normalizeImageGenerationData(data: { data?: Array<{ url?: string
   if (!Array.isArray(data?.data)) {
     const message = data?.error?.message || data?.message || JSON.stringify(data);
     return {
-      images: [{ type: "text", data: message || "图像接口返回格式无效" }],
+      images: [{ type: "text", data: message || tr("image.invalidResponse") }],
       usage: normalizeImageUsage(data?.usage),
       raw: data,
     };
@@ -136,7 +137,7 @@ export function normalizeImageGenerationData(data: { data?: Array<{ url?: string
   const images = data.data.map((item): { type: "url" | "text"; data: string } => {
     if (item?.url) return { type: "url", data: item.url };
     if (item?.b64_json) return { type: "url", data: `data:image/png;base64,${item.b64_json}` };
-    return { type: "text", data: item?.error?.message || "图像接口未返回图片数据" };
+    return { type: "text", data: item?.error?.message || tr("image.emptyResponseItem") };
   });
 
   return {

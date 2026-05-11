@@ -136,7 +136,7 @@ const addImageModel = () => {
   const nextModel = normalizeImageModelConfig(
     {
       ...defaultModelFormDraft,
-      name: append4Random("图像模型"),
+      name: append4Random(t("user.imageModels.defaultName")),
       provider: "OpenAI",
       baseURL: "https://api.openai.com/v1",
       modelType: "",
@@ -153,7 +153,7 @@ const addImageModel = () => {
 const duplicateImageModel = () => {
   if (!currentModel.value) return;
   const duplicated = cloneModel(currentModel.value);
-  duplicated.name = `${duplicated.name || "图像模型"}-copy`;
+  duplicated.name = `${duplicated.name || t("user.imageModels.defaultName")}-${t("common.duplicateSuffix")}`;
   const nextModels = [...props.models, duplicated];
   updateModels(nextModels);
   selectedIndex.value = nextModels.length - 1;

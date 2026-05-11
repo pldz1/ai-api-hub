@@ -51,7 +51,7 @@
             class="preview-image"
             :style="imageStyle"
             :src="selectedImage.src"
-            :alt="selectedImage.prompt || 'Generated image'"
+            :alt="selectedImage.prompt || t('image.generatedAlt')"
             crossOrigin="anonymous"
           />
         </div>

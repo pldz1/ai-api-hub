@@ -1,4 +1,5 @@
 import { buildImageFormData, buildImageRequestBody, IMAGE_OPERATION_ENDPOINT, sendImageRequest, trimTrailingSlash } from "./common";
+import { tr } from "@/i18n";
 import type { ImageGenerationParams, ImageGenerationResult, ImageProviderModel, ImageRequest } from "@/services/types";
 
 function appendApiVersion(url: string, apiVersion: string): string {
@@ -24,7 +25,7 @@ export function buildAzureOpenAIImageRequest(model: ImageProviderModel, params: 
   const url = buildAzureOpenAIImageEndpointUrl(model, hasInputImage);
 
   if (!url || !model?.apiKey) {
-    throw new Error("Azure OpenAI 图像模型配置不完整");
+    throw new Error(tr("image.providerConfigIncomplete", { provider: "Azure OpenAI" }));
   }
 
   return {

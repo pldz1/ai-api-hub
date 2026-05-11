@@ -15,6 +15,7 @@ import type {
   ParamDefaultValue,
   SelectOption,
 } from "@/types/model";
+import { tr } from "@/i18n";
 
 function cloneJson<T>(data: T): T {
   return JSON.parse(JSON.stringify(data));
@@ -495,7 +496,7 @@ export const chatParamPresetList: LooseParamDef[] = [
     key: "max_completion_tokens",
     label: "max_completion_tokens",
     type: "number",
-    description: "限制单次补全文本的输出长度，包含可见输出和推理 token。",
+    descriptionKey: "chat.maxCompletionTokensTip",
     defaultValue: 2000,
     min: 0,
     max: 128000,
@@ -553,7 +554,7 @@ export const chatParamPresetList: LooseParamDef[] = [
     key: "reasoning_effort",
     label: "reasoning_effort",
     type: "string",
-    description: "推理力度，例如 none / low / medium / high / xhigh。",
+    descriptionKey: "chat.reasoningEffortTip",
     defaultValue: "medium",
     placeholder: "none / low / medium / high / xhigh",
   },
@@ -561,7 +562,7 @@ export const chatParamPresetList: LooseParamDef[] = [
     key: "verbosity",
     label: "verbosity",
     type: "string",
-    description: "控制输出详略程度，例如 low / medium / high。",
+    descriptionKey: "chat.verbosityTip",
     defaultValue: "medium",
     placeholder: "low / medium / high",
   },
@@ -572,7 +573,7 @@ export const imageParamPresetList: LooseParamDef[] = [
     key: "quality",
     label: "quality",
     type: "string",
-    description: "图像质量参数，例如 auto、low、medium、high、standard、hd。",
+    descriptionKey: "image.qualityTip",
     defaultValue: "auto",
     placeholder: "auto",
   },
@@ -580,7 +581,7 @@ export const imageParamPresetList: LooseParamDef[] = [
     key: "output_format",
     label: "output_format",
     type: "string",
-    description: "返回图片格式，例如 png、jpeg、webp。",
+    descriptionKey: "image.outputFormatTip",
     defaultValue: "png",
     placeholder: "png",
   },
@@ -588,7 +589,7 @@ export const imageParamPresetList: LooseParamDef[] = [
     key: "background",
     label: "background",
     type: "string",
-    description: "背景设置，例如 auto、transparent、opaque。",
+    descriptionKey: "image.backgroundTip",
     defaultValue: "",
     placeholder: "auto",
   },
@@ -596,7 +597,7 @@ export const imageParamPresetList: LooseParamDef[] = [
     key: "moderation",
     label: "moderation",
     type: "string",
-    description: "内容审核强度，例如 auto、low。",
+    descriptionKey: "image.moderationTip",
     defaultValue: "",
     placeholder: "auto",
   },
@@ -604,7 +605,7 @@ export const imageParamPresetList: LooseParamDef[] = [
     key: "image",
     label: "image",
     type: "image",
-    description: "随请求携带的输入图像，发送为 { filename, content_type, data }。",
+    descriptionKey: "image.inputImageTip",
     defaultValue: null,
     placeholder: "image/png",
   },
@@ -612,16 +613,24 @@ export const imageParamPresetList: LooseParamDef[] = [
     key: "mask",
     label: "mask",
     type: "image",
-    description: "图像编辑蒙版，PNG 透明区域表示需要编辑的位置。",
+    descriptionKey: "image.maskTip",
     defaultValue: null,
     placeholder: "image/png",
   },
 ];
 
-export const defChatModelSettings: ChatModelSettings = {
-  passedMsgLen: 10,
-  prompts: [{ role: "system", content: [{ type: "text", text: "As an AI assistant, please make your responses more engaging by including lively emojis." }] }],
-};
+function createDefaultChatPrompts(): ChatModelSettings["prompts"] {
+  return [{ role: "system", content: [{ type: "text", text: tr("chat.defaultSystemPrompt") }] }];
+}
+
+function createDefaultChatSettings(): ChatModelSettings {
+  return {
+    passedMsgLen: 10,
+    prompts: createDefaultChatPrompts(),
+  };
+}
+
+export const defChatModelSettings: ChatModelSettings = createDefaultChatSettings();
 
 function getChatParamPreset(key = ""): LooseParamDef | null {
   return chatParamPresetList.find((item) => item.key === key) || null;
@@ -858,7 +867,7 @@ export function buildImageGenerationParams(model: LooseModelConfig | null = null
 }
 
 export function buildDefaultChatSettings(model: LooseModelConfig | null = null): ChatModelSettings {
-  const settings = cloneJson(defChatModelSettings);
+  const settings = cloneJson(createDefaultChatSettings());
   const defs = getModelChatParamDefs(model || {});
 
   defs.forEach((item) => {
@@ -869,11 +878,13 @@ export function buildDefaultChatSettings(model: LooseModelConfig | null = null):
 }
 
 export function mergeChatSettingsWithModel(model: LooseModelConfig | null = null, settings: Partial<ChatModelSettings> = {}): ChatModelSettings {
+  const defaultSettings = createDefaultChatSettings();
   const coreSettings: Partial<ChatModelSettings> = {
     prompts: Array.isArray(settings.prompts) ? settings.prompts : undefined,
     passedMsgLen: settings.passedMsgLen,
   };
   const mergedSettings = {
+    ...cloneJson(defaultSettings),
     ...buildDefaultChatSettings(model),
     ...coreSettings,
   };
@@ -884,11 +895,11 @@ export function mergeChatSettingsWithModel(model: LooseModelConfig | null = null
   });
 
   if (!Array.isArray(mergedSettings.prompts)) {
-    mergedSettings.prompts = cloneJson(defChatModelSettings.prompts);
+    mergedSettings.prompts = cloneJson(defaultSettings.prompts);
   }
 
   if (!Number.isFinite(Number(mergedSettings.passedMsgLen))) {
-    mergedSettings.passedMsgLen = defChatModelSettings.passedMsgLen;
+    mergedSettings.passedMsgLen = defaultSettings.passedMsgLen;
   } else {
     mergedSettings.passedMsgLen = Number(mergedSettings.passedMsgLen);
   }

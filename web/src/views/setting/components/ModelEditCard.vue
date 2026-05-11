@@ -119,15 +119,15 @@
 
     <section v-if="!isImageModel" class="model-form-section">
       <div class="model-section-head">
-        <h4>Capabilities</h4>
-        <p>Built-in model capabilities. Image is persistent input support; Thinking and Web are optional per-message actions.</p>
+        <h4>{{ t("user.modelCard.capabilitiesTitle") }}</h4>
+        <p>{{ t("user.modelCard.capabilitiesDescription") }}</p>
       </div>
 
       <div class="model-capability-grid">
         <div v-for="item in chatCapabilityRows" :key="item.key" class="model-capability-toggle" :class="{ disabled: !item.supported }">
           <span class="model-capability-indicator" :class="{ active: item.supported }"></span>
           <span>{{ item.label }}</span>
-          <small>{{ item.supported ? "Supported" : "Unsupported" }}</small>
+          <small>{{ item.supported ? t("user.modelCard.supportStates.supported") : t("user.modelCard.supportStates.unsupported") }}</small>
         </div>
       </div>
     </section>
@@ -144,7 +144,6 @@ import type { ImageOperation, ModelConfig, ModelFormDraft, ModelKind, SelectOpti
 import {
   defaultModelFormDraft,
   providerList,
-  capabilityLabels,
   chatDisplayedCapabilityKeys,
   imageModelProviderList,
   getChatModelInfo,
@@ -179,6 +178,11 @@ let isSyncingFromProps = false;
 let lastModelSnapshot = "";
 
 const visibleModelSuggestions = computed(() => props.modelSuggestions);
+const capabilityLabelKeys: Record<string, string> = {
+  reasoning: "input.capabilities.reasoning",
+  webSearch: "input.capabilities.webSearch",
+  imageRead: "input.capabilities.imageRead",
+};
 const getModelFamily = (modelType = "") => {
   const normalizedType = modelType.trim().toLowerCase();
   if (/^claude-/.test(normalizedType)) return "claude";
@@ -187,9 +191,9 @@ const getModelFamily = (modelType = "") => {
 };
 const groupedModelSuggestions = computed(() => {
   const groups = [
-    { key: "openai", label: "OpenAI GPT", items: [] as SelectOption[] },
-    { key: "claude", label: "Claude", items: [] as SelectOption[] },
-    { key: "custom", label: "Other", items: [] as SelectOption[] },
+    { key: "openai", label: t("user.modelCard.suggestionGroups.openai"), items: [] as SelectOption[] },
+    { key: "claude", label: t("user.modelCard.suggestionGroups.claude"), items: [] as SelectOption[] },
+    { key: "custom", label: t("user.modelCard.suggestionGroups.custom"), items: [] as SelectOption[] },
   ];
   const groupMap = new Map(groups.map((group) => [group.key, group]));
   const seen = new Set<string>();
@@ -255,7 +259,7 @@ const supportedChatCapabilities = computed(() => getChatModelCapabilities(localM
 const chatCapabilityRows = computed(() =>
   chatDisplayedCapabilityKeys.map((key) => ({
     key,
-    label: capabilityLabels[key],
+    label: t(capabilityLabelKeys[key] || key),
     supported: supportedChatCapabilities.value[key],
   })),
 );

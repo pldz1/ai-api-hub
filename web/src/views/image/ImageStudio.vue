@@ -174,12 +174,12 @@ const convertImageBlobToPng = (blob) => {
       ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
       canvas.toBlob((pngBlob) => {
         URL.revokeObjectURL(objectUrl);
-        pngBlob ? resolve(pngBlob) : reject(new Error("PNG conversion failed"));
+        pngBlob ? resolve(pngBlob) : reject(new Error(t("image.pngConvertFailed")));
       }, "image/png");
     };
     image.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      reject(new Error("Image load failed"));
+      reject(new Error(t("image.imageLoadFailed")));
     };
     image.src = objectUrl;
   });

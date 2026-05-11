@@ -100,7 +100,7 @@ const updateCurrentModel = (nextModel: ModelConfig) => {
 const addChatModel = () => {
   const nextModel = normalizeChatModelConfig({
     ...defaultModelFormDraft,
-    name: append4Random("对话模型"),
+    name: append4Random(t("user.chatModels.defaultName")),
     provider: "OpenAI",
     baseURL: "https://api.openai.com/v1",
     modelType: "gpt-5.5",
@@ -115,7 +115,7 @@ const addChatModel = () => {
 const duplicateChatModel = () => {
   if (!currentModel.value) return;
   const duplicated = cloneModel(currentModel.value);
-  duplicated.name = `${duplicated.name || "对话模型"}-copy`;
+  duplicated.name = `${duplicated.name || t("user.chatModels.defaultName")}-${t("common.duplicateSuffix")}`;
   const nextModels = [...props.models, duplicated];
   updateModels(nextModels);
   selectedIndex.value = nextModels.length - 1;

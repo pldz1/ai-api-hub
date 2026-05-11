@@ -15,17 +15,18 @@
 import { useStore } from "vuex";
 import { onMounted, onUnmounted, ref, computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { chatInsTemplateList } from "@/constants";
+import { getBuiltinChatInsTemplateList } from "@/constants";
 import { addChat } from "@/services";
 import { dsAlert, append4Random } from "@/utils";
 
 const emit = defineEmits(["on-update"]);
 
 const store = useStore();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const curChatModelSettings = computed(() => store.state.curChatModelSettings);
 const insTemplateList = computed(() => {
-  return [...chatInsTemplateList, ...store.state.chatInsTemplateList];
+  locale.value;
+  return [...getBuiltinChatInsTemplateList(), ...store.state.chatInsTemplateList];
 });
 
 const onSelectInst = async (id) => {

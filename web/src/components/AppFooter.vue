@@ -2,10 +2,16 @@
   <footer class="app-footer">
     <span class="app-footer-copy">
       AI API HUB · v0.0.1 ·
-      <a href="https://github.com/pldz1/ai-api-hub" target="_blank" rel="noopener noreferrer">Made by pldz1</a>
+      <a href="https://github.com/pldz1/ai-api-hub" target="_blank" rel="noopener noreferrer">{{ t("footer.credit", { author: "pldz1" }) }}</a>
     </span>
   </footer>
 </template>
+
+<script setup>
+import { useI18n } from "vue-i18n";
+
+const { t } = useI18n();
+</script>
 
 <style lang="scss" scoped>
 .app-footer {

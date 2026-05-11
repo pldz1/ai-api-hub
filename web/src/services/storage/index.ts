@@ -1,4 +1,5 @@
 import store from "@/store";
+import { tr } from "@/i18n";
 import { requestBrowserStorage } from "./providers/browser-storage";
 import { requestPythonServer, shouldUseBrowserFallback } from "./providers/python-server";
 import { STORAGE_MODE, normalizeHostUrl, withStorageMeta } from "./constants";
@@ -65,12 +66,13 @@ export async function requestStorage<TData = unknown>({
     }
 
     const requestError = error as { code?: string; message?: string };
+    const fallbackMessage = requestError.code === "ECONNABORTED" ? tr("storage.requestTimeout") : requestError.message || tr("storage.requestFailed");
     if (requestError.code === "ECONNABORTED") {
-      console.error("Request timeout!");
+      console.error(fallbackMessage);
     } else {
-      console.error(requestError.message);
+      console.error(requestError.message || fallbackMessage);
     }
 
-    return withStorageMeta({ flag: false, log: requestError.message || "Request failed!", data: requestError.message || "Request failed!" } as ApiResponse<TData>, STORAGE_MODE.UNKNOWN);
+    return withStorageMeta({ flag: false, log: fallbackMessage, data: fallbackMessage } as ApiResponse<TData>, STORAGE_MODE.UNKNOWN);
   }
 }

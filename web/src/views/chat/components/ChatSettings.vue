@@ -31,6 +31,37 @@
             <input type="text" class="input input-bordered" v-model.number="modelSettings.passedMsgLen" />
           </div>
         </div>
+
+        <div v-for="item in activeParamDefs" :key="item.key" class="gcms-setting-item">
+          <div class="gcms-setting-label">
+            <span>{{ item.label || item.key }}</span>
+            <AppTooltip v-if="getParamDescription(item)" :text="getParamDescription(item)" placement="bottom">
+              <SvgIcon class="gcms-info-icon" :src="infoIcon" />
+            </AppTooltip>
+          </div>
+          <div class="gcms-setting-content">
+            <template v-if="item.type === 'number'">
+              <input type="range" :min="item.min" :max="item.max" :step="item.step" v-model.number="modelSettings[item.key]" class="range range-xs" />
+              <input type="number" class="input input-bordered" v-model.number="modelSettings[item.key]" />
+            </template>
+
+            <template v-else-if="item.type === 'boolean'">
+              <input type="checkbox" class="toggle toggle-primary" v-model="modelSettings[item.key]" />
+            </template>
+
+            <template v-else-if="item.type === 'array'">
+              <textarea
+                class="textarea textarea-bordered"
+                :value="arrayFieldInputs[item.key] || '[]'"
+                @input="arrayFieldInputs[item.key] = $event.target.value"
+              ></textarea>
+            </template>
+
+            <template v-else>
+              <input type="text" class="input input-bordered gcms-input-full" v-model="modelSettings[item.key]" :placeholder="item.placeholder || item.key" />
+            </template>
+          </div>
+        </div>
       </div>
     </div>
   </dialog>
@@ -41,7 +72,8 @@ import { useStore } from "vuex";
 import { computed, reactive, watch, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import infoIcon from "@/assets/svg/info24.svg";
-import { mergeChatSettingsWithModel } from "@/constants";
+import { dsAlert } from "@/utils";
+import { getModelChatParamDefs, mergeChatSettingsWithModel, parseChatParamValue } from "@/constants";
 import { setChatSettings } from "@/services";
 import AppTooltip from "@/components/base/AppTooltip.vue";
 import SvgIcon from "@/components/base/SvgIcon.vue";
@@ -50,8 +82,15 @@ const store = useStore();
 const { t } = useI18n();
 const curChatModel = computed(() => store.state.curChatModel);
 const curChatModelSettings = computed(() => store.state.curChatModelSettings);
+const activeParamDefs = computed(() => getModelChatParamDefs(curChatModel.value));
 const modelSettings = reactive({});
 const instrStr = ref("");
+const arrayFieldInputs = reactive({});
+
+const getParamDescription = (item) => {
+  if (item.descriptionKey) return t(item.descriptionKey);
+  return item.description || "";
+};
 
 watch(
   () => [curChatModel.value, curChatModelSettings.value],
@@ -61,6 +100,16 @@ watch(
       delete modelSettings[key];
     });
     Object.assign(modelSettings, mergedSettings);
+
+    Object.keys(arrayFieldInputs).forEach((key) => {
+      delete arrayFieldInputs[key];
+    });
+    activeParamDefs.value
+      .filter((item) => item.type === "array")
+      .forEach((item) => {
+        arrayFieldInputs[item.key] = JSON.stringify(Array.isArray(mergedSettings[item.key]) ? mergedSettings[item.key] : item.defaultValue || []);
+      });
+
     instrStr.value = mergedSettings.prompts?.[0]?.content?.[0]?.text || "";
   },
   { immediate: true, deep: true },
@@ -69,6 +118,17 @@ watch(
 const handleClose = async () => {
   const nextSettings = mergeChatSettingsWithModel(curChatModel.value, { ...modelSettings });
   nextSettings.prompts[0].content[0].text = instrStr.value;
+
+  activeParamDefs.value.forEach((item) => {
+    if (item.type !== "array") return;
+    const parsedValue = parseChatParamValue("array", arrayFieldInputs[item.key], null);
+    if (parsedValue === null) {
+      dsAlert({ type: "warn", message: t("chat.invalidArrayParam", { name: item.label || item.key }) });
+      nextSettings[item.key] = Array.isArray(item.defaultValue) ? item.defaultValue : [];
+      return;
+    }
+    nextSettings[item.key] = parsedValue;
+  });
 
   store.dispatch("setCurChatModelSettings", nextSettings);
   await setChatSettings();

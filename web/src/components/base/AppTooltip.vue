@@ -11,7 +11,7 @@
     >
       <slot />
     </span>
-    <Teleport to="body">
+    <Teleport :to="teleportTarget">
       <div v-if="visible" ref="tooltipRef" class="app-tooltip-bubble" :class="`is-${resolvedPlacement}`" :style="tooltipStyle">
         {{ text }}
       </div>
@@ -41,6 +41,7 @@ const tooltipRef = ref(null);
 const visible = ref(false);
 const position = ref({ top: 0, left: 0 });
 const resolvedPlacement = ref(props.placement);
+const teleportTarget = ref("body");
 
 const GAP = 10;
 const VIEWPORT_PADDING = 12;
@@ -61,38 +62,38 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-function computePlacementPosition(placement, rect, tooltipSize, scrollX, scrollY) {
+function computePlacementPosition(placement, rect, tooltipSize) {
   const { width, height } = tooltipSize;
 
   switch (placement) {
     case "bottom":
       return {
-        top: rect.bottom + scrollY + GAP,
-        left: rect.left + scrollX + rect.width / 2 - width / 2,
+        top: rect.bottom + GAP,
+        left: rect.left + rect.width / 2 - width / 2,
       };
     case "left":
       return {
-        top: rect.top + scrollY + rect.height / 2 - height / 2,
-        left: rect.left + scrollX - width - GAP,
+        top: rect.top + rect.height / 2 - height / 2,
+        left: rect.left - width - GAP,
       };
     case "right":
       return {
-        top: rect.top + scrollY + rect.height / 2 - height / 2,
-        left: rect.right + scrollX + GAP,
+        top: rect.top + rect.height / 2 - height / 2,
+        left: rect.right + GAP,
       };
     default:
       return {
-        top: rect.top + scrollY - height - GAP,
-        left: rect.left + scrollX + rect.width / 2 - width / 2,
+        top: rect.top - height - GAP,
+        left: rect.left + rect.width / 2 - width / 2,
       };
   }
 }
 
 function fitsViewport(nextPosition, tooltipSize) {
-  const viewportLeft = window.scrollX + VIEWPORT_PADDING;
-  const viewportTop = window.scrollY + VIEWPORT_PADDING;
-  const viewportRight = window.scrollX + window.innerWidth - VIEWPORT_PADDING;
-  const viewportBottom = window.scrollY + window.innerHeight - VIEWPORT_PADDING;
+  const viewportLeft = VIEWPORT_PADDING;
+  const viewportTop = VIEWPORT_PADDING;
+  const viewportRight = window.innerWidth - VIEWPORT_PADDING;
+  const viewportBottom = window.innerHeight - VIEWPORT_PADDING;
 
   return (
     nextPosition.left >= viewportLeft &&
@@ -103,10 +104,10 @@ function fitsViewport(nextPosition, tooltipSize) {
 }
 
 function clampToViewport(nextPosition, tooltipSize) {
-  const minLeft = window.scrollX + VIEWPORT_PADDING;
-  const minTop = window.scrollY + VIEWPORT_PADDING;
-  const maxLeft = window.scrollX + window.innerWidth - tooltipSize.width - VIEWPORT_PADDING;
-  const maxTop = window.scrollY + window.innerHeight - tooltipSize.height - VIEWPORT_PADDING;
+  const minLeft = VIEWPORT_PADDING;
+  const minTop = VIEWPORT_PADDING;
+  const maxLeft = window.innerWidth - tooltipSize.width - VIEWPORT_PADDING;
+  const maxTop = window.innerHeight - tooltipSize.height - VIEWPORT_PADDING;
 
   return {
     left: clamp(nextPosition.left, minLeft, Math.max(minLeft, maxLeft)),
@@ -119,16 +120,14 @@ const updatePosition = () => {
   const tooltipEl = tooltipRef.value;
   if (!triggerEl || !tooltipEl) return;
   const rect = triggerEl.getBoundingClientRect();
-  const scrollY = window.scrollY;
-  const scrollX = window.scrollX;
   const tooltipSize = getTooltipSize();
   const placements = [props.placement, "top", "bottom", "right", "left"].filter((item, index, list) => item && list.indexOf(item) === index);
 
   let nextPlacement = props.placement;
-  let nextPosition = computePlacementPosition(nextPlacement, rect, tooltipSize, scrollX, scrollY);
+  let nextPosition = computePlacementPosition(nextPlacement, rect, tooltipSize);
 
   for (const placement of placements) {
-    const candidate = computePlacementPosition(placement, rect, tooltipSize, scrollX, scrollY);
+    const candidate = computePlacementPosition(placement, rect, tooltipSize);
     if (fitsViewport(candidate, tooltipSize)) {
       nextPlacement = placement;
       nextPosition = candidate;
@@ -152,6 +151,7 @@ const unbindViewportEvents = () => {
 
 const showTooltip = async () => {
   if (!props.text) return;
+  teleportTarget.value = triggerRef.value?.closest?.("dialog[open]") || "body";
   visible.value = true;
   await nextTick();
   updatePosition();
@@ -178,7 +178,7 @@ onBeforeUnmount(() => {
 }
 
 .app-tooltip-bubble {
-  position: absolute;
+  position: fixed;
   z-index: 5000;
   max-width: min(280px, calc(100vw - 24px));
   padding: 8px 10px;

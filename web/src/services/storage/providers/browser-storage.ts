@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import type { ApiResponse, ChatListItem, ImageDataItem, RequestBody, StoredChatMessage } from "@/services/types";
 
 const STORAGE_KEY = "chat-playground.browser-storage.v2";
@@ -68,20 +69,20 @@ async function urlToDataUrl(url: string): Promise<string> {
 
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Failed to fetch image: ${response.status}`);
+    throw new Error(tr("storage.imageFetchFailed", { status: response.status }));
   }
 
   const blob = await response.blob();
   return await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(typeof reader.result === "string" ? reader.result : "");
-    reader.onerror = () => reject(new Error("Failed to convert image to data url"));
+    reader.onerror = () => reject(new Error(tr("storage.imageDataUrlFailed")));
     reader.readAsDataURL(blob);
   });
 }
 
 async function handleLogin(): Promise<ApiResponse<null>> {
-  return ok(null, "Workspace ready.");
+  return ok(null, tr("toast.loginSuccess"));
 }
 
 async function handleGetModels(): Promise<ApiResponse<string>> {
