@@ -1,3 +1,5 @@
+import i18n, { tr } from "@/i18n";
+
 const emojiList = [
   "😀",
   "😂",
@@ -102,19 +104,22 @@ const emojiList = [
 ];
 
 export function generateRandomCname() {
-  // 随机选取一个emoji
   const randomEmoji = emojiList[Math.floor(Math.random() * emojiList.length)];
-
-  // 获取当前时间
   const now = new Date();
-  const day = now.getDate(); // 获取当前的"日"
-  const time = now.toLocaleTimeString("en-GB", {
+  const locale = i18n.global.locale.value || "zh-CN";
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const monthDay = locale.toLowerCase().startsWith("zh") ? `${month}月${day}日` : `${month}/${day}`;
+  const time = now.toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",
   }); // 格式为 hh:mm
 
-  // 返回格式化后的字符串
-  return `${randomEmoji}${day}日${time}的对话${randomEmoji}`;
+  return tr("chat.generatedConversationTitle", {
+    emoji: randomEmoji,
+    monthDay,
+    time,
+  });
 }
 
 /**

@@ -1,5 +1,6 @@
 // @ts-nocheck
 import deleteIcon from "@/assets/svg/delete32.svg";
+import { tr } from "@/i18n";
 import { dsAlert } from "@/utils/daisy-ui-alert";
 import { createSvgIcon } from "@/utils/svg-icon";
 
@@ -38,7 +39,7 @@ const handleImageFile = (file) => {
   if (file) {
     const fileSizeMB = file.size / (1024 * 1024);
     if (fileSizeMB > ImageMaxMBSize) {
-      dsAlert({ type: "error", message: `文件太大，不能超过 ${ImageMaxMBSize} MB` });
+      dsAlert({ type: "error", message: tr("toast.imageTooLarge", { max: ImageMaxMBSize }) });
       return;
     }
 

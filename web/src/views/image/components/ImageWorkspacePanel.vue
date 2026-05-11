@@ -68,7 +68,7 @@
           :class="{ active: selectedImageId === String(img.id) }"
           @click="emit('select-image', String(img.id))"
         >
-          <img :src="img.src" :alt="img.prompt || 'Generated image'" crossOrigin="anonymous" />
+          <img :src="img.src" :alt="img.prompt || t('image.generatedAlt')" crossOrigin="anonymous" />
         </button>
       </div>
       <div v-else class="gallery-empty">{{ t("image.galleryEmpty") }}</div>

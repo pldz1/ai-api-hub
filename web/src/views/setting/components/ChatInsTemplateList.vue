@@ -113,7 +113,7 @@ const updateField = (field, value) => {
 const addTemplate = () => {
   const nextTemplate = {
     id: getUuid("inst"),
-    name: append4Random("提示词模板"),
+    name: append4Random(t("user.templates.defaultName")),
     value: "",
   };
   const nextTemplates = [...props.templates, nextTemplate];
@@ -126,7 +126,7 @@ const duplicateTemplate = () => {
   const duplicated = {
     ...structuredClone(currentTemplate.value),
     id: getUuid("inst"),
-    name: `${currentTemplate.value.name || "提示词模板"}-copy`,
+    name: `${currentTemplate.value.name || t("user.templates.defaultName")}-${t("common.duplicateSuffix")}`,
   };
   const nextTemplates = [...props.templates, duplicated];
   updateTemplates(nextTemplates);

@@ -33,7 +33,7 @@
 
         <div class="ccia-footer-right">
           <span v-if="activeCapabilities.imageInput" class="ccia-capability-chip ccia-capability-status active">
-            Image
+            {{ t("input.capabilities.imageRead") }}
           </span>
           <label v-for="item in visibleTurnCapabilities" :key="item.key" class="ccia-capability-chip" :class="{ active: inputCapabilities[item.key] }">
             <input type="checkbox" :checked="inputCapabilities[item.key]" @change="onToggleCapability(item.key, $event.target.checked)" />
@@ -41,7 +41,7 @@
           </label>
           <label v-if="supportsReasoning" class="ccia-capability-chip" :class="{ active: inputCapabilities.reasoning }">
             <input type="checkbox" :checked="inputCapabilities.reasoning" @change="onToggleCapability('reasoning', $event.target.checked)" />
-            <span>Think</span>
+            <span>{{ t("input.capabilities.reasoning") }}</span>
           </label>
           <AppTooltip :text="t('tooltip.sendOrStop')" placement="top">
             <button class="ccia-send-button" :class="{ stopping: props.isChatting }" @click="onSendInputData" type="button">
@@ -61,7 +61,7 @@ import { useI18n } from "vue-i18n";
 import { addPasteEvent, removePasteEvent, uploadImageFile, isValidUserMsg, dsAlert } from "@/utils";
 import { packUserMsg } from "@/services";
 import { debounce } from "@/utils";
-import { capabilityLabels, chatTurnCapabilityKeys, createConversationModelSnapshot, getEffectiveCapabilities } from "@/constants";
+import { chatTurnCapabilityKeys, createConversationModelSnapshot, getEffectiveCapabilities } from "@/constants";
 import AppTooltip from "@/components/AppTooltip.vue";
 
 const props = defineProps({
@@ -74,6 +74,10 @@ const props = defineProps({
 const emit = defineEmits(["on-start", "on-stop"]);
 const inputText = ref("");
 const cciaTextareaRef = ref(null);
+const capabilityLabelKeys = {
+  webSearch: "input.capabilities.webSearch",
+  reasoning: "input.capabilities.reasoning",
+};
 
 /**
  * 这些都是用于显示模型的标签的数据
@@ -91,13 +95,13 @@ const activeCapabilities = computed(() =>
   getEffectiveCapabilities(activeSnapshot.value?.supportedCapabilities, activeSnapshot.value?.enabledCapabilities, inputCapabilities.value),
 );
 const supportsReasoning = computed(() => Boolean(activeSnapshot.value?.chatParamDefs?.some((item) => item.key === "reasoning_effort")));
-const lockedModelName = computed(() => curConversation.value?.modelSnapshot?.displayName || "Locked model");
-const capabilityModelName = computed(() => activeSnapshot.value?.displayName || "No model selected");
+const lockedModelName = computed(() => curConversation.value?.modelSnapshot?.displayName || t("input.lockedModel"));
+const capabilityModelName = computed(() => activeSnapshot.value?.displayName || t("input.selectChatModel"));
 const visibleTurnCapabilities = computed(() =>
   chatTurnCapabilityKeys
     .filter((key) => key !== "imageInput")
     .filter((key) => Boolean(activeSnapshot.value?.supportedCapabilities?.[key] && activeSnapshot.value?.enabledCapabilities?.[key]))
-    .map((key) => ({ key, label: capabilityLabels[key] })),
+    .map((key) => ({ key, label: t(capabilityLabelKeys[key] || `input.capabilities.${key}`) })),
 );
 watch(
   () => chatModels.value,
@@ -132,7 +136,7 @@ const onSendInputData = async () => {
   }
 
   if (!curChatId.value) {
-    const confirmed = window.confirm(`Start this chat with "${draftSnapshot.value.displayName}"? This model cannot be changed later in this conversation.`);
+    const confirmed = window.confirm(t("input.confirmStartChat", { model: draftSnapshot.value.displayName }));
     if (!confirmed) return;
   }
 

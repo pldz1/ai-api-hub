@@ -1,5 +1,6 @@
 // @ts-nocheck
 import hljs from "highlight.js";
+import { tr } from "@/i18n";
 hljs.configure({ ignoreUnescapedHTML: true });
 
 const rootMdDivClassName = "markdown-content";
@@ -24,11 +25,11 @@ window.copyHandler = function (e: MouseEvent): void {
     navigator.clipboard
       .writeText(codeText)
       .then(() => {
-        btn.textContent = "已复制!";
+        btn.textContent = tr("markdown.copied");
 
         // Restore the original button text after a short delay.
         setTimeout(() => {
-          btn.textContent = "复制";
+          btn.textContent = tr("markdown.copy");
         }, 2000); // Restore after 2 seconds.
       })
       .catch((err: unknown) => {
@@ -54,7 +55,7 @@ function buildCopyButton(element: Element): void {
     const btn = document.createElement("span");
     btn.id = String(Math.random());
     btn.className = "markdown-content-copy";
-    btn.textContent = "复制";
+    btn.textContent = tr("markdown.copy");
 
     // Attach the inline click handler used by markdown output.
     btn.setAttribute("onclick", "copyHandler(event)");
