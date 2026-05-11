@@ -9,7 +9,7 @@
           <span>{{ hasImageInputParam ? t("user.modelCard.imageInputEnabled") : t("user.modelCard.imageInputDisabled") }}</span>
         </div>
       </div>
-      <div v-if="props.modelKind === 'chat' && localModel.modelType" class="model-behavior-chip">
+      <div v-if="props.modelKind === 'chat' && localModel.model" class="model-behavior-chip">
         {{ modelBehaviorHint }}
       </div>
     </div>
@@ -28,7 +28,7 @@
 
         <div v-if="!isImageModel" class="model-form-field model-form-field-span">
           <label>{{ t("user.modelCard.fields.model") }}</label>
-          <select class="select select-bordered w-full" v-model="localModel.modelType">
+          <select class="select select-bordered w-full" v-model="localModel.model">
             <optgroup v-for="group in groupedModelSuggestions" :key="group.key" :label="group.label">
               <option v-for="item in group.items" :key="item.value" :value="item.value">
                 {{ item.name }}
@@ -51,7 +51,7 @@
 
         <div v-if="isImageModel && !isAzure" class="model-form-field model-form-field-span">
           <label>{{ t("user.modelCard.fields.modelOverride") }}</label>
-          <input type="text" class="input input-bordered w-full" :placeholder="modelTypePlaceholder" v-model.trim="localModel.modelType" />
+          <input type="text" class="input input-bordered w-full" :placeholder="modelPlaceholder" v-model.trim="localModel.model" />
           <div class="model-field-help">
             {{ t("user.modelCard.imageModelHelp") }}
           </div>
@@ -61,7 +61,7 @@
               :key="item.value"
               type="button"
               class="btn btn-sm"
-              :class="localModel.modelType === item.value ? 'btn-neutral' : 'btn-outline'"
+              :class="localModel.model === item.value ? 'btn-neutral' : 'btn-outline'"
               @click="applySuggestedModel(item.value)"
             >
               {{ item.name }}
@@ -119,15 +119,15 @@
 
     <section v-if="!isImageModel" class="model-form-section">
       <div class="model-section-head">
-        <h4>Capabilities</h4>
-        <p>Built-in model capabilities. Image is persistent input support; Thinking and Web are optional per-message actions.</p>
+        <h4>{{ t("user.modelCard.capabilitiesTitle") }}</h4>
+        <p>{{ t("user.modelCard.capabilitiesDescription") }}</p>
       </div>
 
       <div class="model-capability-grid">
         <div v-for="item in chatCapabilityRows" :key="item.key" class="model-capability-toggle" :class="{ disabled: !item.supported }">
           <span class="model-capability-indicator" :class="{ active: item.supported }"></span>
           <span>{{ item.label }}</span>
-          <small>{{ item.supported ? "Supported" : "Unsupported" }}</small>
+          <small>{{ item.supported ? t("user.modelCard.supportStates.supported") : t("user.modelCard.supportStates.unsupported") }}</small>
         </div>
       </div>
     </section>
@@ -144,7 +144,6 @@ import type { ImageOperation, ModelConfig, ModelFormDraft, ModelKind, SelectOpti
 import {
   defaultModelFormDraft,
   providerList,
-  capabilityLabels,
   chatDisplayedCapabilityKeys,
   imageModelProviderList,
   getChatModelInfo,
@@ -179,17 +178,22 @@ let isSyncingFromProps = false;
 let lastModelSnapshot = "";
 
 const visibleModelSuggestions = computed(() => props.modelSuggestions);
-const getModelFamily = (modelType = "") => {
-  const normalizedType = modelType.trim().toLowerCase();
+const capabilityLabelKeys: Record<string, string> = {
+  reasoning: "input.capabilities.reasoning",
+  webSearch: "input.capabilities.webSearch",
+  imageRead: "input.capabilities.imageRead",
+};
+const getModelFamily = (model = "") => {
+  const normalizedType = model.trim().toLowerCase();
   if (/^claude-/.test(normalizedType)) return "claude";
   if (/^(gpt-|o\d)/.test(normalizedType)) return "openai";
   return "custom";
 };
 const groupedModelSuggestions = computed(() => {
   const groups = [
-    { key: "openai", label: "OpenAI GPT", items: [] as SelectOption[] },
-    { key: "claude", label: "Claude", items: [] as SelectOption[] },
-    { key: "custom", label: "Other", items: [] as SelectOption[] },
+    { key: "openai", label: t("user.modelCard.suggestionGroups.openai"), items: [] as SelectOption[] },
+    { key: "claude", label: t("user.modelCard.suggestionGroups.claude"), items: [] as SelectOption[] },
+    { key: "custom", label: t("user.modelCard.suggestionGroups.custom"), items: [] as SelectOption[] },
   ];
   const groupMap = new Map(groups.map((group) => [group.key, group]));
   const seen = new Set<string>();
@@ -199,15 +203,15 @@ const groupedModelSuggestions = computed(() => {
     groupMap.get(getModelFamily(item.value))?.items.push(item);
   });
 
-  if (localModel.modelType && !seen.has(localModel.modelType)) {
-    groupMap.get(getModelFamily(localModel.modelType))?.items.push({ value: localModel.modelType, name: localModel.modelType });
+  if (localModel.model && !seen.has(localModel.model)) {
+    groupMap.get(getModelFamily(localModel.model))?.items.push({ value: localModel.model, name: localModel.model });
   }
 
   return groups.filter((group) => group.items.length > 0);
 });
 const availableModelProviderList = computed(() => {
   if (isImageModel.value) return imageModelProviderList;
-  const modelFamily = getModelFamily(localModel.modelType);
+  const modelFamily = getModelFamily(localModel.model);
   const allowedProviders =
     modelFamily === "claude"
       ? new Set(["Anthropic", "Azure AI Foundry"])
@@ -221,12 +225,12 @@ const isAzure = computed(() => localModel.provider === "Azure OpenAI");
 const isOpenAIStyle = computed(() => localModel.provider === "OpenAI" || localModel.provider === "Anthropic" || localModel.provider === "Azure AI Foundry");
 const hasImageInputParam = computed(() => isImageModel.value && getModelImageParamDefs(localModel).some((item) => item.type === "image"));
 const activeProtocolLabel = computed(() => (isAzure.value ? "Azure OpenAI" : "OpenAI"));
-const modelTypePlaceholder = computed(() => {
+const modelPlaceholder = computed(() => {
   return props.modelKind === "image" ? t("user.modelCard.placeholders.imageModelId") : t("user.modelCard.placeholders.chatModelId");
 });
 const resolvedModelId = computed(() => getModelRequestId(localModel));
 const modelBehaviorHint = computed(() => {
-  const modelInfo = getChatModelInfo(localModel.modelType, localModel.provider);
+  const modelInfo = getChatModelInfo(localModel.model, localModel.provider);
   const modeText = modelInfo.isReasonModel ? t("user.modelCard.behavior.reasoning") : t("user.modelCard.behavior.chat");
   const formatText = modelInfo.msgTypeVersion === "v1" ? t("user.modelCard.behavior.v1") : t("user.modelCard.behavior.v2");
   return `${modeText} · ${formatText}`;
@@ -251,11 +255,11 @@ const requestSummary = computed(() => {
 });
 const cardTitleKey = computed(() => (props.modelKind === "image" ? "user.modelCard.imageTitle" : "user.modelCard.chatTitle"));
 const cardSubtitleKey = computed(() => (props.modelKind === "image" ? "user.modelCard.imageSubtitle" : "user.modelCard.chatSubtitle"));
-const supportedChatCapabilities = computed(() => getChatModelCapabilities(localModel.modelType, localModel.provider));
+const supportedChatCapabilities = computed(() => getChatModelCapabilities(localModel.model, localModel.provider));
 const chatCapabilityRows = computed(() =>
   chatDisplayedCapabilityKeys.map((key) => ({
     key,
-    label: capabilityLabels[key],
+    label: t(capabilityLabelKeys[key] || key),
     supported: supportedChatCapabilities.value[key],
   })),
 );
@@ -280,30 +284,27 @@ function syncProviderForModel(force = false) {
 }
 
 function normalizeModelFields() {
+  const modelId = localModel.model.trim();
+
   if (isImageModel.value) {
     localModel.provider = localModel.provider === "Azure OpenAI" ? "Azure OpenAI" : "OpenAI";
     localModel.imageOperation = props.imageOperation;
-    localModel.modelType = (localModel.modelType || localModel.model || "").trim();
+    localModel.model = modelId;
     if (localModel.provider === "Azure OpenAI") {
       localModel.baseURL = "";
-      localModel.model = "";
       return;
     }
 
     localModel.endpoint = "";
     localModel.deployment = "";
     localModel.apiVersion = "";
-    localModel.model = localModel.modelType;
     return;
   }
 
-  if (!localModel.modelType && localModel.model) {
-    localModel.modelType = localModel.model.trim();
-  }
+  localModel.model = modelId;
 
   if (isAzure.value) {
     localModel.baseURL = "";
-    localModel.model = "";
     return;
   }
 
@@ -311,7 +312,6 @@ function normalizeModelFields() {
     localModel.endpoint = "";
     localModel.deployment = "";
     localModel.apiVersion = "";
-    localModel.model = (localModel.modelType || localModel.model || "").trim();
   }
 }
 
@@ -348,7 +348,7 @@ function emitModelUpdate() {
 }
 
 const applySuggestedModel = (value: string) => {
-  localModel.modelType = value;
+  localModel.model = value;
 };
 
 const copyApiKey = () => {
@@ -371,7 +371,7 @@ watch(
 );
 
 watch(
-  () => [localModel.provider, localModel.modelType],
+  () => [localModel.provider, localModel.model],
   () => {
     if (isSyncingFromProps || isImageModel.value) return;
     syncProviderForModel();

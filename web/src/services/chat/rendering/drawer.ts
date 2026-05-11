@@ -89,23 +89,47 @@ export class ChatDrawer extends ChatElemCreator {
       return;
     }
 
+    const hasAssistantContent = Boolean(this.tmpAssContentData.content || this.tmpAssContentData.reasoning_content);
+
+    if (this.tmpAssErrorFlag) {
+      if (hasAssistantContent) {
+        const assistantData = {
+          role: "assistant",
+          content: [{ type: "text", text: this.tmpAssContentData.content }],
+          reasoning_content: this.tmpAssContentData.reasoning_content,
+        };
+        if (this.tmpAssTokenUsage) assistantData.token_usage = this.tmpAssTokenUsage;
+
+        await store.dispatch("pushMessages", assistantData);
+        if (this.sync) await addMessage(this.tmpAssContentMid, assistantData);
+      } else {
+        this.removeTempAssistantElem();
+      }
+
+      this.addListener();
+      await store.dispatch("setLlmRequestPending", false);
+      return;
+    }
+
+    if (!flag) {
+      this.removeTempAssistantElem();
+      this.addListener();
+      await store.dispatch("setLlmRequestPending", false);
+      return;
+    }
+
+    // Update conversation history after the provider finishes.
     if (flag) {
-      // Update conversation history after the provider finishes.
-      if (this.tmpAssContentData.content == "" && !this.tmpAssErrorFlag) {
+      if (this.tmpAssContentData.content == "") {
         // Remove the temporary response when the provider returns no content.
         this.forceRemoveResponsingEl();
         this.draw([
           {
             role: "assistant",
-            content: [{ type: "text", text: "请求超时,无有效内容！" }],
+            content: [{ type: "text", text: tr("chat.timeoutNoContent") }],
           },
         ]);
       } else {
-        // Do not persist provider error messages.
-        if (this.tmpAssErrorFlag) {
-          this.addListener();
-          return;
-        }
         const assistantData = {
           role: "assistant",
           content: [{ type: "text", text: this.tmpAssContentData.content }],
@@ -126,8 +150,11 @@ export class ChatDrawer extends ChatElemCreator {
    * Stop the current chat request and rendering.
    */
   stop(): void {
-    this.tmpAssContentDiv = null;
     this.forceStop = true;
+    this.client.abort();
+    this.tmpAssContentDiv = null;
+    this.renderQueue = [];
+    this.isRendering = false;
     store.dispatch("setLlmRequestPending", false);
     this.addListener();
   }
@@ -142,6 +169,12 @@ export class ChatDrawer extends ChatElemCreator {
       if (assEl) assEl.remove();
       this.tmpAssIsResponsingElFlag = false;
     }
+  }
+
+  removeTempAssistantElem(): void {
+    const assistantEl = this.tmpAssContentDiv?.closest(".chat-md-bubble-assistant");
+    if (assistantEl) assistantEl.remove();
+    this.tmpAssIsResponsingElFlag = false;
   }
 
   /**
@@ -166,6 +199,8 @@ export class ChatDrawer extends ChatElemCreator {
    * Queue provider output for rendering.
    */
   enqueueRender(response: ChatProviderResponse): void {
+    if (this.forceStop) return;
+
     store.dispatch("setLlmRequestPending", false);
 
     if (response?.usage) {
@@ -173,13 +208,15 @@ export class ChatDrawer extends ChatElemCreator {
     }
 
     if (!response.flag) {
-      // Render provider errors directly and skip delayed response drawing.
-      if (this.tmpAssContentDiv) {
-        this.tmpAssContentDiv.innerHTML = response.content;
-        this.tmpAssErrorFlag = true;
-      } else {
-        dsAlert({ type: "error", message: response.content });
-      }
+      // Keep already rendered stream content intact and surface the error separately.
+      this.renderQueue = [];
+      this.isRendering = false;
+      this.tmpAssErrorFlag = true;
+
+      if (this.tmpAssContentDiv && (this.tmpAssContentData.content || this.tmpAssContentData.reasoning_content)) this.renderAssStream();
+      else this.forceRemoveResponsingEl();
+
+      dsAlert({ type: "error", message: response.content, duration: 10000 });
       return;
     }
 

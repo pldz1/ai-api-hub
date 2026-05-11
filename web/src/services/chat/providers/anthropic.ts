@@ -1,6 +1,7 @@
 import { normalizeUsage } from "./usage";
 import { requestJson, streamJsonEvents, type JsonObject } from "./sse-client";
-import type { ChatCallback, ChatProviderResponse, PackedChatMessage } from "@/services/types";
+import { tr } from "@/i18n";
+import type { ChatCallback, ChatProviderResponse, ChatRequestOptions, PackedChatMessage } from "@/services/types";
 
 type AnthropicProviderKind = "Anthropic" | "Azure AI Foundry";
 
@@ -94,6 +95,10 @@ function streamEventToResponse(event: JsonObject): ChatProviderResponse | null {
   return null;
 }
 
+function isAbortError(err: unknown): boolean {
+  return err instanceof DOMException && err.name === "AbortError";
+}
+
 export class AnthropicClient {
   baseURL = "";
   apiKey = "";
@@ -162,9 +167,14 @@ export class AnthropicClient {
     return payload;
   }
 
-  async chatStream(messages: PackedChatMessage[], params: Record<string, unknown>, callback: ChatCallback | null = null): Promise<void> {
+  async chatStream(
+    messages: PackedChatMessage[],
+    params: Record<string, unknown>,
+    callback: ChatCallback | null = null,
+    options: ChatRequestOptions = {},
+  ): Promise<void> {
     if (!this.apiKey || !this.model) {
-      if (callback) await callback({ flag: false, content: "模型初始化失败, 无法向服务器发送消息.", reasoning_content: "" });
+      if (callback) await callback({ flag: false, content: tr("toast.chatProviderNotReady"), reasoning_content: "" });
       return;
     }
 
@@ -176,19 +186,22 @@ export class AnthropicClient {
           const next = streamEventToResponse(event);
           if (next && callback) await callback(next);
         },
+        signal: options.signal,
       });
     } catch (err) {
+      if (isAbortError(err)) return;
       if (callback) await callback({ flag: false, content: String(err), reasoning_content: "" });
     }
   }
 
-  async chatSync(messages: PackedChatMessage[], params: Record<string, unknown>): Promise<ChatProviderResponse> {
-    if (!this.apiKey || !this.model) return { flag: false, content: "模型初始化失败, 无法向服务器发送消息.", reasoning_content: "" };
+  async chatSync(messages: PackedChatMessage[], params: Record<string, unknown>, options: ChatRequestOptions = {}): Promise<ChatProviderResponse> {
+    if (!this.apiKey || !this.model) return { flag: false, content: tr("toast.chatProviderNotReady"), reasoning_content: "" };
 
     try {
       const message = await requestJson<JsonObject>(this.getMessagesUrl(), {
         headers: this.getHeaders(),
         body: this.buildPayload(messages, params, false),
+        signal: options.signal,
       });
       return {
         flag: true,
@@ -197,17 +210,23 @@ export class AnthropicClient {
         usage: normalizeUsage(message?.usage as JsonObject | null | undefined),
       };
     } catch (err) {
+      if (isAbortError(err)) return { flag: false, content: "", reasoning_content: "" };
       return { flag: false, content: String(err), reasoning_content: "" };
     }
   }
 
-  async chat(messages: PackedChatMessage[], params: Record<string, unknown> = {}, callback: ChatCallback | null = null): Promise<void> {
+  async chat(
+    messages: PackedChatMessage[],
+    params: Record<string, unknown> = {},
+    callback: ChatCallback | null = null,
+    options: ChatRequestOptions = {},
+  ): Promise<void> {
     if (params?.stream !== false) {
-      await this.chatStream(messages, params, callback);
+      await this.chatStream(messages, params, callback, options);
       return;
     }
 
-    const response = await this.chatSync(messages, params);
+    const response = await this.chatSync(messages, params, options);
     if (callback) await callback(response);
   }
 }

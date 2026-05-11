@@ -86,7 +86,7 @@ import sidebarIcon from "@/assets/svg/sidebar24.svg";
 import newIcon from "@/assets/svg/new24.svg";
 import settingIcon from "@/assets/svg/setting24.svg";
 import { deleteChat, renameChat, getChatSettings } from "@/services";
-import { buildDefaultChatSettings } from "@/constants";
+import { buildDefaultChatSettings, getModelRequestId } from "@/constants";
 import ChatSettings from "@/views/chat/components/ChatSettings.vue";
 import { dsAlert } from "@/utils";
 import AppTooltip from "@/components/base/AppTooltip.vue";
@@ -107,6 +107,7 @@ const editChatNameInputElRef = ref(null);
 const isShowChatScrollbar = ref(false);
 const curChatModel = computed(() => store.state.curChatModel);
 const curConversation = computed(() => store.state.curConversation);
+const hasSelectedChatModel = computed(() => Boolean(curConversation.value?.modelSnapshot || getModelRequestId(curChatModel.value)));
 
 /**
  * 回是否开关侧边栏的布尔量
@@ -129,7 +130,7 @@ const onNewChat = async () => {
  * 打开模型设置界面
  */
 const onShowModelSettings = () => {
-  if (!curConversation.value?.modelSnapshot) {
+  if (!hasSelectedChatModel.value) {
     dsAlert({ type: "warn", message: t("chat.chooseModelFirst") });
     return;
   } else global_chat_model_settings.showModal();

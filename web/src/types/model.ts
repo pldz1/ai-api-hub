@@ -52,7 +52,7 @@ export interface ModelParamDef {
 export interface ModelConfigBase {
   name: string;
   apiKey: string;
-  modelType: string;
+  model: string;
   enabledCapabilities?: Partial<ModelCapabilities>;
 }
 
@@ -83,7 +83,7 @@ export interface AzureOpenAIModelProviderConfig {
   deployment: string;
   apiVersion: string;
   baseURL?: "";
-  model?: "";
+  model: string;
 }
 
 export interface AnthropicModelProviderConfig {
@@ -151,7 +151,6 @@ export interface ModelFormDraft {
   baseURL: string;
   endpoint: string;
   apiKey: string;
-  modelType: string;
   model: string;
   deployment: string;
   apiVersion: string;

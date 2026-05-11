@@ -9,6 +9,7 @@ export interface StreamJsonMessage {
 export interface JsonRequestOptions {
   headers?: Record<string, string>;
   body?: JsonObject;
+  signal?: AbortSignal;
 }
 
 export interface StreamJsonOptions extends JsonRequestOptions {
@@ -45,6 +46,7 @@ export async function requestJson<TData = JsonObject>(url: string, options: Json
       ...(options.headers || {}),
     },
     body: JSON.stringify(options.body || {}),
+    signal: options.signal,
   });
   const data = await readResponsePayload(response);
 
@@ -64,6 +66,7 @@ export async function streamJsonEvents(url: string, options: StreamJsonOptions):
       ...(options.headers || {}),
     },
     body: JSON.stringify(options.body || {}),
+    signal: options.signal,
   });
 
   if (!response.ok) {

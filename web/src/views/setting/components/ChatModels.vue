@@ -27,7 +27,7 @@
           <div class="settings-list-title">{{ chatModel.name || t("common.unnamedModel") }}</div>
           <div class="settings-list-meta">
             <span>{{ chatModel.provider || t("common.unsetProvider") }}</span>
-            <span>{{ chatModel.modelType || t("common.unsetModelId") }}</span>
+            <span>{{ chatModel.model || t("common.unsetModelId") }}</span>
           </div>
         </button>
         <div v-if="props.models.length === 0" class="settings-empty-list">
@@ -100,10 +100,9 @@ const updateCurrentModel = (nextModel: ModelConfig) => {
 const addChatModel = () => {
   const nextModel = normalizeChatModelConfig({
     ...defaultModelFormDraft,
-    name: append4Random("对话模型"),
+    name: append4Random(t("user.chatModels.defaultName")),
     provider: "OpenAI",
     baseURL: "https://api.openai.com/v1",
-    modelType: "gpt-5.5",
     model: "gpt-5.5",
   });
 
@@ -115,7 +114,7 @@ const addChatModel = () => {
 const duplicateChatModel = () => {
   if (!currentModel.value) return;
   const duplicated = cloneModel(currentModel.value);
-  duplicated.name = `${duplicated.name || "对话模型"}-copy`;
+  duplicated.name = `${duplicated.name || t("user.chatModels.defaultName")}-${t("common.duplicateSuffix")}`;
   const nextModels = [...props.models, duplicated];
   updateModels(nextModels);
   selectedIndex.value = nextModels.length - 1;

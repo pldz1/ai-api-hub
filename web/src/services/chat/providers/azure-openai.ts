@@ -1,6 +1,7 @@
 import { normalizeUsage } from "./usage";
 import { requestJson, streamJsonEvents, type JsonObject } from "./sse-client";
-import type { ChatCallback, ChatProviderResponse, PackedChatMessage } from "@/services/types";
+import { tr } from "@/i18n";
+import type { ChatCallback, ChatProviderResponse, ChatRequestOptions, PackedChatMessage } from "@/services/types";
 
 function trimTrailingSlash(value = ""): string {
   return String(value || "").replace(/\/+$/, "");
@@ -37,6 +38,30 @@ function normalizeAzureParams(params: Record<string, unknown> = {}, stream = tru
   return requestParams;
 }
 
+function normalizeAzureResponsesParams(params: Record<string, unknown> = {}): JsonObject {
+  const {
+    stream: _stream,
+    stream_options,
+    webSearch,
+    reasoningBoost,
+    max_completion_tokens,
+    max_tokens,
+    reasoning_effort,
+    verbosity,
+    frequency_penalty,
+    presence_penalty,
+    stop,
+    ...requestParams
+  } = params || {};
+
+  const responseParams: JsonObject = { ...requestParams };
+  if (max_completion_tokens || max_tokens) responseParams.max_output_tokens = max_completion_tokens || max_tokens;
+  if (reasoningBoost || reasoning_effort) responseParams.reasoning = { effort: reasoningBoost ? "high" : reasoning_effort };
+  if (verbosity) responseParams.text = { verbosity };
+
+  return responseParams;
+}
+
 function responseFromChatChunk(chunk: JsonObject): ChatProviderResponse {
   const choice = Array.isArray(chunk.choices) ? (chunk.choices[0] as JsonObject | undefined) : undefined;
   const delta = (choice?.delta || {}) as JsonObject;
@@ -59,6 +84,10 @@ function responseFromChatCompletion(data: JsonObject): ChatProviderResponse {
     reasoning_content: String(message.reasoning_content || ""),
     usage: normalizeUsage(data.usage as JsonObject | null | undefined),
   };
+}
+
+function isAbortError(err: unknown): boolean {
+  return err instanceof DOMException && err.name === "AbortError";
 }
 
 export class AzureOpenAIClient {
@@ -108,23 +137,22 @@ export class AzureOpenAIClient {
   }
 
   getResponsesParams(messages: PackedChatMessage[], params: Record<string, unknown> = {}): JsonObject {
-    const { max_completion_tokens, max_tokens, reasoning_effort, reasoningBoost, verbosity } = params || {};
-    const responseParams: JsonObject = {
+    return {
       model: this.deployment,
       input: messagesToResponsesInput(messages),
       tools: [{ type: "web_search" }],
+      ...normalizeAzureResponsesParams(params),
     };
-
-    if (max_completion_tokens || max_tokens) responseParams.max_output_tokens = max_completion_tokens || max_tokens;
-    if (reasoningBoost || reasoning_effort) responseParams.reasoning = { effort: reasoningBoost ? "high" : reasoning_effort };
-    if (verbosity) responseParams.text = { verbosity };
-
-    return responseParams;
   }
 
-  async chatWithWebSearch(messages: PackedChatMessage[], params: Record<string, unknown> = {}, callback: ChatCallback | null = null): Promise<void> {
+  async chatWithWebSearch(
+    messages: PackedChatMessage[],
+    params: Record<string, unknown> = {},
+    callback: ChatCallback | null = null,
+    options: ChatRequestOptions = {},
+  ): Promise<void> {
     if (!this.apiKey || !this.deployment || !this.apiVersion) {
-      if (callback) await callback({ flag: false, content: "模型初始化失败, 无法向服务器发送消息.", reasoning_content: "" });
+      if (callback) await callback({ flag: false, content: tr("toast.chatProviderNotReady"), reasoning_content: "" });
       return;
     }
 
@@ -132,6 +160,7 @@ export class AzureOpenAIClient {
       const response = await requestJson<JsonObject>(this.getResponsesUrl(), {
         headers: this.getHeaders(),
         body: this.getResponsesParams(messages, params),
+        signal: options.signal,
       });
       if (callback) {
         await callback({
@@ -142,13 +171,19 @@ export class AzureOpenAIClient {
         });
       }
     } catch (err) {
+      if (isAbortError(err)) return;
       if (callback) await callback({ flag: false, content: String(err), reasoning_content: "" });
     }
   }
 
-  async chatStream(messages: PackedChatMessage[], params: Record<string, unknown>, callback: ChatCallback | null = null): Promise<void> {
+  async chatStream(
+    messages: PackedChatMessage[],
+    params: Record<string, unknown>,
+    callback: ChatCallback | null = null,
+    options: ChatRequestOptions = {},
+  ): Promise<void> {
     if (!this.apiKey || !this.deployment || !this.apiVersion) {
-      if (callback) await callback({ flag: false, content: "模型初始化失败, 无法向服务器发送消息.", reasoning_content: "" });
+      if (callback) await callback({ flag: false, content: tr("toast.chatProviderNotReady"), reasoning_content: "" });
       return;
     }
 
@@ -163,14 +198,16 @@ export class AzureOpenAIClient {
         async onEvent(chunk) {
           if (callback) await callback(responseFromChatChunk(chunk));
         },
+        signal: options.signal,
       });
     } catch (err) {
+      if (isAbortError(err)) return;
       if (callback) await callback({ flag: false, content: String(err), reasoning_content: "" });
     }
   }
 
-  async chatSync(messages: PackedChatMessage[], params: Record<string, unknown>): Promise<ChatProviderResponse> {
-    if (!this.apiKey || !this.deployment || !this.apiVersion) return { flag: false, content: "模型初始化失败, 无法向服务器发送消息.", reasoning_content: "" };
+  async chatSync(messages: PackedChatMessage[], params: Record<string, unknown>, options: ChatRequestOptions = {}): Promise<ChatProviderResponse> {
+    if (!this.apiKey || !this.deployment || !this.apiVersion) return { flag: false, content: tr("toast.chatProviderNotReady"), reasoning_content: "" };
 
     try {
       const response = await requestJson<JsonObject>(this.getChatCompletionsUrl(), {
@@ -180,26 +217,33 @@ export class AzureOpenAIClient {
           ...normalizeAzureParams(params, false),
           stream: false,
         },
+        signal: options.signal,
       });
       return responseFromChatCompletion(response);
     } catch (err) {
+      if (isAbortError(err)) return { flag: false, content: "", reasoning_content: "" };
       return { flag: false, content: String(err), reasoning_content: "" };
     }
   }
 
-  async chat(messages: PackedChatMessage[], params: Record<string, unknown> = {}, callback: ChatCallback | null = null): Promise<void> {
+  async chat(
+    messages: PackedChatMessage[],
+    params: Record<string, unknown> = {},
+    callback: ChatCallback | null = null,
+    options: ChatRequestOptions = {},
+  ): Promise<void> {
     const { webSearch, ...nextParams } = params || {};
     if (webSearch) {
-      await this.chatWithWebSearch(messages, nextParams, callback);
+      await this.chatWithWebSearch(messages, nextParams, callback, options);
       return;
     }
 
     if (nextParams.stream !== false) {
-      await this.chatStream(messages, nextParams, callback);
+      await this.chatStream(messages, nextParams, callback, options);
       return;
     }
 
-    const response = await this.chatSync(messages, nextParams);
+    const response = await this.chatSync(messages, nextParams, options);
     if (callback) await callback(response);
   }
 }

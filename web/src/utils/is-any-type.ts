@@ -1,3 +1,5 @@
+import { tr } from "@/i18n";
+
 /**
  * 检测 string 变量是不是能够被解析成一个数组
  * @param {*} jsonStr
@@ -84,82 +86,105 @@ export function isValidChatInfoArray(data) {
  * 判断 json 的数据, 是不是有效的模型设置
  */
 export const getModelSettingValidationError = (data) => {
-  const expectedKeys = ["chat", "rtaudio"];
-
   if (typeof data !== "object" || data === null) {
-    return "顶层不是有效对象";
+    return tr("validation.topLevelNotObject");
   }
 
-  // 所有指定 key 都必须存在且是数组
-  for (const key of expectedKeys) {
-    if (!(key in data)) {
-      return `缺少顶层字段: ${key}`;
-    }
+  const topLevelKeys = ["chat", "image", "imageGeneration", "imageEdit", "rtaudio"];
+  const presentKeys = topLevelKeys.filter((key) => key in data);
+
+  if (presentKeys.length === 0) {
+    return tr("validation.missingModelListFields");
+  }
+
+  for (const key of presentKeys) {
     if (!Array.isArray(data[key])) {
-      return `字段 ${key} 不是数组`;
+      return tr("validation.fieldNotArray", { path: key });
     }
   }
 
-  const hasImageGeneration = Array.isArray(data.imageGeneration);
-  const hasImageEdit = Array.isArray(data.imageEdit);
-  const hasLegacyImage = Array.isArray(data.image);
-  if (!hasLegacyImage && (!hasImageGeneration || !hasImageEdit)) {
-    return "缺少图像模型字段: image 或 imageGeneration/imageEdit";
-  }
+  const hasOwn = (item, field) => Object.prototype.hasOwnProperty.call(item, field);
+  const itemPath = (key, index) => `${key}[${index}]`;
+  const fieldPath = (path, field) => `${path}.${field}`;
 
   const requireFields = (item, fields, key, index) => {
     for (const field of fields) {
-      if (!(field in item)) {
-        return `${key}[${index}] 缺少字段: ${field}`;
+      if (!hasOwn(item, field)) {
+        return tr("validation.missingField", { path: itemPath(key, index), field });
       }
     }
     return "";
   };
 
+  const requireAnyField = (item, fields, key, index) => {
+    if (fields.some((field) => hasOwn(item, field))) return "";
+    return tr("validation.missingOneOfFields", { path: itemPath(key, index), fields: fields.join(" / ") });
+  };
+
+  const validateOptionalArrayField = (item, field, key, index) => {
+    if (!hasOwn(item, field)) return "";
+    return Array.isArray(item[field]) ? "" : tr("validation.fieldNotArray", { path: fieldPath(itemPath(key, index), field) });
+  };
+
   const validateChatModel = (item, key, index) => {
     const provider = item.provider || item.apiType || "";
     if (!["OpenAI", "Azure OpenAI", "Anthropic", "Azure AI Foundry", ""].includes(provider)) {
-      return `${key}[${index}] provider 无效`;
+      return tr("validation.invalidField", { path: fieldPath(itemPath(key, index), "provider") });
     }
 
-    const commonError = requireFields(item, ["name", "apiKey", "modelType", "chatParamDefs"], key, index);
+    const commonError = requireFields(item, ["name", "apiKey"], key, index);
     if (commonError) return commonError;
-    if (!("provider" in item) && !("apiType" in item)) return `${key}[${index}] 缺少字段: provider`;
+    if (!hasOwn(item, "provider") && !hasOwn(item, "apiType")) {
+      return tr("validation.missingOneOfFields", { path: itemPath(key, index), fields: "provider / apiType" });
+    }
+
+    const modelError = requireFields(item, ["model"], key, index);
+    if (modelError) return modelError;
+
+    const chatParamDefsError = validateOptionalArrayField(item, "chatParamDefs", key, index);
+    if (chatParamDefsError) return chatParamDefsError;
 
     if (provider === "Azure OpenAI") {
       return requireFields(item, ["endpoint", "deployment", "apiVersion"], key, index);
     }
 
-    return requireFields(item, ["baseURL", "model"], key, index);
+    return requireFields(item, ["baseURL"], key, index);
   };
 
   const validateImageModel = (item, key, index) => {
     const provider = item.provider || item.apiType || "";
     if (!["OpenAI", "Azure OpenAI", ""].includes(provider)) {
-      return `${key}[${index}] provider 无效`;
+      return tr("validation.invalidField", { path: fieldPath(itemPath(key, index), "provider") });
     }
 
-    const commonError = requireFields(item, ["name", "apiKey", "imageParamDefs", "imageOperation"], key, index);
+    const commonError = requireFields(item, ["name", "apiKey"], key, index);
     if (commonError) return commonError;
-    if (!("provider" in item) && !("apiType" in item)) return `${key}[${index}] 缺少字段: provider`;
+    if (!hasOwn(item, "provider") && !hasOwn(item, "apiType")) {
+      return tr("validation.missingOneOfFields", { path: itemPath(key, index), fields: "provider / apiType" });
+    }
+
+    const modelError = requireFields(item, ["model"], key, index);
+    if (modelError) return modelError;
+
+    const imageParamDefsError = validateOptionalArrayField(item, "imageParamDefs", key, index);
+    if (imageParamDefsError) return imageParamDefsError;
+
+    if (hasOwn(item, "imageOperation") && !["generation", "edit", ""].includes(item.imageOperation)) {
+      return tr("validation.invalidField", { path: fieldPath(itemPath(key, index), "imageOperation") });
+    }
 
     if (provider === "Azure OpenAI") {
       return requireFields(item, ["endpoint", "deployment", "apiVersion"], key, index);
     }
 
-    return requireFields(item, ["baseURL", "model"], key, index);
+    return requireFields(item, ["baseURL"], key, index);
   };
 
-  for (const key of [
-    ...expectedKeys,
-    ...(hasLegacyImage ? ["image"] : []),
-    ...(hasImageGeneration ? ["imageGeneration"] : []),
-    ...(hasImageEdit ? ["imageEdit"] : []),
-  ]) {
+  for (const key of presentKeys) {
     for (let index = 0; index < data[key].length; index++) {
       const item = data[key][index];
       if (!item || typeof item !== "object") {
-        return `${key}[${index}] 不是对象`;
+        return tr("validation.notObject", { path: itemPath(key, index) });
       }
       const validationError = key === "chat" ? validateChatModel(item, key, index) : key === "rtaudio" ? "" : validateImageModel(item, key, index);
       if (validationError) return validationError;
@@ -170,3 +195,73 @@ export const getModelSettingValidationError = (data) => {
 };
 
 export const isValidModelSetting = (data) => !getModelSettingValidationError(data);
+
+function isPlainObject(data) {
+  return Boolean(data) && typeof data === "object" && !Array.isArray(data);
+}
+
+export const getChatTemplateListValidationError = (data, field = "templates") => {
+  if (!Array.isArray(data)) {
+    return tr("validation.fieldNotArray", { path: field });
+  }
+
+  for (let index = 0; index < data.length; index++) {
+    const item = data[index];
+    const path = `${field}[${index}]`;
+    if (!isPlainObject(item)) {
+      return tr("validation.notObject", { path });
+    }
+
+    if (typeof item.id !== "string") {
+      return tr("validation.fieldNotString", { path: `${path}.id` });
+    }
+
+    if (typeof item.name !== "string") {
+      return tr("validation.fieldNotString", { path: `${path}.name` });
+    }
+
+    if (typeof item.value !== "string") {
+      return tr("validation.fieldNotString", { path: `${path}.value` });
+    }
+  }
+
+  return "";
+};
+
+export const isSettingsImportPackage = (data) => isPlainObject(data) && "models" in data;
+
+export const getSettingsImportValidationError = (data) => {
+  if (isSettingsImportPackage(data)) {
+    const modelError = getModelSettingValidationError(data.models);
+    if (modelError) {
+      return tr("validation.modelsPrefix", { error: modelError });
+    }
+
+    if ("templates" in data) {
+      const templateError = getChatTemplateListValidationError(data.templates, "templates");
+      if (templateError) return templateError;
+    }
+
+    if ("hostUrl" in data && typeof data.hostUrl !== "string") {
+      return tr("validation.fieldNotString", { path: "hostUrl" });
+    }
+
+    if ("schema" in data && typeof data.schema !== "string") {
+      return tr("validation.fieldNotString", { path: "schema" });
+    }
+
+    if ("version" in data && !Number.isFinite(Number(data.version))) {
+      return tr("validation.fieldNotNumber", { path: "version" });
+    }
+
+    if ("exportedAt" in data && typeof data.exportedAt !== "string") {
+      return tr("validation.fieldNotString", { path: "exportedAt" });
+    }
+
+    return "";
+  }
+
+  return getModelSettingValidationError(data);
+};
+
+export const isValidSettingsImport = (data) => !getSettingsImportValidationError(data);

@@ -67,6 +67,10 @@ export interface ChatProviderResponse {
 
 export type ChatCallback = (response: ChatProviderResponse) => void | Promise<void>;
 
+export interface ChatRequestOptions {
+  signal?: AbortSignal;
+}
+
 export interface ChatListItem {
   cid: string;
   cname: string;

@@ -106,7 +106,7 @@ const currentModel = computed(() => {
 });
 const detailSummary = computed(() => {
   if (!currentModel.value) return "";
-  const modelId = currentModel.value.modelType || currentModel.value.model || t("common.unsetModelId");
+  const modelId = currentModel.value.model || t("common.unsetModelId");
   return `${modelProviderLabel(currentModel.value)} · ${currentModel.value.baseURL || modelId}`;
 });
 
@@ -136,10 +136,9 @@ const addImageModel = () => {
   const nextModel = normalizeImageModelConfig(
     {
       ...defaultModelFormDraft,
-      name: append4Random("图像模型"),
+      name: append4Random(t("user.imageModels.defaultName")),
       provider: "OpenAI",
       baseURL: "https://api.openai.com/v1",
-      modelType: "",
       model: "",
     },
     props.modelOperation,
@@ -153,7 +152,7 @@ const addImageModel = () => {
 const duplicateImageModel = () => {
   if (!currentModel.value) return;
   const duplicated = cloneModel(currentModel.value);
-  duplicated.name = `${duplicated.name || "图像模型"}-copy`;
+  duplicated.name = `${duplicated.name || t("user.imageModels.defaultName")}-${t("common.duplicateSuffix")}`;
   const nextModels = [...props.models, duplicated];
   updateModels(nextModels);
   selectedIndex.value = nextModels.length - 1;

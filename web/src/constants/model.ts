@@ -5,80 +5,52 @@ import type {
   ChatModelSettings,
   ConversationModelSnapshot,
   ImageModelConfig,
-  ImageModelSettings,
   ImageOperation,
   ModelCapabilities,
   ModelFormDraft,
   ModelParamDef,
-  ModelParamType,
-  ParamDefaultValue,
+  ModelSettings,
   SelectOption,
 } from "@/types/model";
+import { tr } from "@/i18n";
+import {
+  cloneJson,
+  defaultModelFormDraft,
+  getLegacyProvider,
+  getModelDeployment,
+  getModelRequestId,
+  normalizeModelFormDraft,
+  parseParamValue,
+  type LooseModelConfig,
+  type LooseModelSettings,
+  type LooseParamDef,
+} from "./model-common";
+import { getModelImageParamDefs, normalizeImageModelConfig } from "./image-model";
 
-function cloneJson<T>(data: T): T {
-  return JSON.parse(JSON.stringify(data));
-}
+export { defaultModelFormDraft, getModelDeployment, getModelRequestId, parseParamValue as parseChatParamValue } from "./model-common";
 
-type LooseParamDef = Partial<ModelParamDef> & { key?: string };
-type LegacyModelProviderConfig = { apiType?: ModelProvider; provider?: ModelProvider };
-type LooseModelConfig = Partial<ModelFormDraft> &
-  LegacyModelProviderConfig & {
-    chatParamDefs?: ModelParamDef[];
-    imageParamDefs?: ModelParamDef[];
-  };
-
-export const defaultModelFormDraft: ModelFormDraft = {
-  name: "",
-  provider: "",
-  baseURL: "",
-  endpoint: "",
-  apiKey: "",
-  modelType: "",
-  model: "",
-  deployment: "",
-  apiVersion: "",
-  imageOperation: "",
-  enabledCapabilities: {},
-};
-
+/** Returns whether a model config should use Azure OpenAI request routing. */
 export function isAzureChatModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "Azure OpenAI" } {
   return getLegacyProvider(model) === "Azure OpenAI";
 }
 
+/** Returns whether a model config should use OpenAI-compatible request routing. */
 export function isOpenAIChatModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "OpenAI" } {
   return getLegacyProvider(model) === "OpenAI";
 }
 
+/** Returns whether a model config should use Anthropic-compatible request routing. */
 export function isAnthropicChatModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "Anthropic" | "Azure AI Foundry" } {
   const provider = getLegacyProvider(model);
   return provider === "Anthropic" || provider === "Azure AI Foundry";
 }
 
-export function getModelRequestId(model: Partial<ModelFormDraft> | null | undefined): string {
-  return String(model?.model || model?.modelType || "").trim();
-}
-
-export function getModelDeployment(model: Partial<ModelFormDraft> | null | undefined): string {
-  return String(model?.deployment || "").trim();
-}
-
-function getLegacyProvider(model: LooseModelConfig | null | undefined = {}): ModelProvider {
-  return (model?.provider || model?.apiType || "") as ModelProvider;
-}
-
-function normalizeModelFormDraft(model: LooseModelConfig | null | undefined = {}): ModelFormDraft {
-  return {
-    ...cloneJson(defaultModelFormDraft),
-    ...(model || {}),
-    provider: getLegacyProvider(model),
-  };
-}
-
+/** Normalizes user chat model config and migrates old `modelType` data to `model`. */
 export function normalizeChatModelConfig(model: LooseModelConfig | null | undefined = {}): ChatModelConfig {
   const draft = normalizeModelFormDraft(model);
   const provider = draft.provider === "Azure OpenAI" || draft.provider === "Anthropic" || draft.provider === "Azure AI Foundry" ? draft.provider : "OpenAI";
-  const modelType = String(draft.modelType || draft.model || "").trim();
-  const chatParamDefs = getDefaultChatParamDefs(modelType, provider);
+  const modelId = getModelRequestId(draft);
+  const chatParamDefs = getModelChatParamDefs({ ...(model || {}), provider, model: modelId });
 
   if (provider === "Azure OpenAI") {
     return {
@@ -88,7 +60,7 @@ export function normalizeChatModelConfig(model: LooseModelConfig | null | undefi
       deployment: draft.deployment,
       apiVersion: draft.apiVersion,
       apiKey: draft.apiKey,
-      modelType,
+      model: modelId,
       chatParamDefs,
       imageParamDefs: [],
       imageOperation: "",
@@ -101,8 +73,7 @@ export function normalizeChatModelConfig(model: LooseModelConfig | null | undefi
     provider,
     baseURL: draft.baseURL,
     apiKey: draft.apiKey,
-    modelType,
-    model: getModelRequestId({ ...draft, modelType }),
+    model: modelId,
     chatParamDefs,
     imageParamDefs: [],
     imageOperation: "",
@@ -110,42 +81,124 @@ export function normalizeChatModelConfig(model: LooseModelConfig | null | undefi
   };
 }
 
-export function normalizeImageModelConfig(model: LooseModelConfig | null | undefined = {}, imageOperation: ImageOperation = "generation"): ImageModelConfig {
-  const draft = normalizeModelFormDraft(model);
-  const provider = draft.provider === "Azure OpenAI" ? draft.provider : "OpenAI";
-  const modelType = String(draft.modelType || draft.model || "").trim();
-  const imageParamDefs = getModelImageParamDefs({ provider, modelType, imageOperation, imageParamDefs: [] }).filter(
-    (item) => imageOperation === "edit" || item.type !== "image",
-  );
+/** Normalizes the complete model settings object loaded from storage. */
+export function normalizeModelSettings(data: LooseModelSettings | null | undefined = {}): ModelSettings {
+  const normalizeModels = (items: unknown[] = [], kind = "", imageOperation: ImageOperation | "" = "") =>
+    (Array.isArray(items) ? items : []).map((item) => {
+      if (kind === "chat") return normalizeChatModelConfig(item as LooseModelConfig);
+      if (kind === "image")
+        return normalizeImageModelConfig(item as LooseModelConfig, imageOperation || (item as LooseModelConfig)?.imageOperation || "generation");
+      const plainItem = item && typeof item === "object" ? item : {};
+      return {
+        ...cloneJson(defaultModelFormDraft),
+        ...plainItem,
+      };
+    });
 
-  if (provider === "Azure OpenAI") {
-    return {
-      name: draft.name,
-      provider,
-      endpoint: draft.endpoint,
-      deployment: draft.deployment,
-      apiVersion: draft.apiVersion,
-      apiKey: draft.apiKey,
-      modelType,
-      chatParamDefs: [],
-      imageParamDefs,
-      imageOperation,
-      enabledCapabilities: draft.enabledCapabilities,
-    };
-  }
+  const legacyImageModels = Array.isArray(data?.image) ? data.image : [];
+  const imageGenerationModels = Array.isArray(data?.imageGeneration) ? data.imageGeneration : legacyImageModels;
+  const imageEditModels = Array.isArray(data?.imageEdit) ? data.imageEdit : legacyImageModels;
 
   return {
-    name: draft.name,
-    provider,
-    baseURL: draft.baseURL,
-    apiKey: draft.apiKey,
-    modelType,
-    model: getModelRequestId({ ...draft, modelType }),
-    chatParamDefs: [],
-    imageParamDefs,
-    imageOperation,
-    enabledCapabilities: draft.enabledCapabilities,
+    chat: normalizeModels(data?.chat, "chat") as ChatModelConfig[],
+    imageGeneration: normalizeModels(imageGenerationModels, "image", "generation") as ImageModelConfig[],
+    imageEdit: normalizeModels(imageEditModels, "image", "edit") as ImageModelConfig[],
+    image: normalizeModels(imageGenerationModels, "image", "generation") as ImageModelConfig[],
+    rtaudio: normalizeModels(data?.rtaudio) as ModelFormDraft[],
   };
+}
+
+function hasCapabilityOverrides(model: Partial<ModelFormDraft> | null | undefined = {}): boolean {
+  return Boolean(model?.enabledCapabilities && Object.keys(model.enabledCapabilities).length > 0);
+}
+
+function hasCustomChatParamDefs(model: ChatModelConfig): boolean {
+  const currentDefs = getModelChatParamDefs(model);
+  const defaultDefs = getDefaultChatParamDefs(model.model, model.provider);
+  return JSON.stringify(currentDefs) !== JSON.stringify(defaultDefs);
+}
+
+function hasCustomImageParamDefs(model: ImageModelConfig): boolean {
+  const currentDefs = getModelImageParamDefs(model);
+  const defaultDefs = getModelImageParamDefs({
+    provider: model.provider,
+    model: model.model,
+    imageOperation: model.imageOperation,
+    imageParamDefs: [],
+  });
+  return JSON.stringify(currentDefs) !== JSON.stringify(defaultDefs);
+}
+
+function serializeChatModel(model: Partial<ModelFormDraft> | ChatModelConfig): Record<string, unknown> {
+  const normalizedModel = normalizeChatModelConfig(model as LooseModelConfig);
+  const payload: Record<string, unknown> = {
+    name: normalizedModel.name,
+    provider: normalizedModel.provider,
+    apiKey: normalizedModel.apiKey,
+    model: getModelRequestId(normalizedModel),
+  };
+
+  if (isAzureChatModel(normalizedModel)) {
+    payload.endpoint = normalizedModel.endpoint;
+    payload.deployment = normalizedModel.deployment;
+    payload.apiVersion = normalizedModel.apiVersion;
+  } else {
+    payload.baseURL = normalizedModel.baseURL;
+  }
+
+  if (hasCapabilityOverrides(normalizedModel)) {
+    payload.enabledCapabilities = cloneJson(normalizedModel.enabledCapabilities);
+  }
+
+  if (hasCustomChatParamDefs(normalizedModel)) {
+    payload.chatParamDefs = cloneJson(getModelChatParamDefs(normalizedModel));
+  }
+
+  return payload;
+}
+
+function serializeImageModel(model: Partial<ModelFormDraft> | ImageModelConfig, imageOperation: ImageOperation): Record<string, unknown> {
+  const normalizedModel = normalizeImageModelConfig(model as LooseModelConfig, imageOperation);
+  const payload: Record<string, unknown> = {
+    name: normalizedModel.name,
+    provider: normalizedModel.provider,
+    apiKey: normalizedModel.apiKey,
+    model: getModelRequestId(normalizedModel),
+  };
+
+  if (normalizedModel.provider === "Azure OpenAI") {
+    payload.endpoint = normalizedModel.endpoint;
+    payload.deployment = normalizedModel.deployment;
+    payload.apiVersion = normalizedModel.apiVersion;
+  } else {
+    payload.baseURL = normalizedModel.baseURL;
+  }
+
+  if (hasCapabilityOverrides(normalizedModel)) {
+    payload.enabledCapabilities = cloneJson(normalizedModel.enabledCapabilities);
+  }
+
+  if (hasCustomImageParamDefs(normalizedModel)) {
+    payload.imageParamDefs = cloneJson(getModelImageParamDefs(normalizedModel));
+  }
+
+  return payload;
+}
+
+/** Serializes normalized model settings for storage, omitting derived defaults. */
+export function serializeModelSettings(data: LooseModelSettings | null | undefined = {}): Record<string, unknown> {
+  const normalized = normalizeModelSettings(data);
+  const payload: Record<string, unknown> = {
+    chat: normalized.chat.map((item) => serializeChatModel(item)),
+    imageGeneration: normalized.imageGeneration.map((item) => serializeImageModel(item, "generation")),
+    imageEdit: normalized.imageEdit.map((item) => serializeImageModel(item, "edit")),
+  };
+
+  if (Array.isArray(normalized.rtaudio) && normalized.rtaudio.length > 0) {
+    payload.rtaudio = cloneJson(normalized.rtaudio);
+  }
+
+  return payload;
 }
 
 export const providerList: SelectOption<ModelProvider>[] = [
@@ -172,27 +225,6 @@ const chatOption = (
   capabilities,
 });
 
-export const chatModelTypeList: ChatModelOption[] = [
-  chatOption("gpt-5.5", { webSearch: true, reasoning: true, imageRead: true }),
-  chatOption("gpt-5.5-pro", { webSearch: true, reasoning: true, imageRead: true }),
-  chatOption("gpt-5.4", { webSearch: true, reasoning: true, imageRead: true }),
-  chatOption("gpt-5.4-pro", { webSearch: true, reasoning: true, imageRead: true }),
-  chatOption("gpt-5.4-mini", { webSearch: false, reasoning: true, imageRead: true }),
-  chatOption("gpt-5.4-nano", { webSearch: false, reasoning: true, imageRead: false }),
-  chatOption("gpt-5.2", { webSearch: true, reasoning: true, imageRead: true }),
-  chatOption("gpt-5", { webSearch: true, reasoning: true, imageRead: true }),
-  chatOption("gpt-5-mini", { webSearch: false, reasoning: true, imageRead: true }),
-  chatOption("gpt-5-nano", { webSearch: false, reasoning: true, imageRead: false }),
-  chatOption("gpt-4.1", { webSearch: true, reasoning: false, imageRead: true }),
-  chatOption("gpt-4.1-mini", { webSearch: false, reasoning: false, imageRead: true }),
-  chatOption("gpt-4.1-nano", { webSearch: false, reasoning: false, imageRead: false }),
-  chatOption("gpt-4o", { webSearch: true, reasoning: false, imageRead: true }),
-  chatOption("gpt-4o-mini", { webSearch: false, reasoning: false, imageRead: true }),
-  chatOption("claude-opus-4-7", { webSearch: false, reasoning: false, imageRead: true }),
-  chatOption("claude-sonnet-4-6", { webSearch: false, reasoning: false, imageRead: true }),
-  chatOption("claude-haiku-4-5", { webSearch: false, reasoning: false, imageRead: true }),
-];
-
 export const defaultModelCapabilities: ModelCapabilities = {
   textInput: true,
   imageRead: false,
@@ -205,46 +237,175 @@ export const defaultModelCapabilities: ModelCapabilities = {
   imageGeneration: false,
 };
 
-export const capabilityLabels: Record<keyof ModelCapabilities, string> = {
-  textInput: "Text",
-  imageRead: "Image",
-  imageInput: "Image",
-  fileInput: "Files",
-  webSearch: "Web",
-  reasoning: "Thinking",
-  functionCalling: "Tools",
-  structuredOutput: "JSON",
-  imageGeneration: "Image Gen",
-};
-
 export const chatTurnCapabilityKeys: (keyof ModelCapabilities)[] = ["webSearch", "reasoning"];
 export const chatDisplayedCapabilityKeys: (keyof ModelCapabilities)[] = ["reasoning", "webSearch", "imageRead"];
 
-export function getChatModelCapabilities(modelType = "", provider = "OpenAI"): ModelCapabilities {
-  const normalizedType = (modelType || "").trim().toLowerCase();
-  const normalizedModelProvider = (provider || "").trim().toLowerCase();
-  const isAzure = normalizedModelProvider === "azure openai";
-  const isClaude = normalizedModelProvider === "anthropic" || normalizedModelProvider === "azure ai foundry" || /^claude-/.test(normalizedType);
-  const isGpt5 = /^gpt-5(\.|-|$)/.test(normalizedType);
-  const isGpt4 = /^gpt-4/.test(normalizedType);
-  const isModernGpt = isGpt5 || isGpt4;
-  const isMiniNano = /(-mini|-nano)$/.test(normalizedType);
-  const isNano = /-nano$/.test(normalizedType);
-  const isReasoning = getChatModelInfo(modelType, provider).isReasonModel;
+type ChatModelCatalogItem = ChatModelOption & {
+  provider?: ModelProvider;
+  chatParamKeys: string[];
+};
+type ChatModelCatalogInput = {
+  value: string;
+  provider?: ModelProvider;
+  capabilities: Pick<ModelCapabilities, "webSearch" | "reasoning" | "imageRead">;
+  chatParamKeys: string[];
+  msgTypeVersion?: "v1" | "v2";
+};
 
+function catalogItem(input: ChatModelCatalogInput): ChatModelCatalogItem {
+  const option = chatOption(input.value, input.capabilities, input.msgTypeVersion || "v2");
   return {
-    ...defaultModelCapabilities,
-    imageRead: isClaude || (isModernGpt && !isNano),
-    imageInput: isClaude || (isModernGpt && !isNano),
-    fileInput: !isClaude && (isGpt5 || /^gpt-4\.1/.test(normalizedType)),
-    webSearch: !isClaude && isModernGpt && !isMiniNano,
-    reasoning: !isClaude && (isGpt5 || isReasoning),
-    functionCalling: isClaude || isModernGpt || isReasoning,
-    structuredOutput: isClaude || isModernGpt || isReasoning,
-    imageGeneration: false,
+    ...option,
+    provider: input.provider,
+    chatParamKeys: input.chatParamKeys,
   };
 }
 
+const chatModelCatalog: ChatModelCatalogItem[] = [
+  catalogItem({
+    value: "gpt-5.5",
+    capabilities: { webSearch: true, reasoning: true, imageRead: true },
+    chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
+  }),
+  catalogItem({
+    value: "gpt-5.5-pro",
+    capabilities: { webSearch: true, reasoning: true, imageRead: true },
+    chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
+  }),
+  catalogItem({
+    value: "gpt-5.4",
+    capabilities: { webSearch: true, reasoning: true, imageRead: true },
+    chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
+  }),
+  catalogItem({
+    value: "gpt-5.4-pro",
+    capabilities: { webSearch: true, reasoning: true, imageRead: true },
+    chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
+  }),
+  catalogItem({
+    value: "gpt-5.4-mini",
+    capabilities: { webSearch: false, reasoning: true, imageRead: true },
+    chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
+  }),
+  catalogItem({
+    value: "gpt-5.4-nano",
+    capabilities: { webSearch: false, reasoning: true, imageRead: false },
+    chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
+  }),
+  catalogItem({
+    value: "gpt-5.2",
+    capabilities: { webSearch: true, reasoning: true, imageRead: true },
+    chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
+  }),
+  catalogItem({
+    value: "gpt-5",
+    capabilities: { webSearch: true, reasoning: true, imageRead: true },
+    chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
+  }),
+  catalogItem({
+    value: "gpt-5-mini",
+    capabilities: { webSearch: false, reasoning: true, imageRead: true },
+    chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
+  }),
+  catalogItem({
+    value: "gpt-5-nano",
+    capabilities: { webSearch: false, reasoning: true, imageRead: false },
+    chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
+  }),
+  catalogItem({
+    value: "gpt-4.1",
+    capabilities: { webSearch: true, reasoning: false, imageRead: true },
+    chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty", "stop"],
+  }),
+  catalogItem({
+    value: "gpt-4.1-mini",
+    capabilities: { webSearch: false, reasoning: false, imageRead: true },
+    chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty", "stop"],
+  }),
+  catalogItem({
+    value: "gpt-4.1-nano",
+    capabilities: { webSearch: false, reasoning: false, imageRead: false },
+    chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty", "stop"],
+  }),
+  catalogItem({
+    value: "gpt-4o",
+    capabilities: { webSearch: true, reasoning: false, imageRead: true },
+    chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
+  }),
+  catalogItem({
+    value: "gpt-4o-mini",
+    capabilities: { webSearch: false, reasoning: false, imageRead: true },
+    chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
+  }),
+  catalogItem({
+    value: "gpt-4-turbo",
+    capabilities: { webSearch: false, reasoning: false, imageRead: true },
+    chatParamKeys: ["max_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
+  }),
+  catalogItem({
+    value: "gpt-3.5-turbo",
+    capabilities: { webSearch: false, reasoning: false, imageRead: false },
+    chatParamKeys: ["max_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty", "stop"],
+    msgTypeVersion: "v1",
+  }),
+  catalogItem({
+    value: "o1",
+    capabilities: { webSearch: false, reasoning: true, imageRead: false },
+    chatParamKeys: ["max_completion_tokens", "reasoning_effort"],
+  }),
+  catalogItem({
+    value: "o3",
+    capabilities: { webSearch: false, reasoning: true, imageRead: false },
+    chatParamKeys: ["max_completion_tokens", "reasoning_effort"],
+  }),
+  catalogItem({
+    value: "o4-mini",
+    capabilities: { webSearch: false, reasoning: true, imageRead: false },
+    chatParamKeys: ["max_completion_tokens", "reasoning_effort"],
+  }),
+  catalogItem({
+    value: "claude-opus-4-7",
+    capabilities: { webSearch: false, reasoning: false, imageRead: true },
+    chatParamKeys: ["max_tokens", "temperature", "top_p", "stop"],
+  }),
+  catalogItem({
+    value: "claude-sonnet-4-6",
+    capabilities: { webSearch: false, reasoning: false, imageRead: true },
+    chatParamKeys: ["max_tokens", "temperature", "top_p", "stop"],
+  }),
+  catalogItem({
+    value: "claude-haiku-4-5",
+    capabilities: { webSearch: false, reasoning: false, imageRead: true },
+    chatParamKeys: ["max_tokens", "temperature", "top_p", "stop"],
+  }),
+];
+
+export const chatModelTypeList: ChatModelOption[] = chatModelCatalog.map(({ value, name, isReasonModel, msgTypeVersion, capabilities }) => ({
+  value,
+  name,
+  isReasonModel,
+  msgTypeVersion,
+  capabilities,
+}));
+
+function findChatModelCatalogItem(model = "", provider = ""): ChatModelCatalogItem | null {
+  const normalizedModel = (model || "").trim().toLowerCase();
+  const normalizedProvider = (provider || "").trim().toLowerCase();
+  return (
+    chatModelCatalog.find((item) => {
+      const itemProvider = (item.provider || "").trim().toLowerCase();
+      return item.value.toLowerCase() === normalizedModel && (!itemProvider || !normalizedProvider || itemProvider === normalizedProvider);
+    }) || null
+  );
+}
+
+/** Returns the chat-facing capabilities declared by the model catalog. */
+export function getChatModelCapabilities(model = "", provider = "OpenAI"): ModelCapabilities {
+  const catalogItem = findChatModelCatalogItem(model, provider);
+  return normalizeModelCapabilities(catalogItem?.capabilities || {}, { ...defaultModelCapabilities, ...(catalogItem?.capabilities || {}) });
+}
+
+/** Expands partial capability flags into the full capability shape used by the store. */
 export function normalizeModelCapabilities(
   capabilities: Partial<ModelCapabilities> | null | undefined = {},
   supported: ModelCapabilities = defaultModelCapabilities,
@@ -268,6 +429,7 @@ export function normalizeModelCapabilities(
   return next;
 }
 
+/** Applies per-turn toggles on top of a model's supported and enabled capabilities. */
 export function getEffectiveCapabilities(
   supported: Partial<ModelCapabilities> | null | undefined,
   enabled: Partial<ModelCapabilities> | null | undefined,
@@ -288,28 +450,31 @@ export function getEffectiveCapabilities(
   return next;
 }
 
-export function createConversationModelSnapshot(model: Partial<ModelFormDraft> | null | undefined): ConversationModelSnapshot | null {
+/** Creates the immutable model snapshot stored with a conversation. */
+export function createConversationModelSnapshot(model: (Partial<ModelFormDraft> & { modelType?: string }) | null | undefined): ConversationModelSnapshot | null {
   const normalizedModel = normalizeChatModelConfig(model);
   if (!normalizedModel?.name || !normalizedModel?.apiKey) return null;
 
-  const modelConfigId = `${normalizedModel.provider}:${normalizedModel.name}:${normalizedModel.modelType}:${getModelDeployment(normalizedModel) || getModelRequestId(normalizedModel)}`;
-  const supportedCapabilities = getChatModelCapabilities(normalizedModel.modelType, normalizedModel.provider);
+  const modelId = getModelRequestId(normalizedModel);
+  const modelConfigId = `${normalizedModel.provider}:${normalizedModel.name}:${modelId}:${getModelDeployment(normalizedModel) || modelId}`;
+  const supportedCapabilities = getChatModelCapabilities(modelId, normalizedModel.provider);
   const enabledCapabilities = normalizeModelCapabilities((normalizedModel as any).enabledCapabilities, supportedCapabilities);
 
   return {
     modelConfigId,
-    catalogModelId: normalizedModel.modelType,
-    displayName: normalizedModel.name || normalizedModel.modelType,
+    catalogModelId: modelId,
+    displayName: normalizedModel.name || modelId,
     provider: normalizedModel.provider,
     request: isAzureChatModel(normalizedModel)
       ? {
           endpoint: normalizedModel.endpoint,
           deployment: normalizedModel.deployment,
           apiVersion: normalizedModel.apiVersion,
+          model: modelId,
         }
       : {
           baseURL: normalizedModel.baseURL,
-          model: normalizedModel.model,
+          model: modelId,
         },
     apiKey: normalizedModel.apiKey,
     supportedCapabilities,
@@ -319,44 +484,21 @@ export function createConversationModelSnapshot(model: Partial<ModelFormDraft> |
   };
 }
 
+/** Restores a normalized chat model config from a saved conversation snapshot. */
 export function getModelFromSnapshot(snapshot: ConversationModelSnapshot | null | undefined): ChatModelConfig | null {
   return snapshot?.modelConfig ? normalizeChatModelConfig(snapshot.modelConfig) : null;
 }
 
-export function getChatModelInfo(modelType = "", provider = ""): ChatModelOption {
-  const normalizedType = (modelType || "").trim().toLowerCase();
-  const normalizedModelProvider = (provider || "").trim().toLowerCase();
-
-  const exactMatch = chatModelTypeList.find((item) => item.value === normalizedType);
-  if (exactMatch) return exactMatch;
-
-  if (/^(o1|o3|o4)(-|$)/.test(normalizedType)) {
-    return chatOption(modelType, { webSearch: false, reasoning: true, imageRead: false });
+/** Returns display and protocol metadata for a chat model id. */
+export function getChatModelInfo(model = "", provider = ""): ChatModelOption {
+  const catalogItem = findChatModelCatalogItem(model, provider);
+  if (catalogItem) {
+    const { value, name, isReasonModel, msgTypeVersion, capabilities } = catalogItem;
+    return { value, name, isReasonModel, msgTypeVersion, capabilities };
   }
 
-  if (/^gpt-3\.5/.test(normalizedType)) {
-    return chatOption(modelType, { webSearch: false, reasoning: false, imageRead: false }, "v1");
-  }
-
-  return chatOption(modelType, {
-    webSearch: /^gpt-4|^gpt-5/.test(normalizedType) && !/(-mini|-nano)$/.test(normalizedType),
-    reasoning: /^gpt-5/.test(normalizedType),
-    imageRead: /^gpt-4|^gpt-5/.test(normalizedType) && !/-nano$/.test(normalizedType),
-  });
+  return chatOption(model, { webSearch: false, reasoning: false, imageRead: false });
 }
-
-export const chatParamTypeList: SelectOption<ModelParamType>[] = [
-  { value: "number", name: "Number" },
-  { value: "string", name: "String" },
-  { value: "array", name: "Array" },
-  { value: "boolean", name: "Boolean" },
-];
-
-export const imageParamTypeList: SelectOption<ModelParamType>[] = [
-  ...chatParamTypeList,
-  { value: "object", name: "Object" },
-  { value: "image", name: "Image" },
-];
 
 export const chatParamPresetList: LooseParamDef[] = [
   {
@@ -373,7 +515,7 @@ export const chatParamPresetList: LooseParamDef[] = [
     key: "max_completion_tokens",
     label: "max_completion_tokens",
     type: "number",
-    description: "限制单次补全文本的输出长度，包含可见输出和推理 token。",
+    descriptionKey: "chat.maxCompletionTokensTip",
     defaultValue: 2000,
     min: 0,
     max: 128000,
@@ -431,7 +573,7 @@ export const chatParamPresetList: LooseParamDef[] = [
     key: "reasoning_effort",
     label: "reasoning_effort",
     type: "string",
-    description: "推理力度，例如 none / low / medium / high / xhigh。",
+    descriptionKey: "chat.reasoningEffortTip",
     defaultValue: "medium",
     placeholder: "none / low / medium / high / xhigh",
   },
@@ -439,144 +581,32 @@ export const chatParamPresetList: LooseParamDef[] = [
     key: "verbosity",
     label: "verbosity",
     type: "string",
-    description: "控制输出详略程度，例如 low / medium / high。",
+    descriptionKey: "chat.verbosityTip",
     defaultValue: "medium",
     placeholder: "low / medium / high",
   },
 ];
 
-export const imageParamPresetList: LooseParamDef[] = [
-  {
-    key: "quality",
-    label: "quality",
-    type: "string",
-    description: "图像质量参数，例如 auto、low、medium、high、standard、hd。",
-    defaultValue: "auto",
-    placeholder: "auto",
-  },
-  {
-    key: "output_format",
-    label: "output_format",
-    type: "string",
-    description: "返回图片格式，例如 png、jpeg、webp。",
-    defaultValue: "png",
-    placeholder: "png",
-  },
-  {
-    key: "background",
-    label: "background",
-    type: "string",
-    description: "背景设置，例如 auto、transparent、opaque。",
-    defaultValue: "",
-    placeholder: "auto",
-  },
-  {
-    key: "moderation",
-    label: "moderation",
-    type: "string",
-    description: "内容审核强度，例如 auto、low。",
-    defaultValue: "",
-    placeholder: "auto",
-  },
-  {
-    key: "image",
-    label: "image",
-    type: "image",
-    description: "随请求携带的输入图像，发送为 { filename, content_type, data }。",
-    defaultValue: null,
-    placeholder: "image/png",
-  },
-  {
-    key: "mask",
-    label: "mask",
-    type: "image",
-    description: "图像编辑蒙版，PNG 透明区域表示需要编辑的位置。",
-    defaultValue: null,
-    placeholder: "image/png",
-  },
-];
+function createDefaultChatPrompts(): ChatModelSettings["prompts"] {
+  return [{ role: "system", content: [{ type: "text", text: tr("chat.defaultSystemPrompt") }] }];
+}
 
-export const defChatModelSettings: ChatModelSettings = {
-  passedMsgLen: 10,
-  prompts: [{ role: "system", content: [{ type: "text", text: "As an AI assistant, please make your responses more engaging by including lively emojis." }] }],
-};
+function createDefaultChatSettings(): ChatModelSettings {
+  return {
+    passedMsgLen: 10,
+    prompts: createDefaultChatPrompts(),
+  };
+}
 
 function getChatParamPreset(key = ""): LooseParamDef | null {
   return chatParamPresetList.find((item) => item.key === key) || null;
 }
 
-function getImageParamPreset(key = ""): LooseParamDef | null {
-  return imageParamPresetList.find((item) => item.key === key) || null;
-}
-
-export function parseChatParamValue<T = ParamDefaultValue>(
-  type: ModelParamType | string = "string",
-  value: unknown = undefined,
-  fallback: T = undefined as T,
-): T {
-  if (value === undefined || value === null || value === "") {
-    return fallback;
-  }
-
-  if (type === "number") {
-    const nextValue = Number(value);
-    return (Number.isFinite(nextValue) ? nextValue : fallback) as T;
-  }
-
-  if (type === "boolean") {
-    if (typeof value === "boolean") return value as T;
-    if (value === "true") return true as T;
-    if (value === "false") return false as T;
-    return fallback;
-  }
-
-  if (type === "array") {
-    if (Array.isArray(value)) return value as T;
-    if (typeof value === "string") {
-      try {
-        const parsed = JSON.parse(value);
-        return (Array.isArray(parsed) ? parsed : fallback) as T;
-      } catch {
-        return fallback;
-      }
-    }
-    return fallback;
-  }
-
-  if (type === "object") {
-    if (value && typeof value === "object" && !Array.isArray(value)) return value as T;
-    if (typeof value === "string") {
-      try {
-        const parsed = JSON.parse(value);
-        return (parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : fallback) as T;
-      } catch {
-        return fallback;
-      }
-    }
-    return fallback;
-  }
-
-  if (type === "image") {
-    if (value && typeof value === "object" && !Array.isArray(value) && "filename" in value && "content_type" in value && "data" in value) return value as T;
-    return fallback;
-  }
-
-  return String(value) as T;
-}
-
-function hasMeaningfulParamValue(type: ModelParamType | string = "string", value: unknown = undefined): boolean {
-  if (value === undefined || value === null) return false;
-  if (type === "string" && value === "") return false;
-  if (type === "array") return Array.isArray(value);
-  if (type === "object") return typeof value === "object" && !Array.isArray(value) && Object.keys(value).length > 0;
-  if (type === "image") return Boolean(value && typeof value === "object" && "filename" in value && "content_type" in value && "data" in value);
-  return true;
-}
-
+/** Merges a chat parameter definition with its built-in preset defaults. */
 export function normalizeChatParamDef(def: LooseParamDef = {}): ModelParamDef {
   const preset = getChatParamPreset(def.key);
   const nextType = def.type || preset?.type || "string";
-  const nextDefaultValue = parseChatParamValue(nextType, def.defaultValue, cloneJson(preset?.defaultValue ?? ""));
+  const nextDefaultValue = parseParamValue(nextType, def.defaultValue, cloneJson(preset?.defaultValue ?? ""));
 
   return {
     key: String(def.key || preset?.key || "").trim(),
@@ -586,103 +616,42 @@ export function normalizeChatParamDef(def: LooseParamDef = {}): ModelParamDef {
     descriptionKey: String(def.descriptionKey || preset?.descriptionKey || "").trim(),
     placeholder: String(def.placeholder || preset?.placeholder || "").trim(),
     defaultValue: nextDefaultValue,
-    min: parseChatParamValue("number", def.min, preset?.min ?? 0),
-    max: parseChatParamValue("number", def.max, preset?.max ?? 1),
-    step: parseChatParamValue("number", def.step, preset?.step ?? 1),
+    min: parseParamValue("number", def.min, preset?.min ?? 0),
+    max: parseParamValue("number", def.max, preset?.max ?? 1),
+    step: parseParamValue("number", def.step, preset?.step ?? 1),
   };
 }
 
-export function normalizeImageParamDef(def: LooseParamDef = {}): ModelParamDef {
-  const preset = getImageParamPreset(def.key);
-  const nextType = def.type || preset?.type || "string";
-  const fallbackDefaultValue = Object.prototype.hasOwnProperty.call(preset || {}, "defaultValue") ? cloneJson(preset.defaultValue) : "";
-  const nextDefaultValue = parseChatParamValue(nextType, def.defaultValue, fallbackDefaultValue);
-
-  return {
-    key: String(def.key || preset?.key || "").trim(),
-    label: String(def.label || preset?.label || def.key || "").trim(),
-    type: nextType,
-    description: String(def.description || preset?.description || "").trim(),
-    descriptionKey: String(def.descriptionKey || preset?.descriptionKey || "").trim(),
-    placeholder: String(def.placeholder || preset?.placeholder || "").trim(),
-    defaultValue: nextDefaultValue,
-    min: parseChatParamValue("number", def.min, preset?.min ?? 0),
-    max: parseChatParamValue("number", def.max, preset?.max ?? 1),
-    step: parseChatParamValue("number", def.step, preset?.step ?? 1),
-  };
+/** Returns default chat parameter definitions for a catalog model id. */
+export function getDefaultChatParamDefs(model = "", provider = ""): ModelParamDef[] {
+  return getChatParamKeysForModel(model, provider).map((key) => normalizeChatParamDef({ key }));
 }
 
-export function getDefaultChatParamDefs(modelType = "", provider = ""): ModelParamDef[] {
-  return getChatParamKeysForModel(modelType, provider).map((key) => normalizeChatParamDef({ key }));
+/** Returns the request parameter keys declared by the chat model catalog. */
+export function getChatParamKeysForModel(model = "", provider = ""): string[] {
+  return [...(findChatModelCatalogItem(model, provider)?.chatParamKeys || [])];
 }
 
-export function getChatParamKeysForModel(modelType = "", provider = ""): string[] {
-  const normalizedType = (modelType || "").trim().toLowerCase();
-  const normalizedModelProvider = (provider || "").trim().toLowerCase();
-  const modelInfo = getChatModelInfo(modelType, provider);
-
-  if (normalizedModelProvider === "anthropic" || normalizedModelProvider === "azure ai foundry" || /^claude-/.test(normalizedType)) {
-    return ["max_tokens", "temperature", "top_p", "stop"];
-  }
-
-  if (/^gpt-5(\.|-|$)/.test(normalizedType)) {
-    return ["max_completion_tokens", "reasoning_effort", "verbosity"];
-  }
-
-  if (modelInfo.isReasonModel) {
-    return ["max_completion_tokens", "reasoning_effort"];
-  }
-
-  if (/^gpt-4\.1/.test(normalizedType) || /^gpt-4o/.test(normalizedType) || /^gpt-3\.5/.test(normalizedType)) {
-    return ["max_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty", "stop"];
-  }
-
-  return ["temperature", "top_p", "frequency_penalty", "presence_penalty", "stop"];
-}
-
-export function isChatParamSupportedForModel(key = "", modelType = "", provider = ""): boolean {
-  return getChatParamKeysForModel(modelType, provider).includes(key);
-}
-
+/** Returns normalized chat parameter definitions, honoring explicit custom definitions. */
 export function getModelChatParamDefs(model: LooseModelConfig = {}): ModelParamDef[] {
   const provider = getLegacyProvider(model);
-  const defs =
-    Array.isArray(model?.chatParamDefs) && model.chatParamDefs.length > 0 ? model.chatParamDefs : getDefaultChatParamDefs(model?.modelType, provider);
+  const modelId = getModelRequestId(model);
+  const hasCustomDefs = Array.isArray(model?.chatParamDefs) && model.chatParamDefs.length > 0;
+  const defs = hasCustomDefs ? model.chatParamDefs : getDefaultChatParamDefs(modelId, provider);
   const seen = new Set();
-  const supportedKeys = new Set(getChatParamKeysForModel(model?.modelType, provider));
+  const supportedKeys = new Set(
+    hasCustomDefs ? model.chatParamDefs.map((item) => item.key).filter(Boolean) : getChatParamKeysForModel(modelId, provider),
+  );
 
   return defs
     .map((item) => normalizeChatParamDef(item))
     .filter((item) => item.key && supportedKeys.has(item.key) && !seen.has(item.key) && (seen.add(item.key), true));
 }
 
-export function getDefaultImageParamDefs(): ModelParamDef[] {
-  return ["quality", "output_format"].map((key) => normalizeImageParamDef({ key }));
-}
-
-export function getDefaultImageEditParamDefs(): ModelParamDef[] {
-  return ["quality", "output_format", "image", "mask"].map((key) => normalizeImageParamDef({ key }));
-}
-
-export function getModelImageParamDefs(model: LooseModelConfig = {}): ModelParamDef[] {
-  const defaultDefs = model?.imageOperation === "edit" ? getDefaultImageEditParamDefs() : getDefaultImageParamDefs();
-  const supportedKeys = new Set(imageParamPresetList.map((item) => item.key).filter(Boolean));
-  const configuredDefs =
-    Array.isArray(model?.imageParamDefs) && model.imageParamDefs.length > 0
-      ? model.imageParamDefs.filter((item) => item.key && supportedKeys.has(item.key))
-      : defaultDefs;
-  const defs =
-    model?.imageOperation === "edit"
-      ? [...configuredDefs, ...getDefaultImageEditParamDefs().filter((defaultDef) => !configuredDefs.some((item) => item.key === defaultDef.key))]
-      : configuredDefs;
-  const seen = new Set();
-
-  return defs.map((item) => normalizeImageParamDef(item)).filter((item) => item.key && !seen.has(item.key) && (seen.add(item.key), true));
-}
-
-export function buildDefaultImageSettings(model: LooseModelConfig | null = null): ImageModelSettings {
-  const settings = cloneJson(defImageModelSeting);
-  const defs = getModelImageParamDefs(model || {});
+/** Builds default chat settings from a model's parameter definitions. */
+export function buildDefaultChatSettings(model: LooseModelConfig | null = null): ChatModelSettings {
+  const settings = cloneJson(createDefaultChatSettings());
+  const defs = getModelChatParamDefs(model || {});
 
   defs.forEach((item) => {
     settings[item.key] = cloneJson(item.defaultValue);
@@ -691,82 +660,36 @@ export function buildDefaultImageSettings(model: LooseModelConfig | null = null)
   return settings;
 }
 
-export function mergeImageSettingsWithModel(model: LooseModelConfig | null = null, settings: Partial<ImageModelSettings> = {}): ImageModelSettings {
-  const coreSettings: Partial<ImageModelSettings> = {
-    model: settings.model ?? null,
-    prompt: typeof settings.prompt === "string" ? settings.prompt : defImageModelSeting.prompt,
-    size: typeof settings.size === "string" && settings.size ? settings.size : defImageModelSeting.size,
-    image: settings.image ?? null,
-    mask: settings.mask ?? null,
-    n: settings.n ?? defImageModelSeting.n,
-  };
-  const mergedSettings = {
-    ...buildDefaultImageSettings(model),
-    ...coreSettings,
-  };
-
-  const defs = getModelImageParamDefs(model || {});
-  defs.forEach((item) => {
-    mergedSettings[item.key] = parseChatParamValue(item.type, mergedSettings[item.key], cloneJson(item.defaultValue));
-  });
-
-  if (!Number.isFinite(Number(mergedSettings.n)) || Number(mergedSettings.n) < 1) {
-    mergedSettings.n = defImageModelSeting.n;
-  } else {
-    mergedSettings.n = Number(mergedSettings.n);
+/** Merges user chat settings with model defaults and migrates old token limit fields. */
+export function mergeChatSettingsWithModel(model: LooseModelConfig | null = null, settings: Partial<ChatModelSettings> = {}): ChatModelSettings {
+  const defaultSettings = createDefaultChatSettings();
+  const defs = getModelChatParamDefs(model || {});
+  const nextSettings = { ...settings };
+  if (defs.some((item) => item.key === "max_completion_tokens") && !("max_completion_tokens" in nextSettings) && "max_tokens" in nextSettings) {
+    nextSettings.max_completion_tokens = nextSettings.max_tokens;
   }
 
-  return mergedSettings;
-}
-
-export function buildImageGenerationParams(model: LooseModelConfig | null = null, settings: Partial<ImageModelSettings> = {}): Record<string, unknown> {
-  const defs = getModelImageParamDefs(model || {});
-  const mergedSettings = mergeImageSettingsWithModel(model, settings);
-  const params: Record<string, unknown> = {};
-
-  defs.forEach((item) => {
-    const value = parseChatParamValue(item.type, mergedSettings[item.key], cloneJson(item.defaultValue));
-
-    if (!hasMeaningfulParamValue(item.type, value)) return;
-
-    params[item.key] = value;
-  });
-
-  return params;
-}
-
-export function buildDefaultChatSettings(model: LooseModelConfig | null = null): ChatModelSettings {
-  const settings = cloneJson(defChatModelSettings);
-  const defs = getModelChatParamDefs(model || {});
-
-  defs.forEach((item) => {
-    settings[item.key] = cloneJson(item.defaultValue);
-  });
-
-  return settings;
-}
-
-export function mergeChatSettingsWithModel(model: LooseModelConfig | null = null, settings: Partial<ChatModelSettings> = {}): ChatModelSettings {
   const coreSettings: Partial<ChatModelSettings> = {
-    prompts: Array.isArray(settings.prompts) ? settings.prompts : undefined,
-    passedMsgLen: settings.passedMsgLen,
+    prompts: Array.isArray(nextSettings.prompts) ? nextSettings.prompts : undefined,
+    passedMsgLen: nextSettings.passedMsgLen,
   };
   const mergedSettings = {
+    ...cloneJson(defaultSettings),
     ...buildDefaultChatSettings(model),
+    ...nextSettings,
     ...coreSettings,
   };
 
-  const defs = getModelChatParamDefs(model || {});
   defs.forEach((item) => {
-    mergedSettings[item.key] = parseChatParamValue(item.type, mergedSettings[item.key], cloneJson(item.defaultValue));
+    mergedSettings[item.key] = parseParamValue(item.type, mergedSettings[item.key], cloneJson(item.defaultValue));
   });
 
   if (!Array.isArray(mergedSettings.prompts)) {
-    mergedSettings.prompts = cloneJson(defChatModelSettings.prompts);
+    mergedSettings.prompts = cloneJson(defaultSettings.prompts);
   }
 
   if (!Number.isFinite(Number(mergedSettings.passedMsgLen))) {
-    mergedSettings.passedMsgLen = defChatModelSettings.passedMsgLen;
+    mergedSettings.passedMsgLen = defaultSettings.passedMsgLen;
   } else {
     mergedSettings.passedMsgLen = Number(mergedSettings.passedMsgLen);
   }
@@ -774,13 +697,14 @@ export function mergeChatSettingsWithModel(model: LooseModelConfig | null = null
   return mergedSettings;
 }
 
+/** Builds provider request parameters for chat completion calls. */
 export function buildChatCompletionParams(model: LooseModelConfig | null = null, settings: Partial<ChatModelSettings> = {}): Record<string, unknown> {
   const defs = getModelChatParamDefs(model || {});
   const mergedSettings = mergeChatSettingsWithModel(model, settings);
   const params: Record<string, unknown> = {};
 
   defs.forEach((item) => {
-    const value = parseChatParamValue(item.type, mergedSettings[item.key], cloneJson(item.defaultValue));
+    const value = parseParamValue(item.type, mergedSettings[item.key], cloneJson(item.defaultValue));
 
     if (value === undefined || value === null) return;
     if (item.type === "string" && value === "") return;
@@ -795,31 +719,6 @@ export function buildChatCompletionParams(model: LooseModelConfig | null = null,
     stream_options: { include_usage: true },
   };
 }
-
-export const imageModelTypeList: SelectOption[] = [
-  { value: "gpt-image-1.5", name: "gpt-image-1.5" },
-  { value: "gpt-image-1", name: "gpt-image-1" },
-  { value: "gpt-image-1-mini", name: "gpt-image-1-mini" },
-  { value: "chatgpt-image-latest", name: "chatgpt-image-latest" },
-  { value: "dall-e-2", name: "dall-e-2" },
-  { value: "dall-e-3", name: "dall-e-3" },
-];
-
-export const defImageModelSeting = {
-  model: null,
-  prompt: "",
-  size: "1024x1024",
-  quality: "",
-  mask: null,
-  image: null,
-  n: 1,
-} satisfies ImageModelSettings;
-
-export const imageModelSize: SelectOption[] = [
-  { name: "1024x1024", value: "1024x1024" },
-  { name: "1024x1792", value: "1024x1792" },
-  { name: "1792x1024", value: "1792x1024" },
-];
 
 export const rtaudioModelTypeList: SelectOption[] = [
   { value: "gpt-4o-realtime-preview", name: "gpt-4o-realtime-preview" },

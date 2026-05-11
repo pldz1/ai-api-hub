@@ -26,9 +26,11 @@ import { createChatExecutor, createChatProviderConfig, type ChatExecutor } from 
  */
 export class ChatProxy {
   executor: ChatExecutor | null;
+  abortController: AbortController | null;
 
   constructor() {
     this.executor = null;
+    this.abortController = null;
 
     this.init();
   }
@@ -47,6 +49,12 @@ export class ChatProxy {
     return getModelRequestId(model);
   }
 
+  abort(): void {
+    if (!this.abortController) return;
+    this.abortController.abort();
+    this.abortController = null;
+  }
+
   async chat(data: ChatPromptMessage[], callback: ChatCallback = (response) => console.log(response)): Promise<boolean> {
     const model = getModelFromSnapshot(store.state.curConversation?.modelSnapshot) || store.state.curChatModel;
     const hasRequestTarget = isAzureChatModel(model) ? Boolean(getModelDeployment(model)) : Boolean(getModelRequestId(model));
@@ -62,20 +70,28 @@ export class ChatProxy {
       return false;
     }
 
-    const modelInfo = getChatModelInfo(model.modelType, model.provider);
+    const modelInfo = getChatModelInfo(model.model, model.provider);
     const turnCapabilities: Partial<ModelCapabilities> = data[data.length - 1]?.meta?.usedCapabilities || {};
 
+    let abortController: AbortController | null = null;
+
     try {
+      this.abort();
+      abortController = new AbortController();
+      this.abortController = abortController;
       const messages = this.getChatMessages(data, modelInfo.msgTypeVersion);
-      await this.executor.chat(messages, this.getChatParams(model, turnCapabilities), callback);
+      await this.executor.chat(messages, this.getChatParams(model, turnCapabilities), callback, { signal: abortController.signal });
       return true;
     } catch (err) {
+      if (abortController?.signal.aborted) return false;
       dsAlert({ type: "warn", message: tr("toast.modelRequestFailed", { error: String(err) }) });
       callback({
         content: tr("toast.modelRequestFailed", { error: String(err) }),
         reasoning_content: "",
       });
       return false;
+    } finally {
+      if (this.abortController === abortController) this.abortController = null;
     }
   }
 

@@ -1,6 +1,6 @@
 import { getModelDeployment, getModelRequestId, isAnthropicChatModel, isAzureChatModel, isOpenAIChatModel } from "@/constants";
 import type { ChatModelConfig, ChatProviderConfig } from "@/types/model";
-import type { ChatCallback, PackedChatMessage } from "@/services/types";
+import type { ChatCallback, ChatRequestOptions, PackedChatMessage } from "@/services/types";
 
 import { AzureOpenAIClient } from "./azure-openai";
 import { AnthropicClient } from "./anthropic";
@@ -13,7 +13,7 @@ export { OpenAIClient } from "./openai";
 export { normalizeUsage } from "./usage";
 
 export interface ChatExecutor {
-  chat(messages: PackedChatMessage[], params?: Record<string, unknown>, callback?: ChatCallback | null): Promise<void>;
+  chat(messages: PackedChatMessage[], params?: Record<string, unknown>, callback?: ChatCallback | null, options?: ChatRequestOptions): Promise<void>;
 }
 
 /**
