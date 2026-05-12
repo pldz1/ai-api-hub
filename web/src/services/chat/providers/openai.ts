@@ -63,6 +63,24 @@ function normalizeOpenAIResponsesParams(params: Record<string, unknown> = {}): J
   return responseParams;
 }
 
+function extractResponsesOutputText(response: JsonObject): string {
+  if (typeof response.output_text === "string" && response.output_text) return response.output_text;
+
+  if (!Array.isArray(response.output)) return "";
+
+  return response.output
+    .filter((item) => item && typeof item === "object" && item.type === "message")
+    .flatMap((item) => (Array.isArray(item.content) ? item.content : []))
+    .map((content) => {
+      if (!content || typeof content !== "object") return "";
+      if (content.type === "output_text") return String(content.text || "");
+      if (content.type === "text") return String(content.text || "");
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
 function responseFromChatChunk(chunk: JsonObject): ChatProviderResponse {
   const choice = Array.isArray(chunk.choices) ? (chunk.choices[0] as JsonObject | undefined) : undefined;
   const delta = (choice?.delta || {}) as JsonObject;
@@ -161,7 +179,7 @@ export class OpenAIClient {
       if (callback) {
         await callback({
           flag: true,
-          content: String(response.output_text || ""),
+          content: extractResponsesOutputText(response),
           reasoning_content: "",
           usage: normalizeUsage(response.usage as JsonObject | null | undefined),
         });

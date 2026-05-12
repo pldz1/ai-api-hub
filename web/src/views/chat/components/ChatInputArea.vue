@@ -46,10 +46,18 @@
             <span v-else class="ccia-capability-chip ccia-capability-status disabled">
               {{ t("input.capabilities.imageRead") }}
             </span>
-            <label v-for="item in visibleTurnCapabilities" :key="item.key" class="ccia-capability-chip" :class="{ active: inputCapabilities[item.key] }">
-              <input type="checkbox" :checked="inputCapabilities[item.key]" @change="onToggleCapability(item.key, $event.target.checked)" />
-              <span>{{ item.label }}</span>
-            </label>
+            <AppTooltip v-for="item in visibleTurnCapabilities" :key="item.key" :text="item.tooltip" placement="top">
+              <button
+                class="ccia-capability-chip"
+                :class="{ active: inputCapabilities[item.key] }"
+                :aria-pressed="inputCapabilities[item.key]"
+                type="button"
+                @click="onToggleCapability(item.key, !inputCapabilities[item.key])"
+              >
+                <SvgIcon class="ccia-capability-icon" :src="item.icon" />
+                <span>{{ item.label }}</span>
+              </button>
+            </AppTooltip>
           </div>
 
           <AppTooltip :text="t('tooltip.sendOrStop')" placement="top">
@@ -98,11 +106,13 @@ import {
   getModelDeployment,
   getModelRequestId,
 } from "@/constants";
-import AppTooltip from "@/components/base/AppTooltip.vue";
-import SvgIcon from "@/components/base/SvgIcon.vue";
+import AppTooltip from "@/components/AppTooltip.vue";
+import SvgIcon from "@/components/SvgIcon.vue";
 import attachIcon from "@/assets/svg/attach24.svg";
 import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import pauseIcon from "@/assets/svg/pause32.svg";
+import webIcon from "@/assets/svg/web24.svg";
+import thinkingIcon from "@/assets/svg/thinking24.svg";
 
 const props = defineProps({
   isChatting: {
@@ -121,24 +131,18 @@ const cciaTextareaRef = ref(null);
 const startChatConfirmDialogRef = ref(null);
 let startChatConfirmResolve = null;
 
-/**
- * 这些都是用于显示模型的标签的数据
- */
 const store = useStore();
 const { t } = useI18n();
 const chatModels = computed(() => store.state.models.chat);
 const curChatId = computed(() => store.state.curChatId);
 const curConversation = computed(() => store.state.curConversation);
 const inputCapabilities = computed(() => store.state.inputCapabilities);
-const isRequestPending = computed(() => store.state.llmRequestPending);
+const activeRuntime = computed(() => (curChatId.value ? store.state.chatRuntimeById?.[curChatId.value] || null : null));
 const sessionTokenUsage = computed(() => store.state.sessionTokenUsage || { input_tokens: 0, output_tokens: 0, total_tokens: 0 });
 const selectedModel = ref(null);
 const elapsedMs = ref(0);
 let timerIntervalId = null;
-const capabilityLabelKeys = {
-  webSearch: "input.capabilities.webSearch",
-  reasoning: "input.capabilities.reasoning",
-};
+
 const isModelSelectionReadonly = computed(() => Boolean(props.modelSelectionReadonly || curChatId.value));
 const draftSnapshot = computed(() => createConversationModelSnapshot(selectedModel.value));
 const activeSnapshot = computed(() => curConversation.value?.modelSnapshot || draftSnapshot.value);
@@ -152,12 +156,34 @@ const formattedTokens = computed(() => ({
   output: Number(sessionTokenUsage.value.output_tokens || 0).toLocaleString(),
   total: Number(sessionTokenUsage.value.total_tokens || 0).toLocaleString(),
 }));
-const isShowStatusSticky = computed(() => isRequestPending.value || Number(sessionTokenUsage.value.total_tokens || 0) > 0);
+const isChatRunning = computed(() => Boolean(activeRuntime.value?.pending || ["loading", "streaming"].includes(activeRuntime.value?.status || "")));
+const isShowStatusSticky = computed(() => isChatRunning.value || Number(sessionTokenUsage.value.total_tokens || 0) > 0);
+
+/**
+ * Using key-value to dynamic show the model capabilities.
+ */
+const capabilityLabelKeys = {
+  webSearch: "input.capabilities.webSearch",
+  reasoning: "input.capabilities.reasoning",
+};
+const capabilityTooltipKeys = {
+  reasoning: "tooltip.reasoning",
+};
+const capabilityIcons = {
+  webSearch: webIcon,
+  reasoning: thinkingIcon,
+};
+
 const visibleTurnCapabilities = computed(() =>
   chatTurnCapabilityKeys
     .filter((key) => key !== "imageRead")
     .filter((key) => Boolean(activeSnapshot.value?.supportedCapabilities?.[key] && activeSnapshot.value?.enabledCapabilities?.[key]))
-    .map((key) => ({ key, label: t(capabilityLabelKeys[key] || `input.capabilities.${key}`) })),
+    .map((key) => ({
+      key,
+      label: t(capabilityLabelKeys[key] || `input.capabilities.${key}`),
+      tooltip: t(capabilityTooltipKeys[key] || capabilityLabelKeys[key] || `input.capabilities.${key}`),
+      icon: capabilityIcons[key],
+    })),
 );
 const getModelSelectionKey = (model) => [model?.provider, model?.name, getModelRequestId(model), getModelDeployment(model)].join("|");
 
@@ -184,7 +210,7 @@ watch(
 );
 
 /**
- * 发送有效的问题, 或者是暂停对话
+ * Send a valid question, or pause the conversation.
  */
 const onSendInputData = async () => {
   if (props.isChatting) {
@@ -229,7 +255,7 @@ const onSendInputData = async () => {
       model: selectedModel.value,
     });
 
-    // 输入框回退原来大小
+    // The input box will revert the original size.
     if (cciaTextareaRef.value) cciaTextareaRef.value.style.height = "";
   } else {
     dsAlert({ type: "error", message: t("toast.invalidQuestion") });
@@ -280,7 +306,8 @@ const startRequestTimer = () => {
 };
 
 /**
- * 监听输入的内容, 动态的调整输入框的大小, 是一个 workaround, 但是能满足场景
+ * 🎥 Monitoring the input and dynamically adjusting the size of the input box is a workaround,
+ * but it meets the requirements of the scenario.
  */
 const onInputText = async () => {
   if (cciaTextareaRef.value) {
@@ -290,17 +317,17 @@ const onInputText = async () => {
 };
 
 /**
- * 加入防抖的操作, 节约一点点的资源
+ * Implement debounce operation to save a small amount of resources.
  */
 const debounceInputText = debounce(onInputText, 50);
 
 /**
- * 输入框的按键组合键
- *  */
+ * Keyboard shortcut for input box
+ */
 const onEnterKeydown = async (event) => {
-  // Enter 和 Shift 键表示换行的操作
+  // Enter and Shift means line break operation
   if (event.key === "Enter" && !event.shiftKey) {
-    // 阻止默认行为（换行）并发送内容
+    // Prevent default behavior (line break) and send the content.
     event.preventDefault();
     await onSendInputData();
   }
@@ -325,7 +352,7 @@ watch(
 );
 
 watch(
-  () => isRequestPending.value,
+  () => isChatRunning.value,
   (pending) => {
     if (pending) {
       startRequestTimer();
@@ -355,7 +382,7 @@ watch(
     width: calc(100% - 40px);
     transform: translateX(-50%);
     display: flex;
-    justify-content: flex-start;
+    justify-content: flex-end;
     pointer-events: none;
   }
 
@@ -533,18 +560,15 @@ watch(
       background: oklch(var(--b2) / 0.36);
       color: oklch(var(--bc) / 0.62);
       font-size: 12px;
+      line-height: 1;
       cursor: pointer;
       user-select: none;
       transition:
         background-color 0.15s ease,
         border-color 0.15s ease,
         color 0.15s ease;
-
-      input {
-        width: 12px;
-        height: 12px;
-        accent-color: oklch(var(--p));
-      }
+      appearance: none;
+      outline: none;
 
       &.active {
         color: oklch(var(--p));

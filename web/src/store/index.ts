@@ -57,9 +57,14 @@ const mutations = {
     state.resetChatList(data);
   },
 
+  SET_CHAT_LOADED(state, data) {
+    state.setChatLoaded(data);
+  },
+
   /** @param {state} state */
   SET_CURRENT_CHAT_ID(state, data) {
     state.setCurChatId(data);
+    if (typeof state._syncActiveChatState === "function") state._syncActiveChatState();
   },
 
   SET_CURRENT_CONVERSATION(state, data) {
@@ -68,6 +73,14 @@ const mutations = {
 
   SET_CURRENT_CONVERSATION_MODEL(state, data) {
     state.setCurConversationFromModel(data);
+  },
+
+  HYDRATE_CHAT_SESSION(state, data) {
+    state.hydrateChatSession(data);
+  },
+
+  REMOVE_CHAT_SESSION(state, data) {
+    state.removeChatSession(data);
   },
 
   SET_INPUT_CAPABILITY(state, data) {
@@ -95,6 +108,14 @@ const mutations = {
     state.pushMessages(data);
   },
 
+  PUSH_CHAT_MESSAGE(state, data) {
+    state.pushChatMessage(data);
+  },
+
+  REPLACE_CHAT_MESSAGES(state, data) {
+    state.replaceChatMessages(data);
+  },
+
   /** @param {state} state */
   SPLICE_MESSAGES(state, index) {
     state.spliceMessages(index);
@@ -103,6 +124,14 @@ const mutations = {
   /** @param {state} state */
   RESET_MESSAGES(state) {
     state.resetMessages();
+  },
+
+  SET_CHAT_RUNTIME(state, data) {
+    state.setChatRuntime(data);
+  },
+
+  RESET_CHAT_RUNTIME(state, data) {
+    state.resetChatRuntime(data);
   },
 
   /**
@@ -171,6 +200,10 @@ const actions = {
     commit("RESET_CHAT_LIST", data);
   },
 
+  async setChatLoaded({ commit }, data) {
+    commit("SET_CHAT_LOADED", data);
+  },
+
   async setCurChatId({ commit }, data) {
     commit("SET_CURRENT_CHAT_ID", data);
   },
@@ -181,6 +214,14 @@ const actions = {
 
   async setCurConversationModel({ commit }, data) {
     commit("SET_CURRENT_CONVERSATION_MODEL", data);
+  },
+
+  async hydrateChatSession({ commit }, data) {
+    commit("HYDRATE_CHAT_SESSION", data);
+  },
+
+  async removeChatSession({ commit }, data) {
+    commit("REMOVE_CHAT_SESSION", data);
   },
 
   async setInputCapability({ commit }, data) {
@@ -207,12 +248,28 @@ const actions = {
     commit("PUSH_MESSAGES", data);
   },
 
+  async pushChatMessage({ commit }, data) {
+    commit("PUSH_CHAT_MESSAGE", data);
+  },
+
+  async replaceChatMessages({ commit }, data) {
+    commit("REPLACE_CHAT_MESSAGES", data);
+  },
+
   async spliceMessages({ commit }, index) {
     commit("SPLICE_MESSAGES", index);
   },
 
   async resetMessages({ commit }) {
     commit("RESET_MESSAGES");
+  },
+
+  async setChatRuntime({ commit }, data) {
+    commit("SET_CHAT_RUNTIME", data);
+  },
+
+  async resetChatRuntime({ commit }, data) {
+    commit("RESET_CHAT_RUNTIME", data);
   },
 
   /**

@@ -26,6 +26,43 @@ function normalizeTokenUsage(data: Record<string, unknown> = {}) {
   };
 }
 
+function createInputCapabilities(conversation = null) {
+  const supported = conversation?.modelSnapshot?.supportedCapabilities || defaultModelCapabilities;
+  const enabled = conversation?.modelSnapshot?.enabledCapabilities || defaultModelCapabilities;
+  const capabilities = normalizeModelCapabilities(enabled, supported);
+  capabilities.textInput = true;
+  capabilities.reasoning = false;
+  chatTurnCapabilityKeys.forEach((key) => {
+    capabilities[key] = false;
+  });
+  return capabilities;
+}
+
+function createChatRuntime() {
+  return {
+    status: "idle",
+    pending: false,
+    sessionTokenTotal: 0,
+    sessionTokenUsage: emptyTokenUsage(),
+    draftMessageId: "",
+    draftAssistantContent: "",
+    draftReasoningContent: "",
+    lastError: "",
+  };
+}
+
+function cloneRuntime(runtime: Record<string, unknown> = {}) {
+  return {
+    ...createChatRuntime(),
+    ...runtime,
+    sessionTokenUsage: normalizeTokenUsage((runtime?.sessionTokenUsage as Record<string, unknown>) || {}),
+  };
+}
+
+function getRuntimeStatusByUsage(messages = []) {
+  return messages.length > 0 ? "success" : "idle";
+}
+
 /**
  * 表示聊天信息存储的对象。
  */
@@ -43,11 +80,7 @@ export const ChatState = {
   /**
    * 单次输入启用的能力开关。最终能力还会被模型支持能力和配置启用能力约束。
    */
-  inputCapabilities: {
-    ...defaultModelCapabilities,
-    textInput: true,
-    reasoning: false,
-  },
+  inputCapabilities: createInputCapabilities(null),
 
   /**
    * 配置聊天模型的设置参数。
@@ -55,10 +88,8 @@ export const ChatState = {
   curChatModelSettings: buildDefaultChatSettings(null),
 
   /**
-   * 全部的对话信息
-   * @type {PromptContent[]}
+   * 当前激活会话的消息投影。
    */
-
   messages: [],
 
   /**
@@ -73,19 +104,90 @@ export const ChatState = {
   llmRequestPending: false,
 
   /**
+   * 所有会话的运行态和本地缓存。
+   */
+  chatConversationsById: {},
+  chatMessagesById: {},
+  chatSettingsById: {},
+  chatInputCapabilitiesById: {},
+  chatRuntimeById: {},
+  chatLoadedById: {},
+
+  _ensureChatEntry(cid) {
+    if (!cid) return;
+    if (!this.chatMessagesById[cid]) this.chatMessagesById[cid] = [];
+    if (!this.chatRuntimeById[cid]) this.chatRuntimeById[cid] = createChatRuntime();
+    if (!this.chatLoadedById[cid]) this.chatLoadedById[cid] = false;
+    if (!this.chatConversationsById[cid]) this.chatConversationsById[cid] = null;
+    if (!this.chatSettingsById[cid]) {
+      const model = getModelFromSnapshot(this.chatConversationsById[cid]?.modelSnapshot) || this.curChatModel;
+      this.chatSettingsById[cid] = buildDefaultChatSettings(model);
+    }
+    if (!this.chatInputCapabilitiesById[cid]) {
+      this.chatInputCapabilitiesById[cid] = createInputCapabilities(this.chatConversationsById[cid]);
+    }
+  },
+
+  _applyRuntime(runtime) {
+    const normalized = cloneRuntime(runtime);
+    this.llmRequestPending = Boolean(normalized.pending);
+    this.sessionTokenUsage = normalized.sessionTokenUsage;
+    this.sessionTokenTotal = normalized.sessionTokenUsage.total_tokens;
+  },
+
+  _syncActiveChatState() {
+    const cid = this.curChatId;
+    if (!cid) {
+      this.curConversation = null;
+      this.messages = [];
+      this._applyRuntime(createChatRuntime());
+      return;
+    }
+
+    this._ensureChatEntry(cid);
+    const conversation = this.chatConversationsById[cid] || null;
+    this.curConversation = conversation;
+
+    const model = getModelFromSnapshot(conversation?.modelSnapshot);
+    if (model) {
+      this.curChatModel = model;
+    }
+
+    this.curChatModelSettings = mergeChatSettingsWithModel(model || this.curChatModel, this.chatSettingsById[cid] || {});
+    this.chatSettingsById[cid] = this.curChatModelSettings;
+    this.inputCapabilities = {
+      ...(this.chatInputCapabilitiesById[cid] || createInputCapabilities(conversation)),
+    };
+    this.chatInputCapabilitiesById[cid] = { ...this.inputCapabilities };
+    this.messages = this.chatMessagesById[cid] || [];
+    this._applyRuntime(this.chatRuntimeById[cid]);
+  },
+
+  /**
    * 设置对话的列表
    */
   resetChatList(data) {
     this.chatList = [...data];
   },
 
+  setChatLoaded(data) {
+    const cid = data?.cid;
+    if (!cid) return;
+    this._ensureChatEntry(cid);
+    this.chatLoadedById[cid] = Boolean(data.loaded);
+  },
+
   /**
    * 设置当前对话模型参数
    */
-
   setCurChatModelSettings(data) {
-    const model = getModelFromSnapshot(this.curConversation?.modelSnapshot) || this.curChatModel;
-    this.curChatModelSettings = mergeChatSettingsWithModel(model, data);
+    const activeModel = getModelFromSnapshot(this.curConversation?.modelSnapshot) || this.curChatModel;
+    const nextSettings = mergeChatSettingsWithModel(activeModel, data);
+    this.curChatModelSettings = nextSettings;
+    if (this.curChatId) {
+      this._ensureChatEntry(this.curChatId);
+      this.chatSettingsById[this.curChatId] = nextSettings;
+    }
   },
 
   /**
@@ -93,12 +195,21 @@ export const ChatState = {
    */
   setCurConversation(data) {
     this.curConversation = data || null;
+    if (this.curChatId) {
+      this._ensureChatEntry(this.curChatId);
+      this.chatConversationsById[this.curChatId] = data || null;
+      if (!this.chatInputCapabilitiesById[this.curChatId]) {
+        this.chatInputCapabilitiesById[this.curChatId] = createInputCapabilities(data);
+      }
+    }
     const model = getModelFromSnapshot(this.curConversation?.modelSnapshot);
     if (model) {
       this.curChatModel = model;
       this.curChatModelSettings = mergeChatSettingsWithModel(model, this.curChatModelSettings);
+      if (this.curChatId) this.chatSettingsById[this.curChatId] = this.curChatModelSettings;
     }
     this.resetInputCapabilities();
+    this._syncActiveChatState();
   },
 
   /**
@@ -117,30 +228,131 @@ export const ChatState = {
     });
   },
 
+  hydrateChatSession(data) {
+    const cid = data?.cid;
+    if (!cid) return;
+    this._ensureChatEntry(cid);
+
+    if ("conversation" in (data || {})) {
+      this.chatConversationsById[cid] = data.conversation || null;
+    }
+
+    if ("settings" in (data || {})) {
+      const model = getModelFromSnapshot(this.chatConversationsById[cid]?.modelSnapshot) || this.curChatModel;
+      this.chatSettingsById[cid] = mergeChatSettingsWithModel(model, data.settings || {});
+    }
+
+    if ("inputCapabilities" in (data || {})) {
+      this.chatInputCapabilitiesById[cid] = { ...(data.inputCapabilities || createInputCapabilities(this.chatConversationsById[cid])) };
+    } else if (!this.chatInputCapabilitiesById[cid]) {
+      this.chatInputCapabilitiesById[cid] = createInputCapabilities(this.chatConversationsById[cid]);
+    }
+
+    if ("messages" in (data || {})) {
+      this.chatMessagesById[cid] = [...(data.messages || [])];
+      const currentRuntime = this.chatRuntimeById[cid] || createChatRuntime();
+      if (!currentRuntime.pending && !currentRuntime.draftAssistantContent && !currentRuntime.draftReasoningContent) {
+        currentRuntime.status = getRuntimeStatusByUsage(this.chatMessagesById[cid]);
+      }
+      currentRuntime.sessionTokenUsage = emptyTokenUsage();
+      this.chatMessagesById[cid].forEach((message) => {
+        if (!message?.token_usage) return;
+        const usage = normalizeTokenUsage(message.token_usage);
+        currentRuntime.sessionTokenUsage = {
+          input_tokens: currentRuntime.sessionTokenUsage.input_tokens + usage.input_tokens,
+          output_tokens: currentRuntime.sessionTokenUsage.output_tokens + usage.output_tokens,
+          total_tokens: currentRuntime.sessionTokenUsage.total_tokens + usage.total_tokens,
+        };
+      });
+      currentRuntime.sessionTokenTotal = currentRuntime.sessionTokenUsage.total_tokens;
+      this.chatRuntimeById[cid] = currentRuntime;
+    }
+
+    if ("runtime" in (data || {})) {
+      this.chatRuntimeById[cid] = cloneRuntime({
+        ...(this.chatRuntimeById[cid] || {}),
+        ...(data.runtime || {}),
+      });
+    }
+
+    if ("loaded" in (data || {})) {
+      this.chatLoadedById[cid] = Boolean(data.loaded);
+    }
+
+    if (cid === this.curChatId) this._syncActiveChatState();
+  },
+
+  removeChatSession(cid) {
+    if (!cid) return;
+    delete this.chatConversationsById[cid];
+    delete this.chatMessagesById[cid];
+    delete this.chatSettingsById[cid];
+    delete this.chatInputCapabilitiesById[cid];
+    delete this.chatRuntimeById[cid];
+    delete this.chatLoadedById[cid];
+
+    if (cid === this.curChatId) {
+      this.curConversation = null;
+      this.messages = [];
+      this._applyRuntime(createChatRuntime());
+    }
+  },
+
   setInputCapability(data) {
     const key = data?.key;
     if (!key || !(key in this.inputCapabilities)) return;
+
+    if (this.curChatId) {
+      this._ensureChatEntry(this.curChatId);
+      this.chatInputCapabilitiesById[this.curChatId][key] = Boolean(data.value);
+      this.inputCapabilities = { ...this.chatInputCapabilitiesById[this.curChatId] };
+      return;
+    }
+
     this.inputCapabilities[key] = Boolean(data.value);
   },
 
   resetInputCapabilities() {
-    const supported = this.curConversation?.modelSnapshot?.supportedCapabilities || defaultModelCapabilities;
-    const enabled = this.curConversation?.modelSnapshot?.enabledCapabilities || defaultModelCapabilities;
-    this.inputCapabilities = normalizeModelCapabilities(enabled, supported);
-    this.inputCapabilities.textInput = true;
-    this.inputCapabilities.reasoning = false;
-    chatTurnCapabilityKeys.forEach((key) => {
-      this.inputCapabilities[key] = false;
-    });
+    const nextCapabilities = createInputCapabilities(this.curConversation);
+    this.inputCapabilities = nextCapabilities;
+    if (this.curChatId) {
+      this._ensureChatEntry(this.curChatId);
+      this.chatInputCapabilitiesById[this.curChatId] = { ...nextCapabilities };
+    }
   },
 
   setLlmRequestPending(data) {
+    if (this.curChatId) {
+      this._ensureChatEntry(this.curChatId);
+      this.chatRuntimeById[this.curChatId] = cloneRuntime({
+        ...this.chatRuntimeById[this.curChatId],
+        pending: Boolean(data),
+      });
+      this._applyRuntime(this.chatRuntimeById[this.curChatId]);
+      return;
+    }
+
     this.llmRequestPending = Boolean(data);
   },
 
   addSessionTokens(data) {
     const usage = normalizeTokenUsage(data);
     if (usage.total_tokens <= 0) return;
+
+    if (this.curChatId) {
+      this._ensureChatEntry(this.curChatId);
+      const runtime = cloneRuntime(this.chatRuntimeById[this.curChatId]);
+      runtime.sessionTokenUsage = {
+        input_tokens: runtime.sessionTokenUsage.input_tokens + usage.input_tokens,
+        output_tokens: runtime.sessionTokenUsage.output_tokens + usage.output_tokens,
+        total_tokens: runtime.sessionTokenUsage.total_tokens + usage.total_tokens,
+      };
+      runtime.sessionTokenTotal = runtime.sessionTokenUsage.total_tokens;
+      this.chatRuntimeById[this.curChatId] = runtime;
+      this._applyRuntime(runtime);
+      return;
+    }
+
     this.sessionTokenUsage = {
       input_tokens: this.sessionTokenUsage.input_tokens + usage.input_tokens,
       output_tokens: this.sessionTokenUsage.output_tokens + usage.output_tokens,
@@ -150,6 +362,26 @@ export const ChatState = {
   },
 
   recalculateSessionTokens() {
+    if (this.curChatId) {
+      this._ensureChatEntry(this.curChatId);
+      const runtime = cloneRuntime(this.chatRuntimeById[this.curChatId]);
+      runtime.sessionTokenUsage = emptyTokenUsage();
+      runtime.sessionTokenTotal = 0;
+      (this.chatMessagesById[this.curChatId] || []).forEach((message) => {
+        if (!message?.token_usage) return;
+        const usage = normalizeTokenUsage(message.token_usage);
+        runtime.sessionTokenUsage = {
+          input_tokens: runtime.sessionTokenUsage.input_tokens + usage.input_tokens,
+          output_tokens: runtime.sessionTokenUsage.output_tokens + usage.output_tokens,
+          total_tokens: runtime.sessionTokenUsage.total_tokens + usage.total_tokens,
+        };
+      });
+      runtime.sessionTokenTotal = runtime.sessionTokenUsage.total_tokens;
+      this.chatRuntimeById[this.curChatId] = runtime;
+      this._applyRuntime(runtime);
+      return;
+    }
+
     this.sessionTokenUsage = emptyTokenUsage();
     this.sessionTokenTotal = 0;
     this.messages.forEach((message) => {
@@ -158,6 +390,16 @@ export const ChatState = {
   },
 
   resetSessionTokens() {
+    if (this.curChatId) {
+      this._ensureChatEntry(this.curChatId);
+      const runtime = cloneRuntime(this.chatRuntimeById[this.curChatId]);
+      runtime.sessionTokenTotal = 0;
+      runtime.sessionTokenUsage = emptyTokenUsage();
+      this.chatRuntimeById[this.curChatId] = runtime;
+      this._applyRuntime(runtime);
+      return;
+    }
+
     this.sessionTokenTotal = 0;
     this.sessionTokenUsage = emptyTokenUsage();
   },
@@ -166,14 +408,62 @@ export const ChatState = {
    * 向对话数组末尾添加消息
    */
   pushMessages(msg) {
+    if (this.curChatId) {
+      this._ensureChatEntry(this.curChatId);
+      this.chatMessagesById[this.curChatId].push(msg);
+      this.messages = this.chatMessagesById[this.curChatId];
+      if (msg?.token_usage) this.addSessionTokens(msg.token_usage);
+      return;
+    }
+
     this.messages.push(msg);
     if (msg?.token_usage) this.addSessionTokens(msg.token_usage);
+  },
+
+  pushChatMessage(data) {
+    const cid = data?.cid;
+    const msg = data?.msg;
+    if (!cid || !msg) return;
+    this._ensureChatEntry(cid);
+    this.chatMessagesById[cid].push(msg);
+    this.chatLoadedById[cid] = true;
+    if (cid === this.curChatId) {
+      this.messages = this.chatMessagesById[cid];
+      if (msg?.token_usage) this.addSessionTokens(msg.token_usage);
+    } else if (msg?.token_usage) {
+      const runtime = cloneRuntime(this.chatRuntimeById[cid]);
+      const usage = normalizeTokenUsage(msg.token_usage);
+      runtime.sessionTokenUsage = {
+        input_tokens: runtime.sessionTokenUsage.input_tokens + usage.input_tokens,
+        output_tokens: runtime.sessionTokenUsage.output_tokens + usage.output_tokens,
+        total_tokens: runtime.sessionTokenUsage.total_tokens + usage.total_tokens,
+      };
+      runtime.sessionTokenTotal = runtime.sessionTokenUsage.total_tokens;
+      this.chatRuntimeById[cid] = runtime;
+    }
+  },
+
+  replaceChatMessages(data) {
+    const cid = data?.cid;
+    if (!cid) return;
+    this._ensureChatEntry(cid);
+    this.chatMessagesById[cid] = [...(data.messages || [])];
+    this.chatLoadedById[cid] = true;
+    this.hydrateChatSession({ cid, messages: this.chatMessagesById[cid], loaded: true });
   },
 
   /**
    * 删除某个特定位置的消息
    */
   spliceMessages(index) {
+    if (this.curChatId) {
+      this._ensureChatEntry(this.curChatId);
+      this.chatMessagesById[this.curChatId].splice(index, 1);
+      this.messages = this.chatMessagesById[this.curChatId];
+      this.recalculateSessionTokens();
+      return;
+    }
+
     this.messages.splice(index, 1);
     this.recalculateSessionTokens();
   },
@@ -181,10 +471,41 @@ export const ChatState = {
   /**
    * 重置消息
    */
-
   resetMessages() {
+    if (this.curChatId) {
+      this._ensureChatEntry(this.curChatId);
+      this.chatMessagesById[this.curChatId] = [];
+      this.messages = [];
+      this.resetSessionTokens();
+      this.setLlmRequestPending(false);
+      return;
+    }
+
     this.messages = [];
     this.resetSessionTokens();
     this.setLlmRequestPending(false);
+  },
+
+  setChatRuntime(data) {
+    const cid = data?.cid;
+    if (!cid) return;
+    this._ensureChatEntry(cid);
+    this.chatRuntimeById[cid] = cloneRuntime({
+      ...this.chatRuntimeById[cid],
+      ...(data.runtime || {}),
+    });
+    if (cid === this.curChatId) this._applyRuntime(this.chatRuntimeById[cid]);
+  },
+
+  resetChatRuntime(data) {
+    const cid = typeof data === "string" ? data : data?.cid;
+    if (!cid) return;
+    this._ensureChatEntry(cid);
+    const nextStatus = getRuntimeStatusByUsage(this.chatMessagesById[cid] || []);
+    this.chatRuntimeById[cid] = {
+      ...createChatRuntime(),
+      status: nextStatus,
+    };
+    if (cid === this.curChatId) this._applyRuntime(this.chatRuntimeById[cid]);
   },
 };

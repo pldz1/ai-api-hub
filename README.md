@@ -2,73 +2,107 @@
 
 AI API HUB is a local-first AI workspace for chat, image generation, and image editing.
 
-`web/` is the main product. `server/` is an optional Python companion that adds SQLite-backed persistence, image caching, bundled static serving, and the Windows `pywebview` wrapper.
+`web/` is the main application. `server/` is an optional Python companion that adds SQLite-backed persistence, cached image serving, bundled static hosting, and the Windows `pywebview` wrapper.
 
-For Chinese docs, see [README.CN-zh.md](./README.CN-zh.md).
+For Chinese documentation, see [README.CN-zh.md](./README.CN-zh.md).
 
-## Current Product Model
+## Product Model
 
 - single local workspace
-- no real account system or multi-user separation
+- no account system and no multi-user isolation
 - browser-first runtime
 - optional Python companion
 - hash-based routing for static deployment
 
-The `/login` route is now a workspace launch screen. It only checks whether the companion service is reachable and then enters the workspace.
+The `/login` route is now a workspace launch screen. It only probes whether the companion is reachable, then enters the workspace.
 
 ## Features
 
-- chat workspace with conversation list, streaming output, and markdown rendering
-- per-conversation model snapshot so existing chats stay on the model configuration they started with
+- chat workspace with conversation history, markdown rendering, streaming output, and per-conversation model snapshot
+- concurrent multi-chat execution: one chat can keep running while the user switches to another chat and continues working
+- per-chat runtime status in the sidebar, including `loading`, `success`, `stopped`, and `error`
 - image workspace with separate generation and edit modes
-- image edit flow with input image support and brush-mask tooling
+- image edit workflow with input image support, brush mask editing, and saved image gallery
 - dedicated settings workspace with autosave
 - prompt template management
 - chat model, image generation model, and image edit model management
-- app settings for companion host configuration plus settings import/export
-- theme switching and built-in `zh-CN` / `en-US` i18n
+- app settings for companion host configuration and workspace import/export
+- built-in `zh-CN` / `en-US` i18n and theme switching
 - browser storage fallback when the Python companion is unavailable
 
-### Provider Support
+## Provider Support
 
-Chat models configured in the UI currently support:
+Chat providers currently supported in the UI:
 
 - `OpenAI`
 - `Azure OpenAI`
 - `Anthropic Direct`
 - `Azure AI Foundry`
 
-OpenAI-compatible endpoints such as DeepSeek can still be used by configuring a custom `baseURL` and `model` under the OpenAI-style chat model flow.
+OpenAI-compatible endpoints such as DeepSeek can still be used through the OpenAI-style model flow by providing a custom `baseURL` and `model`.
 
-Image models currently support:
+Image providers currently supported:
 
 - `OpenAI`
 - `Azure OpenAI`
 
 ## Runtime Architecture
 
-### Browser-First Request Model
+### Browser-First Request Flow
 
 The frontend owns:
 
 - routing
 - workspace bootstrap
 - model configuration
-- chat rendering and streaming
+- chat request orchestration and rendering
 - image generation and image editing UI
-- theme and language controls
+- language and theme controls
 
-Model requests go directly from the browser to the selected provider. The Python companion is not on the critical path for model inference.
+Model inference requests go directly from the browser to the selected provider. The Python companion is not on the inference path.
+
+### Chat Runtime Design
+
+The chat workspace no longer uses one global active request state.
+
+It is split into two layers:
+
+- persisted conversation data: chat list, messages, and per-conversation settings
+- in-memory runtime state per chat id: pending status, streaming draft output, stop/error/success state, and session token usage
+
+Current chat behavior:
+
+- the main panel renders only the active conversation
+- background conversations may continue streaming after the user switches away
+- switching chats does not cancel other running chats
+- sidebar status indicators are driven by per-chat runtime state
+- per-conversation model snapshots keep older chats pinned to the model they started with
+
+At code level, the main chat pieces are:
+
+- `web/src/store/chat.ts`
+  - active chat projection plus per-chat caches and runtime maps
+- `web/src/services/chat/conversation/service.ts`
+  - persisted chat list, settings, and message history access
+- `web/src/services/chat/session-runner.ts`
+  - per-chat request lifecycle, abort control, runtime updates, and draft assistant state
+- `web/src/services/chat/chat-proxy.ts`
+  - resolves the explicit chat context and calls the correct provider
+- `web/src/services/chat/rendering/`
+  - renders the active conversation and its draft assistant output
 
 ### Storage Router
 
-`web/src/services/transport/request.ts` calls `web/src/services/storage/`, which chooses the active persistence backend.
+`web/src/services/transport/request.ts` calls `web/src/services/storage/`, which selects the active persistence backend.
 
 Storage modes:
 
-- `server`: FastAPI companion is reachable and persists data with SQLite
-- `browser`: companion is unavailable, so data falls back to browser storage
-- `unknown`: backend detection has not finished yet
+- `server`
+  - FastAPI companion is reachable and persists data with SQLite
+- `browser`
+  - companion is unavailable, so data falls back to browser storage
+- `unknown`
+  - backend detection has not finished yet
 
 In browser mode, the app persists:
 
@@ -81,15 +115,15 @@ In browser mode, the app persists:
 
 Saved browser-mode images are converted to `data:` URLs so the gallery still works after reload.
 
-### Companion Service
+### Python Companion
 
-`server/` is a local companion, not a required application backend.
+`server/` is a local companion, not a required backend.
 
 It currently provides:
 
 - FastAPI routes for workspace settings, chats, and cached images
 - SQLite-backed persistence under `server/app/storage/`
-- cached image download and streaming via `/_api/image/get/<image_id>`
+- cached image download and serving via `/_api/image/get/<image_id>`
 - static serving for the production frontend bundle
 - Windows `pywebview` packaging entrypoint
 
@@ -163,17 +197,18 @@ ai-api-hub/
    └─ win_webview.py
 ```
 
-Useful starting points:
+Recommended starting points:
 
 - `web/src/router/index.ts`
-- `web/src/constants/model.ts`
-- `web/src/services/`
+- `web/src/store/chat.ts`
+- `web/src/services/chat/`
+- `web/src/views/chat/`
 - `web/src/views/setting/SettingsWorkspace.vue`
-- `server/app/server.py`
+- `server/app/`
 
-## Model Configuration Notes
+## Model Configuration
 
-Models are user-defined. The built-in model lists are suggestion lists, not hard restrictions.
+Models are user-defined. Built-in model lists are suggestions, not hard restrictions.
 
 Current model editing supports:
 
@@ -188,7 +223,7 @@ The settings workspace autosaves changes and also supports import/export of the 
 
 ### Frontend Only
 
-Use this when you want a pure browser build with local storage fallback.
+Use this when you want a browser-only build with local storage fallback.
 
 ```bash
 cd web

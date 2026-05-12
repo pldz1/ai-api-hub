@@ -56,7 +56,7 @@ export class ChatDrawer extends ChatElemCreator {
   }
 
   chatClientInit(): void {
-    this.client.init();
+    this.client.init({});
   }
 
   /**
@@ -64,7 +64,7 @@ export class ChatDrawer extends ChatElemCreator {
    */
   async chat(data: ChatPromptMessage): Promise<void> {
     this.removeListener();
-    this.client.init();
+    this.client.init({});
     this.forceStop = false;
     this.tmpAssErrorFlag = false;
     this.tmpAssContentData = { content: "", reasoning_content: "" };
@@ -75,14 +75,14 @@ export class ChatDrawer extends ChatElemCreator {
     this.drawStreamAss();
 
     await store.dispatch("pushMessages", data);
-    if (this.sync) await addMessage(chatData.mid, data);
+    if (this.sync) await addMessage(store.state.curChatId, chatData.mid, data);
 
     const passedMsgLen = store.state.curChatModelSettings.passedMsgLen;
     const history = store.state.messages;
     const messages = history.slice(-Math.min(passedMsgLen, history.length));
 
     await store.dispatch("setLlmRequestPending", true);
-    const flag = await this.client.chat(messages, this.enqueueRender);
+    const flag = await this.client.chat(messages, {}, this.enqueueRender);
 
     if (this.forceStop) {
       await store.dispatch("setLlmRequestPending", false);
@@ -101,7 +101,7 @@ export class ChatDrawer extends ChatElemCreator {
         if (this.tmpAssTokenUsage) assistantData.token_usage = this.tmpAssTokenUsage;
 
         await store.dispatch("pushMessages", assistantData);
-        if (this.sync) await addMessage(this.tmpAssContentMid, assistantData);
+        if (this.sync) await addMessage(store.state.curChatId, this.tmpAssContentMid, assistantData);
       } else {
         this.removeTempAssistantElem();
       }
@@ -138,7 +138,7 @@ export class ChatDrawer extends ChatElemCreator {
         if (this.tmpAssTokenUsage) assistantData.token_usage = this.tmpAssTokenUsage;
 
         await store.dispatch("pushMessages", assistantData);
-        if (this.sync) await addMessage(this.tmpAssContentMid, assistantData);
+        if (this.sync) await addMessage(store.state.curChatId, this.tmpAssContentMid, assistantData);
       }
     }
 
@@ -174,6 +174,8 @@ export class ChatDrawer extends ChatElemCreator {
   removeTempAssistantElem(): void {
     const assistantEl = this.tmpAssContentDiv?.closest(".chat-md-bubble-assistant");
     if (assistantEl) assistantEl.remove();
+    this.tmpAssContentDiv = null;
+    this.tmpAssReasoningDiv = null;
     this.tmpAssIsResponsingElFlag = false;
   }
 
@@ -193,6 +195,34 @@ export class ChatDrawer extends ChatElemCreator {
         this.addAssHTMLElem(msg.content, msg?.reasoning_content, msg.mid);
       }
     }
+  }
+
+  renderConversation(messages: ChatPromptMessage[] = []): void {
+    this.removeAllElem();
+    this.draw(messages);
+  }
+
+  syncDraftAssistant(runtime: Record<string, unknown> = {}): void {
+    const content = String(runtime?.draftAssistantContent || "");
+    const reasoning_content = String(runtime?.draftReasoningContent || "");
+    const draftMessageId = String(runtime?.draftMessageId || "");
+    const hasDraft = Boolean(draftMessageId || content || reasoning_content || runtime?.pending);
+
+    if (!hasDraft) {
+      this.removeTempAssistantElem();
+      return;
+    }
+
+    if (!this.tmpAssContentDiv || this.tmpAssContentMid !== draftMessageId) {
+      this.removeTempAssistantElem();
+      this.tmpAssContentMid = draftMessageId;
+      this.tmpAssContentDiv = this.createAssTempElem(this.tmpAssContentMid);
+      this.tmpAssReasoningDiv = null;
+      this.tmpAssIsResponsingElFlag = true;
+    }
+
+    this.tmpAssContentData = { content, reasoning_content };
+    this.renderAssStream();
   }
 
   /**
@@ -291,6 +321,11 @@ export class ChatDrawer extends ChatElemCreator {
    * Remove all div elements from the container.
    */
   removeAllElem(): void {
+    this.tmpAssContentDiv = null;
+    this.tmpAssReasoningDiv = null;
+    this.tmpAssContentMid = "";
+    this.tmpAssIsResponsingElFlag = false;
+    if (!this.container) return;
     const divs = this.container.getElementsByTagName("div");
     while (divs.length > 0) {
       divs[0].remove();

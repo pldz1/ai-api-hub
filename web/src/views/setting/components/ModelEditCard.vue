@@ -139,7 +139,7 @@ import { computed, reactive, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { dsAlert } from "@/utils";
 import copyIcon from "@/assets/svg/copy16.svg";
-import SvgIcon from "@/components/base/SvgIcon.vue";
+import SvgIcon from "@/components/SvgIcon.vue";
 import type { ImageOperation, ModelConfig, ModelFormDraft, ModelKind, SelectOption } from "@/types/model";
 import {
   defaultModelFormDraft,

@@ -75,7 +75,7 @@ import copyIcon from "@/assets/svg/copy16.svg";
 import deleteIcon from "@/assets/svg/delete16.svg";
 import editIcon from "@/assets/svg/edit24.svg";
 import saveIcon from "@/assets/svg/save18.svg";
-import SvgIcon from "@/components/base/SvgIcon.vue";
+import SvgIcon from "@/components/SvgIcon.vue";
 
 const props = defineProps({
   selectedImage: {

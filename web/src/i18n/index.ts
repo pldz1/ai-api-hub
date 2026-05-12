@@ -19,7 +19,7 @@ const i18n = createI18n({
   messages: languages,
 });
 
-export function setAppLocale(locale) {
+export function setAppLocale(locale: any) {
   const nextLocale = locale || cn;
   i18n.global.locale.value = nextLocale;
   if (typeof document !== "undefined") {

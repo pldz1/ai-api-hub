@@ -1,15 +1,12 @@
 <template>
   <div class="chat-sidebar-container" :class="{ expanded: isShowChatScrollbar }">
     <div class="csdb-sidebar">
-      <!-- 显示 对话(chat) 的列表的头部 -->
       <div class="csdb-chat-list">
-        <!-- 展开或者折叠 对话(chat) 列表 -->
         <AppTooltip :text="t('chat.sidebarToggle')" placement="right">
           <button class="btn csdb-btn-wh1 csdb-btn-color1" @click="onShowSidebar">
             <SvgIcon :src="sidebarIcon" />
           </button>
         </AppTooltip>
-        <!-- 新建一个 对话(chat) -->
         <AppTooltip :text="t('chat.newChat')" placement="right">
           <button class="btn csdb-btn-wh1 csdb-btn-color1" @click="onNewChat">
             <SvgIcon :src="newIcon" />
@@ -22,7 +19,6 @@
         </button>
       </AppTooltip>
     </div>
-    <!-- 具体下滑内容 -->
     <div v-if="isShowChatScrollbar" class="csdb-chats">
       <div v-if="chatList.length == 0" class="csdb-chats-container">
         <h2 class="font-bold">
@@ -30,9 +26,8 @@
           <br />
         </h2>
       </div>
-      <!-- chat history list -->
       <div v-else class="csdb-chats-container">
-        <div v-for="item in chatList" :key="item">
+        <div v-for="item in chatList" :key="item.cid">
           <input
             v-if="isShowOptionCid == item.cid && isEditChatName"
             v-model="editChatName"
@@ -42,12 +37,19 @@
             class="input input-bordered"
             ref="editChatNameInputElRef"
           />
-          <!-- 对话的单元 -->
           <div v-else :class="['csdb-chat-item', { 'csdb-chat-item-active': cid === item.cid }]">
-            <!-- 对话标签 -->
-            <span class="csdb-chat-label" @click="onSelectChat(item)">
-              {{ item.cname }}
-            </span>
+            <button class="csdb-chat-main" type="button" @click="onSelectChat(item)">
+              <span :class="['csdb-chat-status', `is-${resolveChatStatus(item.cid)}`]">
+                <span v-if="resolveChatStatus(item.cid) === 'loading'" class="csdb-chat-spinner"></span>
+                <SvgIcon v-else-if="resolveChatStatus(item.cid) === 'success'" :src="successIcon" />
+                <SvgIcon v-else-if="resolveChatStatus(item.cid) === 'error'" :src="errorIcon" />
+                <SvgIcon v-else-if="resolveChatStatus(item.cid) === 'stopped'" :src="pauseIcon" />
+                <span v-else class="csdb-chat-dot"></span>
+              </span>
+              <span class="csdb-chat-label">
+                {{ item.cname }}
+              </span>
+            </button>
             <AppDropdownMenu placement="bottom-end">
               <template #trigger="{ toggle, open }">
                 <div class="csdb-chat-dropdown">
@@ -85,72 +87,67 @@ import optionsIcon from "@/assets/svg/options24.svg";
 import sidebarIcon from "@/assets/svg/sidebar24.svg";
 import newIcon from "@/assets/svg/new24.svg";
 import settingIcon from "@/assets/svg/setting24.svg";
-import { deleteChat, renameChat, getChatSettings } from "@/services";
+import successIcon from "@/assets/svg/success24.svg";
+import errorIcon from "@/assets/svg/error24.svg";
+import pauseIcon from "@/assets/svg/pause32.svg";
+import { deleteChat, removeChatSessionRunner, renameChat } from "@/services";
 import { buildDefaultChatSettings, getModelRequestId } from "@/constants";
 import ChatSettings from "@/views/chat/components/ChatSettings.vue";
 import { dsAlert } from "@/utils";
-import AppTooltip from "@/components/base/AppTooltip.vue";
-import AppDropdownMenu from "@/components/base/AppDropdownMenu.vue";
-import SvgIcon from "@/components/base/SvgIcon.vue";
+import AppTooltip from "@/components/AppTooltip.vue";
+import AppDropdownMenu from "@/components/AppDropdownMenu.vue";
+import SvgIcon from "@/components/SvgIcon.vue";
 
 const store = useStore();
 const { t } = useI18n();
 const cid = computed(() => store.state.curChatId);
-const chatList = computed(() => {
-  return [...store.state.chatList].reverse();
-});
+const chatList = computed(() => [...store.state.chatList].reverse());
 
 const isShowOptionCid = ref("");
 const isEditChatName = ref(false);
 const editChatName = ref("");
 const editChatNameInputElRef = ref(null);
-const isShowChatScrollbar = ref(false);
+const isShowChatScrollbar = ref(true);
 const curChatModel = computed(() => store.state.curChatModel);
 const curConversation = computed(() => store.state.curConversation);
 const hasSelectedChatModel = computed(() => Boolean(curConversation.value?.modelSnapshot || getModelRequestId(curChatModel.value)));
 
-/**
- * 回是否开关侧边栏的布尔量
- *  */
+const resolveChatStatus = (chatId) => {
+  const runtime = store.state.chatRuntimeById?.[chatId];
+  if (!runtime) return "idle";
+  if (runtime.pending || runtime.status === "loading" || runtime.status === "streaming") return "loading";
+  if (runtime.status === "error") return "error";
+  if (runtime.status === "stopped") return "stopped";
+  if (runtime.status === "success") return "success";
+  return "idle";
+};
+
 const onShowSidebar = () => {
   isShowChatScrollbar.value = !isShowChatScrollbar.value;
 };
 
-/**
- * 新建对话
- *  */
 const onNewChat = async () => {
-  store.dispatch("setCurChatModelSettings", buildDefaultChatSettings(curChatModel.value));
+  await store.dispatch("setCurChatModelSettings", buildDefaultChatSettings(curChatModel.value));
   await store.dispatch("setCurChatId", "");
   await store.dispatch("setCurConversation", null);
-  await store.dispatch("resetMessages");
 };
 
-/**
- * 打开模型设置界面
- */
 const onShowModelSettings = () => {
   if (!hasSelectedChatModel.value) {
     dsAlert({ type: "warn", message: t("chat.chooseModelFirst") });
     return;
-  } else global_chat_model_settings.showModal();
+  }
+  global_chat_model_settings.showModal();
 };
 
-/**
- * 选择对话
- */
 const onSelectChat = async (item) => {
   if (item.cid == cid.value) return;
   await store.dispatch("setCurChatId", item.cid);
-  await store.dispatch("resetMessages");
-  await getChatSettings();
 };
 
-/**
- * 删除对话
- */
 const onDeleteChat = async (chatId, closeMenu) => {
   if (closeMenu) closeMenu();
+  removeChatSessionRunner(chatId);
   if (chatId) await deleteChat(chatId);
   if (chatId == cid.value) {
     await store.dispatch("setCurChatId", "");
@@ -160,9 +157,6 @@ const onDeleteChat = async (chatId, closeMenu) => {
   editChatName.value = "";
 };
 
-/**
- * 修改对话名称
- */
 const onEditChatName = async (chatId, closeMenu) => {
   if (closeMenu) closeMenu();
   isShowOptionCid.value = chatId;
@@ -172,9 +166,6 @@ const onEditChatName = async (chatId, closeMenu) => {
   if (editChatNameInputElRef?.value[0]) editChatNameInputElRef.value[0].focus();
 };
 
-/**
- * 修改对话名称
- */
 const changeChatName = async () => {
   if (editChatName.value) await renameChat(isShowOptionCid.value, editChatName.value);
   await nextTick();
@@ -297,7 +288,6 @@ const changeChatName = async () => {
         justify-content: center;
         gap: 8px;
       }
-
     }
 
     .input {
@@ -347,10 +337,65 @@ const changeChatName = async () => {
       font-weight: 700;
     }
 
-    .csdb-chat-label {
-      width: 180px;
-      text-align: left;
+    .csdb-chat-main {
+      min-width: 0;
+      flex: 1 1 auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: none;
+      background: transparent;
+      padding: 0;
+      color: inherit;
       cursor: pointer;
+    }
+
+    .csdb-chat-status {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: oklch(var(--bc) / 0.5);
+
+      :deep(.svg-icon) {
+        width: 16px;
+        height: 16px;
+      }
+
+      &.is-success {
+        color: oklch(var(--su));
+      }
+
+      &.is-error {
+        color: oklch(var(--er));
+      }
+
+      &.is-stopped {
+        color: oklch(var(--wa));
+      }
+    }
+
+    .csdb-chat-spinner {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      border: 2px solid oklch(var(--bc) / 0.16);
+      border-top-color: oklch(var(--p));
+      animation: csdb-spin 0.8s linear infinite;
+    }
+
+    .csdb-chat-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: oklch(var(--bc) / 0.18);
+    }
+
+    .csdb-chat-label {
+      width: 100%;
+      text-align: left;
       font-size: 13px;
       font-weight: 600;
       white-space: nowrap;
@@ -422,6 +467,12 @@ const changeChatName = async () => {
       background: oklch(var(--er) / 0.09);
       color: oklch(var(--er));
     }
+  }
+}
+
+@keyframes csdb-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 </style>

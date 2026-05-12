@@ -1,6 +1,5 @@
 <template>
   <div class="chat-card-container">
-    <!-- 显示markdown的问答区域 -->
     <ChatInsTemplate v-show="isShowTemplate" @on-update="onDrawTemplateIns"></ChatInsTemplate>
     <div class="ccdc-messages-container">
       <div id="chat-messages-container" class="cccd-scroll-window" ref="innerRef" @scroll="updateScrollActions"></div>
@@ -17,7 +16,6 @@
         </AppTooltip>
       </div>
     </div>
-    <!-- 输入问题 -->
     <div class="cccd-input-area">
       <ChatInputArea
         :is-chatting="isChatting"
@@ -33,25 +31,27 @@
 import { useStore } from "vuex";
 import { dsLoading } from "@/utils";
 import { ref, watch, computed, onMounted, nextTick } from "vue";
-import { ChatDrawer, addChat, getAllMessage } from "@/services";
+import { ChatDrawer, addChat, getAllMessage, getChatSettings, getChatSessionRunner, stopChatSession } from "@/services";
 
-import AppTooltip from "@/components/base/AppTooltip.vue";
-import SvgIcon from "@/components/base/SvgIcon.vue";
+import AppTooltip from "@/components/AppTooltip.vue";
+import SvgIcon from "@/components/SvgIcon.vue";
 import ChatInputArea from "@/views/chat/components/ChatInputArea.vue";
 import ChatInsTemplate from "@/views/chat/components/ChatInsTemplate.vue";
 import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 
 const store = useStore();
-const isChatting = ref(false);
 const innerRef = ref(null);
 const canScrollTop = ref(false);
 const canScrollBottom = ref(false);
 
 const drawer = new ChatDrawer(true);
-const curConversation = computed(() => store.state.curConversation);
 const curChatId = computed(() => store.state.curChatId);
-const isModelSelectionReadonly = computed(() => Boolean(curConversation.value?.modelSnapshot && (curChatId.value || store.state.messages.length > 0)));
-const isShowTemplate = ref(true);
+const curConversation = computed(() => (curChatId.value ? store.state.chatConversationsById?.[curChatId.value] || null : null));
+const activeMessages = computed(() => (curChatId.value ? store.state.chatMessagesById?.[curChatId.value] || [] : []));
+const activeRuntime = computed(() => (curChatId.value ? store.state.chatRuntimeById?.[curChatId.value] || null : null));
+const isChatting = computed(() => Boolean(activeRuntime.value?.pending || ["loading", "streaming"].includes(activeRuntime.value?.status)));
+const isModelSelectionReadonly = computed(() => Boolean(curConversation.value?.modelSnapshot && (curChatId.value || activeMessages.value.length > 0)));
+const isShowTemplate = computed(() => !curChatId.value && activeMessages.value.length === 0);
 
 const updateScrollActions = () => {
   const el = innerRef.value;
@@ -70,70 +70,82 @@ const scrollMessagesToBottom = () => {
   innerRef.value.scrollTo({ top: innerRef.value.scrollHeight, behavior: "smooth" });
 };
 
+const renderCurrentConversation = async ({ stickToBottom = false } = {}) => {
+  drawer.renderConversation(activeMessages.value);
+  drawer.syncDraftAssistant(activeRuntime.value || {});
+  await nextTick();
+  updateScrollActions();
+  if (stickToBottom) scrollMessagesToBottom();
+};
+
 watch(
   () => curChatId.value,
   async (newVal) => {
     dsLoading(true);
-    drawer.removeAllElem();
-    await nextTick();
 
-    // 判读对话的 id, 来显示不同的内容.
-    if (!newVal) {
-      // 如果是空的对话 id, 那么就认为是新的对话.
-      isShowTemplate.value = true;
-    } else {
-      isShowTemplate.value = false;
-      getAllMessage(drawer.draw);
+    if (newVal) {
+      const isLoaded = Boolean(store.state.chatLoadedById?.[newVal]);
+      const hasConversation = Boolean(store.state.chatConversationsById?.[newVal]);
+
+      if (!hasConversation) await getChatSettings(newVal);
+      if (!isLoaded) await getAllMessage(newVal);
     }
 
-    await nextTick();
-    updateScrollActions();
+    await renderCurrentConversation();
     dsLoading(false);
-  },
-);
-
-watch(
-  () => curConversation.value?.modelSnapshot?.modelConfigId,
-  () => {
-    drawer.chatClientInit();
   },
   { immediate: true },
 );
 
-/** 向服务器发送数据 */
+watch(
+  () => activeMessages.value.map((item) => item.mid || "").join("|"),
+  async () => {
+    await renderCurrentConversation({ stickToBottom: true });
+  },
+);
+
+watch(
+  () => [
+    activeRuntime.value?.draftMessageId || "",
+    activeRuntime.value?.draftAssistantContent || "",
+    activeRuntime.value?.draftReasoningContent || "",
+    activeRuntime.value?.pending || false,
+    activeRuntime.value?.status || "",
+  ],
+  async () => {
+    drawer.syncDraftAssistant(activeRuntime.value || {});
+    await nextTick();
+    updateScrollActions();
+    if (isChatting.value) scrollMessagesToBottom();
+  },
+);
+
 const onStartChat = async (payload) => {
-  isShowTemplate.value = false;
   const message = payload?.message || payload;
   const selectedModel = payload?.model || null;
 
-  // 新建对话
   if (!curChatId.value) {
     await addChat(null, selectedModel);
   }
-  isChatting.value = true;
-  await drawer.chat(message);
-  isChatting.value = false;
-  await nextTick();
-  updateScrollActions();
+
+  const nextChatId = store.state.curChatId;
+  const runner = getChatSessionRunner(nextChatId);
+  if (!runner) return;
+  await runner.chat(message);
 };
 
-/**
- * 停止接受消息
- * */
 const onStopChat = async () => {
-  drawer.stop();
-  isChatting.value = false;
+  if (!curChatId.value) return;
+  stopChatSession(curChatId.value);
 };
 
-/**
- * 绘制对话指令的内容, 这个不会放进store
- */
 const onDrawTemplateIns = (messages) => {
-  drawer.draw(messages);
+  drawer.renderConversation(messages);
 };
 
 onMounted(() => {
   drawer.init("chat-messages-container");
+  renderCurrentConversation();
   updateScrollActions();
 });
 </script>

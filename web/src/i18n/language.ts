@@ -249,7 +249,7 @@ export const languages = {
       sendOrStop: "发送 / 停止",
       copyText: "复制文本",
       deleteMessage: "删除消息",
-      reasoning: "思考内容🤔",
+      reasoning: "思考",
     },
     input: {
       chatPlaceholder: "请输入对话内容",
@@ -679,7 +679,7 @@ export const languages = {
       sendOrStop: "Send / stop",
       copyText: "Copy text",
       deleteMessage: "Delete message",
-      reasoning: "Reasoning 🤔",
+      reasoning: "Reasoning",
     },
     input: {
       chatPlaceholder: "Type your message",
@@ -692,8 +692,8 @@ export const languages = {
       confirmStartChatConfirm: "Start chat",
       capabilities: {
         imageRead: "Image",
-        webSearch: "Web",
-        reasoning: "Thinking",
+        webSearch: "WebSearch",
+        reasoning: "Reasoning",
       },
       hostUrlPlaceholder: "http://127.0.0.1:20088",
     },

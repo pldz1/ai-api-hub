@@ -1,21 +1,28 @@
 <template>
   <div class="component-header-bar">
     <div class="comphb-left">
-      <AppTooltip v-if="showMenu" :text="t('header.menu')" placement="bottom">
-        <AppDropdownMenu :items="menuItems" placement="bottom-start" :width="156" @select="onSelectMenuItem">
-          <template #trigger="{ toggle }">
-            <button type="button" class="comphb-icon-button" @click="toggle">
-              <SvgIcon :src="menuIcon" style="width: 28px; height: 28px" />
-            </button>
-          </template>
-        </AppDropdownMenu>
-      </AppTooltip>
       <button class="comphb-brand" @click="onBackLogin">
         <SvgIcon class="comphb-brand-mark" :src="appIcon" colored style="width: 28px; height: 28px" />
         <div class="comphb-brand-copy">
           <span class="comphb-brand-kicker">AI API HUB</span>
         </div>
       </button>
+      <div v-if="showNavigation" class="comphb-nav-shell">
+        <nav class="comphb-nav" :aria-label="t('header.menu')">
+          <button
+            v-for="item in navItems"
+            :key="item.key"
+            type="button"
+            class="comphb-nav-item"
+            :class="{ active: isActivePath(item.path) }"
+            :aria-current="isActivePath(item.path) ? 'page' : undefined"
+            @click="onSelectNavItem(item.path)"
+          >
+            <SvgIcon class="comphb-nav-icon" :src="item.icon" />
+            <span class="comphb-nav-label">{{ item.label }}</span>
+          </button>
+        </nav>
+      </div>
     </div>
     <div class="comphb-actions">
       <LanguageController />
@@ -26,38 +33,38 @@
 </template>
 
 <script setup>
-import { useStore } from "vuex";
 import { computed } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import appIcon from "@/assets/svg/app32.svg";
-import menuIcon from "@/assets/svg/menu32.svg";
 import navChatIcon from "@/assets/svg/navChat24.svg";
 import navImageIcon from "@/assets/svg/navImage24.svg";
 import navSettingsIcon from "@/assets/svg/navSettings24.svg";
-import ThemeController from "@/components/header/ThemeController.vue";
-import LanguageController from "@/components/header/LanguageController.vue";
-import AvatarCard from "@/components/header/AvatarCard.vue";
-import AppTooltip from "@/components/base/AppTooltip.vue";
-import AppDropdownMenu from "@/components/base/AppDropdownMenu.vue";
-import SvgIcon from "@/components/base/SvgIcon.vue";
+import ThemeController from "@/components/ThemeController.vue";
+import LanguageController from "@/components/LanguageController.vue";
+import AvatarCard from "@/components/AvatarCard.vue";
+import SvgIcon from "@/components/SvgIcon.vue";
 
 const props = defineProps({
+  showNavigation: {
+    type: Boolean,
+    default: true,
+  },
   showMenu: {
     type: Boolean,
     default: true,
   },
 });
 
-const store = useStore();
+const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 
-const showMenu = props.showMenu;
-const menuItems = computed(() => [
-  { key: "chat", label: t("header.chat"), icon: navChatIcon },
-  { key: "image", label: t("header.image"), icon: navImageIcon },
-  { key: "settings", label: t("header.settings"), icon: navSettingsIcon },
+const showNavigation = computed(() => props.showNavigation && props.showMenu);
+const navItems = computed(() => [
+  { key: "chat", label: t("header.chat"), icon: navChatIcon, path: "/chat" },
+  { key: "image", label: t("header.image"), icon: navImageIcon, path: "/image" },
+  { key: "settings", label: t("header.settings"), icon: navSettingsIcon, path: "/settings" },
 ]);
 
 /**
@@ -67,28 +74,12 @@ const onBackLogin = () => {
   router.push({ path: "/home" });
 };
 
-/**
- * 跳转到对话页
- */
-const onGoChat = async () => {
-  router.push({ path: "/chat" });
-};
+const isActivePath = (path) => route.path === path || route.path.startsWith(`${path}/`);
 
-/**
- * 跳转到图像页
- */
-const onGoImage = async () => {
-  router.push({ path: "/image" });
-};
-
-const onGoSettings = async () => {
-  router.push({ path: "/settings" });
-};
-
-const onSelectMenuItem = async (item) => {
-  if (item.key === "chat") await onGoChat();
-  if (item.key === "image") await onGoImage();
-  if (item.key === "settings") await onGoSettings();
+const onSelectNavItem = (path) => {
+  if (!isActivePath(path)) {
+    router.push({ path });
+  }
 };
 </script>
 
@@ -104,52 +95,87 @@ const onSelectMenuItem = async (item) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
   color: oklch(var(--bc));
 
   .comphb-left,
   .comphb-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
 
   .comphb-left {
     min-width: 0;
-    flex: 1 1 0;
+    flex: 1 1 auto;
+  }
+
+  .comphb-nav-shell {
+    min-width: 0;
+    flex: 0 1 auto;
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .comphb-nav {
+    max-width: 100%;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 0 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .comphb-nav-item {
+    position: relative;
+    min-width: max-content;
+    height: 40px;
+    padding: 0 14px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: transparent;
+    color: oklch(var(--bc) / 0.68);
+    cursor: pointer;
+    transition:
+      color 0.18s ease,
+      transform 0.18s ease;
+
+    &:hover {
+      color: oklch(var(--bc));
+    }
+
+    &.active {
+      color: oklch(var(--bc));
+      border-bottom-color: oklch(var(--er));
+    }
+  }
+
+  .comphb-nav-icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.84;
+  }
+
+  .comphb-nav-label {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
   }
 
   .comphb-actions {
     justify-content: flex-end;
-    flex: 1 1 0;
-  }
-
-  .comphb-icon-button {
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: oklch(var(--bc));
-    transition:
-      transform 0.18s ease,
-      border-color 0.18s ease,
-      box-shadow 0.18s ease,
-      background-color 0.18s ease;
-
-    &:hover {
-      transform: translateY(-1px);
-      border-color: oklch(var(--p) / 0.3);
-      box-shadow: 0 10px 24px oklch(var(--bc) / 0.1);
-      background: oklch(var(--b1) / 0.96);
-    }
-
-    :deep(.svg-icon) {
-      width: 32px;
-      height: 32px;
-    }
+    flex: 0 0 auto;
   }
 
   .comphb-brand {
@@ -195,6 +221,16 @@ const onSelectMenuItem = async (item) => {
   }
 
   @media (max-width: 640px) {
+    gap: 10px;
+
+    .comphb-nav-item {
+      padding: 0 10px;
+    }
+
+    .comphb-nav-label {
+      font-size: 12px;
+    }
+
     .comphb-brand-copy {
       display: none;
     }

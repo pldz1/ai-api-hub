@@ -75,8 +75,8 @@ import infoIcon from "@/assets/svg/info24.svg";
 import { dsAlert } from "@/utils";
 import { getModelChatParamDefs, mergeChatSettingsWithModel, parseChatParamValue } from "@/constants";
 import { setChatSettings } from "@/services";
-import AppTooltip from "@/components/base/AppTooltip.vue";
-import SvgIcon from "@/components/base/SvgIcon.vue";
+import AppTooltip from "@/components/AppTooltip.vue";
+import SvgIcon from "@/components/SvgIcon.vue";
 
 const store = useStore();
 const { t } = useI18n();

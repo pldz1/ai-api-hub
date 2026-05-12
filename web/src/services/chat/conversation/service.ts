@@ -6,6 +6,7 @@ import { tr } from "@/i18n";
 import type { ChatListItem, ChatPromptMessage, StoredChatMessage } from "@/services/types";
 import type { ChatModelConfig, ChatModelSettings, ConversationModelSnapshot } from "@/types/model";
 
+
 /**
  * Chat conversation service.
  *
@@ -29,7 +30,6 @@ interface ChatSettingsPayload {
 }
 
 function parseChatSettingsPayload(rawData: string | ChatSettingsPayload | Partial<ChatModelSettings> | null): ChatSettingsPayload {
-  // Version 1 stored only settings. Version 2 wraps settings with a model snapshot.
   if (!rawData) return { modelSnapshot: null, settings: {} };
   const parsed = typeof rawData === "string" ? JSON.parse(rawData) : rawData;
   if (parsed && typeof parsed === "object" && "settings" in parsed) {
@@ -41,12 +41,14 @@ function parseChatSettingsPayload(rawData: string | ChatSettingsPayload | Partia
   return { modelSnapshot: null, settings: parsed || {} };
 }
 
-function buildChatSettingsPayload(): { version: 2; modelSnapshot: ConversationModelSnapshot | null; settings: ChatModelSettings } {
-  // Persist the snapshot so old conversations keep using the model they started with.
+function buildChatSettingsPayload(cid: string): { version: 2; modelSnapshot: ConversationModelSnapshot | null; settings: ChatModelSettings } {
+  const conversation = store.state.chatConversationsById?.[cid] || store.state.curConversation;
+  const settings = store.state.chatSettingsById?.[cid] || store.state.curChatModelSettings;
+
   return {
     version: 2,
-    modelSnapshot: store.state.curConversation?.modelSnapshot || createConversationModelSnapshot(store.state.curChatModel),
-    settings: store.state.curChatModelSettings,
+    modelSnapshot: conversation?.modelSnapshot || createConversationModelSnapshot(store.state.curChatModel),
+    settings,
   };
 }
 
@@ -56,51 +58,59 @@ export async function getChatList(): Promise<boolean> {
     await store.dispatch("resetChatList", []);
     dsAlert({ type: "error", message: tr("toast.chatListFetchFailed", { error: res.log }) });
     return false;
-  } else {
-    const isValidData = isValidChatInfoArray(res.data);
-    if (isValidData) {
-      await store.dispatch("resetChatList", res.data);
-      return true;
-    } else {
-      await store.dispatch("resetChatList", []);
-      dsAlert({ type: "error", message: tr("toast.chatListInvalid") });
-      return false;
-    }
   }
+
+  const isValidData = isValidChatInfoArray(res.data);
+  if (!isValidData) {
+    await store.dispatch("resetChatList", []);
+    dsAlert({ type: "error", message: tr("toast.chatListInvalid") });
+    return false;
+  }
+
+  await store.dispatch("resetChatList", res.data);
+  return true;
 }
 
-export async function getChatSettings(): Promise<boolean> {
-  const cid = store.state.curChatId;
+export async function getChatSettings(cid: string = store.state.curChatId): Promise<boolean> {
   if (!cid) return false;
+
   const res = await getChatSettingsAPI(cid);
   if (!res.flag) {
     dsAlert({ type: "error", message: tr("toast.chatSettingsFetchFailed", { error: res.log }) });
     return false;
-  } else {
-    const payload = parseChatSettingsPayload(res.data);
-    const fallbackModel = store.state.models.chat?.[0] || store.state.curChatModel;
-    const modelSnapshot = payload.modelSnapshot || createConversationModelSnapshot(fallbackModel);
-    const conversation = modelSnapshot
-      ? {
-          id: cid,
-          title: store.state.chatList.find((item) => item.cid === cid)?.cname || "",
-          modelSnapshot,
-        }
-      : null;
-    await store.dispatch("setCurConversation", conversation);
-    const model = getModelFromSnapshot(modelSnapshot) || store.state.curChatModel;
-    const validData = mergeChatSettingsWithModel(model, payload.settings || {});
-    await store.dispatch("setCurChatModelSettings", validData);
-    return true;
   }
+
+  const payload = parseChatSettingsPayload(res.data);
+  const fallbackModel = store.state.models.chat?.[0] || store.state.curChatModel;
+  const modelSnapshot = payload.modelSnapshot || createConversationModelSnapshot(fallbackModel);
+  const conversation = modelSnapshot
+    ? {
+        id: cid,
+        title: store.state.chatList.find((item) => item.cid === cid)?.cname || "",
+        modelSnapshot,
+      }
+    : null;
+  const model = getModelFromSnapshot(modelSnapshot) || store.state.curChatModel;
+  const validData = mergeChatSettingsWithModel(model, payload.settings || {});
+
+  await store.dispatch("hydrateChatSession", {
+    cid,
+    conversation,
+    settings: validData,
+  });
+
+  if (cid === store.state.curChatId) {
+    await store.dispatch("setCurConversation", conversation);
+    await store.dispatch("setCurChatModelSettings", validData);
+  }
+
+  return true;
 }
 
-export async function setChatSettings(): Promise<boolean> {
-  const cid = store.state.curChatId;
+export async function setChatSettings(cid: string = store.state.curChatId): Promise<boolean> {
   if (!cid) return false;
 
-  const data = JSON.stringify(buildChatSettingsPayload());
-
+  const data = JSON.stringify(buildChatSettingsPayload(cid));
   const res = await setChatSettingsAPI(cid, data);
   if (!res.flag) {
     dsAlert({ type: "error", message: tr("toast.chatSettingsSaveFailed", { error: res.log }) });
@@ -112,9 +122,6 @@ export async function setChatSettings(): Promise<boolean> {
 
 /**
  * Add a new conversation and update the local state and server data.
- *
- * 1. Generate a unique local conversation ID and name, then update the chatList in Vuex.
- * 2. Set the current active conversation ID.
  */
 export async function addChat(name: string | null = null, model: ChatModelConfig | null = null): Promise<boolean> {
   const chatId = getUuid("chat");
@@ -122,34 +129,45 @@ export async function addChat(name: string | null = null, model: ChatModelConfig
   const modelSnapshot = createConversationModelSnapshot(
     model || store.state.curConversation?.modelSnapshot?.modelConfig || store.state.curChatModel || store.state.models.chat?.[0],
   );
+  const conversation = modelSnapshot
+    ? {
+        id: chatId,
+        title: chatName,
+        modelSnapshot,
+      }
+    : null;
+  const settings = store.state.curChatId
+    ? mergeChatSettingsWithModel(getModelFromSnapshot(modelSnapshot) || store.state.curChatModel, store.state.curChatModelSettings)
+    : store.state.curChatModelSettings;
 
   const chatList = [...store.state.chatList, { cid: chatId, cname: chatName }];
   const updateLocalChatState = async () => {
     await store.dispatch("resetChatList", chatList);
-    await store.dispatch("setCurChatId", chatId);
     await store.dispatch(
-      "setCurConversation",
-      modelSnapshot
-        ? {
-            id: chatId,
-            title: chatName,
-            modelSnapshot,
-          }
-        : null,
+      "hydrateChatSession",
+      {
+        cid: chatId,
+        conversation,
+        settings,
+        messages: [],
+        loaded: true,
+      },
     );
+    await store.dispatch("setCurChatId", chatId);
+    await store.dispatch("setCurConversation", conversation);
+    await store.dispatch("setCurChatModelSettings", settings);
   };
 
   try {
     const res = await addChatAPI(chatId, chatName);
+    await updateLocalChatState();
+
     if (!res.flag) {
       dsAlert({ type: "error", message: tr("toast.chatAddFailed", { name: chatName, error: res.log }) });
-      await updateLocalChatState();
       return false;
     }
 
-    // Save the model settings for the new conversation.
-    await updateLocalChatState();
-    await setChatSettings();
+    await setChatSettings(chatId);
     return true;
   } catch (error) {
     dsAlert({ type: "error", message: tr("toast.chatAddException", { error: error.message || error }) });
@@ -160,19 +178,14 @@ export async function addChat(name: string | null = null, model: ChatModelConfig
 
 /**
  * Delete a conversation and sync local state with storage.
- *
- * 1. Remove the conversation from the Vuex chat list.
- * 2. Send the delete request to storage.
  */
 export async function deleteChat(cid: string): Promise<boolean> {
   const chatList = [...store.state.chatList];
-
   const index = chatList.findIndex((chat) => chat.cid === cid);
-  if (index >= 0) {
-    chatList.splice(index, 1);
-  }
+  if (index >= 0) chatList.splice(index, 1);
 
   await store.dispatch("resetChatList", chatList);
+  await store.dispatch("removeChatSession", cid);
 
   const res = await deleteChatAPI(cid);
   if (!res.flag) {
@@ -192,6 +205,17 @@ export async function renameChat(cid: string, cname: string): Promise<boolean> {
   if (index >= 0) chatList[index].cname = cname;
   await store.dispatch("resetChatList", chatList);
 
+  const conversation = store.state.chatConversationsById?.[cid];
+  if (conversation) {
+    await store.dispatch("hydrateChatSession", {
+      cid,
+      conversation: {
+        ...conversation,
+        title: cname,
+      },
+    });
+  }
+
   const res = await renameChatAPI(cid, cname);
   if (!res.flag) {
     dsAlert({ type: "error", message: tr("toast.chatRenameFailed", { error: res.log }) });
@@ -204,34 +228,39 @@ export async function renameChat(cid: string, cname: string): Promise<boolean> {
 /**
  * Get all messages from the chat conversation.
  */
-export async function getAllMessage(callback: ((messages: ChatPromptMessage[]) => void | Promise<void>) | null): Promise<void> {
-  const cid = store.state.curChatId;
-  if (!cid) return;
+export async function getAllMessage(
+  cid: string = store.state.curChatId,
+  callback: ((messages: ChatPromptMessage[]) => void | Promise<void>) | null = null,
+): Promise<ChatPromptMessage[]> {
+  if (!cid) return [];
 
   const res = await getAllMessageAPI(cid);
   if (!res.flag) {
     dsAlert({ type: "error", message: tr("toast.chatMessagesFetchFailed", { error: res.log }) });
-    return;
-  } else {
-    for (let index = 0; index < res.data.length; index++) {
-      const data = res.data[index];
-      const mid = data.mid;
-      const strMsg = data.message;
-      const message = JSON.parse(strMsg) as ChatPromptMessage;
-      await store.dispatch("pushMessages", message);
-      if (callback) {
-        await callback([{ ...message, mid }]);
-      }
-    }
-    return;
+    return [];
   }
+
+  const messages = res.data.map((data) => {
+    const message = JSON.parse(data.message) as ChatPromptMessage;
+    return { ...message, mid: data.mid };
+  });
+
+  await store.dispatch("replaceChatMessages", { cid, messages });
+  await store.dispatch("setChatLoaded", { cid, loaded: true });
+
+  if (callback) {
+    for (const message of messages) {
+      await callback([message]);
+    }
+  }
+
+  return messages;
 }
 
 /**
  * Add a message to the current conversation.
  */
-export async function addMessage(mid: string, message: ChatPromptMessage): Promise<boolean> {
-  const cid = store.state.curChatId;
+export async function addMessage(cid: string = store.state.curChatId, mid: string, message: ChatPromptMessage): Promise<boolean> {
   if (!cid) return false;
 
   const msgStr = JSON.stringify(message);
@@ -246,8 +275,7 @@ export async function addMessage(mid: string, message: ChatPromptMessage): Promi
 /**
  * Delete a message by ID.
  */
-export async function deleteMessage(mid: string): Promise<boolean> {
-  const cid = store.state.curChatId;
+export async function deleteMessage(cid: string = store.state.curChatId, mid: string): Promise<boolean> {
   if (!cid) return false;
 
   const res = await deleteMessageAPI(cid, mid);

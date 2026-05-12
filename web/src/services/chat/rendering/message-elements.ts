@@ -90,7 +90,7 @@ export class ChatElemCreator {
     deleteButtonDiv.addEventListener("click", async () => {
       this.deleteMessage(mid);
       userDiv.remove();
-      deleteMessage(mid);
+      deleteMessage(store.state.curChatId, mid);
     });
 
     userContentDiv.appendChild(optionsDiv);
@@ -178,7 +178,7 @@ export class ChatElemCreator {
     deleteButtonDiv.addEventListener("click", async () => {
       this.deleteMessage(mid);
       assistantDiv.remove();
-      deleteMessage(mid);
+      deleteMessage(store.state.curChatId, mid);
     });
 
     assistantContentDiv.appendChild(textDiv);

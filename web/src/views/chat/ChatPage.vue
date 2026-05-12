@@ -18,7 +18,6 @@
 
 <script setup>
 import { onMounted } from "vue";
-import { useStore } from "vuex";
 import { getChatList, getChatInsTemplateList } from "@/services";
 
 import SidebarCard from "@/views/chat/components/SidebarCard.vue";
@@ -26,11 +25,9 @@ import ChatCard from "@/views/chat/components/ChatCard.vue";
 import HeaderBar from "@/components/HeaderBar.vue";
 import ImageModal from "@/views/chat/components/ImageModal.vue";
 
-const store = useStore();
 onMounted(async () => {
   await getChatList();
   await getChatInsTemplateList();
-  await store.dispatch("resetMessages");
 });
 </script>
 

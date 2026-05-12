@@ -11,11 +11,17 @@ import {
   isOpenAIChatModel,
 } from "@/constants";
 import { tr } from "@/i18n";
-import type { ChatModelConfig, ModelCapabilities } from "@/types/model";
+import type { ChatModelConfig, ChatModelSettings, ConversationModelSnapshot, ModelCapabilities } from "@/types/model";
 import type { ChatCallback, ChatPromptMessage, PackedChatMessage } from "@/services/types";
 
 import { packMessageV1, packMessageV2 } from "./message";
 import { createChatExecutor, createChatProviderConfig, type ChatExecutor } from "./providers";
+
+interface ChatRequestContext {
+  conversation?: { modelSnapshot?: ConversationModelSnapshot | null } | null;
+  model?: ChatModelConfig | null;
+  settings?: ChatModelSettings | null;
+}
 
 /**
  * Runtime bridge between UI chat messages and provider clients.
@@ -31,12 +37,19 @@ export class ChatProxy {
   constructor() {
     this.executor = null;
     this.abortController = null;
-
-    this.init();
   }
 
-  init(model: ChatModelConfig | null = null): void {
-    const actModel = model || getModelFromSnapshot(store.state.curConversation?.modelSnapshot) || store.state.curChatModel;
+  resolveModel(context: ChatRequestContext = {}): ChatModelConfig | null {
+    return (
+      getModelFromSnapshot(context?.conversation?.modelSnapshot) ||
+      context?.model ||
+      getModelFromSnapshot(store.state.curConversation?.modelSnapshot) ||
+      store.state.curChatModel
+    );
+  }
+
+  init(context: ChatRequestContext = {}): void {
+    const actModel = this.resolveModel(context);
     if (!actModel) return;
 
     if (isOpenAIChatModel(actModel) || isAzureChatModel(actModel) || isAnthropicChatModel(actModel)) {
@@ -55,10 +68,14 @@ export class ChatProxy {
     this.abortController = null;
   }
 
-  async chat(data: ChatPromptMessage[], callback: ChatCallback = (response) => console.log(response)): Promise<boolean> {
-    const model = getModelFromSnapshot(store.state.curConversation?.modelSnapshot) || store.state.curChatModel;
+  async chat(
+    data: ChatPromptMessage[],
+    context: ChatRequestContext = {},
+    callback: ChatCallback = (response) => console.log(response),
+  ): Promise<boolean> {
+    const model = this.resolveModel(context);
     const hasRequestTarget = isAzureChatModel(model) ? Boolean(getModelDeployment(model)) : Boolean(getModelRequestId(model));
-    if (!this.executor || !model.name || !model.apiKey || !hasRequestTarget) {
+    if (!this.executor || !model?.name || !model?.apiKey || !hasRequestTarget) {
       dsAlert({
         type: "warn",
         message: tr("toast.modelInitRetry"),
@@ -77,10 +94,11 @@ export class ChatProxy {
 
     try {
       this.abort();
+      this.init({ ...context, model });
       abortController = new AbortController();
       this.abortController = abortController;
-      const messages = this.getChatMessages(data, modelInfo.msgTypeVersion);
-      await this.executor.chat(messages, this.getChatParams(model, turnCapabilities), callback, { signal: abortController.signal });
+      const messages = this.getChatMessages(data, context?.settings, modelInfo.msgTypeVersion);
+      await this.executor.chat(messages, this.getChatParams(model, context?.settings, turnCapabilities), callback, { signal: abortController.signal });
       return true;
     } catch (err) {
       if (abortController?.signal.aborted) return false;
@@ -98,25 +116,26 @@ export class ChatProxy {
   /**
    * Build provider-ready chat messages with the active system prompt.
    */
-  getChatMessages(data: ChatPromptMessage[], msgTypeVersion: "v1" | "v2" = "v2"): PackedChatMessage[] {
-    const cms = store.state.curChatModelSettings;
-    const combineData = cms.prompts[0].content[0].text ? [...cms.prompts, ...data] : data;
+  getChatMessages(data: ChatPromptMessage[], settings: ChatModelSettings | null = null, msgTypeVersion: "v1" | "v2" = "v2"): PackedChatMessage[] {
+    const cms = settings || store.state.curChatModelSettings;
+    const combineData = cms?.prompts?.[0]?.content?.[0]?.text ? [...cms.prompts, ...data] : data;
     if (msgTypeVersion == "v1") {
-      const messages = packMessageV1(combineData);
-      return messages;
-    } else {
-      const messages = packMessageV2(combineData);
-      return messages;
+      return packMessageV1(combineData);
     }
+    return packMessageV2(combineData);
   }
 
   /**
    * Build request parameters for the active chat model.
    */
-  getChatParams(model: ChatModelConfig | null = null, turnCapabilities: Partial<ModelCapabilities> = {}): Record<string, unknown> {
-    const activeModel = model || getModelFromSnapshot(store.state.curConversation?.modelSnapshot) || store.state.curChatModel;
+  getChatParams(
+    model: ChatModelConfig | null = null,
+    settings: ChatModelSettings | null = null,
+    turnCapabilities: Partial<ModelCapabilities> = {},
+  ): Record<string, unknown> {
+    const activeModel = model || this.resolveModel({});
     return {
-      ...buildChatCompletionParams(activeModel, store.state.curChatModelSettings),
+      ...buildChatCompletionParams(activeModel, settings || store.state.curChatModelSettings),
       webSearch: Boolean(turnCapabilities.webSearch),
       reasoningBoost: Boolean(turnCapabilities.reasoning),
     };
