@@ -125,7 +125,6 @@ const sizeShapeClass = (value) => {
     font-size: 16px;
     font-weight: 800;
   }
-
 }
 
 .setting-grid {

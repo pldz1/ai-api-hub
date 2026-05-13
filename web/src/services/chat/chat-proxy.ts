@@ -68,11 +68,7 @@ export class ChatProxy {
     this.abortController = null;
   }
 
-  async chat(
-    data: ChatPromptMessage[],
-    context: ChatRequestContext = {},
-    callback: ChatCallback = (response) => console.log(response),
-  ): Promise<boolean> {
+  async chat(data: ChatPromptMessage[], context: ChatRequestContext = {}, callback: ChatCallback = (response) => console.log(response)): Promise<boolean> {
     const model = this.resolveModel(context);
     const hasRequestTarget = isAzureChatModel(model) ? Boolean(getModelDeployment(model)) : Boolean(getModelRequestId(model));
     if (!this.executor || !model?.name || !model?.apiKey || !hasRequestTarget) {

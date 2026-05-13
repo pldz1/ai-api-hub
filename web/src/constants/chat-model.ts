@@ -451,7 +451,9 @@ export function getEffectiveCapabilities(
 }
 
 /** Creates the immutable model snapshot stored with a conversation. */
-export function createConversationModelSnapshot(model: (Partial<ModelFormDraft> & { modelType?: string }) | null | undefined): ConversationModelSnapshot | null {
+export function createConversationModelSnapshot(
+  model: (Partial<ModelFormDraft> & { modelType?: string }) | null | undefined,
+): ConversationModelSnapshot | null {
   const normalizedModel = normalizeChatModelConfig(model);
   if (!normalizedModel?.name || !normalizedModel?.apiKey) return null;
 
@@ -639,9 +641,7 @@ export function getModelChatParamDefs(model: LooseModelConfig = {}): ModelParamD
   const hasCustomDefs = Array.isArray(model?.chatParamDefs) && model.chatParamDefs.length > 0;
   const defs = hasCustomDefs ? model.chatParamDefs : getDefaultChatParamDefs(modelId, provider);
   const seen = new Set();
-  const supportedKeys = new Set(
-    hasCustomDefs ? model.chatParamDefs.map((item) => item.key).filter(Boolean) : getChatParamKeysForModel(modelId, provider),
-  );
+  const supportedKeys = new Set(hasCustomDefs ? model.chatParamDefs.map((item) => item.key).filter(Boolean) : getChatParamKeysForModel(modelId, provider));
 
   return defs
     .map((item) => normalizeChatParamDef(item))

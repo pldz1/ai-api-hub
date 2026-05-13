@@ -215,10 +215,8 @@ watch(
   border-radius: 8px;
   overflow: hidden;
   background:
-    linear-gradient(45deg, oklch(var(--bc) / 0.08) 25%, transparent 25%),
-    linear-gradient(-45deg, oklch(var(--bc) / 0.08) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, oklch(var(--bc) / 0.08) 75%),
-    linear-gradient(-45deg, transparent 75%, oklch(var(--bc) / 0.08) 75%);
+    linear-gradient(45deg, oklch(var(--bc) / 0.08) 25%, transparent 25%), linear-gradient(-45deg, oklch(var(--bc) / 0.08) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, oklch(var(--bc) / 0.08) 75%), linear-gradient(-45deg, transparent 75%, oklch(var(--bc) / 0.08) 75%);
   background-position:
     0 0,
     0 8px,

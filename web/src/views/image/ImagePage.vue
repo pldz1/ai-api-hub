@@ -21,11 +21,7 @@
     </div>
 
     <div class="image-page-content">
-      <component
-        :is="activeComponent"
-        :initial-edit-image="pendingEditImage"
-        @switch-to-edit="switchToEdit"
-      />
+      <component :is="activeComponent" :initial-edit-image="pendingEditImage" @switch-to-edit="switchToEdit" />
     </div>
   </div>
 </template>
@@ -64,8 +60,7 @@ function switchToEdit(image = null) {
   overflow: hidden;
   background:
     radial-gradient(circle at top left, oklch(var(--p) / 0.05), transparent 26%),
-    radial-gradient(circle at bottom right, oklch(var(--a) / 0.05), transparent 28%),
-    linear-gradient(180deg, oklch(var(--b2) / 0.96), oklch(var(--b1)));
+    radial-gradient(circle at bottom right, oklch(var(--a) / 0.05), transparent 28%), linear-gradient(180deg, oklch(var(--b2) / 0.96), oklch(var(--b1)));
 }
 
 .image-page-header {

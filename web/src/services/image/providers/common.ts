@@ -1,6 +1,14 @@
 import { getModelRequestId } from "@/constants";
 import { tr } from "@/i18n";
-import type { ImageGenerationParams, ImageGenerationResult, ImageParamValue, ImageProviderModel, ImageRequest, RequestBody, TokenUsage } from "@/services/types";
+import type {
+  ImageGenerationParams,
+  ImageGenerationResult,
+  ImageParamValue,
+  ImageProviderModel,
+  ImageRequest,
+  RequestBody,
+  TokenUsage,
+} from "@/services/types";
 
 export const DEFAULT_IMAGE_QUALITY = "auto";
 export const DEFAULT_IMAGE_OUTPUT_FORMAT = "png";
@@ -71,7 +79,11 @@ export function buildImageFormData(body: RequestBody = {}, options: { omitModel?
   return formData;
 }
 
-export function buildImageRequestBody(model: ImageProviderModel, params: ImageGenerationParams, options: { omitModel?: boolean } = {}): { body: RequestBody; hasInputImage: boolean } {
+export function buildImageRequestBody(
+  model: ImageProviderModel,
+  params: ImageGenerationParams,
+  options: { omitModel?: boolean } = {},
+): { body: RequestBody; hasInputImage: boolean } {
   const prompt = params?.prompt || "";
   const size = params?.size || "1024x1024";
   const n = params?.n || 1;
@@ -123,7 +135,14 @@ export function normalizeImageUsage(usage: Record<string, unknown> | null = null
   };
 }
 
-export function normalizeImageGenerationData(data: { data?: Array<{ url?: string; b64_json?: string; error?: { message?: string } }>; error?: { message?: string }; message?: string; usage?: Record<string, unknown> } | null): ImageGenerationResult {
+export function normalizeImageGenerationData(
+  data: {
+    data?: Array<{ url?: string; b64_json?: string; error?: { message?: string } }>;
+    error?: { message?: string };
+    message?: string;
+    usage?: Record<string, unknown>;
+  } | null,
+): ImageGenerationResult {
   // Convert both URL and base64 OpenAI-compatible responses into the UI image shape.
   if (!Array.isArray(data?.data)) {
     const message = data?.error?.message || data?.message || JSON.stringify(data);

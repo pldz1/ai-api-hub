@@ -6,7 +6,6 @@ import { tr } from "@/i18n";
 import type { ChatListItem, ChatPromptMessage, StoredChatMessage } from "@/services/types";
 import type { ChatModelConfig, ChatModelSettings, ConversationModelSnapshot } from "@/types/model";
 
-
 /**
  * Chat conversation service.
  *
@@ -143,16 +142,13 @@ export async function addChat(name: string | null = null, model: ChatModelConfig
   const chatList = [...store.state.chatList, { cid: chatId, cname: chatName }];
   const updateLocalChatState = async () => {
     await store.dispatch("resetChatList", chatList);
-    await store.dispatch(
-      "hydrateChatSession",
-      {
-        cid: chatId,
-        conversation,
-        settings,
-        messages: [],
-        loaded: true,
-      },
-    );
+    await store.dispatch("hydrateChatSession", {
+      cid: chatId,
+      conversation,
+      settings,
+      messages: [],
+      loaded: true,
+    });
     await store.dispatch("setCurChatId", chatId);
     await store.dispatch("setCurConversation", conversation);
     await store.dispatch("setCurChatModelSettings", settings);

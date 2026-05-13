@@ -343,10 +343,8 @@ const onEnterKeydown = async (event) => {
   border-radius: 14px;
   border: 1px solid oklch(var(--bc) / 0.08);
   background:
-    linear-gradient(45deg, oklch(var(--bc) / 0.04) 25%, transparent 25%),
-    linear-gradient(-45deg, oklch(var(--bc) / 0.04) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, oklch(var(--bc) / 0.04) 75%),
-    linear-gradient(-45deg, transparent 75%, oklch(var(--bc) / 0.04) 75%);
+    linear-gradient(45deg, oklch(var(--bc) / 0.04) 25%, transparent 25%), linear-gradient(-45deg, oklch(var(--bc) / 0.04) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, oklch(var(--bc) / 0.04) 75%), linear-gradient(-45deg, transparent 75%, oklch(var(--bc) / 0.04) 75%);
   background-color: oklch(var(--b1));
   background-position:
     0 0,
