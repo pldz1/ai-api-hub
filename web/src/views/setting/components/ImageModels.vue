@@ -29,7 +29,7 @@
             <span class="provider-chip">{{ modelProviderLabel(imageModel) }}</span>
           </div>
           <div class="settings-list-meta">
-            <span>{{ imageModel.baseURL || t("user.modelCard.fields.imageUrl") }}</span>
+            <span>{{ getImageModelLocation(imageModel) || t("user.modelCard.fields.imageUrl") }}</span>
           </div>
           <div class="settings-list-badges">
             <span :class="{ active: supportsImageInput(imageModel) }">{{
@@ -74,7 +74,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { defaultModelFormDraft, getModelImageParamDefs, imageModelTypeList, normalizeImageModelConfig } from "@/constants";
+import { getModelImageParamDefs, imageModelTypeList, isAzureImageModel } from "@/constants";
 import { append4Random } from "@/utils";
 import ModelEditCard from "@/views/setting/components/ModelEditCard.vue";
 import type { ImageModelConfig, ImageOperation, ModelConfig } from "@/types/model";
@@ -107,10 +107,13 @@ const currentModel = computed(() => {
 const detailSummary = computed(() => {
   if (!currentModel.value) return "";
   const modelId = currentModel.value.model || t("common.unsetModelId");
-  return `${modelProviderLabel(currentModel.value)} · ${currentModel.value.baseURL || modelId}`;
+  const endpointLabel = isAzureImageModel(currentModel.value) ? currentModel.value.endpoint : ("baseURL" in currentModel.value ? currentModel.value.baseURL : "");
+  return `${modelProviderLabel(currentModel.value)} · ${endpointLabel || modelId}`;
 });
 
 const modelProviderLabel = (model: ImageModelConfig) => model?.provider || "OpenAI";
+
+const getImageModelLocation = (model: ImageModelConfig) => (isAzureImageModel(model) ? model.endpoint : ("baseURL" in model ? model.baseURL : ""));
 
 const supportsImageInput = (model: ImageModelConfig) => {
   return getModelImageParamDefs(model).some((item) => item.type === "image");
@@ -126,23 +129,21 @@ const updateModels = (nextModels: ImageModelConfig[]) => {
 
 const updateCurrentModel = (nextModel: ModelConfig) => {
   if (selectedIndex.value < 0) return;
-  const normalizedModel = normalizeImageModelConfig(nextModel, props.modelOperation);
-  if (JSON.stringify(props.models[selectedIndex.value]) === JSON.stringify(normalizedModel)) return;
-  const nextModels = props.models.map((item, index) => (index === selectedIndex.value ? normalizedModel : item));
+  const updatedModel = nextModel as ImageModelConfig;
+  if (JSON.stringify(props.models[selectedIndex.value]) === JSON.stringify(updatedModel)) return;
+  const nextModels = props.models.map((item, index) => (index === selectedIndex.value ? updatedModel : item));
   updateModels(nextModels);
 };
 
 const addImageModel = () => {
-  const nextModel = normalizeImageModelConfig(
-    {
-      ...defaultModelFormDraft,
-      name: append4Random(t("user.imageModels.defaultName")),
-      provider: "OpenAI",
-      baseURL: "https://api.openai.com/v1",
-      model: "",
-    },
-    props.modelOperation,
-  );
+  const nextModel: ImageModelConfig = {
+    name: append4Random(t("user.imageModels.defaultName")),
+    provider: "OpenAI",
+    baseURL: "https://api.openai.com/v1",
+    apiKey: "",
+    model: "",
+    imageOperation: props.modelOperation,
+  };
 
   const nextModels = [...props.models, nextModel];
   updateModels(nextModels);

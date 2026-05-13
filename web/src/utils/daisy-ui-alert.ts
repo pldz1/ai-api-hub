@@ -4,7 +4,7 @@ import successIcon from "@/assets/svg/success24.svg";
 import warnIcon from "@/assets/svg/warn24.svg";
 import { createSvgIcon } from "@/utils/svg-icon";
 
-// 默认的 svg 图标
+// Default icon(svg)
 const defaultIcons = {
   success: successIcon,
   error: errorIcon,
@@ -12,7 +12,7 @@ const defaultIcons = {
   warn: warnIcon,
 };
 
-// 默认的 Bootstrap alert 样式类
+// Default Bootstrap alert style classes
 const defaultClasses = {
   success: "alert alert-success",
   error: "alert alert-error",
@@ -20,18 +20,42 @@ const defaultClasses = {
   warn: "alert alert-warning",
 };
 
+const alertTimers = new WeakMap<HTMLElement, number>();
+
+function getAlertKey(type: string, message: string) {
+  return `${type}:${message}`;
+}
+
+function resetAlertTimer(alertEl: HTMLElement, duration: number, alertContainer: HTMLElement) {
+  const previousTimer = alertTimers.get(alertEl);
+  if (previousTimer) {
+    window.clearTimeout(previousTimer);
+  }
+
+  const timer = window.setTimeout(() => {
+    alertEl.remove();
+
+    if (!alertContainer.childElementCount) {
+      alertContainer.remove();
+    }
+  }, duration);
+
+  alertTimers.set(alertEl, timer);
+}
+
 /**
- * 显示一个 alert 提示框
+ * Display an alert dialog box.
  *
- * @param {Object} options 配置选项
- * @param {('warn'|'info'|'success'|'error')} [options.type='info'] 提示类型，默认 info
- * @param {string} [options.message=''] 提示文本内容
- * @param {string|HTMLElement} [options.icon=''] 自定义图标 URL 或节点，如果为空则使用默认图标
- * @param {number} [options.duration=1500] 显示持续时间（单位：毫秒）
- * @param {HTMLElement} [options.container=null] 挂载的容器元素
+ * @param {Object} options Configuration options.
+ * @param {('warn'|'info'|'success'|'error')} [options.type='info'] Prompt type, default info.
+ * @param {string} [options.message=''] contxt.
+ * @param {string|HTMLElement} [options.icon=''] Custom icon URL or node, use default icon if empty.
+ * @param {number} [options.duration=1500] Display duration (in milliseconds).
+ * @param {HTMLElement} [options.container=null] Mounted container element.
  */
 export function dsAlert({ type = "info", message = "", icon = "", duration = 1500, container = null } = {}) {
   const iconValue = icon || defaultIcons[type] || "";
+  const alertKey = getAlertKey(type, message);
 
   let alertContainer = document.getElementById("custom-daisy-ui-alert");
   if (!alertContainer) {
@@ -40,10 +64,19 @@ export function dsAlert({ type = "info", message = "", icon = "", duration = 150
     alertContainer.className = "custom-daisy-ui-alert";
   }
 
-  // 创建 alert 元素（不需要额外的容器）
+  const existingAlert = Array.from(alertContainer.children).find(
+    (child): child is HTMLElement => child instanceof HTMLElement && child.dataset.alertKey === alertKey,
+  );
+  if (existingAlert) {
+    resetAlertTimer(existingAlert, duration, alertContainer);
+    return existingAlert;
+  }
+
+  // 👉 Create an alert element (no additional containers needed)
   const alertEl = document.createElement("div");
   alertEl.setAttribute("role", "alert");
   alertEl.className = defaultClasses[type] || defaultClasses.info;
+  alertEl.dataset.alertKey = alertKey;
 
   if (iconValue instanceof HTMLElement) {
     alertEl.appendChild(iconValue);
@@ -55,18 +88,17 @@ export function dsAlert({ type = "info", message = "", icon = "", duration = 150
   messageEl.textContent = message;
   alertEl.appendChild(messageEl);
 
-  // 放到容器内
+  // Place it in the container.
   alertContainer.appendChild(alertEl);
 
-  // 挂载到指定的容器上（默认是 body)
+  // Mount to the specified container (default is body)
   if (!container) {
     document.body.appendChild(alertContainer);
   } else {
     container.appendChild(alertContainer);
   }
 
-  // 指定时间后自动移除该 alert 元素
-  setTimeout(() => {
-    alertEl.remove();
-  }, duration);
+  resetAlertTimer(alertEl, duration, alertContainer);
+
+  return alertEl;
 }

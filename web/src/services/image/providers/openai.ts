@@ -1,6 +1,7 @@
 import { buildImageFormData, buildImageRequestBody, IMAGE_OPERATION_ENDPOINT, sendImageRequest, trimTrailingSlash } from "./common";
 import { tr } from "@/i18n";
 import type { ImageGenerationParams, ImageGenerationResult, ImageProviderModel, ImageRequest } from "@/services/types";
+import { isAzureImageModel } from "@/constants";
 
 function resolveImageEndpointUrl(url: string = "", hasInputImage: boolean = false): string {
   const trimmedUrl = String(url || "").trim();
@@ -21,9 +22,13 @@ function buildOpenAIImageEndpointUrl(baseURL: string = "", hasInputImage: boolea
   return `${trimmedUrl}/images/${endpoint}`;
 }
 
+function getImageBaseURL(model: ImageProviderModel): string {
+  return String((model as { baseURL?: string } | null | undefined)?.baseURL || "");
+}
+
 export function buildOpenAIImageRequest(model: ImageProviderModel, params: ImageGenerationParams): ImageRequest {
   const { body, hasInputImage } = buildImageRequestBody(model, params);
-  const url = buildOpenAIImageEndpointUrl(model?.baseURL, hasInputImage);
+  const url = buildOpenAIImageEndpointUrl(isAzureImageModel(model) ? "" : getImageBaseURL(model), hasInputImage);
 
   if (!url || !model?.apiKey) {
     throw new Error(tr("image.providerConfigIncomplete", { provider: "OpenAI" }));

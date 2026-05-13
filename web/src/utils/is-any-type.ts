@@ -138,7 +138,7 @@ export const getModelSettingValidationError = (data) => {
       return tr("validation.missingOneOfFields", { path: itemPath(key, index), fields: "provider / apiType" });
     }
 
-    const modelError = requireFields(item, ["model"], key, index);
+    const modelError = requireAnyField(item, ["model", "modelType"], key, index);
     if (modelError) return modelError;
 
     const chatParamDefsError = validateOptionalArrayField(item, "chatParamDefs", key, index);
@@ -163,7 +163,7 @@ export const getModelSettingValidationError = (data) => {
       return tr("validation.missingOneOfFields", { path: itemPath(key, index), fields: "provider / apiType" });
     }
 
-    const modelError = requireFields(item, ["model"], key, index);
+    const modelError = requireAnyField(item, ["model", "modelType"], key, index);
     if (modelError) return modelError;
 
     const imageParamDefsError = validateOptionalArrayField(item, "imageParamDefs", key, index);

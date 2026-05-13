@@ -1,4 +1,4 @@
-import { defaultModelFormDraft, normalizeChatModelConfig, normalizeModelSettings } from "@/constants";
+import { defaultModelFormDraft, sanitizeModelSettings, toRuntimeChatModelConfig } from "@/constants";
 
 const USER_SESSION_KEY = "ai.api.hub.workspace-session.v1";
 export const WORKSPACE_ID = "__workspace__";
@@ -118,7 +118,7 @@ export const UserState = {
    * 设置全部模型
    */
   setModels(data) {
-    this.models = normalizeModelSettings(data);
+    this.models = sanitizeModelSettings(data);
   },
 
   /**
@@ -132,7 +132,7 @@ export const UserState = {
    * 设置当前对话模型的信息
    */
   setCurChatModel(data) {
-    this.curChatModel = data ? normalizeChatModelConfig(data) : structuredClone(defaultModelFormDraft);
+    this.curChatModel = data ? toRuntimeChatModelConfig(data) : structuredClone(defaultModelFormDraft);
   },
 
   /**

@@ -1,5 +1,5 @@
 import store from "@/store";
-import { serializeModelSettings } from "@/constants";
+import { migratePersistedModelSettings, sanitizeModelSettings } from "@/constants";
 import { apiRequest } from "../transport/request";
 import { dsAlert, isArrayTypeStr, isValidModelSetting } from "@/utils";
 import { tr } from "@/i18n";
@@ -75,8 +75,9 @@ export async function getModels(updateStore: boolean = true): Promise<ModelSetti
     const models = JSON.parse(res.data);
     const isValid = isValidModelSetting(models);
     if (isValid) {
-      if (updateStore) await store.dispatch("setModels", models);
-      return models;
+      const migratedModels = migratePersistedModelSettings(models);
+      if (updateStore) await store.dispatch("setModels", migratedModels);
+      return migratedModels;
     } else {
       dsAlert({
         type: "error",
@@ -97,8 +98,8 @@ export async function getModels(updateStore: boolean = true): Promise<ModelSetti
  * Persist the model settings from the store.
  */
 export async function setModels(): Promise<boolean> {
-  const models = store.state.models;
-  const res = await setModelsAPI(JSON.stringify(serializeModelSettings(models)));
+  const models = sanitizeModelSettings(store.state.models);
+  const res = await setModelsAPI(JSON.stringify(models));
   if (!res.flag) {
     dsAlert({ type: "error", message: tr("toast.userModelsSaveFailed", { error: res.log }) });
     return false;

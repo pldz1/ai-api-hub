@@ -1,4 +1,4 @@
-import type { ImageModelConfig, ImageModelSettings, ImageOperation, ModelParamDef, SelectOption } from "@/types/model";
+import type { ImageModelConfig, ImageModelSettings, ImageOperation, ModelParamDef, ModelProvider, SelectOption } from "@/types/model";
 import {
   cloneJson,
   getModelRequestId,
@@ -69,6 +69,11 @@ export const imageModelTypeList: SelectOption[] = [
   { value: "dall-e-3", name: "dall-e-3" },
 ];
 
+export const imageModelProviderList: SelectOption<ModelProvider>[] = [
+  { value: "OpenAI", name: "OpenAI" },
+  { value: "Azure OpenAI", name: "Azure OpenAI" },
+];
+
 export const defImageModelSeting = {
   model: null,
   prompt: "",
@@ -89,14 +94,15 @@ function getImageParamPreset(key = ""): LooseParamDef | null {
   return imageParamPresetList.find((item) => item.key === key) || null;
 }
 
-/** Normalizes user image model config and migrates old `modelType` data to `model`. */
-export function normalizeImageModelConfig(model: LooseModelConfig | null | undefined = {}, imageOperation: ImageOperation = "generation"): ImageModelConfig {
+export function isAzureImageModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "Azure OpenAI" } {
+  return normalizeModelFormDraft(model).provider === "Azure OpenAI";
+}
+
+/** Coerces persisted image config into the runtime image model shape. */
+export function toRuntimeImageModelConfig(model: LooseModelConfig | null | undefined = {}, imageOperation: ImageOperation = "generation"): ImageModelConfig {
   const draft = normalizeModelFormDraft(model);
   const provider = draft.provider === "Azure OpenAI" ? draft.provider : "OpenAI";
   const modelId = getModelRequestId(draft);
-  const imageParamDefs = getModelImageParamDefs({ ...(model || {}), provider, model: modelId, imageOperation }).filter(
-    (item) => imageOperation === "edit" || item.type !== "image",
-  );
 
   if (provider === "Azure OpenAI") {
     return {
@@ -107,9 +113,8 @@ export function normalizeImageModelConfig(model: LooseModelConfig | null | undef
       apiVersion: draft.apiVersion,
       apiKey: draft.apiKey,
       model: modelId,
-      chatParamDefs: [],
-      imageParamDefs,
       imageOperation,
+      enabledCapabilitiesMode: draft.enabledCapabilitiesMode,
       enabledCapabilities: draft.enabledCapabilities,
     };
   }
@@ -120,9 +125,8 @@ export function normalizeImageModelConfig(model: LooseModelConfig | null | undef
     baseURL: draft.baseURL,
     apiKey: draft.apiKey,
     model: modelId,
-    chatParamDefs: [],
-    imageParamDefs,
     imageOperation,
+    enabledCapabilitiesMode: draft.enabledCapabilitiesMode,
     enabledCapabilities: draft.enabledCapabilities,
   };
 }

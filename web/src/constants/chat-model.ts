@@ -4,28 +4,22 @@ import type {
   ChatModelOption,
   ChatModelSettings,
   ConversationModelSnapshot,
-  ImageModelConfig,
-  ImageOperation,
   ModelCapabilities,
   ModelFormDraft,
   ModelParamDef,
-  ModelSettings,
   SelectOption,
 } from "@/types/model";
 import { tr } from "@/i18n";
 import {
   cloneJson,
-  defaultModelFormDraft,
   getLegacyProvider,
   getModelDeployment,
   getModelRequestId,
   normalizeModelFormDraft,
   parseParamValue,
   type LooseModelConfig,
-  type LooseModelSettings,
   type LooseParamDef,
 } from "./model-common";
-import { getModelImageParamDefs, normalizeImageModelConfig } from "./image-model";
 
 export { defaultModelFormDraft, getModelDeployment, getModelRequestId, parseParamValue as parseChatParamValue } from "./model-common";
 
@@ -45,12 +39,11 @@ export function isAnthropicChatModel(model: LooseModelConfig | null | undefined)
   return provider === "Anthropic" || provider === "Azure AI Foundry";
 }
 
-/** Normalizes user chat model config and migrates old `modelType` data to `model`. */
-export function normalizeChatModelConfig(model: LooseModelConfig | null | undefined = {}): ChatModelConfig {
+/** Coerces persisted chat config into the runtime chat model shape. */
+export function toRuntimeChatModelConfig(model: LooseModelConfig | null | undefined = {}): ChatModelConfig {
   const draft = normalizeModelFormDraft(model);
   const provider = draft.provider === "Azure OpenAI" || draft.provider === "Anthropic" || draft.provider === "Azure AI Foundry" ? draft.provider : "OpenAI";
   const modelId = getModelRequestId(draft);
-  const chatParamDefs = getModelChatParamDefs({ ...(model || {}), provider, model: modelId });
 
   if (provider === "Azure OpenAI") {
     return {
@@ -61,9 +54,7 @@ export function normalizeChatModelConfig(model: LooseModelConfig | null | undefi
       apiVersion: draft.apiVersion,
       apiKey: draft.apiKey,
       model: modelId,
-      chatParamDefs,
-      imageParamDefs: [],
-      imageOperation: "",
+      enabledCapabilitiesMode: draft.enabledCapabilitiesMode,
       enabledCapabilities: draft.enabledCapabilities,
     };
   }
@@ -74,131 +65,9 @@ export function normalizeChatModelConfig(model: LooseModelConfig | null | undefi
     baseURL: draft.baseURL,
     apiKey: draft.apiKey,
     model: modelId,
-    chatParamDefs,
-    imageParamDefs: [],
-    imageOperation: "",
+    enabledCapabilitiesMode: draft.enabledCapabilitiesMode,
     enabledCapabilities: draft.enabledCapabilities,
   };
-}
-
-/** Normalizes the complete model settings object loaded from storage. */
-export function normalizeModelSettings(data: LooseModelSettings | null | undefined = {}): ModelSettings {
-  const normalizeModels = (items: unknown[] = [], kind = "", imageOperation: ImageOperation | "" = "") =>
-    (Array.isArray(items) ? items : []).map((item) => {
-      if (kind === "chat") return normalizeChatModelConfig(item as LooseModelConfig);
-      if (kind === "image")
-        return normalizeImageModelConfig(item as LooseModelConfig, imageOperation || (item as LooseModelConfig)?.imageOperation || "generation");
-      const plainItem = item && typeof item === "object" ? item : {};
-      return {
-        ...cloneJson(defaultModelFormDraft),
-        ...plainItem,
-      };
-    });
-
-  const legacyImageModels = Array.isArray(data?.image) ? data.image : [];
-  const imageGenerationModels = Array.isArray(data?.imageGeneration) ? data.imageGeneration : legacyImageModels;
-  const imageEditModels = Array.isArray(data?.imageEdit) ? data.imageEdit : legacyImageModels;
-
-  return {
-    chat: normalizeModels(data?.chat, "chat") as ChatModelConfig[],
-    imageGeneration: normalizeModels(imageGenerationModels, "image", "generation") as ImageModelConfig[],
-    imageEdit: normalizeModels(imageEditModels, "image", "edit") as ImageModelConfig[],
-    image: normalizeModels(imageGenerationModels, "image", "generation") as ImageModelConfig[],
-    rtaudio: normalizeModels(data?.rtaudio) as ModelFormDraft[],
-  };
-}
-
-function hasCapabilityOverrides(model: Partial<ModelFormDraft> | null | undefined = {}): boolean {
-  return Boolean(model?.enabledCapabilities && Object.keys(model.enabledCapabilities).length > 0);
-}
-
-function hasCustomChatParamDefs(model: ChatModelConfig): boolean {
-  const currentDefs = getModelChatParamDefs(model);
-  const defaultDefs = getDefaultChatParamDefs(model.model, model.provider);
-  return JSON.stringify(currentDefs) !== JSON.stringify(defaultDefs);
-}
-
-function hasCustomImageParamDefs(model: ImageModelConfig): boolean {
-  const currentDefs = getModelImageParamDefs(model);
-  const defaultDefs = getModelImageParamDefs({
-    provider: model.provider,
-    model: model.model,
-    imageOperation: model.imageOperation,
-    imageParamDefs: [],
-  });
-  return JSON.stringify(currentDefs) !== JSON.stringify(defaultDefs);
-}
-
-function serializeChatModel(model: Partial<ModelFormDraft> | ChatModelConfig): Record<string, unknown> {
-  const normalizedModel = normalizeChatModelConfig(model as LooseModelConfig);
-  const payload: Record<string, unknown> = {
-    name: normalizedModel.name,
-    provider: normalizedModel.provider,
-    apiKey: normalizedModel.apiKey,
-    model: getModelRequestId(normalizedModel),
-  };
-
-  if (isAzureChatModel(normalizedModel)) {
-    payload.endpoint = normalizedModel.endpoint;
-    payload.deployment = normalizedModel.deployment;
-    payload.apiVersion = normalizedModel.apiVersion;
-  } else {
-    payload.baseURL = normalizedModel.baseURL;
-  }
-
-  if (hasCapabilityOverrides(normalizedModel)) {
-    payload.enabledCapabilities = cloneJson(normalizedModel.enabledCapabilities);
-  }
-
-  if (hasCustomChatParamDefs(normalizedModel)) {
-    payload.chatParamDefs = cloneJson(getModelChatParamDefs(normalizedModel));
-  }
-
-  return payload;
-}
-
-function serializeImageModel(model: Partial<ModelFormDraft> | ImageModelConfig, imageOperation: ImageOperation): Record<string, unknown> {
-  const normalizedModel = normalizeImageModelConfig(model as LooseModelConfig, imageOperation);
-  const payload: Record<string, unknown> = {
-    name: normalizedModel.name,
-    provider: normalizedModel.provider,
-    apiKey: normalizedModel.apiKey,
-    model: getModelRequestId(normalizedModel),
-  };
-
-  if (normalizedModel.provider === "Azure OpenAI") {
-    payload.endpoint = normalizedModel.endpoint;
-    payload.deployment = normalizedModel.deployment;
-    payload.apiVersion = normalizedModel.apiVersion;
-  } else {
-    payload.baseURL = normalizedModel.baseURL;
-  }
-
-  if (hasCapabilityOverrides(normalizedModel)) {
-    payload.enabledCapabilities = cloneJson(normalizedModel.enabledCapabilities);
-  }
-
-  if (hasCustomImageParamDefs(normalizedModel)) {
-    payload.imageParamDefs = cloneJson(getModelImageParamDefs(normalizedModel));
-  }
-
-  return payload;
-}
-
-/** Serializes normalized model settings for storage, omitting derived defaults. */
-export function serializeModelSettings(data: LooseModelSettings | null | undefined = {}): Record<string, unknown> {
-  const normalized = normalizeModelSettings(data);
-  const payload: Record<string, unknown> = {
-    chat: normalized.chat.map((item) => serializeChatModel(item)),
-    imageGeneration: normalized.imageGeneration.map((item) => serializeImageModel(item, "generation")),
-    imageEdit: normalized.imageEdit.map((item) => serializeImageModel(item, "edit")),
-  };
-
-  if (Array.isArray(normalized.rtaudio) && normalized.rtaudio.length > 0) {
-    payload.rtaudio = cloneJson(normalized.rtaudio);
-  }
-
-  return payload;
 }
 
 export const providerList: SelectOption<ModelProvider>[] = [
@@ -206,11 +75,6 @@ export const providerList: SelectOption<ModelProvider>[] = [
   { value: "Azure OpenAI", name: "Azure OpenAI" },
   { value: "Anthropic", name: "Anthropic Direct" },
   { value: "Azure AI Foundry", name: "Azure AI Foundry" },
-];
-
-export const imageModelProviderList: SelectOption<ModelProvider>[] = [
-  { value: "OpenAI", name: "OpenAI" },
-  { value: "Azure OpenAI", name: "Azure OpenAI" },
 ];
 
 const chatOption = (
@@ -429,6 +293,35 @@ export function normalizeModelCapabilities(
   return next;
 }
 
+/** Resolves persisted capability override settings into the runtime enabled capability set. */
+export function resolveConfiguredModelCapabilities(
+  model: Partial<Pick<ModelFormDraft, "enabledCapabilitiesMode" | "enabledCapabilities">> | null | undefined = {},
+  supported: ModelCapabilities = defaultModelCapabilities,
+): ModelCapabilities {
+  if (model?.enabledCapabilitiesMode !== "custom") {
+    return normalizeModelCapabilities(undefined, supported);
+  }
+
+  const next = { ...defaultModelCapabilities };
+  const normalizedSupported = {
+    ...supported,
+    imageRead: supported.imageRead || supported.imageInput,
+    imageInput: supported.imageInput || supported.imageRead,
+  };
+  const normalizedCapabilities = {
+    ...(model?.enabledCapabilities || {}),
+    imageRead: model?.enabledCapabilities?.imageRead ?? model?.enabledCapabilities?.imageInput,
+    imageInput: model?.enabledCapabilities?.imageInput ?? model?.enabledCapabilities?.imageRead,
+  };
+
+  (Object.keys(next) as (keyof ModelCapabilities)[]).forEach((key) => {
+    next[key] = key === "textInput" ? true : Boolean(normalizedSupported[key] && normalizedCapabilities?.[key]);
+  });
+  next.textInput = true;
+  next.imageInput = next.imageRead;
+  return next;
+}
+
 /** Applies per-turn toggles on top of a model's supported and enabled capabilities. */
 export function getEffectiveCapabilities(
   supported: Partial<ModelCapabilities> | null | undefined,
@@ -454,41 +347,43 @@ export function getEffectiveCapabilities(
 export function createConversationModelSnapshot(
   model: (Partial<ModelFormDraft> & { modelType?: string }) | null | undefined,
 ): ConversationModelSnapshot | null {
-  const normalizedModel = normalizeChatModelConfig(model);
-  if (!normalizedModel?.name || !normalizedModel?.apiKey) return null;
+  const runtimeModel = toRuntimeChatModelConfig(model);
+  if (!runtimeModel?.name || !runtimeModel?.apiKey) return null;
 
-  const modelId = getModelRequestId(normalizedModel);
-  const modelConfigId = `${normalizedModel.provider}:${normalizedModel.name}:${modelId}:${getModelDeployment(normalizedModel) || modelId}`;
-  const supportedCapabilities = getChatModelCapabilities(modelId, normalizedModel.provider);
-  const enabledCapabilities = normalizeModelCapabilities((normalizedModel as any).enabledCapabilities, supportedCapabilities);
+  const modelId = getModelRequestId(runtimeModel);
+  const modelConfigId = `${runtimeModel.provider}:${runtimeModel.name}:${modelId}:${getModelDeployment(runtimeModel) || modelId}`;
+  const supportedCapabilities = getChatModelCapabilities(modelId, runtimeModel.provider);
+  const enabledCapabilities = resolveConfiguredModelCapabilities(runtimeModel, supportedCapabilities);
+  const chatParamDefs = getModelChatParamDefs(runtimeModel);
+  const request = isAzureChatModel(runtimeModel)
+    ? {
+        endpoint: runtimeModel.endpoint,
+        deployment: runtimeModel.deployment,
+        apiVersion: runtimeModel.apiVersion,
+        model: modelId,
+      }
+      : {
+        baseURL: "baseURL" in runtimeModel ? runtimeModel.baseURL : "",
+        model: modelId,
+      };
 
   return {
     modelConfigId,
     catalogModelId: modelId,
-    displayName: normalizedModel.name || modelId,
-    provider: normalizedModel.provider,
-    request: isAzureChatModel(normalizedModel)
-      ? {
-          endpoint: normalizedModel.endpoint,
-          deployment: normalizedModel.deployment,
-          apiVersion: normalizedModel.apiVersion,
-          model: modelId,
-        }
-      : {
-          baseURL: normalizedModel.baseURL,
-          model: modelId,
-        },
-    apiKey: normalizedModel.apiKey,
+    displayName: runtimeModel.name || modelId,
+    provider: runtimeModel.provider,
+    request,
+    apiKey: runtimeModel.apiKey,
     supportedCapabilities,
     enabledCapabilities,
-    chatParamDefs: normalizedModel.chatParamDefs,
-    modelConfig: normalizedModel,
+    chatParamDefs,
+    modelConfig: runtimeModel,
   };
 }
 
 /** Restores a normalized chat model config from a saved conversation snapshot. */
 export function getModelFromSnapshot(snapshot: ConversationModelSnapshot | null | undefined): ChatModelConfig | null {
-  return snapshot?.modelConfig ? normalizeChatModelConfig(snapshot.modelConfig) : null;
+  return snapshot?.modelConfig ? toRuntimeChatModelConfig(snapshot.modelConfig) : null;
 }
 
 /** Returns display and protocol metadata for a chat model id. */

@@ -65,10 +65,13 @@ const onLoadJsonFile = (event) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const jsonContent = JSON.parse(e.target.result);
+          const textContent = String(e.target.result || "").replace(/^\uFEFF/, "");
+          const jsonContent = JSON.parse(textContent);
           resolve(jsonContent);
-        } catch {
-          resolve(null);
+        } catch (error) {
+          resolve({
+            __jsonParseError: String(error?.message || error || "Unknown JSON parse error"),
+          });
         }
       };
       reader.readAsText(file);

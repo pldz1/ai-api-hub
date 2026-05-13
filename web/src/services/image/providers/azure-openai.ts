@@ -1,6 +1,7 @@
 import { buildImageFormData, buildImageRequestBody, IMAGE_OPERATION_ENDPOINT, sendImageRequest, trimTrailingSlash } from "./common";
 import { tr } from "@/i18n";
 import type { ImageGenerationParams, ImageGenerationResult, ImageProviderModel, ImageRequest } from "@/services/types";
+import { isAzureImageModel } from "@/constants";
 
 function appendApiVersion(url: string, apiVersion: string): string {
   const separator = url.includes("?") ? "&" : "?";
@@ -8,9 +9,10 @@ function appendApiVersion(url: string, apiVersion: string): string {
 }
 
 function buildAzureOpenAIImageEndpointUrl(model: ImageProviderModel, hasInputImage: boolean = false): string {
-  const endpoint = trimTrailingSlash(model?.endpoint || "");
-  const deployment = String(model?.deployment || "").trim();
-  const apiVersion = String(model?.apiVersion || "").trim();
+  if (!isAzureImageModel(model)) return "";
+  const endpoint = trimTrailingSlash(model.endpoint || "");
+  const deployment = String(model.deployment || "").trim();
+  const apiVersion = String(model.apiVersion || "").trim();
   const operation = hasInputImage ? IMAGE_OPERATION_ENDPOINT.edit : IMAGE_OPERATION_ENDPOINT.create;
 
   if (!endpoint || !deployment || !apiVersion) return "";

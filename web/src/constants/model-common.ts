@@ -23,6 +23,7 @@ export const defaultModelFormDraft: ModelFormDraft = {
   deployment: "",
   apiVersion: "",
   imageOperation: "",
+  enabledCapabilitiesMode: "inherit",
   enabledCapabilities: {},
 };
 

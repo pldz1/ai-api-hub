@@ -79,7 +79,7 @@ import ChatModels from "@/views/setting/components/ChatModels.vue";
 import ImageModels from "@/views/setting/components/ImageModels.vue";
 import ChatInsTemplateList from "@/views/setting/components/ChatInsTemplateList.vue";
 import AppSettings from "@/views/setting/components/AppSettings.vue";
-import { normalizeModelSettings, serializeModelSettings } from "@/constants";
+import { migratePersistedModelSettings, sanitizeModelSettings } from "@/constants";
 import { getModels, getChatInsTemplateList, setModels, setChatInsTemplateList } from "@/services";
 import { uploadJsonFile, isValidSettingsImport, getSettingsImportValidationError, isSettingsImportPackage, dsAlert } from "@/utils";
 import type { ChatModelConfig, ImageModelConfig, ModelSettings } from "@/types/model";
@@ -117,11 +117,15 @@ const emptyModelSettings = (): ModelSettings => ({ chat: [], imageGeneration: []
 
 interface ImportedSettingsPackage {
   schema?: string;
-  version?: number;
+  version?: string;
   exportedAt?: string;
   models: Partial<ModelSettings>;
   templates?: unknown[];
   hostUrl?: string;
+}
+
+interface UploadedJsonParseError {
+  __jsonParseError: string;
 }
 
 const draftModels = ref<ModelSettings>(emptyModelSettings());
@@ -135,6 +139,10 @@ let isPersisting = false;
 
 function clonePlainData<T>(data: T): T {
   return JSON.parse(JSON.stringify(data));
+}
+
+function isUploadedJsonParseError(data: unknown): data is UploadedJsonParseError {
+  return Boolean(data) && typeof data === "object" && "__jsonParseError" in data;
 }
 
 const activeTabInfo = computed(() => {
@@ -253,10 +261,10 @@ async function persistDraft() {
 
 async function exportSettings() {
   const payload: ImportedSettingsPackage = {
-    schema: "ai-api-hub/settings",
-    version: 1,
+    schema: "ai-api-hub",
+    version: "0.0.1",
     exportedAt: new Date().toISOString(),
-    models: serializeModelSettings(draftModels.value) as Partial<ModelSettings>,
+    models: sanitizeModelSettings(clonePlainData(draftModels.value)) as Partial<ModelSettings>,
     templates: clonePlainData(draftTemplates.value),
     hostUrl: draftHostUrl.value,
   };
@@ -284,6 +292,11 @@ async function exportSettings() {
 
 async function importSettings() {
   const jsonData = await uploadJsonFile();
+  if (isUploadedJsonParseError(jsonData)) {
+    dsAlert({ type: "error", duration: 6000, message: `${t("user.importReadError")} ${jsonData.__jsonParseError}` });
+    return;
+  }
+
   if (!jsonData) {
     dsAlert({ type: "error", message: t("user.importReadError") });
     return;
@@ -301,7 +314,7 @@ async function importSettings() {
 
   if (isSettingsImportPackage(jsonData)) {
     const importedPackage = clonePlainData(jsonData) as ImportedSettingsPackage;
-    draftModels.value = normalizeModelSettings(importedPackage.models);
+    draftModels.value = migratePersistedModelSettings(importedPackage.models);
     if (Array.isArray(importedPackage.templates)) {
       draftTemplates.value = clonePlainData(importedPackage.templates);
     }
@@ -309,7 +322,7 @@ async function importSettings() {
       draftHostUrl.value = importedPackage.hostUrl;
     }
   } else {
-    draftModels.value = normalizeModelSettings(clonePlainData(jsonData) as ModelSettings);
+    draftModels.value = migratePersistedModelSettings(clonePlainData(jsonData) as ModelSettings);
   }
 
   dsAlert({ type: "success", message: t("user.importSuccess") });

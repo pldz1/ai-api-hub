@@ -140,7 +140,7 @@ import { useI18n } from "vue-i18n";
 import { dsAlert } from "@/utils";
 import copyIcon from "@/assets/svg/copy16.svg";
 import SvgIcon from "@/components/SvgIcon.vue";
-import type { ImageOperation, ModelConfig, ModelFormDraft, ModelKind, SelectOption } from "@/types/model";
+import type { ChatModelConfig, ImageModelConfig, ImageOperation, ModelConfig, ModelFormDraft, ModelKind, SelectOption } from "@/types/model";
 import {
   defaultModelFormDraft,
   providerList,
@@ -150,8 +150,6 @@ import {
   getChatModelCapabilities,
   getModelImageParamDefs,
   getModelRequestId,
-  normalizeChatModelConfig,
-  normalizeImageModelConfig,
 } from "@/constants";
 
 const props = withDefaults(
@@ -315,13 +313,74 @@ function normalizeModelFields() {
   }
 }
 
+function buildChatModelPayload(): ChatModelConfig {
+  const basePayload = {
+    name: localModel.name,
+    apiKey: localModel.apiKey,
+    model: localModel.model,
+    ...(localModel.enabledCapabilitiesMode === "custom"
+      ? {
+          enabledCapabilitiesMode: "custom" as const,
+          enabledCapabilities: { ...(localModel.enabledCapabilities || {}) },
+        }
+      : {}),
+  };
+
+  if (localModel.provider === "Azure OpenAI") {
+    return {
+      ...basePayload,
+      provider: "Azure OpenAI",
+      endpoint: localModel.endpoint,
+      deployment: localModel.deployment,
+      apiVersion: localModel.apiVersion,
+    };
+  }
+
+  return {
+    ...basePayload,
+    provider: (localModel.provider || "OpenAI") as Exclude<ChatModelConfig["provider"], "Azure OpenAI">,
+    baseURL: localModel.baseURL,
+  };
+}
+
+function buildImageModelPayload(): ImageModelConfig {
+  const basePayload = {
+    name: localModel.name,
+    apiKey: localModel.apiKey,
+    model: localModel.model,
+    imageOperation: props.imageOperation,
+    ...(localModel.enabledCapabilitiesMode === "custom"
+      ? {
+          enabledCapabilitiesMode: "custom" as const,
+          enabledCapabilities: { ...(localModel.enabledCapabilities || {}) },
+        }
+      : {}),
+  };
+
+  if (localModel.provider === "Azure OpenAI") {
+    return {
+      ...basePayload,
+      provider: "Azure OpenAI",
+      endpoint: localModel.endpoint,
+      deployment: localModel.deployment,
+      apiVersion: localModel.apiVersion,
+    };
+  }
+
+  return {
+    ...basePayload,
+    provider: "OpenAI",
+    baseURL: localModel.baseURL,
+  };
+}
+
 function createModelPayload(): ModelConfig {
   normalizeModelFields();
   if (props.modelKind === "image") {
-    return normalizeImageModelConfig(JSON.parse(JSON.stringify(localModel)), props.imageOperation);
+    return buildImageModelPayload();
   }
 
-  return normalizeChatModelConfig(JSON.parse(JSON.stringify(localModel)));
+  return buildChatModelPayload();
 }
 
 function syncFromProps(model?: Partial<ModelFormDraft>) {
@@ -330,6 +389,8 @@ function syncFromProps(model?: Partial<ModelFormDraft>) {
   Object.assign(localModel, structuredClone(defaultModelFormDraft), model || {}, {
     provider: legacyModel?.provider || legacyModel?.apiType || "",
   });
+  localModel.enabledCapabilitiesMode =
+    model?.enabledCapabilitiesMode === "custom" || (model?.enabledCapabilities && Object.keys(model.enabledCapabilities).length > 0) ? "custom" : "inherit";
   localModel.enabledCapabilities = { ...(model?.enabledCapabilities || {}) };
   normalizeModelFields();
   syncProviderForModel(true);
