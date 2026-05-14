@@ -1,5 +1,5 @@
 import store from "@/store";
-import { getModelFromSnapshot } from "@/constants";
+import { getModelFromSnapshot } from "@/models";
 import { getUuid } from "@/utils";
 import { tr } from "@/i18n";
 import type { ChatPromptMessage, ChatProviderResponse, TokenUsage } from "@/services/types";

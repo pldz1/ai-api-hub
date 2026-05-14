@@ -33,7 +33,6 @@ const DEFAULT_MODELS = {
   imageGeneration: [],
   imageEdit: [],
   image: [],
-  rtaudio: [],
 };
 
 function readState(): BrowserStorageState {

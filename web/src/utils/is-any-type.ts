@@ -90,7 +90,7 @@ export const getModelSettingValidationError = (data) => {
     return tr("validation.topLevelNotObject");
   }
 
-  const topLevelKeys = ["chat", "image", "imageGeneration", "imageEdit", "rtaudio"];
+  const topLevelKeys = ["chat", "image", "imageGeneration", "imageEdit"];
   const presentKeys = topLevelKeys.filter((key) => key in data);
 
   if (presentKeys.length === 0) {
@@ -186,7 +186,7 @@ export const getModelSettingValidationError = (data) => {
       if (!item || typeof item !== "object") {
         return tr("validation.notObject", { path: itemPath(key, index) });
       }
-      const validationError = key === "chat" ? validateChatModel(item, key, index) : key === "rtaudio" ? "" : validateImageModel(item, key, index);
+      const validationError = key === "chat" ? validateChatModel(item, key, index) : validateImageModel(item, key, index);
       if (validationError) return validationError;
     }
   }

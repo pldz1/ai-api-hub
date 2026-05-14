@@ -4,7 +4,7 @@ export * from "./image-model";
 
 import type { ChatModelConfig, ChatModelDraft } from "./chat-model";
 import type { ImageModelConfig, ImageModelDraft } from "./image-model";
-import type { CapabilityOverrideMode, ImageOperation, ModelCapabilities, ModelProvider } from "./model-shared";
+import type { CapabilityOverrideMode, ChatModelCapabilities, ImageOperation, ModelProvider } from "./model-shared";
 
 /**
  * Legacy wide draft used by the settings form.
@@ -21,7 +21,7 @@ export interface ModelFormDraft {
   apiVersion: string;
   imageOperation: ImageOperation | "";
   enabledCapabilitiesMode?: CapabilityOverrideMode;
-  enabledCapabilities?: Partial<ModelCapabilities>;
+  enabledCapabilities?: Partial<ChatModelCapabilities>;
 }
 
 export type ModelConfig = ChatModelConfig | ImageModelConfig;
@@ -32,5 +32,4 @@ export interface ModelSettings {
   imageGeneration: ImageModelConfig[];
   imageEdit: ImageModelConfig[];
   image: ImageModelConfig[];
-  rtaudio: ModelFormDraft[];
 }

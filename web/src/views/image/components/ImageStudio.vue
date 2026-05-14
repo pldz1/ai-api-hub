@@ -45,7 +45,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useStore } from "vuex";
 import { useI18n } from "vue-i18n";
-import { buildDefaultImageSettings, buildImageGenerationParams, defImageModelSeting, getModelImageParamDefs, mergeImageSettingsWithModel } from "@/constants";
+import { defImageModelSeting } from "@/constants";
+import { buildDefaultImageSettings, buildImageGenerationParams, getModelImageParamDefs, mergeImageSettingsWithModel } from "@/models";
 import { deleteImage, generateImage, getImageList, pushImage } from "@/services";
 import { copyToClipboard, dsAlert, saveToLocal } from "@/utils";
 import ImagePreviewPanel from "@/views/image/components/ImagePreviewPanel.vue";

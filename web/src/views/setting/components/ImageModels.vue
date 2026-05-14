@@ -74,7 +74,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { getModelImageParamDefs, imageModelTypeList, isAzureImageModel } from "@/constants";
+import { imageModelTypeList } from "@/constants";
+import { getModelImageParamDefs, isAzureImageModel } from "@/models";
 import { append4Random } from "@/utils";
 import ModelEditCard from "@/views/setting/components/ModelEditCard.vue";
 import type { ImageModelConfig, ImageOperation, ModelConfig } from "@/types/model";

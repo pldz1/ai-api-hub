@@ -1,5 +1,5 @@
 import store from "@/store";
-import { migratePersistedModelSettings, sanitizeModelSettings } from "@/constants";
+import { migratePersistedModelSettings, sanitizeModelSettings } from "@/models";
 import { apiRequest } from "../transport/request";
 import { dsAlert, isArrayTypeStr, isValidModelSetting } from "@/utils";
 import { tr } from "@/i18n";

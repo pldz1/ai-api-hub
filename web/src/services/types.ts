@@ -1,4 +1,4 @@
-import type { ChatMessageRole, ImageModelConfig, ModelCapabilities } from "@/types/model";
+import type { ChatMessageRole, ChatModelCapabilities, ImageModelConfig } from "@/types/model";
 
 export type ApiMethod = "get" | "post" | "put" | "patch" | "delete";
 export type StorageMode = "unknown" | "server" | "browser";
@@ -42,7 +42,7 @@ export interface ChatPromptMessage {
   reasoning_content?: string;
   token_usage?: TokenUsage | null;
   meta?: {
-    usedCapabilities?: Partial<ModelCapabilities>;
+    usedCapabilities?: Partial<ChatModelCapabilities>;
   };
 }
 

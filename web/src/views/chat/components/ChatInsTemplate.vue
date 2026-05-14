@@ -15,7 +15,7 @@
 import { useStore } from "vuex";
 import { onMounted, onUnmounted, ref, computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { getBuiltinChatInsTemplateList } from "@/constants";
+import { getBuiltinChatInsTemplateList } from "@/models";
 import { addChat } from "@/services";
 import { dsAlert, append4Random } from "@/utils";
 

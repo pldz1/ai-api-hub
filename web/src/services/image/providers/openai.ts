@@ -1,7 +1,7 @@
 import { buildImageFormData, buildImageRequestBody, IMAGE_OPERATION_ENDPOINT, sendImageRequest, trimTrailingSlash } from "./common";
 import { tr } from "@/i18n";
 import type { ImageGenerationParams, ImageGenerationResult, ImageProviderModel, ImageRequest } from "@/services/types";
-import { isAzureImageModel } from "@/constants";
+import { isAzureImageModel } from "@/models";
 
 function resolveImageEndpointUrl(url: string = "", hasInputImage: boolean = false): string {
   const trimmedUrl = String(url || "").trim();

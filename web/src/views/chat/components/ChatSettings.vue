@@ -73,7 +73,7 @@ import { computed, reactive, watch, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import infoIcon from "@/assets/svg/info24.svg";
 import { dsAlert } from "@/utils";
-import { getModelChatParamDefs, mergeChatSettingsWithModel, parseChatParamValue } from "@/constants";
+import { getModelChatParamDefs, mergeChatSettingsWithModel, parseChatParamValue } from "@/models";
 import { setChatSettings } from "@/services";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";

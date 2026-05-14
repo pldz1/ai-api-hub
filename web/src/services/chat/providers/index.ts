@@ -1,4 +1,4 @@
-import { getModelDeployment, getModelRequestId, isAnthropicChatModel, isAzureChatModel, isOpenAIChatModel } from "@/constants";
+import { getModelDeployment, getModelRequestId, isAnthropicChatModel, isAzureChatModel, isOpenAIChatModel } from "@/models";
 import type { ChatModelConfig, ChatProviderConfig } from "@/types/model";
 import type { ChatCallback, ChatRequestOptions, PackedChatMessage } from "@/services/types";
 

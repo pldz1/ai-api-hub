@@ -1,4 +1,5 @@
-import { defaultModelFormDraft, sanitizeModelSettings, toRuntimeChatModelConfig } from "@/constants";
+import { defaultModelFormDraft } from "@/constants";
+import { sanitizeModelSettings, toRuntimeChatModelConfig } from "@/models";
 
 const USER_SESSION_KEY = "ai.api.hub.workspace-session.v1";
 export const WORKSPACE_ID = "__workspace__";
@@ -66,9 +67,8 @@ export const UserState = {
    * @property {any[]} chat 对话模型列表
    * @property {any[]} imageGeneration 图像生成模型列表
    * @property {any[]} imageEdit 图像编辑模型列表
-   * @property {any[]} rtaduio 实时语音模型列表
    */
-  models: { chat: [], imageGeneration: [], imageEdit: [], image: [], rtaudio: [] },
+  models: { chat: [], imageGeneration: [], imageEdit: [], image: [] },
 
   /**
    * 当前的对话模型信息

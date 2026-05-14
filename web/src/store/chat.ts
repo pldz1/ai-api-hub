@@ -6,7 +6,7 @@ import {
   getModelFromSnapshot,
   mergeChatSettingsWithModel,
   normalizeModelCapabilities,
-} from "@/constants";
+} from "@/models";
 
 const emptyTokenUsage = () => ({
   input_tokens: 0,
@@ -30,7 +30,6 @@ function createInputCapabilities(conversation = null) {
   const supported = conversation?.modelSnapshot?.supportedCapabilities || defaultModelCapabilities;
   const enabled = conversation?.modelSnapshot?.enabledCapabilities || defaultModelCapabilities;
   const capabilities = normalizeModelCapabilities(enabled, supported);
-  capabilities.textInput = true;
   capabilities.reasoning = false;
   chatTurnCapabilityKeys.forEach((key) => {
     capabilities[key] = false;

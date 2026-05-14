@@ -105,7 +105,7 @@ import {
   getEffectiveCapabilities,
   getModelDeployment,
   getModelRequestId,
-} from "@/constants";
+} from "@/models";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import attachIcon from "@/assets/svg/attach24.svg";

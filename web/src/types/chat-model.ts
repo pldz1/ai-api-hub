@@ -1,13 +1,15 @@
-import type { ChatMessageRole, ChatModelProvider, ModelCapabilities, ModelConfigBase, ModelParamDef, SelectOption } from "./model-shared";
+import type { CapabilityOverrideMode, ChatMessageRole, ChatModelCapabilities, ChatModelProvider, ModelConfigBase, ModelParamDef, SelectOption } from "./model-shared";
 
 export interface ChatModelOption extends SelectOption {
   isReasonModel: boolean;
   msgTypeVersion: "v1" | "v2";
-  capabilities: Pick<ModelCapabilities, "webSearch" | "reasoning" | "imageRead">;
+  capabilities: Pick<ChatModelCapabilities, "webSearch" | "reasoning" | "imageRead">;
 }
 
 export interface BaseChatModelDraft extends ModelConfigBase {
   provider: ChatModelProvider;
+  enabledCapabilitiesMode?: CapabilityOverrideMode;
+  enabledCapabilities?: Partial<ChatModelCapabilities>;
 }
 
 export interface OpenAIChatModelDraft extends BaseChatModelDraft {
@@ -49,8 +51,8 @@ export interface ConversationModelSnapshot {
     apiVersion?: string;
   };
   apiKey: string;
-  supportedCapabilities: ModelCapabilities;
-  enabledCapabilities: ModelCapabilities;
+  supportedCapabilities: ChatModelCapabilities;
+  enabledCapabilities: ChatModelCapabilities;
   chatParamDefs: ModelParamDef[];
   modelConfig: ChatModelConfig;
 }

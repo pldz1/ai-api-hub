@@ -91,7 +91,7 @@ import successIcon from "@/assets/svg/success24.svg";
 import errorIcon from "@/assets/svg/error24.svg";
 import pauseIcon from "@/assets/svg/pause32.svg";
 import { deleteChat, removeChatSessionRunner, renameChat } from "@/services";
-import { buildDefaultChatSettings, getModelRequestId } from "@/constants";
+import { buildDefaultChatSettings, getModelRequestId } from "@/models";
 import ChatSettings from "@/views/chat/components/ChatSettings.vue";
 import { dsAlert } from "@/utils";
 import AppTooltip from "@/components/AppTooltip.vue";

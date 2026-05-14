@@ -9,9 +9,9 @@ import {
   isAnthropicChatModel,
   isAzureChatModel,
   isOpenAIChatModel,
-} from "@/constants";
+} from "@/models";
 import { tr } from "@/i18n";
-import type { ChatModelConfig, ChatModelSettings, ConversationModelSnapshot, ModelCapabilities } from "@/types/model";
+import type { ChatModelCapabilities, ChatModelConfig, ChatModelSettings, ConversationModelSnapshot } from "@/types/model";
 import type { ChatCallback, ChatPromptMessage, PackedChatMessage } from "@/services/types";
 
 import { packMessageV1, packMessageV2 } from "./message";
@@ -84,7 +84,7 @@ export class ChatProxy {
     }
 
     const modelInfo = getChatModelInfo(model.model, model.provider);
-    const turnCapabilities: Partial<ModelCapabilities> = data[data.length - 1]?.meta?.usedCapabilities || {};
+    const turnCapabilities: Partial<ChatModelCapabilities> = data[data.length - 1]?.meta?.usedCapabilities || {};
 
     let abortController: AbortController | null = null;
 
@@ -127,7 +127,7 @@ export class ChatProxy {
   getChatParams(
     model: ChatModelConfig | null = null,
     settings: ChatModelSettings | null = null,
-    turnCapabilities: Partial<ModelCapabilities> = {},
+    turnCapabilities: Partial<ChatModelCapabilities> = {},
   ): Record<string, unknown> {
     const activeModel = model || this.resolveModel({});
     return {

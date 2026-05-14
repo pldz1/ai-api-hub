@@ -1,4 +1,4 @@
-import { getModelRequestId } from "@/constants";
+import { getModelRequestId } from "@/models";
 import { tr } from "@/i18n";
 import type {
   ImageGenerationParams,

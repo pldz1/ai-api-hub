@@ -146,11 +146,14 @@ import {
   providerList,
   chatDisplayedCapabilityKeys,
   imageModelProviderList,
+} from "@/constants";
+import {
   getChatModelInfo,
   getChatModelCapabilities,
   getModelImageParamDefs,
   getModelRequestId,
-} from "@/constants";
+  sanitizeModelCapabilityOverrides,
+} from "@/models";
 
 const props = withDefaults(
   defineProps<{
@@ -321,7 +324,7 @@ function buildChatModelPayload(): ChatModelConfig {
     ...(localModel.enabledCapabilitiesMode === "custom"
       ? {
           enabledCapabilitiesMode: "custom" as const,
-          enabledCapabilities: { ...(localModel.enabledCapabilities || {}) },
+          enabledCapabilities: sanitizeModelCapabilityOverrides(localModel.enabledCapabilities),
         }
       : {}),
   };
@@ -349,12 +352,6 @@ function buildImageModelPayload(): ImageModelConfig {
     apiKey: localModel.apiKey,
     model: localModel.model,
     imageOperation: props.imageOperation,
-    ...(localModel.enabledCapabilitiesMode === "custom"
-      ? {
-          enabledCapabilitiesMode: "custom" as const,
-          enabledCapabilities: { ...(localModel.enabledCapabilities || {}) },
-        }
-      : {}),
   };
 
   if (localModel.provider === "Azure OpenAI") {
@@ -391,7 +388,7 @@ function syncFromProps(model?: Partial<ModelFormDraft>) {
   });
   localModel.enabledCapabilitiesMode =
     model?.enabledCapabilitiesMode === "custom" || (model?.enabledCapabilities && Object.keys(model.enabledCapabilities).length > 0) ? "custom" : "inherit";
-  localModel.enabledCapabilities = { ...(model?.enabledCapabilities || {}) };
+  localModel.enabledCapabilities = sanitizeModelCapabilityOverrides(model?.enabledCapabilities);
   normalizeModelFields();
   syncProviderForModel(true);
   syncProviderBaseURL(localModel.provider, true);

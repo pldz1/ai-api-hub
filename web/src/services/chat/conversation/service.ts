@@ -1,5 +1,5 @@
 import store from "@/store";
-import { createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/constants";
+import { createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
 import { apiRequest } from "../../transport/request";
 import { dsAlert, isValidChatInfoArray, getUuid, generateRandomCname } from "@/utils";
 import { tr } from "@/i18n";

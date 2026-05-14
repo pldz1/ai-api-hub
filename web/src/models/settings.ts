@@ -1,7 +1,7 @@
 import type { ChatModelConfig, ImageModelConfig, ImageOperation, ModelFormDraft, ModelSettings } from "@/types/model";
-import { cloneJson, defaultModelFormDraft, getModelRequestId, type LooseModelConfig, type LooseModelSettings } from "./model-common";
-import { isAzureChatModel, toRuntimeChatModelConfig } from "./chat-model";
-import { toRuntimeImageModelConfig } from "./image-model";
+import { cloneJson, getModelRequestId, sanitizeModelCapabilityOverrides, type LooseModelConfig, type LooseModelSettings } from "./common";
+import { isAzureChatModel, toRuntimeChatModelConfig } from "./chat";
+import { toRuntimeImageModelConfig } from "./image";
 
 function hasCapabilityOverrides(enabledCapabilities: Partial<ModelFormDraft["enabledCapabilities"]> | null | undefined = {}): boolean {
   return Boolean(enabledCapabilities && Object.keys(enabledCapabilities).length > 0);
@@ -16,7 +16,7 @@ function getPersistedCapabilityFields(model: Partial<Pick<ModelFormDraft, "enabl
   if (getCapabilityOverrideMode(model) !== "custom") return {};
   return {
     enabledCapabilitiesMode: "custom" as const,
-    enabledCapabilities: cloneJson(model?.enabledCapabilities || {}),
+    enabledCapabilities: cloneJson(sanitizeModelCapabilityOverrides(model?.enabledCapabilities)),
   };
 }
 
@@ -45,7 +45,6 @@ function sanitizeImageModelConfig(model: ImageModelConfig): ImageModelConfig {
     ...("endpoint" in model ? { endpoint: model.endpoint } : {}),
     ...("deployment" in model ? { deployment: model.deployment } : {}),
     ...("apiVersion" in model ? { apiVersion: model.apiVersion } : {}),
-    ...getPersistedCapabilityFields(model),
   } as ImageModelConfig;
 }
 
@@ -60,10 +59,6 @@ export function sanitizeModelSettings(data: Partial<ModelSettings> | null | unde
     imageGeneration: (Array.isArray(imageGenerationModels) ? imageGenerationModels : []).map((item) => sanitizeImageModelConfig(item as ImageModelConfig)),
     imageEdit: (Array.isArray(imageEditModels) ? imageEditModels : []).map((item) => sanitizeImageModelConfig(item as ImageModelConfig)),
     image: (Array.isArray(imageGenerationModels) ? imageGenerationModels : []).map((item) => sanitizeImageModelConfig(item as ImageModelConfig)),
-    rtaudio: (Array.isArray(normalized.rtaudio) ? normalized.rtaudio : []).map((item) => ({
-      ...cloneJson(defaultModelFormDraft),
-      ...(item && typeof item === "object" ? cloneJson(item) : {}),
-    })),
   };
 }
 
@@ -74,11 +69,7 @@ export function migratePersistedModelSettings(data: LooseModelSettings | null | 
       if (kind === "chat") return toRuntimeChatModelConfig(item as LooseModelConfig);
       if (kind === "image")
         return toRuntimeImageModelConfig(item as LooseModelConfig, imageOperation || (item as LooseModelConfig)?.imageOperation || "generation");
-      const plainItem = item && typeof item === "object" ? item : {};
-      return {
-        ...cloneJson(defaultModelFormDraft),
-        ...plainItem,
-      };
+      return item;
     });
 
   const legacyImageModels = Array.isArray(data?.image) ? data.image : [];
@@ -90,7 +81,6 @@ export function migratePersistedModelSettings(data: LooseModelSettings | null | 
     imageGeneration: migrateModelEntries(imageGenerationModels, "image", "generation") as ImageModelConfig[],
     imageEdit: migrateModelEntries(imageEditModels, "image", "edit") as ImageModelConfig[],
     image: migrateModelEntries(imageGenerationModels, "image", "generation") as ImageModelConfig[],
-    rtaudio: migrateModelEntries(data?.rtaudio) as ModelFormDraft[],
   });
 }
 
@@ -139,29 +129,15 @@ function buildPersistedImageModelConfig(model: Partial<ModelFormDraft> | ImageMo
     payload.baseURL = runtimeModel.baseURL;
   }
 
-  if (hasCapabilityOverrides(runtimeModel.enabledCapabilities)) {
-    payload.enabledCapabilitiesMode = "custom";
-    payload.enabledCapabilities = cloneJson(runtimeModel.enabledCapabilities);
-  } else if (runtimeModel.enabledCapabilitiesMode === "custom") {
-    payload.enabledCapabilitiesMode = "custom";
-    payload.enabledCapabilities = {};
-  }
-
   return payload;
 }
 
 /** Builds the persistence payload written to storage/export. */
 export function buildPersistedModelSettingsPayload(data: LooseModelSettings | null | undefined = {}): Record<string, unknown> {
   const persistedSettings = migratePersistedModelSettings(data);
-  const payload: Record<string, unknown> = {
+  return {
     chat: persistedSettings.chat.map((item) => buildPersistedChatModelConfig(item)),
     imageGeneration: persistedSettings.imageGeneration.map((item) => buildPersistedImageModelConfig(item, "generation")),
     imageEdit: persistedSettings.imageEdit.map((item) => buildPersistedImageModelConfig(item, "edit")),
   };
-
-  if (Array.isArray(persistedSettings.rtaudio) && persistedSettings.rtaudio.length > 0) {
-    payload.rtaudio = cloneJson(persistedSettings.rtaudio);
-  }
-
-  return payload;
 }

@@ -79,7 +79,7 @@ import ChatModels from "@/views/setting/components/ChatModels.vue";
 import ImageModels from "@/views/setting/components/ImageModels.vue";
 import ChatInsTemplateList from "@/views/setting/components/ChatInsTemplateList.vue";
 import AppSettings from "@/views/setting/components/AppSettings.vue";
-import { migratePersistedModelSettings, sanitizeModelSettings } from "@/constants";
+import { migratePersistedModelSettings, sanitizeModelSettings } from "@/models";
 import { getModels, getChatInsTemplateList, setModels, setChatInsTemplateList } from "@/services";
 import { uploadJsonFile, isValidSettingsImport, getSettingsImportValidationError, isSettingsImportPackage, dsAlert } from "@/utils";
 import type { ChatModelConfig, ImageModelConfig, ModelSettings } from "@/types/model";
@@ -113,7 +113,7 @@ const settingGroups = computed(() => [
 ]);
 
 const activeTab = ref("chat-models");
-const emptyModelSettings = (): ModelSettings => ({ chat: [], imageGeneration: [], imageEdit: [], image: [], rtaudio: [] });
+const emptyModelSettings = (): ModelSettings => ({ chat: [], imageGeneration: [], imageEdit: [], image: [] });
 
 interface ImportedSettingsPackage {
   schema?: string;
