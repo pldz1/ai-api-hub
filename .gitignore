@@ -1,18 +1,26 @@
-**/__pycache__
-**/node_modules
-**/.test/
-**/package-lock.json
+.DS_Store
+node_modules
+/ref
 
-*.db
-*.pyc
 
-.codex
-/web/dist
-/server/cfg.json
-/server/statics
-/server/.cache
-/server/.database
-/server/.log
-/server/dist
-/server/build
+# local env files
+.env.local
+.env.*.local
 
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# User add
+Dockerfile

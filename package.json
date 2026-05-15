@@ -2,11 +2,10 @@
   "name": "ai-api-hub",
   "version": "0.0.1",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:mock": "vite --config vite.mock.config.js",
     "build": "vite build",
-    "build:mock": "vite build --config vite.mock.config.js",
     "typecheck": "vue-tsc --noEmit",
     "preview": "vite preview"
   },
