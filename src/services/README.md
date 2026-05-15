@@ -3,7 +3,7 @@
 `services` is split by responsibility:
 
 - `transport/`: backend-agnostic request adapter used by feature services.
-- `storage/`: selects Python companion service or browser-storage fallback.
+- `storage/`: browser-storage persistence used by feature services.
 - `user/`: workspace bootstrap, model settings, and chat instruction templates.
 - `chat/`: conversation persistence, provider clients, message packing, and chat DOM rendering.
 - `image/`: image generation/editing entrypoints, provider adapters, and persisted image gallery.

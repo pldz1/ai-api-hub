@@ -14,7 +14,7 @@ import type { ModelSettings } from "@/types/model";
  */
 
 /**
- * Check the companion service and prepare the current workspace.
+ * Prepare the current workspace.
  */
 export const loginAPI = (): Promise<ApiResponse<null>> => apiRequest("post", "/_api/login", {});
 

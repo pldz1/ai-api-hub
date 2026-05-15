@@ -23,11 +23,6 @@ const mutations = {
   },
 
   /** @param {state} state */
-  SET_HOST_URL(state, data) {
-    state.setHostUrl(data);
-  },
-
-  /** @param {state} state */
   SET_STORAGE_MODE(state, data) {
     state.setStorageMode(data);
   },
@@ -167,10 +162,6 @@ const actions = {
   async login({ commit }, username, password = "", uid = "") {
     commit("SET_USER_LOGIN_INFO", { username: WORKSPACE_ID, password: "", uid: WORKSPACE_ID });
     commit("SET_LOGIN_STATE", true);
-  },
-
-  async setHostUrl({ commit }, data) {
-    commit("SET_HOST_URL", data);
   },
 
   async setStorageMode({ commit }, data) {

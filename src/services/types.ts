@@ -1,7 +1,7 @@
 import type { ChatMessageRole, ChatModelCapabilities, ImageModelConfig } from "@/types/model";
 
 export type ApiMethod = "get" | "post" | "put" | "patch" | "delete";
-export type StorageMode = "unknown" | "server" | "browser";
+export type StorageMode = "unknown" | "browser";
 export type RequestBody = Record<string, unknown>;
 export type RequestHeaders = Record<string, string>;
 

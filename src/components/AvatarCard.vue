@@ -25,7 +25,6 @@ const storageMode = computed(() => store.state.storageMode || "unknown");
 
 const status = computed(() => {
   if (storageMode.value === "browser") return "mock";
-  if (storageMode.value === "server") return "online";
   return "offline";
 });
 
@@ -34,15 +33,10 @@ const tooltipText = computed(() => {
     return `${t("tooltip.userStatusLocalStorageTitle")}\n${t("tooltip.userStatusLocalStorageDescription")}`;
   }
 
-  if (status.value === "online") {
-    return `${t("tooltip.userStatusOnlineTitle")}\n${t("tooltip.userStatusOnlineDescription")}`;
-  }
-
   return `${t("tooltip.userStatusOfflineTitle")}\n${t("tooltip.userStatusOfflineDescription")}`;
 });
 
 const statusClassMap = computed(() => ({
-  online: status.value === "online",
   offline: status.value === "mock",
 }));
 </script>

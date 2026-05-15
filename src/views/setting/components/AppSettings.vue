@@ -9,21 +9,6 @@
 
     <div class="app-settings-grid">
       <section class="app-settings-card">
-        <h3>{{ t("user.app.connection") }}</h3>
-        <p>{{ t("user.app.connectionDescription") }}</p>
-        <div class="app-settings-field">
-          <label>{{ t("user.app.serverHost") }}</label>
-          <input
-            type="text"
-            class="input input-bordered w-full"
-            :placeholder="t('input.hostUrlPlaceholder')"
-            :value="props.hostUrl"
-            @input="emit('update:hostUrl', $event.target.value)"
-          />
-        </div>
-      </section>
-
-      <section class="app-settings-card">
         <h3>{{ t("user.app.importExport") }}</h3>
         <p>{{ t("user.app.importExportDescription") }}</p>
         <div class="app-settings-actions">
@@ -56,14 +41,7 @@
 <script setup>
 import { useI18n } from "vue-i18n";
 
-const props = defineProps({
-  hostUrl: {
-    type: String,
-    default: "",
-  },
-});
-
-const emit = defineEmits(["update:hostUrl", "import-settings", "export-settings", "go-home"]);
+const emit = defineEmits(["import-settings", "export-settings", "go-home"]);
 const { t } = useI18n();
 </script>
 
@@ -100,18 +78,6 @@ const { t } = useI18n();
 
 .app-settings-card-danger {
   border-color: oklch(var(--er) / 0.35);
-}
-
-.app-settings-field {
-  margin-top: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  label {
-    font-size: 12px;
-    font-weight: 600;
-  }
 }
 
 .app-settings-actions {

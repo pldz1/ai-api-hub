@@ -7,8 +7,7 @@ const LONGTIME = 3600000;
  * Service-layer transport adapter.
  *
  * Feature services call this function instead of choosing a backend directly.
- * `requestStorage` decides whether the request goes to the Python companion
- * service or to the browser-storage fallback.
+ * `requestStorage` always routes storage traffic to browser storage in this build.
  */
 export async function apiRequest<TData = unknown>(
   method: ApiMethod,

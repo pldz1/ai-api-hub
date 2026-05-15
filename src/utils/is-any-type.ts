@@ -242,10 +242,6 @@ export const getSettingsImportValidationError = (data) => {
       if (templateError) return templateError;
     }
 
-    if ("hostUrl" in data && typeof data.hostUrl !== "string") {
-      return tr("validation.fieldNotString", { path: "hostUrl" });
-    }
-
     if ("schema" in data && typeof data.schema !== "string") {
       return tr("validation.fieldNotString", { path: "schema" });
     }

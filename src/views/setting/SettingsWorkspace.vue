@@ -59,8 +59,6 @@
 
         <AppSettings
           v-if="activeTab === 'app'"
-          :host-url="draftHostUrl"
-          @update:host-url="updateDraftHostUrl"
           @export-settings="exportSettings"
           @import-settings="importSettings"
           @go-home="goLogin"
@@ -121,7 +119,6 @@ interface ImportedSettingsPackage {
   exportedAt?: string;
   models: Partial<ModelSettings>;
   templates?: unknown[];
-  hostUrl?: string;
 }
 
 interface UploadedJsonParseError {
@@ -130,7 +127,6 @@ interface UploadedJsonParseError {
 
 const draftModels = ref<ModelSettings>(emptyModelSettings());
 const draftTemplates = ref<unknown[]>([]);
-const draftHostUrl = ref("");
 const snapshot = ref("");
 const autosaveState = ref<"saved" | "dirty" | "saving" | "error">("saved");
 let autosaveTimer: number | null = null;
@@ -168,7 +164,6 @@ function getDraftSnapshot() {
   return JSON.stringify({
     models: draftModels.value,
     templates: draftTemplates.value,
-    hostUrl: draftHostUrl.value,
   });
 }
 
@@ -179,7 +174,6 @@ function syncDraftFromStore() {
     ...clonePlainData(store.state.models),
   };
   draftTemplates.value = clonePlainData(store.state.chatInsTemplateList);
-  draftHostUrl.value = store.state.hostUrl || "";
   snapshot.value = getDraftSnapshot();
   autosaveState.value = "saved";
   isHydrating = false;
@@ -211,10 +205,6 @@ function updateDraftTemplates(nextTemplates: unknown[]) {
   draftTemplates.value = nextTemplates;
 }
 
-function updateDraftHostUrl(nextHostUrl: string) {
-  draftHostUrl.value = nextHostUrl;
-}
-
 async function ensureLatestStoreData() {
   await getModels();
   await getChatInsTemplateList();
@@ -230,11 +220,9 @@ async function persistDraft() {
 
   const nextModels = clonePlainData(draftModels.value);
   const nextTemplates = clonePlainData(draftTemplates.value);
-  const nextHostUrl = draftHostUrl.value;
   const nextSnapshot = JSON.stringify({
     models: nextModels,
     templates: nextTemplates,
-    hostUrl: nextHostUrl,
   });
 
   isPersisting = true;
@@ -242,7 +230,6 @@ async function persistDraft() {
   try {
     await store.dispatch("setModels", nextModels);
     await store.dispatch("setChatInsTemplateList", nextTemplates);
-    await store.dispatch("setHostUrl", nextHostUrl);
 
     const modelsSaved = await setModels();
     const templatesSaved = await setChatInsTemplateList(nextTemplates);
@@ -266,7 +253,6 @@ async function exportSettings() {
     exportedAt: new Date().toISOString(),
     models: sanitizeModelSettings(clonePlainData(draftModels.value)) as Partial<ModelSettings>,
     templates: clonePlainData(draftTemplates.value),
-    hostUrl: draftHostUrl.value,
   };
   const jsonStr = JSON.stringify(payload, null, 2);
   const blob = new Blob([jsonStr], { type: "application/json" });
@@ -317,9 +303,6 @@ async function importSettings() {
     draftModels.value = migratePersistedModelSettings(importedPackage.models);
     if (Array.isArray(importedPackage.templates)) {
       draftTemplates.value = clonePlainData(importedPackage.templates);
-    }
-    if (typeof importedPackage.hostUrl === "string") {
-      draftHostUrl.value = importedPackage.hostUrl;
     }
   } else {
     draftModels.value = migratePersistedModelSettings(clonePlainData(jsonData) as ModelSettings);

@@ -22,15 +22,14 @@
           <span class="hlcc-label">{{ t("login.signInLabel") }}</span>
           <h2>{{ t("login.signInTitle") }}</h2>
           <p>{{ t("login.signInDescription") }}</p>
-          <p v-if="isUsingMockStorage" class="hlcc-warning">{{ t("login.mockWarning") }}</p>
         </div>
 
         <div class="hlcc-form">
           <div class="hlcc-readiness">
-            <span class="hlcc-ready-dot" :class="{ mock: isUsingMockStorage }"></span>
+            <span class="hlcc-ready-dot mock"></span>
             <div>
-              <strong>{{ isUsingMockStorage ? t("login.browserModeTitle") : t("login.companionModeTitle") }}</strong>
-              <p>{{ isUsingMockStorage ? t("login.browserModeDescription") : t("login.companionModeDescription") }}</p>
+              <strong>{{ t("login.browserModeTitle") }}</strong>
+              <p>{{ t("login.browserModeDescription") }}</p>
             </div>
           </div>
         </div>
@@ -42,24 +41,15 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { login, getModels } from "@/services";
-import { loginAPI } from "@/services/user";
 import { dsLoading } from "@/utils";
 import ThemeController from "@/components/ThemeController.vue";
 import LanguageController from "@/components/LanguageController.vue";
 
 const router = useRouter();
 const { t } = useI18n();
-
-const isUsingMockStorage = ref(false);
-
-const probeBackendMode = async () => {
-  const probe = await loginAPI();
-  isUsingMockStorage.value = probe?.__storageMode === "browser";
-};
 
 const onLogin = async () => {
   dsLoading(true);
@@ -70,10 +60,6 @@ const onLogin = async () => {
   }
   dsLoading(false);
 };
-
-onMounted(async () => {
-  await probeBackendMode();
-});
 </script>
 
 <style lang="scss" scoped>

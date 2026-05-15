@@ -20,7 +20,6 @@ function readUserSession() {
 function writeUserSession(state) {
   try {
     const payload = {
-      hostUrl: state.hostUrl || "",
       storageMode: state.storageMode || "unknown",
     };
     localStorage.setItem(USER_SESSION_KEY, JSON.stringify(payload));
@@ -30,6 +29,7 @@ function writeUserSession(state) {
 }
 
 const persistedUserSession = readUserSession();
+const normalizeStorageMode = (mode) => (mode === "browser" ? "browser" : "unknown");
 
 export const UserState = {
   /**
@@ -86,14 +86,9 @@ export const UserState = {
   curChatId: "",
 
   /**
-   * 网页接口的server的host
+   * 当前存储模式: browser / unknown
    */
-  hostUrl: persistedUserSession.hostUrl || "",
-
-  /**
-   * 当前存储模式: server / browser / unknown
-   */
-  storageMode: persistedUserSession.storageMode || persistedUserSession.backendMode || "unknown",
+  storageMode: normalizeStorageMode(persistedUserSession.storageMode || persistedUserSession.backendMode),
 
   /**
    * 设置当前工作区信息
@@ -141,15 +136,6 @@ export const UserState = {
 
   setCurChatId(data) {
     this.curChatId = data;
-  },
-
-  /**
-   * 设置网页请求的host url.
-   */
-
-  setHostUrl(data) {
-    this.hostUrl = data;
-    writeUserSession(this);
   },
 
   /**
