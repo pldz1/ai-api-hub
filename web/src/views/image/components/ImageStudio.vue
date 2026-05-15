@@ -208,6 +208,13 @@ const loadInitialEditImage = async (image) => {
 
 const onSelectImage = (id) => {
   selectedImageId.value = String(id);
+  const nextSelectedImage = imageList.value.find((item) => getImageId(item) === selectedImageId.value);
+  if (!nextSelectedImage) return;
+
+  imageModelSettings.value = {
+    ...imageModelSettings.value,
+    prompt: nextSelectedImage.prompt || "",
+  };
 };
 
 const startGenerationTimer = () => {
