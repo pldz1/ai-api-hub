@@ -140,9 +140,12 @@ import { useI18n } from "vue-i18n";
 import { dsAlert } from "@/utils";
 import copyIcon from "@/assets/svg/copy16.svg";
 import SvgIcon from "@/components/SvgIcon.vue";
-import type { ChatModelConfig, ImageModelConfig, ImageOperation, ModelConfig, ModelFormDraft, ModelKind, SelectOption } from "@/types/model";
+import type { ChatModelConfig, ChatModelEditorState, SelectOption } from "@/types/chat";
+import type { ImageModelConfig, ImageModelEditorState, ImageOperation } from "@/types/image";
+import type { ModelConfig, ModelKind } from "@/types/settings";
 import {
-  defaultModelFormDraft,
+  defaultChatModelEditorState,
+  defaultImageModelEditorState,
   providerList,
   chatDisplayedCapabilityKeys,
   imageModelProviderList,
@@ -155,15 +158,31 @@ import {
   sanitizeModelCapabilityOverrides,
 } from "@/models";
 
+type ModelEditorState = Omit<ChatModelEditorState, "provider"> & {
+  provider: ChatModelEditorState["provider"] | ImageModelEditorState["provider"];
+  imageOperation: ImageOperation;
+};
+
+type ModelEditorInput = Partial<ModelConfig> & {
+  apiType?: ModelEditorState["provider"];
+};
+
+function createEmptyModelEditorState(): ModelEditorState {
+  return {
+    ...structuredClone(defaultChatModelEditorState),
+    imageOperation: defaultImageModelEditorState.imageOperation,
+  };
+}
+
 const props = withDefaults(
   defineProps<{
-    model?: Partial<ModelFormDraft>;
+    model?: ModelEditorInput;
     modelSuggestions?: SelectOption[];
     modelKind?: ModelKind;
     imageOperation?: ImageOperation;
   }>(),
   {
-    model: () => structuredClone(defaultModelFormDraft),
+    model: () => ({}),
     modelSuggestions: () => [],
     modelKind: "chat",
     imageOperation: "generation",
@@ -174,7 +193,7 @@ const emit = defineEmits<{
   "update:model": [model: ModelConfig];
 }>();
 const { t } = useI18n();
-const localModel = reactive<ModelFormDraft>(structuredClone(defaultModelFormDraft));
+const localModel = reactive<ModelEditorState>(createEmptyModelEditorState());
 let isSyncingFromProps = false;
 let lastModelSnapshot = "";
 
@@ -380,15 +399,16 @@ function createModelPayload(): ModelConfig {
   return buildChatModelPayload();
 }
 
-function syncFromProps(model?: Partial<ModelFormDraft>) {
-  const legacyModel = model as Partial<ModelFormDraft> & { apiType?: ModelFormDraft["provider"] };
+function syncFromProps(model?: ModelEditorInput) {
+  const legacyModel = model || {};
+  const chatModel = props.modelKind === "chat" ? (model as Partial<ChatModelConfig> | undefined) : undefined;
+  const hasCustomCapabilities = Boolean(chatModel?.enabledCapabilities && Object.keys(chatModel.enabledCapabilities).length > 0);
   isSyncingFromProps = true;
-  Object.assign(localModel, structuredClone(defaultModelFormDraft), model || {}, {
+  Object.assign(localModel, createEmptyModelEditorState(), model || {}, {
     provider: legacyModel?.provider || legacyModel?.apiType || "",
   });
-  localModel.enabledCapabilitiesMode =
-    model?.enabledCapabilitiesMode === "custom" || (model?.enabledCapabilities && Object.keys(model.enabledCapabilities).length > 0) ? "custom" : "inherit";
-  localModel.enabledCapabilities = sanitizeModelCapabilityOverrides(model?.enabledCapabilities);
+  localModel.enabledCapabilitiesMode = chatModel?.enabledCapabilitiesMode === "custom" || hasCustomCapabilities ? "custom" : "inherit";
+  localModel.enabledCapabilities = sanitizeModelCapabilityOverrides(chatModel?.enabledCapabilities);
   normalizeModelFields();
   syncProviderForModel(true);
   syncProviderBaseURL(localModel.provider, true);

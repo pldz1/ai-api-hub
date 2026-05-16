@@ -105,6 +105,8 @@ import {
   getEffectiveCapabilities,
   getModelDeployment,
   getModelRequestId,
+  getSnapshotEnabledCapabilities,
+  getSnapshotSupportedCapabilities,
 } from "@/models";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
@@ -146,8 +148,10 @@ let timerIntervalId = null;
 const isModelSelectionReadonly = computed(() => Boolean(props.modelSelectionReadonly || curChatId.value));
 const draftSnapshot = computed(() => createConversationModelSnapshot(selectedModel.value));
 const activeSnapshot = computed(() => curConversation.value?.modelSnapshot || draftSnapshot.value);
+const activeSupportedCapabilities = computed(() => getSnapshotSupportedCapabilities(activeSnapshot.value));
+const activeEnabledCapabilities = computed(() => getSnapshotEnabledCapabilities(activeSnapshot.value));
 const activeCapabilities = computed(() =>
-  getEffectiveCapabilities(activeSnapshot.value?.supportedCapabilities, activeSnapshot.value?.enabledCapabilities, inputCapabilities.value),
+  getEffectiveCapabilities(activeSupportedCapabilities.value, activeEnabledCapabilities.value, inputCapabilities.value),
 );
 const lockedModelName = computed(() => curConversation.value?.modelSnapshot?.displayName || t("input.lockedModel"));
 const elapsedSeconds = computed(() => (elapsedMs.value / 1000).toFixed(1));
@@ -177,7 +181,7 @@ const capabilityIcons = {
 const visibleTurnCapabilities = computed(() =>
   chatTurnCapabilityKeys
     .filter((key) => key !== "imageRead")
-    .filter((key) => Boolean(activeSnapshot.value?.supportedCapabilities?.[key] && activeSnapshot.value?.enabledCapabilities?.[key]))
+    .filter((key) => Boolean(activeSupportedCapabilities.value?.[key] && activeEnabledCapabilities.value?.[key]))
     .map((key) => ({
       key,
       label: t(capabilityLabelKeys[key] || `input.capabilities.${key}`),

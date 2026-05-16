@@ -1,41 +1,94 @@
-import { defaultModelFormDraft } from "@/constants/model-common";
-import type { ChatModelCapabilities, ModelFormDraft, ModelParamDef, ModelParamType, ModelProvider, ModelSettings, ParamDefaultValue } from "@/types/model";
+import type { CapabilityOverrideMode, ChatFormProvider, ChatModelCapabilities, ModelParamDef as ChatModelParamDef } from "@/types/chat";
+import type { ParamDefaultValue as ChatParamDefaultValue } from "@/types/chat";
+import type { ModelSettings } from "@/types/settings";
+import type { ImageModelProvider, ImageOperation, ModelParamDef as ImageModelParamDef, ModelParamType, ParamDefaultValue as ImageParamDefaultValue } from "@/types/image";
 
-export type LooseParamDef = Partial<ModelParamDef> & { key?: string };
-export type LegacyModelProviderConfig = { apiType?: ModelProvider; provider?: ModelProvider };
-export type LooseModelConfig = Partial<ModelFormDraft> &
-  LegacyModelProviderConfig & {
-    modelType?: string;
-    chatParamDefs?: ModelParamDef[];
-    imageParamDefs?: ModelParamDef[];
-  };
+type WorkspaceParamDefaultValue = ChatParamDefaultValue | ImageParamDefaultValue;
+
+/**
+ * Loose parameter definition accepted from legacy config or partially-filled UI data.
+ *
+ * Normalization helpers turn this into a full `ModelParamDef`.
+ */
+export type LooseParamDef = Partial<ImageModelParamDef> & { key?: string };
+/**
+ * Legacy provider fields accepted while migrating older saved payloads.
+ *
+ * Older data may use `apiType`; newer data should use `provider`.
+ */
+export type LegacyModelProviderConfig = { apiType?: ChatFormProvider; provider?: ChatFormProvider };
+/**
+ * Loose model config accepted at compatibility boundaries.
+ *
+ * Use this type only for parsing/migration/normalization. Once normalized, code
+ * should move to provider payload types such as `ChatModelConfig`.
+ */
+export interface LooseModelConfig extends LegacyModelProviderConfig {
+  name?: string;
+  provider?: ChatFormProvider | ImageModelProvider | "";
+  baseURL?: string;
+  endpoint?: string;
+  apiKey?: string;
+  model?: string;
+  modelType?: string;
+  deployment?: string;
+  apiVersion?: string;
+  imageOperation?: ImageOperation | "";
+  enabledCapabilitiesMode?: CapabilityOverrideMode;
+  enabledCapabilities?: Partial<ChatModelCapabilities>;
+  chatParamDefs?: ChatModelParamDef[];
+  imageParamDefs?: ImageModelParamDef[];
+}
+/**
+ * Loose top-level model settings payload accepted from storage/import/export.
+ *
+ * The optional legacy `image` list is preserved here for backward compatibility.
+ */
 export type LooseModelSettings = Partial<ModelSettings> & {
   image?: unknown[];
 };
 
 const modelCapabilityKeys: (keyof ChatModelCapabilities)[] = ["imageRead", "webSearch", "reasoning", "functionCalling"];
 
-/** Deep-clones JSON-compatible model config and settings values. */
+/**
+ * Deep-clones JSON-compatible config/settings values.
+ *
+ * This helper is used where model config data is expected to remain plain JSON
+ * and structured cloning semantics are enough.
+ */
 export function cloneJson<T>(data: T): T {
   return JSON.parse(JSON.stringify(data));
 }
 
-/** Returns the provider, accepting the old `apiType` field from legacy config. */
-export function getLegacyProvider(model: LooseModelConfig | null | undefined = {}): ModelProvider {
-  return (model?.provider || model?.apiType || "") as ModelProvider;
+/**
+ * Returns the normalized provider field from loose model data.
+ *
+ * Accepts both the current `provider` field and the legacy `apiType` field.
+ */
+export function getLegacyProvider(model: LooseModelConfig | null | undefined = {}): ChatFormProvider {
+  return (model?.provider || model?.apiType || "") as ChatFormProvider;
 }
 
-/** Returns the real model id, reading legacy `modelType` when old config data is loaded. */
-export function getModelRequestId(model: (Partial<ModelFormDraft> & { modelType?: string }) | null | undefined): string {
+/**
+ * Returns the normalized model id from loose model data.
+ *
+ * Accepts both the current `model` field and the legacy `modelType` field.
+ */
+export function getModelRequestId(model: { model?: string; modelType?: string } | null | undefined): string {
   return String(model?.model || model?.modelType || "").trim();
 }
 
-/** Returns the Azure deployment name used as the provider request target. */
-export function getModelDeployment(model: Partial<ModelFormDraft> | null | undefined): string {
+/** Returns the Azure deployment name used when building Azure runtime config. */
+export function getModelDeployment(model: { deployment?: string; model?: string; provider?: string } | null | undefined): string {
   return String(model?.deployment || "").trim();
 }
 
-/** Filters persisted chat capability overrides to the stable chat contract shape. */
+/**
+ * Filters capability override data to the stable chat capability contract.
+ *
+ * This helper also migrates old `imageInput` data into the current `imageRead`
+ * field so user settings remain compatible after schema changes.
+ */
 export function sanitizeModelCapabilityOverrides(enabledCapabilities: unknown = {}): Partial<ChatModelCapabilities> {
   const source = (enabledCapabilities && typeof enabledCapabilities === "object" ? enabledCapabilities : {}) as Partial<ChatModelCapabilities> & {
     imageInput?: boolean;
@@ -55,21 +108,13 @@ export function sanitizeModelCapabilityOverrides(enabledCapabilities: unknown = 
   return next;
 }
 
-/** Normalizes common model form fields and migrates legacy provider/model names. */
-export function normalizeModelFormDraft(model: LooseModelConfig | null | undefined = {}): ModelFormDraft {
-  const data = model || {};
-  const { modelType: _legacyModel, apiType: _legacyProvider, ...plainData } = data;
-  return {
-    ...cloneJson(defaultModelFormDraft),
-    ...plainData,
-    model: getModelRequestId(data),
-    provider: getLegacyProvider(data),
-    enabledCapabilities: sanitizeModelCapabilityOverrides(data.enabledCapabilities),
-  };
-}
-
-/** Parses a raw setting value according to a model parameter definition type. */
-export function parseParamValue<T = ParamDefaultValue>(type: ModelParamType | string = "string", value: unknown = undefined, fallback: T = undefined as T): T {
+/**
+ * Parses a raw settings value according to a parameter definition type.
+ *
+ * This is the common coercion layer used by both chat and image settings so the
+ * same stored value can be safely interpreted as number/boolean/object/etc.
+ */
+export function parseParamValue<T = WorkspaceParamDefaultValue>(type: ModelParamType | string = "string", value: unknown = undefined, fallback: T = undefined as T): T {
   if (value === undefined || value === null || value === "") {
     return fallback;
   }
@@ -120,7 +165,10 @@ export function parseParamValue<T = ParamDefaultValue>(type: ModelParamType | st
   return String(value) as T;
 }
 
-/** Returns whether a parsed parameter value should be sent to a provider. */
+/**
+ * Returns whether a normalized parameter value is meaningful enough to include
+ * in a provider request payload.
+ */
 export function hasMeaningfulParamValue(type: ModelParamType | string = "string", value: unknown = undefined): boolean {
   if (value === undefined || value === null) return false;
   if (type === "string" && value === "") return false;

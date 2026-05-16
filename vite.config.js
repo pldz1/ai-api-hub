@@ -17,5 +17,25 @@ export default defineConfig({
   build: {
     emptyOutDir: true,
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        entryFileNames: "assets/entry-[name]-[hash].js",
+        chunkFileNames: "assets/chunk-[name]-[hash].js",
+        assetFileNames: "assets/[name]-[hash][extname]",
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+
+          if (id.includes("/vue/") || id.includes("/vue-router/") || id.includes("/vuex/")) {
+            return "framework";
+          }
+
+          if (id.includes("/highlight.js")) {
+            return "highlight";
+          }
+
+          return "vendor";
+        },
+      },
+    },
   },
 });

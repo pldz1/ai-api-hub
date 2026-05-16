@@ -1,4 +1,4 @@
-import type { ModelParamDef } from "@/types/model";
+import type { ModelParamDef } from "@/types/chat";
 
 type LooseParamDef = Partial<ModelParamDef> & { key?: string };
 

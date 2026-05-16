@@ -1,5 +1,5 @@
 // @ts-nocheck
-import hljs from "highlight.js";
+import hljs from "highlight.js/lib/common";
 import { tr } from "@/i18n";
 hljs.configure({ ignoreUnescapedHTML: true });
 

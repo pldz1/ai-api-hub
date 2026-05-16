@@ -65,7 +65,8 @@ import { useI18n } from "vue-i18n";
 import { chatModelTypeList } from "@/constants";
 import { append4Random } from "@/utils";
 import ModelEditCard from "@/views/setting/components/ModelEditCard.vue";
-import type { ChatModelConfig, ModelConfig } from "@/types/model";
+import type { ChatModelConfig } from "@/types/chat";
+import type { ModelConfig } from "@/types/settings";
 
 const props = withDefaults(defineProps<{ models?: ChatModelConfig[] }>(), {
   models: () => [],

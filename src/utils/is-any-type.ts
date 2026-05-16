@@ -228,6 +228,62 @@ export const getChatTemplateListValidationError = (data, field = "templates") =>
   return "";
 };
 
+function isPlainArray(value) {
+  return Array.isArray(value);
+}
+
+function isConversationModelSnapshot(value) {
+  return (
+    isPlainObject(value) &&
+    typeof value.modelConfigId === "string" &&
+    typeof value.catalogModelId === "string" &&
+    typeof value.displayName === "string" &&
+    typeof value.provider === "string" &&
+    typeof value.apiKey === "string" &&
+    isPlainObject(value.modelConfig)
+  );
+}
+
+export const getChatSessionSettingsValidationError = (data, field = "chatSessions") => {
+  if (!isPlainArray(data)) {
+    return tr("validation.fieldNotArray", { path: field });
+  }
+
+  for (let index = 0; index < data.length; index++) {
+    const item = data[index];
+    const path = `${field}[${index}]`;
+    if (!isPlainObject(item)) {
+      return tr("validation.notObject", { path });
+    }
+
+    if (typeof item.cid !== "string") {
+      return tr("validation.fieldNotString", { path: `${path}.cid` });
+    }
+
+    if (typeof item.cname !== "string") {
+      return tr("validation.fieldNotString", { path: `${path}.cname` });
+    }
+
+    if (!isPlainObject(item.payload)) {
+      return tr("validation.notObject", { path: `${path}.payload` });
+    }
+
+    if ("version" in item.payload && Number(item.payload.version) !== 2) {
+      return tr("validation.invalidField", { path: `${path}.payload.version` });
+    }
+
+    if ("modelSnapshot" in item.payload && item.payload.modelSnapshot !== null && !isConversationModelSnapshot(item.payload.modelSnapshot)) {
+      return tr("validation.invalidField", { path: `${path}.payload.modelSnapshot` });
+    }
+
+    if (!isPlainObject(item.payload.settings)) {
+      return tr("validation.notObject", { path: `${path}.payload.settings` });
+    }
+  }
+
+  return "";
+};
+
 export const isSettingsImportPackage = (data) => isPlainObject(data) && "models" in data;
 
 export const getSettingsImportValidationError = (data) => {
@@ -242,12 +298,17 @@ export const getSettingsImportValidationError = (data) => {
       if (templateError) return templateError;
     }
 
+    if ("chatSessions" in data) {
+      const chatSessionsError = getChatSessionSettingsValidationError(data.chatSessions, "chatSessions");
+      if (chatSessionsError) return chatSessionsError;
+    }
+
     if ("schema" in data && typeof data.schema !== "string") {
       return tr("validation.fieldNotString", { path: "schema" });
     }
 
-    if ("version" in data && !Number.isFinite(Number(data.version))) {
-      return tr("validation.fieldNotNumber", { path: "version" });
+    if ("version" in data && typeof data.version !== "string" && !Number.isFinite(Number(data.version))) {
+      return tr("validation.fieldNotString", { path: "version" });
     }
 
     if ("exportedAt" in data && typeof data.exportedAt !== "string") {

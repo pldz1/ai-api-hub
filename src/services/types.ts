@@ -1,4 +1,5 @@
-import type { ChatMessageRole, ChatModelCapabilities, ImageModelConfig } from "@/types/model";
+import type { ChatMessageRole, ChatModelCapabilities } from "@/types/chat";
+import type { ImageModelConfig } from "@/types/image";
 
 export type ApiMethod = "get" | "post" | "put" | "patch" | "delete";
 export type StorageMode = "unknown" | "browser";

@@ -78,7 +78,8 @@ import { imageModelTypeList } from "@/constants";
 import { getModelImageParamDefs, isAzureImageModel } from "@/models";
 import { append4Random } from "@/utils";
 import ModelEditCard from "@/views/setting/components/ModelEditCard.vue";
-import type { ImageModelConfig, ImageOperation, ModelConfig } from "@/types/model";
+import type { ImageModelConfig, ImageOperation } from "@/types/image";
+import type { ModelConfig } from "@/types/settings";
 
 const props = withDefaults(
   defineProps<{

@@ -1,12 +1,14 @@
 import type {
+  ChatCompletionParams,
   ChatModelCapabilities,
+  ChatModelCapabilityProfile,
   ChatModelConfig,
   ChatModelOption,
   ChatModelSettings,
   ConversationModelSnapshot,
-  ModelFormDraft,
   ModelParamDef,
-} from "@/types/model";
+  ParamDefaultValue,
+} from "@/types/chat";
 import { tr } from "@/i18n";
 import { chatDisplayedCapabilityKeys, chatTurnCapabilityKeys, defaultModelCapabilities } from "@/constants/chat-model";
 import { chatParamPresetList } from "@/constants/chat-params";
@@ -16,59 +18,65 @@ import {
   getLegacyProvider,
   getModelDeployment,
   getModelRequestId,
-  normalizeModelFormDraft,
   parseParamValue,
   type LooseModelConfig,
-  type LooseParamDef,
 } from "./common";
+
+type LooseChatParamDef = Partial<ModelParamDef> & { key?: string };
 
 export { chatDisplayedCapabilityKeys, chatTurnCapabilityKeys, defaultModelCapabilities };
 export { getModelDeployment, getModelRequestId, parseParamValue as parseChatParamValue } from "./common";
 
-/** Returns whether a model config should use Azure OpenAI request routing. */
+/** Returns whether a user model config should use Azure OpenAI routing. */
 export function isAzureChatModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "Azure OpenAI" } {
   return getLegacyProvider(model) === "Azure OpenAI";
 }
 
-/** Returns whether a model config should use OpenAI-compatible request routing. */
+/** Returns whether a user model config should use direct OpenAI-compatible routing. */
 export function isOpenAIChatModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "OpenAI" } {
   return getLegacyProvider(model) === "OpenAI";
 }
 
-/** Returns whether a model config should use Anthropic-compatible request routing. */
+/** Returns whether a user model config should use Anthropic-compatible routing. */
 export function isAnthropicChatModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "Anthropic" | "Azure AI Foundry" } {
   const provider = getLegacyProvider(model);
   return provider === "Anthropic" || provider === "Azure AI Foundry";
 }
 
-/** Coerces persisted chat config into the runtime chat model shape. */
+/**
+ * Normalizes loose/legacy chat model data into the canonical user config shape.
+ *
+ * This is still user configuration. It does not build provider runtime args.
+ * It mainly fills defaults, migrates legacy field names, and narrows the
+ * provider-specific fields to the stable `ChatModelConfig` union.
+ */
 export function toRuntimeChatModelConfig(model: LooseModelConfig | null | undefined = {}): ChatModelConfig {
-  const draft = normalizeModelFormDraft(model);
-  const provider = draft.provider === "Azure OpenAI" || draft.provider === "Anthropic" || draft.provider === "Azure AI Foundry" ? draft.provider : "OpenAI";
-  const modelId = getModelRequestId(draft);
+  const data = model || {};
+  const provider = getLegacyProvider(data);
+  const nextProvider = provider === "Azure OpenAI" || provider === "Anthropic" || provider === "Azure AI Foundry" ? provider : "OpenAI";
+  const modelId = getModelRequestId(data);
+  const basePayload = {
+    name: String(data.name || "").trim(),
+    apiKey: String(data.apiKey || "").trim(),
+    model: modelId,
+    enabledCapabilitiesMode: data.enabledCapabilitiesMode === "custom" ? "custom" as const : "inherit" as const,
+    enabledCapabilities: data.enabledCapabilities,
+  };
 
-  if (provider === "Azure OpenAI") {
+  if (nextProvider === "Azure OpenAI") {
     return {
-      name: draft.name,
-      provider,
-      endpoint: draft.endpoint,
-      deployment: draft.deployment,
-      apiVersion: draft.apiVersion,
-      apiKey: draft.apiKey,
-      model: modelId,
-      enabledCapabilitiesMode: draft.enabledCapabilitiesMode,
-      enabledCapabilities: draft.enabledCapabilities,
+      ...basePayload,
+      provider: "Azure OpenAI",
+      endpoint: String(data.endpoint || "").trim(),
+      deployment: String(data.deployment || "").trim(),
+      apiVersion: String(data.apiVersion || "").trim(),
     };
   }
 
   return {
-    name: draft.name,
-    provider,
-    baseURL: draft.baseURL,
-    apiKey: draft.apiKey,
-    model: modelId,
-    enabledCapabilitiesMode: draft.enabledCapabilitiesMode,
-    enabledCapabilities: draft.enabledCapabilities,
+    ...basePayload,
+    provider: nextProvider,
+    baseURL: String(data.baseURL || "").trim(),
   };
 }
 
@@ -83,13 +91,64 @@ function findChatModelCatalogItem(model = "", provider = ""): ChatModelCatalogIt
   );
 }
 
-/** Returns the chat-facing capabilities declared by the model catalog. */
-export function getChatModelCapabilities(model = "", provider = "OpenAI"): ChatModelCapabilities {
+/** Returns the full capability profile declared by the model catalog. */
+export function getChatModelCapabilityProfile(model = "", provider = ""): ChatModelCapabilityProfile {
   const catalogItem = findChatModelCatalogItem(model, provider);
-  return normalizeModelCapabilities(catalogItem?.capabilities || {}, { ...defaultModelCapabilities, ...(catalogItem?.capabilities || {}) });
+  return (
+    catalogItem?.capabilityProfile || {
+      modalities: {
+        textInput: true,
+        textOutput: true,
+        imageInput: false,
+        imageOutput: false,
+        audioInput: false,
+        audioOutput: false,
+        videoInput: false,
+        videoOutput: false,
+      },
+      features: {
+        reasoning: false,
+        streaming: true,
+        functionCalling: false,
+        structuredOutputs: false,
+        fineTuning: false,
+      },
+      tools: {
+        webSearch: false,
+        imageGeneration: false,
+        fileSearch: false,
+        codeInterpreter: false,
+        hostedShell: false,
+        skills: false,
+        mcp: false,
+        applyPatch: false,
+        computerUse: false,
+        toolSearch: false,
+      },
+    }
+  );
 }
 
-/** Expands partial capability flags into the full capability shape used by the store. */
+/**
+ * Returns the capabilities declared by the built-in model catalog for a model id.
+ *
+ * These are support flags, not user toggles.
+ */
+export function getChatModelCapabilities(model = "", provider = "OpenAI"): ChatModelCapabilities {
+  const profile = getChatModelCapabilityProfile(model, provider);
+  const uiCapabilities: ChatModelCapabilities = {
+    imageRead: profile.modalities.imageInput,
+    webSearch: profile.tools.webSearch,
+    reasoning: profile.features.reasoning,
+    functionCalling: profile.features.functionCalling,
+  };
+  return normalizeModelCapabilities(uiCapabilities, { ...defaultModelCapabilities, ...uiCapabilities });
+}
+
+/**
+ * Expands partial capability flags into the full capability object used by UI
+ * and runtime helpers.
+ */
 export function normalizeModelCapabilities(
   capabilities: Partial<ChatModelCapabilities> | null | undefined = {},
   supported: ChatModelCapabilities = defaultModelCapabilities,
@@ -101,9 +160,16 @@ export function normalizeModelCapabilities(
   return next;
 }
 
-/** Resolves persisted capability override settings into the runtime enabled capability set. */
+/**
+ * Resolves the user's capability override settings against the catalog support
+ * flags for a model.
+ *
+ * In other words:
+ * - `supported` answers "can this model do it?"
+ * - the returned value answers "did the user leave it enabled?"
+ */
 export function resolveConfiguredModelCapabilities(
-  model: Partial<Pick<ModelFormDraft, "enabledCapabilitiesMode" | "enabledCapabilities">> | null | undefined = {},
+  model: Partial<Pick<LooseModelConfig, "enabledCapabilitiesMode" | "enabledCapabilities">> | null | undefined = {},
   supported: ChatModelCapabilities = defaultModelCapabilities,
 ): ChatModelCapabilities {
   if (model?.enabledCapabilitiesMode !== "custom") {
@@ -117,7 +183,10 @@ export function resolveConfiguredModelCapabilities(
   return next;
 }
 
-/** Applies per-turn toggles on top of a model's supported and enabled capabilities. */
+/**
+ * Applies per-turn toggles on top of a model's supported and user-enabled
+ * capabilities to get the effective capability set for one send action.
+ */
 export function getEffectiveCapabilities(
   supported: Partial<ChatModelCapabilities> | null | undefined,
   enabled: Partial<ChatModelCapabilities> | null | undefined,
@@ -136,55 +205,75 @@ export function getEffectiveCapabilities(
   return next;
 }
 
-/** Creates the immutable model snapshot stored with a conversation. */
+/**
+ * Creates the conversation model snapshot persisted with one chat session.
+ *
+ * The snapshot stores only the user-selected model identity/config needed to
+ * lock the conversation to a stable model. Derived runtime data is intentionally
+ * excluded and recomputed later from `modelConfig`.
+ */
 export function createConversationModelSnapshot(
-  model: (Partial<ModelFormDraft> & { modelType?: string }) | null | undefined,
+  model: LooseModelConfig | null | undefined,
 ): ConversationModelSnapshot | null {
   const runtimeModel = toRuntimeChatModelConfig(model);
   if (!runtimeModel?.name || !runtimeModel?.apiKey) return null;
 
   const modelId = getModelRequestId(runtimeModel);
   const modelConfigId = `${runtimeModel.provider}:${runtimeModel.name}:${modelId}:${getModelDeployment(runtimeModel) || modelId}`;
-  const supportedCapabilities = getChatModelCapabilities(modelId, runtimeModel.provider);
-  const enabledCapabilities = resolveConfiguredModelCapabilities(runtimeModel, supportedCapabilities);
-  const chatParamDefs = getModelChatParamDefs(runtimeModel);
-  const request = isAzureChatModel(runtimeModel)
-    ? {
-        endpoint: runtimeModel.endpoint,
-        deployment: runtimeModel.deployment,
-        apiVersion: runtimeModel.apiVersion,
-        model: modelId,
-      }
-    : {
-        baseURL: "baseURL" in runtimeModel ? runtimeModel.baseURL : "",
-        model: modelId,
-      };
 
   return {
     modelConfigId,
     catalogModelId: modelId,
     displayName: runtimeModel.name || modelId,
     provider: runtimeModel.provider,
-    request,
     apiKey: runtimeModel.apiKey,
-    supportedCapabilities,
-    enabledCapabilities,
-    chatParamDefs,
     modelConfig: runtimeModel,
   };
 }
 
-/** Restores a normalized chat model config from a saved conversation snapshot. */
+/** Restores canonical user model config from a saved conversation snapshot. */
 export function getModelFromSnapshot(snapshot: ConversationModelSnapshot | null | undefined): ChatModelConfig | null {
   return snapshot?.modelConfig ? toRuntimeChatModelConfig(snapshot.modelConfig) : null;
 }
 
-/** Returns display and protocol metadata for a chat model id. */
+/**
+ * Returns catalog-supported capabilities for the model bound to a conversation.
+ *
+ * This is derived on demand from the snapshot's `modelConfig`.
+ */
+export function getSnapshotSupportedCapabilities(snapshot: ConversationModelSnapshot | null | undefined): ChatModelCapabilities {
+  const model = getModelFromSnapshot(snapshot);
+  if (!model) return { ...defaultModelCapabilities };
+  return getChatModelCapabilities(model.model, model.provider);
+}
+
+/**
+ * Returns user-enabled capabilities for the model bound to a conversation.
+ *
+ * This combines the snapshot model config with catalog support flags.
+ */
+export function getSnapshotEnabledCapabilities(snapshot: ConversationModelSnapshot | null | undefined): ChatModelCapabilities {
+  const model = getModelFromSnapshot(snapshot);
+  if (!model) return { ...defaultModelCapabilities };
+  return resolveConfiguredModelCapabilities(model, getSnapshotSupportedCapabilities(snapshot));
+}
+
+/**
+ * Returns the request parameter definitions for the model bound to a conversation.
+ *
+ * This is derived from the snapshot model config and current model catalog.
+ */
+export function getSnapshotChatParamDefs(snapshot: ConversationModelSnapshot | null | undefined): ModelParamDef[] {
+  const model = getModelFromSnapshot(snapshot);
+  return model ? getModelChatParamDefs(model) : [];
+}
+
+/** Returns display/protocol metadata for a chat model id from the built-in catalog. */
 export function getChatModelInfo(model = "", provider = ""): ChatModelOption {
   const catalogItem = findChatModelCatalogItem(model, provider);
   if (catalogItem) {
-    const { value, name, isReasonModel, msgTypeVersion, capabilities } = catalogItem;
-    return { value, name, isReasonModel, msgTypeVersion, capabilities };
+    const { value, name, isReasonModel, msgTypeVersion, capabilityProfile, capabilities } = catalogItem;
+    return { value, name, isReasonModel, msgTypeVersion, capabilityProfile, capabilities };
   }
 
   return {
@@ -192,6 +281,7 @@ export function getChatModelInfo(model = "", provider = ""): ChatModelOption {
     name: model,
     isReasonModel: false,
     msgTypeVersion: "v2",
+    capabilityProfile: getChatModelCapabilityProfile(model, provider),
     capabilities: { webSearch: false, reasoning: false, imageRead: false },
   };
 }
@@ -207,15 +297,15 @@ function createDefaultChatSettings(): ChatModelSettings {
   };
 }
 
-function getChatParamPreset(key = ""): LooseParamDef | null {
+function getChatParamPreset(key = ""): LooseChatParamDef | null {
   return chatParamPresetList.find((item) => item.key === key) || null;
 }
 
-/** Merges a chat parameter definition with its built-in preset defaults. */
-export function normalizeChatParamDef(def: LooseParamDef = {}): ModelParamDef {
+/** Merges a raw chat parameter definition with the built-in preset defaults. */
+export function normalizeChatParamDef(def: LooseChatParamDef = {}): ModelParamDef {
   const preset = getChatParamPreset(def.key);
   const nextType = def.type || preset?.type || "string";
-  const nextDefaultValue = parseParamValue(nextType, def.defaultValue, cloneJson(preset?.defaultValue ?? ""));
+  const nextDefaultValue = parseParamValue<ParamDefaultValue>(nextType, def.defaultValue, cloneJson(preset?.defaultValue ?? ""));
 
   return {
     key: String(def.key || preset?.key || "").trim(),
@@ -231,17 +321,22 @@ export function normalizeChatParamDef(def: LooseParamDef = {}): ModelParamDef {
   };
 }
 
-/** Returns default chat parameter definitions for a catalog model id. */
+/** Returns default parameter definitions declared for a catalog model id. */
 export function getDefaultChatParamDefs(model = "", provider = ""): ModelParamDef[] {
   return getChatParamKeysForModel(model, provider).map((key) => normalizeChatParamDef({ key }));
 }
 
-/** Returns the request parameter keys declared by the chat model catalog. */
+/** Returns request parameter keys declared for a catalog model id. */
 export function getChatParamKeysForModel(model = "", provider = ""): string[] {
   return [...(findChatModelCatalogItem(model, provider)?.chatParamKeys || [])];
 }
 
-/** Returns normalized chat parameter definitions, honoring explicit custom definitions. */
+/**
+ * Returns normalized parameter definitions for a configured chat model.
+ *
+ * If the model carries custom parameter definitions they win; otherwise the
+ * built-in catalog definitions are used.
+ */
 export function getModelChatParamDefs(model: LooseModelConfig = {}): ModelParamDef[] {
   const provider = getLegacyProvider(model);
   const modelId = getModelRequestId(model);
@@ -255,7 +350,12 @@ export function getModelChatParamDefs(model: LooseModelConfig = {}): ModelParamD
     .filter((item) => item.key && supportedKeys.has(item.key) && !seen.has(item.key) && (seen.add(item.key), true));
 }
 
-/** Builds default chat settings from a model's parameter definitions. */
+/**
+ * Builds the initial settings object for a chat model.
+ *
+ * The result contains app-level defaults plus one entry for each resolved model
+ * request parameter definition.
+ */
 export function buildDefaultChatSettings(model: LooseModelConfig | null = null): ChatModelSettings {
   const settings = cloneJson(createDefaultChatSettings());
   const defs = getModelChatParamDefs(model || {});
@@ -267,7 +367,12 @@ export function buildDefaultChatSettings(model: LooseModelConfig | null = null):
   return settings;
 }
 
-/** Merges user chat settings with model defaults and migrates old token limit fields. */
+/**
+ * Merges saved chat settings with defaults derived from the active model.
+ *
+ * This is the main normalization step used before rendering settings UI and
+ * before building runtime request params.
+ */
 export function mergeChatSettingsWithModel(model: LooseModelConfig | null = null, settings: Partial<ChatModelSettings> = {}): ChatModelSettings {
   const defaultSettings = createDefaultChatSettings();
   const defs = getModelChatParamDefs(model || {});
@@ -304,11 +409,16 @@ export function mergeChatSettingsWithModel(model: LooseModelConfig | null = null
   return mergedSettings;
 }
 
-/** Builds provider request parameters for chat completion calls. */
-export function buildChatCompletionParams(model: LooseModelConfig | null = null, settings: Partial<ChatModelSettings> = {}): Record<string, unknown> {
+/**
+ * Builds provider request params from user chat settings.
+ *
+ * This is the boundary where user-facing settings are transformed into the
+ * runtime request body fields expected by provider clients.
+ */
+export function buildChatCompletionParams(model: LooseModelConfig | null = null, settings: Partial<ChatModelSettings> = {}): ChatCompletionParams {
   const defs = getModelChatParamDefs(model || {});
   const mergedSettings = mergeChatSettingsWithModel(model, settings);
-  const params: Record<string, unknown> = {};
+  const params: ChatCompletionParams = {};
 
   defs.forEach((item) => {
     const value = parseParamValue(item.type, mergedSettings[item.key], cloneJson(item.defaultValue));

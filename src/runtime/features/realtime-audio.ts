@@ -1,4 +1,4 @@
-import type { SelectOption } from "@/types/model";
+import type { SelectOption } from "@/types/chat";
 
 export interface RealtimeAudioRuntimeCapabilities {
   transport: "websocket";

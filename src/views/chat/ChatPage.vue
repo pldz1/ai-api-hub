@@ -18,7 +18,7 @@
 
 <script setup>
 import { onMounted } from "vue";
-import { getChatList, getChatInsTemplateList } from "@/services";
+import { getChatList } from "@/services";
 
 import SidebarCard from "@/views/chat/components/SidebarCard.vue";
 import ChatCard from "@/views/chat/components/ChatCard.vue";
@@ -27,7 +27,6 @@ import ImageModal from "@/views/chat/components/ImageModal.vue";
 
 onMounted(async () => {
   await getChatList();
-  await getChatInsTemplateList();
 });
 </script>
 

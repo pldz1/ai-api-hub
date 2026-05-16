@@ -227,11 +227,11 @@ async function handleDeleteImage(body: RequestBody): Promise<ApiResponse<null>> 
 }
 
 const ROUTES: Record<string, BrowserRouteHandler> = {
-  "/_api/login": handleLogin,
-  "/_api/user/getModels": handleGetModels,
-  "/_api/user/setModels": handleSetModels,
-  "/_api/user/getChatInsTemplateList": handleGetChatInsTemplateList,
-  "/_api/user/setChatInsTemplateList": handleSetChatInsTemplateList,
+  "/_api/workspace/login": handleLogin,
+  "/_api/workspace/getModels": handleGetModels,
+  "/_api/workspace/setModels": handleSetModels,
+  "/_api/workspace/getChatInsTemplateList": handleGetChatInsTemplateList,
+  "/_api/workspace/setChatInsTemplateList": handleSetChatInsTemplateList,
   "/_api/chat/getChatList": handleGetChatList,
   "/_api/chat/addChat": handleAddChat,
   "/_api/chat/deleteChat": handleDeleteChat,

@@ -3,7 +3,9 @@ import {
   chatTurnCapabilityKeys,
   createConversationModelSnapshot,
   defaultModelCapabilities,
+  getSnapshotEnabledCapabilities,
   getModelFromSnapshot,
+  getSnapshotSupportedCapabilities,
   mergeChatSettingsWithModel,
   normalizeModelCapabilities,
 } from "@/models";
@@ -27,8 +29,8 @@ function normalizeTokenUsage(data: Record<string, unknown> = {}) {
 }
 
 function createInputCapabilities(conversation = null) {
-  const supported = conversation?.modelSnapshot?.supportedCapabilities || defaultModelCapabilities;
-  const enabled = conversation?.modelSnapshot?.enabledCapabilities || defaultModelCapabilities;
+  const supported = getSnapshotSupportedCapabilities(conversation?.modelSnapshot) || defaultModelCapabilities;
+  const enabled = getSnapshotEnabledCapabilities(conversation?.modelSnapshot) || defaultModelCapabilities;
   const capabilities = normalizeModelCapabilities(enabled, supported);
   capabilities.reasoning = false;
   chatTurnCapabilityKeys.forEach((key) => {

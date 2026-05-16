@@ -11,7 +11,7 @@ import {
   isOpenAIChatModel,
 } from "@/models";
 import { tr } from "@/i18n";
-import type { ChatModelCapabilities, ChatModelConfig, ChatModelSettings, ConversationModelSnapshot } from "@/types/model";
+import type { ChatCompletionParams, ChatModelCapabilities, ChatModelConfig, ChatModelSettings, ConversationModelSnapshot } from "@/types/chat";
 import type { ChatCallback, ChatPromptMessage, PackedChatMessage } from "@/services/types";
 
 import { packMessageV1, packMessageV2 } from "./message";
@@ -128,7 +128,7 @@ export class ChatProxy {
     model: ChatModelConfig | null = null,
     settings: ChatModelSettings | null = null,
     turnCapabilities: Partial<ChatModelCapabilities> = {},
-  ): Record<string, unknown> {
+  ): ChatCompletionParams {
     const activeModel = model || this.resolveModel({});
     return {
       ...buildChatCompletionParams(activeModel, settings || store.state.curChatModelSettings),

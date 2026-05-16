@@ -1,6 +1,7 @@
 import { normalizeUsage } from "./usage";
 import { requestJson, streamJsonEvents, type JsonObject } from "./sse-client";
 import { tr } from "@/i18n";
+import type { ChatCompletionParams } from "@/types/chat";
 import type { ChatCallback, ChatProviderResponse, ChatRequestOptions, PackedChatMessage } from "@/services/types";
 
 function trimTrailingSlash(value = ""): string {
@@ -32,14 +33,14 @@ function messagesToResponsesInput(messages: PackedChatMessage[]): string {
     .join("\n\n");
 }
 
-function normalizeOpenAIParams(params: Record<string, unknown> = {}, stream = true): JsonObject {
+function normalizeOpenAIParams(params: ChatCompletionParams = {}, stream = true): JsonObject {
   const { stream: _stream, stream_options, webSearch, reasoningBoost, ...requestParams } = params || {};
   if (reasoningBoost && "reasoning_effort" in requestParams) requestParams.reasoning_effort = "high";
   if (stream && stream_options) requestParams.stream_options = stream_options;
   return requestParams;
 }
 
-function normalizeOpenAIResponsesParams(params: Record<string, unknown> = {}): JsonObject {
+function normalizeOpenAIResponsesParams(params: ChatCompletionParams = {}): JsonObject {
   const {
     stream: _stream,
     stream_options,
@@ -150,7 +151,7 @@ export class OpenAIClient {
     return resolveOpenAIUrl(this.baseURL, "/responses");
   }
 
-  getResponsesParams(messages: PackedChatMessage[], params: Record<string, unknown> = {}): JsonObject {
+  getResponsesParams(messages: PackedChatMessage[], params: ChatCompletionParams = {}): JsonObject {
     return {
       model: this.model,
       input: messagesToResponsesInput(messages),
@@ -161,7 +162,7 @@ export class OpenAIClient {
 
   async chatWithWebSearch(
     messages: PackedChatMessage[],
-    params: Record<string, unknown> = {},
+    params: ChatCompletionParams = {},
     callback: ChatCallback | null = null,
     options: ChatRequestOptions = {},
   ): Promise<void> {
@@ -192,7 +193,7 @@ export class OpenAIClient {
 
   async chatStream(
     messages: PackedChatMessage[],
-    params: Record<string, unknown>,
+    params: ChatCompletionParams,
     callback: ChatCallback | null = null,
     options: ChatRequestOptions = {},
   ): Promise<void> {
@@ -221,7 +222,7 @@ export class OpenAIClient {
     }
   }
 
-  async chatSync(messages: PackedChatMessage[], params: Record<string, unknown>, options: ChatRequestOptions = {}): Promise<ChatProviderResponse> {
+  async chatSync(messages: PackedChatMessage[], params: ChatCompletionParams, options: ChatRequestOptions = {}): Promise<ChatProviderResponse> {
     if (!this.apiKey || !this.model) return { flag: false, content: tr("toast.chatProviderNotReady"), reasoning_content: "" };
 
     try {
@@ -244,7 +245,7 @@ export class OpenAIClient {
 
   async chat(
     messages: PackedChatMessage[],
-    params: Record<string, unknown> = {},
+    params: ChatCompletionParams = {},
     callback: ChatCallback | null = null,
     options: ChatRequestOptions = {},
   ): Promise<void> {

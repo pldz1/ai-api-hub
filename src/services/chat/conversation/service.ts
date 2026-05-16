@@ -4,7 +4,7 @@ import { apiRequest } from "../../transport/request";
 import { dsAlert, isValidChatInfoArray, getUuid, generateRandomCname } from "@/utils";
 import { tr } from "@/i18n";
 import type { ChatListItem, ChatPromptMessage, StoredChatMessage } from "@/services/types";
-import type { ChatModelConfig, ChatModelSettings, ConversationModelSnapshot } from "@/types/model";
+import type { ChatModelConfig, ChatModelSettings, ConversationModelSnapshot, ExportedChatSessionSettings, PersistedChatSettingsPayload } from "@/types/chat";
 
 /**
  * Chat conversation service.
@@ -23,12 +23,9 @@ export const getAllMessageAPI = (cid: string) => apiRequest<StoredChatMessage[]>
 export const addMessageAPI = (cid: string, mid: string, message: string) => apiRequest<null>("post", "/_api/chat/addMessage", { cid, mid, message });
 export const deleteMessageAPI = (cid: string, mid: string) => apiRequest<null>("post", "/_api/chat/deleteMessage", { cid, mid });
 
-interface ChatSettingsPayload {
-  modelSnapshot: ConversationModelSnapshot | null;
-  settings: Partial<ChatModelSettings>;
-}
-
-function parseChatSettingsPayload(rawData: string | ChatSettingsPayload | Partial<ChatModelSettings> | null): ChatSettingsPayload {
+function parseChatSettingsPayload(
+  rawData: string | PersistedChatSettingsPayload | Partial<ChatModelSettings> | null,
+): { modelSnapshot: ConversationModelSnapshot | null; settings: Partial<ChatModelSettings> } {
   if (!rawData) return { modelSnapshot: null, settings: {} };
   const parsed = typeof rawData === "string" ? JSON.parse(rawData) : rawData;
   if (parsed && typeof parsed === "object" && "settings" in parsed) {
@@ -40,7 +37,7 @@ function parseChatSettingsPayload(rawData: string | ChatSettingsPayload | Partia
   return { modelSnapshot: null, settings: parsed || {} };
 }
 
-function buildChatSettingsPayload(cid: string): { version: 2; modelSnapshot: ConversationModelSnapshot | null; settings: ChatModelSettings } {
+export function buildChatSettingsPayload(cid: string): PersistedChatSettingsPayload {
   const conversation = store.state.chatConversationsById?.[cid] || store.state.curConversation;
   const settings = store.state.chatSettingsById?.[cid] || store.state.curChatModelSettings;
 
@@ -48,6 +45,21 @@ function buildChatSettingsPayload(cid: string): { version: 2; modelSnapshot: Con
     version: 2,
     modelSnapshot: conversation?.modelSnapshot || createConversationModelSnapshot(store.state.curChatModel),
     settings,
+  };
+}
+
+function normalizeChatSettingsPayload(
+  rawData: string | PersistedChatSettingsPayload | Partial<ChatModelSettings> | null,
+  fallbackModel: ChatModelConfig | null = null,
+): PersistedChatSettingsPayload {
+  const payload = parseChatSettingsPayload(rawData);
+  const modelSnapshot = payload.modelSnapshot || createConversationModelSnapshot(fallbackModel || store.state.curChatModel || store.state.models.chat?.[0] || null);
+  const model = getModelFromSnapshot(modelSnapshot) || fallbackModel || store.state.curChatModel;
+
+  return {
+    version: 2,
+    modelSnapshot,
+    settings: mergeChatSettingsWithModel(model, payload.settings || {}),
   };
 }
 
@@ -79,8 +91,8 @@ export async function getChatSettings(cid: string = store.state.curChatId): Prom
     return false;
   }
 
-  const payload = parseChatSettingsPayload(res.data);
   const fallbackModel = store.state.models.chat?.[0] || store.state.curChatModel;
+  const payload = normalizeChatSettingsPayload(res.data, fallbackModel);
   const modelSnapshot = payload.modelSnapshot || createConversationModelSnapshot(fallbackModel);
   const conversation = modelSnapshot
     ? {
@@ -89,8 +101,7 @@ export async function getChatSettings(cid: string = store.state.curChatId): Prom
         modelSnapshot,
       }
     : null;
-  const model = getModelFromSnapshot(modelSnapshot) || store.state.curChatModel;
-  const validData = mergeChatSettingsWithModel(model, payload.settings || {});
+  const validData = payload.settings;
 
   await store.dispatch("hydrateChatSession", {
     cid,
@@ -117,6 +128,69 @@ export async function setChatSettings(cid: string = store.state.curChatId): Prom
   }
 
   return true;
+}
+
+export async function exportChatSessionSettings(): Promise<ExportedChatSessionSettings[]> {
+  const chatListRes = await getChatListAPI();
+  if (!chatListRes.flag || !isValidChatInfoArray(chatListRes.data)) {
+    throw new Error(chatListRes.log || tr("toast.chatListInvalid"));
+  }
+
+  const fallbackModel = store.state.models.chat?.[0] || store.state.curChatModel;
+  const payloads = await Promise.all(
+    chatListRes.data.map(async (chat) => {
+      const settingsRes = await getChatSettingsAPI(chat.cid);
+      if (!settingsRes.flag) {
+        throw new Error(settingsRes.log || `Failed to fetch chat settings for ${chat.cid}`);
+      }
+
+      return {
+        cid: chat.cid,
+        cname: chat.cname,
+        payload: normalizeChatSettingsPayload(settingsRes.data, fallbackModel),
+      } satisfies ExportedChatSessionSettings;
+    }),
+  );
+
+  return payloads;
+}
+
+export async function importChatSessionSettings(entries: ExportedChatSessionSettings[] = []): Promise<void> {
+  if (!Array.isArray(entries) || entries.length === 0) return;
+
+  const existingChatListRes = await getChatListAPI();
+  const existingChats = existingChatListRes.flag && isValidChatInfoArray(existingChatListRes.data) ? existingChatListRes.data : [];
+  const existingChatMap = new Map(existingChats.map((item) => [item.cid, item]));
+  const fallbackModel = store.state.models.chat?.[0] || store.state.curChatModel;
+
+  for (const entry of entries) {
+    if (!entry?.cid || !entry?.cname || !entry?.payload) continue;
+
+    if (!existingChatMap.has(entry.cid)) {
+      const addRes = await addChatAPI(entry.cid, entry.cname);
+      if (!addRes.flag) {
+        throw new Error(addRes.log || `Failed to create chat ${entry.cid}`);
+      }
+      existingChatMap.set(entry.cid, { cid: entry.cid, cname: entry.cname });
+    } else if (existingChatMap.get(entry.cid)?.cname !== entry.cname) {
+      const renameRes = await renameChatAPI(entry.cid, entry.cname);
+      if (!renameRes.flag) {
+        throw new Error(renameRes.log || `Failed to rename chat ${entry.cid}`);
+      }
+      existingChatMap.set(entry.cid, { cid: entry.cid, cname: entry.cname });
+    }
+
+    const normalizedPayload = normalizeChatSettingsPayload(entry.payload, fallbackModel);
+    const setRes = await setChatSettingsAPI(entry.cid, JSON.stringify(normalizedPayload));
+    if (!setRes.flag) {
+      throw new Error(setRes.log || `Failed to save chat settings for ${entry.cid}`);
+    }
+  }
+
+  await getChatList();
+  if (store.state.curChatId && existingChatMap.has(store.state.curChatId)) {
+    await getChatSettings(store.state.curChatId);
+  }
 }
 
 /**

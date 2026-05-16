@@ -1,19 +1,77 @@
-import type { ChatModelCapabilities, ChatModelOption, ModelProvider } from "@/types";
+import type { ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelOption, ChatModelProvider } from "@/types/chat";
 
 export type ChatModelCatalogItem = ChatModelOption & {
-  provider?: ModelProvider;
+  provider?: ChatModelProvider;
   chatParamKeys: string[];
 };
 
 export type ChatModelCatalogInput = {
   value: string;
-  provider?: ModelProvider;
+  provider?: ChatModelProvider;
   capabilities: Pick<ChatModelCapabilities, "webSearch" | "reasoning" | "imageRead">;
+  capabilityProfile?: Partial<{
+    modalities: Partial<ChatModelCapabilityProfile["modalities"]>;
+    features: Partial<ChatModelCapabilityProfile["features"]>;
+    tools: Partial<ChatModelCapabilityProfile["tools"]>;
+  }>;
   chatParamKeys: string[];
   msgTypeVersion?: "v1" | "v2";
 };
 
-export const chatModelCatalog: ChatModelCatalogItem[] = [
+function buildChatModelCapabilityProfile(
+  capabilities: ChatModelCatalogInput["capabilities"],
+  overrides: ChatModelCatalogInput["capabilityProfile"] = {},
+): ChatModelCapabilityProfile {
+  return {
+    modalities: {
+      textInput: true,
+      textOutput: true,
+      imageInput: Boolean(capabilities.imageRead),
+      imageOutput: false,
+      audioInput: false,
+      audioOutput: false,
+      videoInput: false,
+      videoOutput: false,
+      ...(overrides.modalities || {}),
+    },
+    features: {
+      reasoning: Boolean(capabilities.reasoning),
+      streaming: true,
+      functionCalling: false,
+      structuredOutputs: false,
+      fineTuning: false,
+      ...(overrides.features || {}),
+    },
+    tools: {
+      webSearch: Boolean(capabilities.webSearch),
+      imageGeneration: false,
+      fileSearch: false,
+      codeInterpreter: false,
+      hostedShell: false,
+      skills: false,
+      mcp: false,
+      applyPatch: false,
+      computerUse: false,
+      toolSearch: false,
+      ...(overrides.tools || {}),
+    },
+  };
+}
+
+function toChatModelCatalogItem(input: ChatModelCatalogInput & Omit<ChatModelCatalogItem, "capabilityProfile">): ChatModelCatalogItem {
+  const capabilityProfile = buildChatModelCapabilityProfile(input.capabilities, input.capabilityProfile);
+  return {
+    ...input,
+    capabilityProfile,
+    capabilities: {
+      imageRead: capabilityProfile.modalities.imageInput,
+      webSearch: capabilityProfile.tools.webSearch,
+      reasoning: capabilityProfile.features.reasoning,
+    },
+  };
+}
+
+const chatModelCatalogInput: (ChatModelCatalogInput & Omit<ChatModelCatalogItem, "capabilityProfile">)[] = [
   {
     value: "gpt-5.5",
     name: "gpt-5.5",
@@ -199,3 +257,5 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     chatParamKeys: ["max_tokens", "temperature", "top_p", "stop"],
   },
 ];
+
+export const chatModelCatalog: ChatModelCatalogItem[] = chatModelCatalogInput.map((item) => toChatModelCatalogItem(item));

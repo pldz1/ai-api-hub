@@ -1,4 +1,5 @@
 import { OpenAIClient } from "./openai";
+import type { ChatCompletionParams } from "@/types/chat";
 import type { ChatCallback, ChatRequestOptions, PackedChatMessage } from "@/services/types";
 
 function flattenLegacyMessages(messages: PackedChatMessage[]): PackedChatMessage[] {
@@ -15,7 +16,7 @@ function flattenLegacyMessages(messages: PackedChatMessage[]): PackedChatMessage
 export class DeepSeekClient extends OpenAIClient {
   async chat(
     messages: PackedChatMessage[],
-    params: Record<string, unknown> = {},
+    params: ChatCompletionParams = {},
     callback: ChatCallback | null = null,
     options: ChatRequestOptions = {},
   ): Promise<void> {

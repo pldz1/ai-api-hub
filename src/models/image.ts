@@ -1,53 +1,60 @@
-import type { ImageModelConfig, ImageModelSettings, ImageOperation, ModelParamDef } from "@/types/model";
+import type { ImageModelConfig, ImageModelSettings, ImageOperation, ModelParamDef } from "@/types/image";
 import { defImageModelSeting, imageParamPresetList } from "@/constants/image-model";
 import {
   cloneJson,
+  getLegacyProvider,
   getModelRequestId,
   hasMeaningfulParamValue,
-  normalizeModelFormDraft,
   parseParamValue,
   type LooseModelConfig,
   type LooseParamDef,
 } from "./common";
 
+/** Returns the built-in preset definition for one image parameter key. */
 function getImageParamPreset(key = ""): LooseParamDef | null {
   return imageParamPresetList.find((item) => item.key === key) || null;
 }
 
+/** Returns whether a user image model config should use Azure OpenAI routing. */
 export function isAzureImageModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "Azure OpenAI" } {
-  return normalizeModelFormDraft(model).provider === "Azure OpenAI";
+  return getLegacyProvider(model) === "Azure OpenAI";
 }
 
-/** Coerces persisted image config into the runtime image model shape. */
+/**
+ * Normalizes loose/legacy image model data into the canonical user config shape.
+ *
+ * Like `toRuntimeChatModelConfig`, this still returns user configuration rather
+ * than low-level HTTP/runtime request args.
+ */
 export function toRuntimeImageModelConfig(model: LooseModelConfig | null | undefined = {}, imageOperation: ImageOperation = "generation"): ImageModelConfig {
-  const draft = normalizeModelFormDraft(model);
-  const provider = draft.provider === "Azure OpenAI" ? draft.provider : "OpenAI";
-  const modelId = getModelRequestId(draft);
+  const data = model || {};
+  const provider = getLegacyProvider(data) === "Azure OpenAI" ? "Azure OpenAI" : "OpenAI";
+  const modelId = getModelRequestId(data);
 
   if (provider === "Azure OpenAI") {
     return {
-      name: draft.name,
+      name: String(data.name || "").trim(),
       provider,
-      endpoint: draft.endpoint,
-      deployment: draft.deployment,
-      apiVersion: draft.apiVersion,
-      apiKey: draft.apiKey,
+      endpoint: String(data.endpoint || "").trim(),
+      deployment: String(data.deployment || "").trim(),
+      apiVersion: String(data.apiVersion || "").trim(),
+      apiKey: String(data.apiKey || "").trim(),
       model: modelId,
       imageOperation,
     };
   }
 
   return {
-    name: draft.name,
+    name: String(data.name || "").trim(),
     provider,
-    baseURL: draft.baseURL,
-    apiKey: draft.apiKey,
+    baseURL: String(data.baseURL || "").trim(),
+    apiKey: String(data.apiKey || "").trim(),
     model: modelId,
     imageOperation,
   };
 }
 
-/** Merges an image parameter definition with its built-in preset defaults. */
+/** Merges a raw image parameter definition with the built-in preset defaults. */
 export function normalizeImageParamDef(def: LooseParamDef = {}): ModelParamDef {
   const preset = getImageParamPreset(def.key);
   const nextType = def.type || preset?.type || "string";
@@ -68,17 +75,22 @@ export function normalizeImageParamDef(def: LooseParamDef = {}): ModelParamDef {
   };
 }
 
-/** Returns default image generation parameter definitions. */
+/** Returns default parameter definitions for image generation models. */
 export function getDefaultImageParamDefs(): ModelParamDef[] {
   return ["quality", "output_format"].map((key) => normalizeImageParamDef({ key }));
 }
 
-/** Returns default image edit parameter definitions. */
+/** Returns default parameter definitions for image edit models. */
 export function getDefaultImageEditParamDefs(): ModelParamDef[] {
   return ["quality", "output_format", "image", "mask"].map((key) => normalizeImageParamDef({ key }));
 }
 
-/** Returns normalized image parameter definitions for a configured image model. */
+/**
+ * Returns normalized parameter definitions for a configured image model.
+ *
+ * Edit models are guaranteed to include image-edit specific parameters such as
+ * `image` and `mask`.
+ */
 export function getModelImageParamDefs(model: LooseModelConfig = {}): ModelParamDef[] {
   const defaultDefs = model?.imageOperation === "edit" ? getDefaultImageEditParamDefs() : getDefaultImageParamDefs();
   const supportedKeys = new Set(imageParamPresetList.map((item) => item.key).filter(Boolean));
@@ -95,7 +107,10 @@ export function getModelImageParamDefs(model: LooseModelConfig = {}): ModelParam
   return defs.map((item) => normalizeImageParamDef(item)).filter((item) => item.key && !seen.has(item.key) && (seen.add(item.key), true));
 }
 
-/** Builds default image settings from a model's parameter definitions. */
+/**
+ * Builds the initial settings object for an image model from its resolved
+ * parameter definitions.
+ */
 export function buildDefaultImageSettings(model: LooseModelConfig | null = null): ImageModelSettings {
   const settings = cloneJson(defImageModelSeting);
   const defs = getModelImageParamDefs(model || {});
@@ -107,7 +122,9 @@ export function buildDefaultImageSettings(model: LooseModelConfig | null = null)
   return settings;
 }
 
-/** Merges user image settings with model defaults and parses parameter values. */
+/**
+ * Merges saved image settings with defaults derived from the active image model.
+ */
 export function mergeImageSettingsWithModel(model: LooseModelConfig | null = null, settings: Partial<ImageModelSettings> = {}): ImageModelSettings {
   const coreSettings: Partial<ImageModelSettings> = {
     model: settings.model ?? null,
@@ -136,7 +153,12 @@ export function mergeImageSettingsWithModel(model: LooseModelConfig | null = nul
   return mergedSettings;
 }
 
-/** Builds provider request parameters for image generation or edit calls. */
+/**
+ * Builds provider request params from user image settings.
+ *
+ * This is the image-side boundary where user settings become runtime request
+ * body fields.
+ */
 export function buildImageGenerationParams(model: LooseModelConfig | null = null, settings: Partial<ImageModelSettings> = {}): Record<string, unknown> {
   const defs = getModelImageParamDefs(model || {});
   const mergedSettings = mergeImageSettingsWithModel(model, settings);

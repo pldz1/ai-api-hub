@@ -1,4 +1,3 @@
-import { defaultModelFormDraft } from "@/constants";
 import { sanitizeModelSettings, toRuntimeChatModelConfig } from "@/models";
 
 const USER_SESSION_KEY = "ai.api.hub.workspace-session.v1";
@@ -73,7 +72,7 @@ export const UserState = {
   /**
    * 当前的对话模型信息
    */
-  curChatModel: structuredClone(defaultModelFormDraft),
+  curChatModel: null,
 
   /**
    * 当前工作区有的对话指令
@@ -127,7 +126,7 @@ export const UserState = {
    * 设置当前对话模型的信息
    */
   setCurChatModel(data) {
-    this.curChatModel = data ? toRuntimeChatModelConfig(data) : structuredClone(defaultModelFormDraft);
+    this.curChatModel = data ? toRuntimeChatModelConfig(data) : null;
   },
 
   /**

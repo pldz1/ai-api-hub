@@ -1,6 +1,7 @@
 import { normalizeUsage } from "./usage";
 import { requestJson, streamJsonEvents, type JsonObject } from "./sse-client";
 import { tr } from "@/i18n";
+import type { ChatCompletionParams } from "@/types/chat";
 import type { ChatCallback, ChatProviderResponse, ChatRequestOptions, PackedChatMessage } from "@/services/types";
 
 type AnthropicProviderKind = "Anthropic" | "Azure AI Foundry";
@@ -140,7 +141,7 @@ export class AnthropicClient {
     };
   }
 
-  buildPayload(messages: PackedChatMessage[], params: Record<string, unknown> = {}, stream = false): JsonObject {
+  buildPayload(messages: PackedChatMessage[], params: ChatCompletionParams = {}, stream = false): JsonObject {
     const system = messages
       .filter((message) => message.role === "system")
       .map((message) => getTextFromContent(message.content))
@@ -169,7 +170,7 @@ export class AnthropicClient {
 
   async chatStream(
     messages: PackedChatMessage[],
-    params: Record<string, unknown>,
+    params: ChatCompletionParams,
     callback: ChatCallback | null = null,
     options: ChatRequestOptions = {},
   ): Promise<void> {
@@ -194,7 +195,7 @@ export class AnthropicClient {
     }
   }
 
-  async chatSync(messages: PackedChatMessage[], params: Record<string, unknown>, options: ChatRequestOptions = {}): Promise<ChatProviderResponse> {
+  async chatSync(messages: PackedChatMessage[], params: ChatCompletionParams, options: ChatRequestOptions = {}): Promise<ChatProviderResponse> {
     if (!this.apiKey || !this.model) return { flag: false, content: tr("toast.chatProviderNotReady"), reasoning_content: "" };
 
     try {
@@ -217,7 +218,7 @@ export class AnthropicClient {
 
   async chat(
     messages: PackedChatMessage[],
-    params: Record<string, unknown> = {},
+    params: ChatCompletionParams = {},
     callback: ChatCallback | null = null,
     options: ChatRequestOptions = {},
   ): Promise<void> {

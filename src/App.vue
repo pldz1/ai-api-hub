@@ -16,14 +16,13 @@
 import { onMounted } from "vue";
 import { useStore } from "vuex";
 import AppFooter from "@/components/AppFooter.vue";
-import { getModels, getChatInsTemplateList, getImageList } from "@/services";
+import { getModels, getImageList } from "@/services";
 
 const store = useStore();
 
 onMounted(async () => {
   await store.dispatch("login");
   await getModels();
-  await getChatInsTemplateList();
   await getImageList();
 });
 </script>

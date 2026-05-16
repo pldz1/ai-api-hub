@@ -1,6 +1,7 @@
-import type { ModelFormDraft } from "@/types/model";
+import type { ChatModelEditorState } from "@/types/chat";
+import type { ImageModelEditorState } from "@/types/image";
 
-export const defaultModelFormDraft: ModelFormDraft = {
+export const defaultChatModelEditorState: ChatModelEditorState = {
   name: "",
   provider: "",
   baseURL: "",
@@ -9,7 +10,18 @@ export const defaultModelFormDraft: ModelFormDraft = {
   model: "",
   deployment: "",
   apiVersion: "",
-  imageOperation: "",
   enabledCapabilitiesMode: "inherit",
   enabledCapabilities: {},
+};
+
+export const defaultImageModelEditorState: ImageModelEditorState = {
+  name: "",
+  provider: "",
+  baseURL: "",
+  endpoint: "",
+  apiKey: "",
+  model: "",
+  deployment: "",
+  apiVersion: "",
+  imageOperation: "generation",
 };

@@ -57,12 +57,7 @@
           @update:models="updateImageEditModels"
         />
 
-        <AppSettings
-          v-if="activeTab === 'app'"
-          @export-settings="exportSettings"
-          @import-settings="importSettings"
-          @go-home="goLogin"
-        />
+        <AppSettings v-if="activeTab === 'app'" @export-settings="exportSettings" @import-settings="importSettings" @go-home="goLogin" />
       </section>
     </main>
   </div>
@@ -77,10 +72,12 @@ import ChatModels from "@/views/setting/components/ChatModels.vue";
 import ImageModels from "@/views/setting/components/ImageModels.vue";
 import ChatInsTemplateList from "@/views/setting/components/ChatInsTemplateList.vue";
 import AppSettings from "@/views/setting/components/AppSettings.vue";
-import { migratePersistedModelSettings, sanitizeModelSettings } from "@/models";
-import { getModels, getChatInsTemplateList, setModels, setChatInsTemplateList } from "@/services";
+import { buildPersistedModelSettingsPayload, migratePersistedModelSettings } from "@/models";
+import { exportChatSessionSettings, getModels, getChatInsTemplateList, importChatSessionSettings, setModels, setChatInsTemplateList } from "@/services";
 import { uploadJsonFile, isValidSettingsImport, getSettingsImportValidationError, isSettingsImportPackage, dsAlert } from "@/utils";
-import type { ChatModelConfig, ImageModelConfig, ModelSettings } from "@/types/model";
+import type { ChatModelConfig } from "@/types/chat";
+import type { ImageModelConfig, PersistedModelSettingsPayload, SettingsImportPayload } from "@/types/image";
+import type { ModelSettings } from "@/types/settings";
 
 const store = useStore();
 const router = useRouter();
@@ -112,14 +109,6 @@ const settingGroups = computed(() => [
 
 const activeTab = ref("chat-models");
 const emptyModelSettings = (): ModelSettings => ({ chat: [], imageGeneration: [], imageEdit: [], image: [] });
-
-interface ImportedSettingsPackage {
-  schema?: string;
-  version?: string;
-  exportedAt?: string;
-  models: Partial<ModelSettings>;
-  templates?: unknown[];
-}
 
 interface UploadedJsonParseError {
   __jsonParseError: string;
@@ -247,12 +236,14 @@ async function persistDraft() {
 }
 
 async function exportSettings() {
-  const payload: ImportedSettingsPackage = {
+  const chatSessions = await exportChatSessionSettings();
+  const payload: SettingsImportPayload = {
     schema: "ai-api-hub",
     version: "0.0.1",
     exportedAt: new Date().toISOString(),
-    models: sanitizeModelSettings(clonePlainData(draftModels.value)) as Partial<ModelSettings>,
+    models: buildPersistedModelSettingsPayload(clonePlainData(draftModels.value)),
     templates: clonePlainData(draftTemplates.value),
+    chatSessions,
   };
   const jsonStr = JSON.stringify(payload, null, 2);
   const blob = new Blob([jsonStr], { type: "application/json" });
@@ -299,13 +290,16 @@ async function importSettings() {
   }
 
   if (isSettingsImportPackage(jsonData)) {
-    const importedPackage = clonePlainData(jsonData) as ImportedSettingsPackage;
+    const importedPackage = clonePlainData(jsonData) as SettingsImportPayload;
     draftModels.value = migratePersistedModelSettings(importedPackage.models);
     if (Array.isArray(importedPackage.templates)) {
       draftTemplates.value = clonePlainData(importedPackage.templates);
     }
+    if (Array.isArray(importedPackage.chatSessions)) {
+      await importChatSessionSettings(importedPackage.chatSessions);
+    }
   } else {
-    draftModels.value = migratePersistedModelSettings(clonePlainData(jsonData) as ModelSettings);
+    draftModels.value = migratePersistedModelSettings(clonePlainData(jsonData) as PersistedModelSettingsPayload);
   }
 
   dsAlert({ type: "success", message: t("user.importSuccess") });

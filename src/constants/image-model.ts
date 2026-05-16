@@ -1,4 +1,4 @@
-import type { ImageModelSettings, ModelParamDef, ModelProvider, SelectOption } from "@/types/model";
+import type { ImageModelSettings, ImageModelProvider, ModelParamDef, SelectOption } from "@/types/image";
 
 type LooseParamDef = Partial<ModelParamDef> & { key?: string };
 
@@ -62,7 +62,7 @@ export const imageModelTypeList: SelectOption[] = [
   { value: "dall-e-3", name: "dall-e-3" },
 ];
 
-export const imageModelProviderList: SelectOption<ModelProvider>[] = [
+export const imageModelProviderList: SelectOption<ImageModelProvider>[] = [
   { value: "OpenAI", name: "OpenAI" },
   { value: "Azure OpenAI", name: "Azure OpenAI" },
 ];

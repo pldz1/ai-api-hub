@@ -27,7 +27,6 @@
     <div class="comphb-actions">
       <LanguageController />
       <ThemeController class="comphb-theme-controller"></ThemeController>
-      <AvatarCard class="comphb-avatar-pos" />
     </div>
   </div>
 </template>
@@ -42,7 +41,6 @@ import navImageIcon from "@/assets/svg/navImage24.svg";
 import navSettingsIcon from "@/assets/svg/navSettings24.svg";
 import ThemeController from "@/components/ThemeController.vue";
 import LanguageController from "@/components/LanguageController.vue";
-import AvatarCard from "@/components/AvatarCard.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 
 const props = defineProps({

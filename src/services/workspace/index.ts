@@ -1,0 +1,122 @@
+import store from "@/store";
+import { tr } from "@/i18n";
+import { buildPersistedModelSettingsPayload, migratePersistedModelSettings } from "@/models";
+import { dsAlert, getChatTemplateListValidationError, getModelSettingValidationError } from "@/utils";
+import { apiRequest } from "../transport/request";
+import type { ApiResponse } from "@/services/types";
+import type { ModelSettings } from "@/types/settings";
+
+type ChatInstructionTemplate = {
+  id: string;
+  name: string;
+  value: string;
+};
+
+const emptyModelSettings = (): ModelSettings => ({
+  chat: [],
+  imageGeneration: [],
+  imageEdit: [],
+  image: [],
+});
+
+export const loginAPI = (): Promise<ApiResponse<null>> => apiRequest("post", "/_api/workspace/login", {});
+export const getModelsAPI = (): Promise<ApiResponse<string>> => apiRequest("post", "/_api/workspace/getModels", {});
+export const setModelsAPI = (data: string): Promise<ApiResponse<null>> => apiRequest("post", "/_api/workspace/setModels", { data });
+export const getChatInsTemplateListAPI = (): Promise<ApiResponse<string>> => apiRequest("post", "/_api/workspace/getChatInsTemplateList", {});
+export const setChatInsTemplateListAPI = (data: string): Promise<ApiResponse<null>> =>
+  apiRequest("post", "/_api/workspace/setChatInsTemplateList", { data });
+
+function parseStoredJson<T>(raw: string, fallback: T): T {
+  if (!raw) return fallback;
+  return JSON.parse(raw) as T;
+}
+
+export async function login(): Promise<boolean> {
+  const res = await loginAPI();
+  if (!res.flag) {
+    dsAlert({ type: "error", message: tr("toast.loginFailed", { error: res.log }) });
+    return false;
+  }
+
+  await store.dispatch("login");
+  return true;
+}
+
+export async function getModels(): Promise<boolean> {
+  const res = await getModelsAPI();
+  if (!res.flag) {
+    await store.dispatch("setModels", emptyModelSettings());
+    dsAlert({ type: "error", message: tr("toast.userModelsFetchFailed", { error: res.log }) });
+    return false;
+  }
+
+  try {
+    const parsed = parseStoredJson<unknown>(res.data, emptyModelSettings());
+    const validationError = getModelSettingValidationError(parsed);
+    if (validationError) {
+      await store.dispatch("setModels", emptyModelSettings());
+      dsAlert({ type: "error", message: tr("toast.userModelsInvalid", { error: validationError }) });
+      return false;
+    }
+
+    await store.dispatch("setModels", migratePersistedModelSettings(parsed as ModelSettings));
+    return true;
+  } catch (error) {
+    await store.dispatch("setModels", emptyModelSettings());
+    dsAlert({ type: "error", message: tr("toast.userModelsInvalid", { error: error instanceof Error ? error.message : String(error) }) });
+    return false;
+  }
+}
+
+export async function setModels(models: ModelSettings = store.state.models): Promise<boolean> {
+  const payload = buildPersistedModelSettingsPayload(models);
+  const res = await setModelsAPI(JSON.stringify(payload));
+  if (!res.flag) {
+    dsAlert({ type: "error", message: tr("toast.userModelsSaveFailed", { error: res.log }) });
+    return false;
+  }
+
+  return true;
+}
+
+export async function getChatInsTemplateList(): Promise<boolean> {
+  const res = await getChatInsTemplateListAPI();
+  if (!res.flag) {
+    await store.dispatch("setChatInsTemplateList", []);
+    dsAlert({ type: "error", message: tr("toast.userTemplatesFetchFailed", { error: res.log }) });
+    return false;
+  }
+
+  try {
+    const templates = parseStoredJson<ChatInstructionTemplate[]>(res.data, []);
+    const validationError = getChatTemplateListValidationError(templates);
+    if (validationError) {
+      await store.dispatch("setChatInsTemplateList", []);
+      dsAlert({ type: "error", message: tr("toast.userTemplatesFetchFailed", { error: validationError }) });
+      return false;
+    }
+
+    await store.dispatch("setChatInsTemplateList", templates);
+    return true;
+  } catch (error) {
+    await store.dispatch("setChatInsTemplateList", []);
+    dsAlert({ type: "error", message: tr("toast.userTemplatesFetchFailed", { error: error instanceof Error ? error.message : String(error) }) });
+    return false;
+  }
+}
+
+export async function setChatInsTemplateList(templates: unknown[] = store.state.chatInsTemplateList): Promise<boolean> {
+  const validationError = getChatTemplateListValidationError(templates);
+  if (validationError) {
+    dsAlert({ type: "error", message: tr("toast.userTemplatesSaveFailed", { error: validationError }) });
+    return false;
+  }
+
+  const res = await setChatInsTemplateListAPI(JSON.stringify(templates as ChatInstructionTemplate[]));
+  if (!res.flag) {
+    dsAlert({ type: "error", message: tr("toast.userTemplatesSaveFailed", { error: res.log }) });
+    return false;
+  }
+
+  return true;
+}

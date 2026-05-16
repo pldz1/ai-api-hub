@@ -1,18 +1,43 @@
-import type { ChatModelConfig, ImageModelConfig, ImageOperation, ModelFormDraft, ModelSettings } from "@/types/model";
+import type {
+  ImageModelConfig,
+  ImageOperation,
+  ImageProviderPayload,
+  PersistedModelSettingsPayload,
+} from "@/types/image";
+import type { ChatModelCapabilities, ChatModelConfig, ChatProviderPayload } from "@/types/chat";
+import type { ModelSettings } from "@/types/settings";
 import { cloneJson, getModelRequestId, sanitizeModelCapabilityOverrides, type LooseModelConfig, type LooseModelSettings } from "./common";
 import { isAzureChatModel, toRuntimeChatModelConfig } from "./chat";
 import { toRuntimeImageModelConfig } from "./image";
 
-function hasCapabilityOverrides(enabledCapabilities: Partial<ModelFormDraft["enabledCapabilities"]> | null | undefined = {}): boolean {
+type ChatCapabilityConfigInput = {
+  enabledCapabilitiesMode?: "inherit" | "custom";
+  enabledCapabilities?: Partial<ChatModelCapabilities>;
+};
+
+/** Returns whether the user explicitly saved any chat capability overrides. */
+function hasCapabilityOverrides(enabledCapabilities: ChatCapabilityConfigInput["enabledCapabilities"] | null | undefined = {}): boolean {
   return Boolean(enabledCapabilities && Object.keys(enabledCapabilities).length > 0);
 }
 
-function getCapabilityOverrideMode(model: Partial<Pick<ModelFormDraft, "enabledCapabilitiesMode" | "enabledCapabilities">> | null | undefined = {}): "inherit" | "custom" {
+/**
+ * Resolves the persisted capability override mode from loose settings data.
+ *
+ * Older data may omit `enabledCapabilitiesMode` and only persist the flags
+ * themselves, so this helper normalizes both cases.
+ */
+function getCapabilityOverrideMode(model: ChatCapabilityConfigInput | null | undefined = {}): "inherit" | "custom" {
   if (model?.enabledCapabilitiesMode === "custom") return "custom";
   return hasCapabilityOverrides(model?.enabledCapabilities) ? "custom" : "inherit";
 }
 
-function getPersistedCapabilityFields(model: Partial<Pick<ModelFormDraft, "enabledCapabilitiesMode" | "enabledCapabilities">> | null | undefined = {}) {
+/**
+ * Builds the persisted capability override fields for a chat model payload.
+ *
+ * These fields are user configuration and should be stored/exported, unlike
+ * runtime capability resolution results.
+ */
+function getPersistedCapabilityFields(model: ChatCapabilityConfigInput | null | undefined = {}) {
   if (getCapabilityOverrideMode(model) !== "custom") return {};
   return {
     enabledCapabilitiesMode: "custom" as const,
@@ -20,6 +45,12 @@ function getPersistedCapabilityFields(model: Partial<Pick<ModelFormDraft, "enabl
   };
 }
 
+/**
+ * Sanitizes a chat model config before putting it back into store/export shape.
+ *
+ * This removes any transient extras and keeps only the persisted user-facing
+ * fields for the selected provider.
+ */
 function sanitizeChatModelConfig(model: ChatModelConfig): ChatModelConfig {
   return {
     name: model.name,
@@ -34,6 +65,7 @@ function sanitizeChatModelConfig(model: ChatModelConfig): ChatModelConfig {
   } as ChatModelConfig;
 }
 
+/** Same as `sanitizeChatModelConfig`, but for image model payloads. */
 function sanitizeImageModelConfig(model: ImageModelConfig): ImageModelConfig {
   return {
     name: model.name,
@@ -48,6 +80,12 @@ function sanitizeImageModelConfig(model: ImageModelConfig): ImageModelConfig {
   } as ImageModelConfig;
 }
 
+/**
+ * Normalizes model settings into the canonical in-memory user config shape.
+ *
+ * Use this when reading possibly-loose data into the store. The result is still
+ * user configuration, not runtime provider arguments.
+ */
 export function sanitizeModelSettings(data: Partial<ModelSettings> | null | undefined = {}): ModelSettings {
   const normalized = data || {};
   const legacyImageModels = Array.isArray(normalized.image) ? normalized.image : [];
@@ -62,7 +100,11 @@ export function sanitizeModelSettings(data: Partial<ModelSettings> | null | unde
   };
 }
 
-/** Migrates legacy persisted model settings into the current persistence schema. */
+/**
+ * Migrates legacy persisted settings JSON into the current in-memory model shape.
+ *
+ * This is the main read-path bridge for old exports or older backend payloads.
+ */
 export function migratePersistedModelSettings(data: LooseModelSettings | null | undefined = {}): ModelSettings {
   const migrateModelEntries = (items: unknown[] = [], kind = "", imageOperation: ImageOperation | "" = "") =>
     (Array.isArray(items) ? items : []).map((item) => {
@@ -84,56 +126,75 @@ export function migratePersistedModelSettings(data: LooseModelSettings | null | 
   });
 }
 
-function buildPersistedChatModelConfig(model: Partial<ModelFormDraft> | ChatModelConfig): Record<string, unknown> {
+/**
+ * Builds the persisted chat payload written to storage/export for one model.
+ *
+ * This function is intentionally the inverse of the loose read/normalize path:
+ * it takes current user config and emits only stable persisted fields.
+ */
+function buildPersistedChatModelConfig(model: LooseModelConfig | ChatModelConfig): ChatProviderPayload {
   const runtimeModel = toRuntimeChatModelConfig(model as LooseModelConfig);
-  const payload: Record<string, unknown> = {
+  const basePayload = {
     name: runtimeModel.name,
     provider: runtimeModel.provider,
     apiKey: runtimeModel.apiKey,
     model: getModelRequestId(runtimeModel),
+    ...getPersistedCapabilityFields(runtimeModel),
   };
 
   if (isAzureChatModel(runtimeModel)) {
-    payload.endpoint = runtimeModel.endpoint;
-    payload.deployment = runtimeModel.deployment;
-    payload.apiVersion = runtimeModel.apiVersion;
-  } else {
-    payload.baseURL = "baseURL" in runtimeModel ? runtimeModel.baseURL : "";
+    return {
+      ...basePayload,
+      provider: "Azure OpenAI",
+      endpoint: runtimeModel.endpoint,
+      deployment: runtimeModel.deployment,
+      apiVersion: runtimeModel.apiVersion,
+    };
   }
 
-  if (hasCapabilityOverrides(runtimeModel.enabledCapabilities)) {
-    payload.enabledCapabilitiesMode = "custom";
-    payload.enabledCapabilities = cloneJson(runtimeModel.enabledCapabilities);
-  } else if (runtimeModel.enabledCapabilitiesMode === "custom") {
-    payload.enabledCapabilitiesMode = "custom";
-    payload.enabledCapabilities = {};
-  }
-
-  return payload;
+  return {
+    ...basePayload,
+    provider: runtimeModel.provider,
+    baseURL: "baseURL" in runtimeModel ? runtimeModel.baseURL : "",
+  } as ChatProviderPayload;
 }
 
-function buildPersistedImageModelConfig(model: Partial<ModelFormDraft> | ImageModelConfig, imageOperation: ImageOperation): Record<string, unknown> {
+/** Builds the persisted image payload written to storage/export for one model. */
+function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConfig, imageOperation: ImageOperation): ImageProviderPayload {
   const runtimeModel = toRuntimeImageModelConfig(model as LooseModelConfig, imageOperation);
-  const payload: Record<string, unknown> = {
+  const basePayload = {
     name: runtimeModel.name,
     provider: runtimeModel.provider,
     apiKey: runtimeModel.apiKey,
     model: getModelRequestId(runtimeModel),
+    imageOperation: runtimeModel.imageOperation,
   };
 
   if (runtimeModel.provider === "Azure OpenAI") {
-    payload.endpoint = runtimeModel.endpoint;
-    payload.deployment = runtimeModel.deployment;
-    payload.apiVersion = runtimeModel.apiVersion;
-  } else {
-    payload.baseURL = runtimeModel.baseURL;
+    return {
+      ...basePayload,
+      provider: "Azure OpenAI",
+      endpoint: runtimeModel.endpoint,
+      deployment: runtimeModel.deployment,
+      apiVersion: runtimeModel.apiVersion,
+    };
   }
 
-  return payload;
+  return {
+    ...basePayload,
+    provider: "OpenAI",
+    baseURL: runtimeModel.baseURL,
+  };
 }
 
-/** Builds the persistence payload written to storage/export. */
-export function buildPersistedModelSettingsPayload(data: LooseModelSettings | null | undefined = {}): Record<string, unknown> {
+/**
+ * Builds the top-level persisted model payload written to backend storage and
+ * settings export JSON.
+ *
+ * This is the write-side boundary between in-memory user config and serialized
+ * persisted settings.
+ */
+export function buildPersistedModelSettingsPayload(data: LooseModelSettings | null | undefined = {}): PersistedModelSettingsPayload {
   const persistedSettings = migratePersistedModelSettings(data);
   return {
     chat: persistedSettings.chat.map((item) => buildPersistedChatModelConfig(item)),
