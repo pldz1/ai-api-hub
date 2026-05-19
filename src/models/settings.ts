@@ -103,7 +103,7 @@ export function sanitizeModelSettings(data: Partial<ModelSettings> | null | unde
 /**
  * Migrates legacy persisted settings JSON into the current in-memory model shape.
  *
- * This is the main read-path bridge for old exports or older backend payloads.
+ * This is the main read-path bridge for old exports or older persisted payloads.
  */
 export function migratePersistedModelSettings(data: LooseModelSettings | null | undefined = {}): ModelSettings {
   const migrateModelEntries = (items: unknown[] = [], kind = "", imageOperation: ImageOperation | "" = "") =>
@@ -188,7 +188,7 @@ function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConf
 }
 
 /**
- * Builds the top-level persisted model payload written to backend storage and
+ * Builds the top-level persisted model payload written to local storage and
  * settings export JSON.
  *
  * This is the write-side boundary between in-memory user config and serialized

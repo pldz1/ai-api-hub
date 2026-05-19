@@ -41,13 +41,13 @@ The important rule is:
 
 When settings JSON is loaded:
 
-1. `src/services/user/index.ts#getModels()`
+1. `src/services/settings.ts#getModels()`
 2. `src/models/settings.ts#migratePersistedModelSettings()`
 3. `src/store/user.ts#setModels()`
 
 What happens in practice:
 
-- raw backend/export JSON is validated
+- raw persisted/export JSON is validated
 - legacy fields are migrated
 - loose data is normalized into canonical user config
 - store keeps normalized `ModelSettings`
@@ -58,7 +58,7 @@ When settings are saved/exported:
 
 1. store holds normalized `ModelSettings`
 2. `src/models/settings.ts#buildPersistedModelSettingsPayload()`
-3. backend/export writes the resulting JSON
+3. local storage/export writes the resulting JSON
 
 What happens in practice:
 

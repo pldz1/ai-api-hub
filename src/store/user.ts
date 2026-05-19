@@ -1,147 +1,102 @@
 import { sanitizeModelSettings, toRuntimeChatModelConfig } from "@/models";
 
-const USER_SESSION_KEY = "ai.api.hub.workspace-session.v1";
 export const WORKSPACE_ID = "__workspace__";
 export const WORKSPACE_LABEL = "Workspace";
 
-function readUserSession() {
-  try {
-    const raw = localStorage.getItem(USER_SESSION_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch (error) {
-    console.warn("Failed to read workspace session:", error);
-    return {};
-  }
-}
-
-function writeUserSession(state) {
-  try {
-    const payload = {
-      storageMode: state.storageMode || "unknown",
-    };
-    localStorage.setItem(USER_SESSION_KEY, JSON.stringify(payload));
-  } catch (error) {
-    console.warn("Failed to persist workspace session:", error);
-  }
-}
-
-const persistedUserSession = readUserSession();
-const normalizeStorageMode = (mode) => (mode === "browser" ? "browser" : "unknown");
+type UserLoginPayload = {
+  username?: string;
+  password?: string;
+  uid?: string;
+};
 
 export const UserState = {
   /**
-   * 固定工作区标识
-   * @type {string}
+   * Fixed local workspace identifier.
    */
   username: WORKSPACE_ID,
 
   /**
-   * 兼容旧状态结构保留的字段
-   * @type {string}
+   * Legacy field kept for store compatibility.
    */
   password: "",
 
   /**
-   * 固定工作区 uid
-   * @type {string}
+   * Fixed local workspace uid.
    */
   uid: WORKSPACE_ID,
 
   /**
-   * 简单的base64加密的认证字符
-   * @type {string}
+   * Legacy field kept for store compatibility.
    */
   basicAuth: "",
 
   /**
-   * 单工作区模式下始终为 true
-   * @type {boolean}
+   * Single-workspace mode is always logged in.
    */
   isLoggedIn: true,
 
   /**
-   * 全部模型
-   * @property {any[]} chat 对话模型列表
-   * @property {any[]} imageGeneration 图像生成模型列表
-   * @property {any[]} imageEdit 图像编辑模型列表
+   * All configured models.
    */
   models: { chat: [], imageGeneration: [], imageEdit: [], image: [] },
 
   /**
-   * 当前的对话模型信息
+   * Currently selected chat model.
    */
   curChatModel: null,
 
   /**
-   * 当前工作区有的对话指令
+   * Available chat instruction templates.
    */
   chatInsTemplateList: [],
 
   /**
-   * 当前的对话id
+   * Current chat id.
    */
   curChatId: "",
 
   /**
-   * 当前存储模式: browser / unknown
+   * Set current workspace identity.
    */
-  storageMode: normalizeStorageMode(persistedUserSession.storageMode || persistedUserSession.backendMode),
-
-  /**
-   * 设置当前工作区信息
-   */
-  setUserLoginInfo(data) {
+  setUserLoginInfo(_data: UserLoginPayload) {
     this.username = WORKSPACE_ID;
     this.password = "";
     this.uid = WORKSPACE_ID;
     this.basicAuth = "";
-    writeUserSession(this);
   },
 
   /**
-   * 设置当前工作区就绪状态
+   * Single-workspace mode stays logged in.
    */
-  setIsLoggedIn(data) {
+  setIsLoggedIn(_data: boolean) {
     this.isLoggedIn = true;
-    writeUserSession(this);
   },
 
   /**
-   * 设置全部模型
+   * Set all configured models.
    */
-  setModels(data) {
+  setModels(data: unknown) {
     this.models = sanitizeModelSettings(data);
   },
 
   /**
-   * 设置对话指令列表
+   * Set chat instruction templates.
    */
-  setChatInsTemplateList(data) {
+  setChatInsTemplateList(data: unknown[]) {
     this.chatInsTemplateList = data;
   },
 
   /**
-   * 设置当前对话模型的信息
+   * Set current chat model info.
    */
-  setCurChatModel(data) {
+  setCurChatModel(data: unknown) {
     this.curChatModel = data ? toRuntimeChatModelConfig(data) : null;
   },
 
   /**
-   * 设置当前对话
+   * Set current chat id.
    */
-
-  setCurChatId(data) {
+  setCurChatId(data: string) {
     this.curChatId = data;
-  },
-
-  /**
-   * 设置当前存储模式
-   */
-  setStorageMode(data) {
-    this.storageMode = data || "unknown";
-    writeUserSession(this);
   },
 };

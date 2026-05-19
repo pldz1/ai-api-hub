@@ -32,10 +32,8 @@ const displayImage = (base64Image) => {
   imgContainer.appendChild(itemElem);
 };
 
-/** handleImageFile 处理图像文件的函数 */
+/** Read one uploaded image file and render it into the chat input preview list. */
 const handleImageFile = (file) => {
-  const flag = true;
-  if (!flag) return;
   if (file) {
     const fileSizeMB = file.size / (1024 * 1024);
     if (fileSizeMB > ImageMaxMBSize) {
@@ -51,13 +49,13 @@ const handleImageFile = (file) => {
   }
 };
 
-/** onLoadImageFile 操作图像从本地上传到对话框里的函数 */
+/** Handle image input change events. */
 const onLoadImageFile = (event) => {
   const file = event.target.files[0];
   handleImageFile(file);
 };
 
-/** onLoadJsonFile 读取 json 格式的内容 */
+/** Read and parse one uploaded JSON file. */
 const onLoadJsonFile = (event) => {
   return new Promise((resolve) => {
     const file = event.target.files[0];
@@ -81,24 +79,24 @@ const onLoadJsonFile = (event) => {
   });
 };
 
-/** handleFileUpload 是通用的处理文件上传操作的函数 */
+/** Open the shared hidden file input and process the selected file with one handler. */
 const handleFileUpload = (acceptType, handler) => {
   return new Promise((resolve) => {
     const fileInput = document.getElementById(GlobalInputUploadEl);
     const wrappedHandler = async (event) => {
       const result = await handler(event);
       fileInput.value = "";
-      fileInput.removeEventListener("change", wrappedHandler); // 清除事件监听器
+      fileInput.removeEventListener("change", wrappedHandler);
       resolve(result);
     };
-    fileInput.removeEventListener("change", wrappedHandler); // 防止重复绑定
+    fileInput.removeEventListener("change", wrappedHandler);
     fileInput.accept = acceptType;
     fileInput.addEventListener("change", wrappedHandler);
     fileInput.click();
   });
 };
 
-/** 实际上处理粘贴行为的函数 */
+/** Handle pasted image files from the clipboard. */
 const handlePasted = (event) => {
   const items = event.clipboardData.items;
   for (let i = 0; i < items.length; i++) {
@@ -106,28 +104,27 @@ const handlePasted = (event) => {
       const file = items[i].getAsFile();
       handleImageFile(file);
       event.preventDefault();
-      // 阻止默认的粘贴行为，防止文本粘贴
       return;
     }
   }
 };
 
-/** uploadImageFile 执行图像上传到对话输入框的函数  */
+/** Trigger image file upload for the chat input. */
 export const uploadImageFile = () => {
   handleFileUpload("image/*", onLoadImageFile);
 };
 
-/** 触发 JSON 文件上传 */
+/** Trigger JSON file upload. */
 export const uploadJsonFile = () => {
   return handleFileUpload("application/json", onLoadJsonFile);
 };
 
-/** pasteImage 监听在某个 DOM 上的粘贴事件  */
+/** Attach the shared paste listener to one DOM element. */
 export const addPasteEvent = (domId) => {
   document.getElementById(domId).addEventListener("paste", handlePasted);
 };
 
-/** 移除在某个 DOM 上的粘贴事件  */
+/** Remove the shared paste listener from one DOM element. */
 export const removePasteEvent = (domId) => {
   document.getElementById(domId).removeEventListener("paste", handlePasted);
 };

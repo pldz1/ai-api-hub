@@ -1,35 +1,33 @@
 <template>
-  <div class="image-page-container">
-    <div class="image-page-header">
-      <HeaderBar />
-    </div>
-
-    <div class="image-mode-bar">
-      <div class="image-mode-tabs">
-        <button
-          v-for="item in modeTabs"
-          :key="item.key"
-          type="button"
-          class="image-mode-tab"
-          :class="{ active: activeMode === item.key }"
-          @click="activeMode = item.key"
-        >
-          <span>{{ item.label }}</span>
-          <small>{{ item.description }}</small>
-        </button>
+  <AppViewShell class="image-page-shell">
+    <template #toolbar>
+      <div class="image-mode-bar">
+        <div class="image-mode-tabs">
+          <button
+            v-for="item in modeTabs"
+            :key="item.key"
+            type="button"
+            class="image-mode-tab"
+            :class="{ active: activeMode === item.key }"
+            @click="activeMode = item.key"
+          >
+            <span>{{ item.label }}</span>
+            <small>{{ item.description }}</small>
+          </button>
+        </div>
       </div>
-    </div>
+    </template>
 
     <div class="image-page-content">
       <component :is="activeComponent" :initial-edit-image="pendingEditImage" @switch-to-edit="switchToEdit" />
     </div>
-  </div>
+  </AppViewShell>
 </template>
 
 <script setup>
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import HeaderBar from "@/components/HeaderBar.vue";
+import AppViewShell from "@/components/AppViewShell.vue";
 import ImageGenerationPage from "@/views/image/ImageGenerationPage.vue";
 import ImageEditPage from "@/views/image/ImageEditPage.vue";
 
@@ -50,22 +48,11 @@ function switchToEdit(image = null) {
 </script>
 
 <style lang="scss" scoped>
-.image-page-container {
-  --image-header-height: 48px;
+.image-page-shell {
   --image-mode-height: 64px;
-  height: 100%;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
   background:
     radial-gradient(circle at top left, oklch(var(--p) / 0.05), transparent 26%),
     radial-gradient(circle at bottom right, oklch(var(--a) / 0.05), transparent 28%), linear-gradient(180deg, oklch(var(--b2) / 0.96), oklch(var(--b1)));
-}
-
-.image-page-header {
-  height: var(--image-header-height);
-  flex: 0 0 auto;
 }
 
 .image-mode-bar {
@@ -122,7 +109,7 @@ function switchToEdit(image = null) {
 }
 
 @media (max-width: 720px) {
-  .image-page-container {
+  .image-page-shell {
     --image-mode-height: 118px;
   }
 

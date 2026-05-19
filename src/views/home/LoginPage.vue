@@ -26,7 +26,7 @@
 
         <div class="hlcc-form">
           <div class="hlcc-readiness">
-            <span class="hlcc-ready-dot mock"></span>
+            <span class="hlcc-ready-dot local"></span>
             <div>
               <strong>{{ t("login.browserModeTitle") }}</strong>
               <p>{{ t("login.browserModeDescription") }}</p>
@@ -245,7 +245,7 @@ const onLogin = async () => {
     background: oklch(0.72 0.18 153);
     box-shadow: 0 0 0 3px oklch(0.72 0.18 153 / 0.12);
 
-    &.mock {
+    &.local {
       background: oklch(0.82 0.16 87);
       box-shadow: 0 0 0 3px oklch(0.82 0.16 87 / 0.14);
     }

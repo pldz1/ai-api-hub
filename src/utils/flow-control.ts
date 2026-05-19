@@ -1,18 +1,10 @@
 /**
- * 防抖函数 (Debounce)
- * @param {Function} fn - 需要防抖处理的函数
- * @param {number} delay - 延迟时间（毫秒）
- * @param {boolean} [immediate=false] - 是否立即执行第一次
- * @returns {Function} - 包装后的防抖函数
- * @example
- * const debouncedFn = debounce(() => console.log('Resized'), 300);
- * window.addEventListener('resize', debouncedFn);
+ * Debounce a function call until the user stops triggering it for `delay` ms.
  */
 export function debounce(fn, delay, immediate = false) {
   let timer;
   return function (...args) {
     if (immediate && !timer) {
-      // 立即执行一次
       fn.apply(this, args);
     }
     clearTimeout(timer);
@@ -24,13 +16,7 @@ export function debounce(fn, delay, immediate = false) {
 }
 
 /**
- * 节流函数 (Throttle)
- * @param {Function} fn - 需要节流处理的函数
- * @param {number} [interval=300] - 执行间隔（毫秒）
- * @returns {Function} - 包装后的节流函数
- * @example
- * const throttledScroll = throttle(() => console.log('Scrolling'), 200);
- * window.addEventListener('scroll', throttledScroll);
+ * Throttle a function so it runs at most once per `interval` ms.
  */
 export function throttle(fn, interval = 300) {
   let lastTime = 0;

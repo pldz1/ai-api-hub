@@ -65,9 +65,6 @@ const navItems = computed(() => [
   { key: "settings", label: t("header.settings"), icon: navSettingsIcon, path: "/settings" },
 ]);
 
-/**
- * 回到主页
- */
 const onBackLogin = () => {
   router.push({ path: "/home" });
 };

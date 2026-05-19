@@ -90,7 +90,7 @@ import settingIcon from "@/assets/svg/setting24.svg";
 import successIcon from "@/assets/svg/success24.svg";
 import errorIcon from "@/assets/svg/error24.svg";
 import pauseIcon from "@/assets/svg/pause32.svg";
-import { deleteChat, removeChatSessionRunner, renameChat } from "@/services";
+import { deleteChat, renameChat } from "@/services";
 import { buildDefaultChatSettings, getModelRequestId } from "@/models";
 import ChatSettings from "@/views/chat/components/ChatSettings.vue";
 import { dsAlert } from "@/utils";
@@ -147,12 +147,7 @@ const onSelectChat = async (item) => {
 
 const onDeleteChat = async (chatId, closeMenu) => {
   if (closeMenu) closeMenu();
-  removeChatSessionRunner(chatId);
   if (chatId) await deleteChat(chatId);
-  if (chatId == cid.value) {
-    await store.dispatch("setCurChatId", "");
-    await store.dispatch("setCurConversation", null);
-  }
   isShowOptionCid.value = "";
   editChatName.value = "";
 };

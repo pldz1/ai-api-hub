@@ -3,7 +3,7 @@ import LoginPage from "@/views/home/LoginPage.vue";
 import LandingPage from "@/views/home/LandingPage.vue";
 import ChatPage from "@/views/chat/ChatPage.vue";
 import ImagePage from "@/views/image/ImagePage.vue";
-import SettingsPage from "@/views/setting/SettingsPage.vue";
+import SettingsView from "@/views/settings/SettingsView.vue";
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -31,7 +31,7 @@ const router = createRouter({
     },
     {
       path: "/settings",
-      component: SettingsPage,
+      component: SettingsView,
     },
   ],
 });

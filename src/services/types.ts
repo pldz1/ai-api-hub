@@ -2,7 +2,6 @@ import type { ChatMessageRole, ChatModelCapabilities } from "@/types/chat";
 import type { ImageModelConfig } from "@/types/image";
 
 export type ApiMethod = "get" | "post" | "put" | "patch" | "delete";
-export type StorageMode = "unknown" | "browser";
 export type RequestBody = Record<string, unknown>;
 export type RequestHeaders = Record<string, string>;
 
@@ -10,8 +9,6 @@ export interface ApiResponse<TData = unknown> {
   flag: boolean;
   log: string;
   data: TData;
-  __storageMode?: StorageMode;
-  __backendMode?: "remote" | "mock" | "unknown";
 }
 
 export interface TokenUsage {
