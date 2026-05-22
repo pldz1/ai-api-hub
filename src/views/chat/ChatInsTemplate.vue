@@ -18,6 +18,7 @@
 import { useStore } from "vuex";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
 import { getBuiltinChatInsTemplateList } from "@/models";
 import { addChat } from "@/services";
 import { dsAlert, append4Random } from "@/utils";
@@ -25,6 +26,7 @@ import { dsAlert, append4Random } from "@/utils";
 const emit = defineEmits(["on-update"]);
 
 const store = useStore();
+const router = useRouter();
 const { t, locale } = useI18n();
 const curChatModelSettings = computed(() => store.state.curChatModelSettings);
 const userSuffix = computed(() => (store.state.username && store.state.username !== "__workspace__" ? `, ${store.state.username}` : ""));
@@ -46,6 +48,9 @@ const onSelectInst = async (id) => {
 
   const name = append4Random(instObj.name);
   await addChat(name);
+  if (store.state.curChatId) {
+    await router.replace({ name: "chat", params: { cid: store.state.curChatId } });
+  }
 
   emit("on-update", [
     { role: "user", content: [{ type: "text", text: t("chat.repeatInstruction") }] },
@@ -57,13 +62,17 @@ const onSelectInst = async (id) => {
 <style lang="scss" scoped>
 .chat-template-display-card {
   position: absolute;
-  inset: 72px 0 156px;
+  width: calc(100% - 48px);
+  height: calc(100% - 152px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 22px;
   padding: 0 24px;
+  background:
+    radial-gradient(circle at 52% 36%, rgba(191, 224, 255, 0.75), rgba(191, 224, 255, 0.34) 18%, rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 50% 50%, rgba(217, 235, 255, 0.7), rgba(255, 255, 255, 0) 52%), linear-gradient(180deg, #ffffff 0%, #fbfbfb 100%);
 }
 
 .ctdc-copy {

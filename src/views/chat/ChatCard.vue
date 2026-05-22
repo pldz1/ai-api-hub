@@ -4,18 +4,13 @@
 
     <div class="ccdc-messages-container" :class="{ active: !isShowTemplate }">
       <div id="chat-messages-container" class="cccd-scroll-window" ref="innerRef" @scroll="updateScrollActions"></div>
-      <div class="cccd-scroll-actions" v-show="!isShowTemplate">
-        <AppTooltip text="To top" placement="left">
-          <button class="cccd-scroll-action" :class="{ disabled: !canScrollTop }" type="button" aria-label="To top" @click="scrollMessagesToTop">
-            <SvgIcon class="cccd-scroll-action-icon" :src="arrowUpIcon" />
-          </button>
-        </AppTooltip>
-        <AppTooltip text="To bottom" placement="left">
-          <button class="cccd-scroll-action" :class="{ disabled: !canScrollBottom }" type="button" aria-label="To bottom" @click="scrollMessagesToBottom">
-            <SvgIcon class="cccd-scroll-action-icon is-bottom" :src="arrowUpIcon" />
-          </button>
-        </AppTooltip>
-      </div>
+      <ChatScrollActions
+        v-show="!isShowTemplate"
+        :can-scroll-top="canScrollTop"
+        :can-scroll-bottom="canScrollBottom"
+        @scroll-top="scrollMessagesToTop"
+        @scroll-bottom="scrollMessagesToBottom"
+      />
     </div>
 
     <div class="cccd-bottom">
@@ -36,15 +31,16 @@
 import { useStore } from "vuex";
 import { dsLoading } from "@/utils";
 import { ref, watch, computed, onMounted, nextTick } from "vue";
-import { ChatDrawer, addChat, getAllMessage, getChatSettings, getChatSessionRunner, stopChatSession } from "@/services";
+import { useRoute, useRouter } from "vue-router";
+import { ChatDrawer, addChat, getAllMessage, getChatSettings, getChatSessionRunner, resetCurrentChatDraft, stopChatSession } from "@/services";
 
-import AppTooltip from "@/components/AppTooltip.vue";
-import SvgIcon from "@/components/SvgIcon.vue";
 import ChatInputArea from "@/views/chat/ChatInputArea.vue";
 import ChatInsTemplate from "@/views/chat/ChatInsTemplate.vue";
-import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
+import ChatScrollActions from "@/views/chat/ChatScrollActions.vue";
 
 const store = useStore();
+const route = useRoute();
+const router = useRouter();
 const innerRef = ref(null);
 const canScrollTop = ref(false);
 const canScrollBottom = ref(false);
@@ -54,13 +50,10 @@ const curChatId = computed(() => store.state.curChatId);
 const curConversation = computed(() => (curChatId.value ? store.state.chatConversationsById?.[curChatId.value] || null : null));
 const activeMessages = computed(() => (curChatId.value ? store.state.chatMessagesById?.[curChatId.value] || [] : []));
 const activeRuntime = computed(() => (curChatId.value ? store.state.chatRuntimeById?.[curChatId.value] || null : null));
+const routeChatId = computed(() => (typeof route.params.cid === "string" ? route.params.cid : ""));
 const isChatting = computed(() => Boolean(activeRuntime.value?.pending || ["loading", "streaming"].includes(activeRuntime.value?.status)));
 const isModelSelectionReadonly = computed(() => Boolean(curConversation.value?.modelSnapshot && (curChatId.value || activeMessages.value.length > 0)));
-const isShowTemplate = computed(() => {
-  const a = !curChatId.value && activeMessages.value.length === 0;
-  console.error(a);
-  return a;
-});
+const isShowTemplate = computed(() => !curChatId.value && activeMessages.value.length === 0);
 
 const updateScrollActions = () => {
   const el = innerRef.value;
@@ -88,6 +81,22 @@ const renderCurrentConversation = async ({ stickToBottom = false } = {}) => {
 };
 
 watch(
+  () => routeChatId.value,
+  async (nextRouteChatId) => {
+    if (!nextRouteChatId) {
+      await resetCurrentChatDraft();
+      await renderCurrentConversation();
+      return;
+    }
+
+    if (nextRouteChatId !== curChatId.value) {
+      await store.dispatch("setCurChatId", nextRouteChatId);
+    }
+  },
+  { immediate: true },
+);
+
+watch(
   () => curChatId.value,
   async (newVal) => {
     dsLoading(true);
@@ -95,8 +104,18 @@ watch(
     if (newVal) {
       const isLoaded = Boolean(store.state.chatLoadedById?.[newVal]);
       const hasConversation = Boolean(store.state.chatConversationsById?.[newVal]);
+      let hasValidConversation = hasConversation;
 
-      if (!hasConversation) await getChatSettings(newVal);
+      if (!hasConversation) {
+        hasValidConversation = await getChatSettings(newVal);
+      }
+
+      if (!hasValidConversation) {
+        dsLoading(false);
+        await router.replace({ name: "chat" });
+        return;
+      }
+
       if (!isLoaded) await getAllMessage(newVal);
     }
 
@@ -134,7 +153,9 @@ const onStartChat = async (payload) => {
   const selectedModel = payload?.model || null;
 
   if (!curChatId.value) {
-    await addChat(null, selectedModel);
+    const created = await addChat(null, selectedModel);
+    if (!created || !store.state.curChatId) return;
+    await router.replace({ name: "chat", params: { cid: store.state.curChatId } });
   }
 
   const nextChatId = store.state.curChatId;
@@ -189,43 +210,6 @@ onMounted(() => {
   overflow-x: hidden;
   overflow-y: auto;
   padding: 8px max(56px, calc((100% - 840px) / 2)) 18px;
-}
-
-.cccd-scroll-actions {
-  position: absolute;
-  right: 20px;
-  bottom: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.cccd-scroll-action {
-  width: 34px;
-  height: 34px;
-  border: none;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 6px 16px rgba(27, 39, 51, 0.12);
-  color: rgba(17, 24, 39, 0.78);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.cccd-scroll-action.disabled {
-  opacity: 0.35;
-  pointer-events: none;
-}
-
-.cccd-scroll-action-icon {
-  width: 18px;
-  height: 18px;
-}
-
-.cccd-scroll-action-icon.is-bottom {
-  transform: rotate(180deg);
 }
 
 .cccd-bottom {

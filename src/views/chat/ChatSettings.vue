@@ -163,8 +163,7 @@ const handleClose = async () => {
   }
 
   .gcms-setting-label {
-    width: 180px;
-    max-width: 180px;
+    width: 198px;
     font-size: 16px;
     text-align: right;
     display: flex;

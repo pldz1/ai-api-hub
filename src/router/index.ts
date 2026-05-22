@@ -15,19 +15,23 @@ const router = createRouter({
     },
     {
       path: "/main",
-      component: MainView,
+      redirect: "/chat",
     },
     {
-      path: "/chat",
+      path: "/chat/:cid?",
+      name: "chat",
       component: MainView,
+      props: true,
     },
     {
       path: "/image",
+      name: "image",
       component: ImagePage,
       props: true,
     },
     {
       path: "/settings",
+      name: "settings",
       component: MainView,
     },
   ],

@@ -2,7 +2,7 @@ import store from "@/store";
 import { tr } from "@/i18n";
 import { buildPersistedModelSettingsPayload, migratePersistedModelSettings } from "@/models";
 import { dsAlert, getChatTemplateListValidationError, getModelSettingValidationError } from "@/utils";
-import { apiRequest } from "../transport/request";
+import { apiRequest } from "../storage";
 import type { ApiResponse } from "@/services/types";
 import type { ModelSettings } from "@/types/settings";
 

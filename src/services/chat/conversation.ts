@@ -1,5 +1,5 @@
 import store from "@/store";
-import { createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
+import { buildDefaultChatSettings, createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
 import { apiRequest } from "../storage";
 import { dsAlert, isValidChatInfoArray, getUuid, generateRandomCname } from "@/utils";
 import { tr } from "@/i18n";
@@ -75,6 +75,12 @@ function normalizeChatSettingsPayload(
     modelSnapshot,
     settings: mergeChatSettingsWithModel(model, payload.settings || {}),
   };
+}
+
+export async function resetCurrentChatDraft(): Promise<void> {
+  await store.dispatch("setCurChatModelSettings", buildDefaultChatSettings(store.state.curChatModel));
+  await store.dispatch("setCurChatId", "");
+  await store.dispatch("setCurConversation", null);
 }
 
 export async function getChatList(): Promise<boolean> {

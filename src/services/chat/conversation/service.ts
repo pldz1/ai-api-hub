@@ -1,6 +1,6 @@
 import store from "@/store";
 import { createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
-import { apiRequest } from "../../transport/request";
+import { apiRequest } from "../../storage";
 import { dsAlert, isValidChatInfoArray, getUuid, generateRandomCname } from "@/utils";
 import { tr } from "@/i18n";
 import type { ChatListItem, ChatPromptMessage, StoredChatMessage } from "@/services/types";
@@ -159,7 +159,7 @@ export async function importChatSessionSettings(entries: ExportedChatSessionSett
   if (!Array.isArray(entries) || entries.length === 0) return;
 
   const existingChatListRes = await getChatListAPI();
-  const existingChats = existingChatListRes.flag && isValidChatInfoArray(existingChatListRes.data) ? existingChatListRes.data : [];
+  const existingChats: ChatListItem[] = existingChatListRes.flag && isValidChatInfoArray(existingChatListRes.data) ? existingChatListRes.data : [];
   const existingChatMap = new Map(existingChats.map((item) => [item.cid, item]));
   const fallbackModel = store.state.models.chat?.[0] || store.state.curChatModel;
 
@@ -240,7 +240,7 @@ export async function addChat(name: string | null = null, model: ChatModelConfig
     await setChatSettings(chatId);
     return true;
   } catch (error) {
-    dsAlert({ type: "error", message: tr("toast.chatAddException", { error: error.message || error }) });
+    dsAlert({ type: "error", message: tr("toast.chatAddException", { error: error instanceof Error ? error.message : String(error) }) });
     await updateLocalChatState();
     return false;
   }

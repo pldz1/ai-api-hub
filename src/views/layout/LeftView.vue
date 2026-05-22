@@ -1,39 +1,46 @@
 <template>
-  <aside class="sidebar-container" :class="{ 'is-expanded': props.expanded }">
+  <aside class="sidebar-container" :class="{ 'is-expanded': isExpanded }">
     <div class="sidebar-wrapper">
-      <!-- 头部：Logo 与 折叠按钮 -->
-      <div class="sidebar-header">
-        <button class="brand-logo" type="button" @click="emit('toggle')">
+      <!-- Header: Logo and Toggle Button -->
+      <div class="sidebar-header" v-if="isExpanded">
+        <a class="brand-logo" href="/login">
           <SvgIcon class="logo-icon" :src="brandIcon" colored />
-          <span class="collapsible-text logo-text">AI API HUB</span>
-        </button>
+          <span class="logo-text">AI API HUB · v0.0.1</span>
+        </a>
+
         <AppTooltip :text="t('chat.sidebarToggle')" placement="right">
           <button class="collapse-btn" type="button" :aria-label="t('chat.sidebarToggle')" @click="emit('toggle')">
             <SvgIcon :src="collapseIcon" />
           </button>
         </AppTooltip>
       </div>
+      <div v-else class="sidebar-header sidebar-header-collapsed">
+        <AppTooltip :text="t('chat.sidebarToggle')" placement="right">
+          <button class="collapse-btn" type="button" :aria-label="t('chat.sidebarToggle')" @click="emit('toggle')">
+            <SvgIcon :src="expandIcon" />
+          </button>
+        </AppTooltip>
+      </div>
 
-      <!-- 主导航区 -->
+      <!-- Main Navigation -->
       <nav class="nav-group">
-        <button class="nav-item is-active" type="button" @click="onNewChat">
+        <button class="nav-item" type="button" @click="onNewChat">
           <SvgIcon :src="newIcon" class="nav-icon" />
-          <span class="collapsible-text nav-label">New chat conversation</span>
+          <span v-if="isExpanded" class="nav-label">New chat conversation</span>
         </button>
         <button class="nav-item" type="button">
           <SvgIcon :src="libraryIcon" class="nav-icon" />
-          <span class="collapsible-text nav-label">New image creation</span>
+          <span v-if="isExpanded" class="nav-label">New image creation</span>
         </button>
       </nav>
 
-      <!-- 动态列表区 -->
-      <div class="sidebar-section recents-section">
-        <div class="collapsible-text section-title">Chat Conversations</div>
-
+      <!-- Recent Chats -->
+      <div v-if="isExpanded" class="sidebar-section recents-section">
+        <div class="section-title">Chat Conversations</div>
         <div v-if="chatList.length === 0" class="empty-tip">{{ t("chat.noChats") }}</div>
         <div v-else class="recents-list">
           <div v-for="item in chatList" :key="item.cid" class="chat-item-wrapper">
-            <!-- 重命名输入框 -->
+            <!-- edit chat name input -->
             <input
               v-if="isShowOptionCid === item.cid && isEditChatName"
               ref="editChatNameInputElRef"
@@ -44,7 +51,7 @@
               @keydown.enter="changeChatName"
             />
 
-            <!-- 聊天会话项 -->
+            <!-- chat item -->
             <div v-else class="chat-item" :class="{ 'is-active': cid === item.cid }">
               <button class="chat-main-btn" type="button" @click="onSelectChat(item)">
                 <span class="chat-title-text">{{ item.cname }}</span>
@@ -75,7 +82,7 @@
       <div class="sidebar-footer">
         <div class="settings-btn" @click="onShowModelSettings">
           <SvgIcon :src="settingIcon" style="width: 24px; height: 24px" />
-          <span v-show="props.expanded">{{ t("home.settingsTitle") }}</span>
+          <span v-if="isExpanded">{{ t("home.settingsTitle") }}</span>
         </div>
       </div>
     </div>
@@ -84,16 +91,16 @@
 
 <script setup lang="ts">
 import { useStore } from "vuex";
-import { getChatList, deleteChat, renameChat } from "@/services";
+import { getChatList, deleteChat, renameChat, resetCurrentChatDraft } from "@/services";
 import { nextTick, ref, computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
-import { useRouter } from "vue-router";
-import { buildDefaultChatSettings } from "@/models";
+import { useRoute, useRouter } from "vue-router";
 import brandIcon from "@/assets/svg/app18.svg";
 import newIcon from "@/assets/svg/new24.svg";
 import settingIcon from "@/assets/svg/setting24.svg";
 import libraryIcon from "@/assets/svg/navImage24.svg";
 import collapseIcon from "@/assets/svg/collapse24.svg";
+import expandIcon from "@/assets/svg/expand24.svg";
 import AppDropdownMenu from "@/components/AppDropdownMenu.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
@@ -105,10 +112,13 @@ const props = defineProps({
 const emit = defineEmits(["toggle"]);
 const store = useStore();
 const router = useRouter();
+const route = useRoute();
 const { t } = useI18n();
 
+const isExpanded = computed(() => props.expanded);
 const cid = computed(() => store.state.curChatId);
 const chatList = computed(() => [...store.state.chatList].reverse());
+const activeRouteChatId = computed(() => (typeof route.params.cid === "string" ? route.params.cid : ""));
 
 const isShowOptionCid = ref("");
 const isEditChatName = ref(false);
@@ -116,21 +126,26 @@ const editChatName = ref("");
 const editChatNameInputElRef = ref<HTMLInputElement[] | null>(null);
 
 const onNewChat = async () => {
-  await store.dispatch("setCurChatModelSettings", buildDefaultChatSettings(store.state.curChatModel));
-  await store.dispatch("setCurChatId", "");
-  await store.dispatch("setCurConversation", null);
+  if (route.name === "chat" && !activeRouteChatId.value) {
+    await resetCurrentChatDraft();
+    return;
+  }
+  await router.push({ name: "chat" });
 };
 
-const onShowModelSettings = () => router.push({ path: "/settings" });
+const onShowModelSettings = () => router.push({ name: "settings" });
 
 const onSelectChat = async (item: any) => {
-  if (item.cid === cid.value) return;
-  await store.dispatch("setCurChatId", item.cid);
+  if (item.cid === activeRouteChatId.value) return;
+  await router.push({ name: "chat", params: { cid: item.cid } });
 };
 
 const onDeleteChat = async (chatId: string, closeMenu: () => void) => {
   closeMenu?.();
   if (chatId) await deleteChat(chatId);
+  if (chatId && chatId === activeRouteChatId.value) {
+    await router.replace({ name: "chat" });
+  }
   isShowOptionCid.value = "";
 };
 
@@ -162,9 +177,6 @@ $sidebar-w-collapsed: 68px;
 $sidebar-w-expanded: 280px;
 $radius-md: 12px;
 
-$ease-spring: cubic-bezier(0.4, 0, 0.2, 1);
-$t-duration: 0.3s;
-
 .sidebar-container {
   height: 100%;
   flex: 0 0 auto;
@@ -173,7 +185,6 @@ $t-duration: 0.3s;
   backdrop-filter: blur(24px);
   border-right: 1px solid rgba(0, 0, 0, 0.06);
   overflow: hidden;
-  transition: width $t-duration $ease-spring;
 
   &.is-expanded {
     width: $sidebar-w-expanded;
@@ -189,40 +200,23 @@ $t-duration: 0.3s;
   box-sizing: border-box;
 }
 
-.collapsible-text {
-  opacity: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  transition:
-    opacity ($t-duration * 0.5) ease,
-    max-width $t-duration $ease-spring,
-    margin $t-duration $ease-spring;
-  max-width: 0;
-  display: inline-block;
-  vertical-align: middle;
-
-  .is-expanded & {
-    opacity: 1;
-    max-width: 200px;
-    transition:
-      opacity ($t-duration * 0.7) ease ($t-duration * 0.3),
-      max-width $t-duration $ease-spring;
-  }
-}
-
 .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 44px;
   margin-bottom: 20px;
-  position: relative;
+}
+
+.sidebar-header-collapsed {
+  justify-content: center;
 }
 
 .brand-logo {
   flex: 1;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   height: 44px;
   padding: 0 10px;
   border: none;
@@ -232,7 +226,6 @@ $t-duration: 0.3s;
   font-size: 15px;
   cursor: pointer;
   border-radius: $radius-md;
-  overflow: hidden;
 
   .logo-icon {
     width: 24px;
@@ -242,6 +235,7 @@ $t-duration: 0.3s;
 
   .logo-text {
     margin-left: 12px;
+    white-space: nowrap;
   }
 }
 
@@ -257,22 +251,10 @@ $t-duration: 0.3s;
   cursor: pointer;
   color: #4b5563;
   flex-shrink: 0;
-  transition:
-    background 0.2s,
-    opacity $t-duration,
-    transform $t-duration;
 
   &:hover {
     background: rgba(0, 0, 0, 0.05);
     color: #111827;
-  }
-
-  .sidebar-container:not(.is-expanded) & {
-    opacity: 0;
-    pointer-events: none;
-    transform: scale(0.8) translateX(-10px);
-    position: absolute;
-    right: 0;
   }
 }
 
@@ -296,9 +278,6 @@ $t-duration: 0.3s;
   cursor: pointer;
   width: 100%;
   box-sizing: border-box;
-  transition:
-    background 0.2s,
-    color 0.2s;
 
   .nav-icon {
     width: 20px;
@@ -308,15 +287,11 @@ $t-duration: 0.3s;
 
   .nav-label {
     margin-left: 12px;
+    white-space: nowrap;
   }
 
   &:hover {
     background: rgba(0, 0, 0, 0.04);
-    color: #111827;
-  }
-
-  &.is-active {
-    background: #e4e4e7;
     color: #111827;
   }
 }
@@ -372,12 +347,11 @@ $t-duration: 0.3s;
   height: 44px;
   border-radius: $radius-md;
   padding: 0 4px;
-  position: relative;
-  transition: background 0.2s;
 
   &:hover,
   &.is-active {
-    background: rgba(0, 0, 0, 0.04);
+    background: #e4e4e7;
+    color: #111827;
 
     .chat-menu-btn {
       opacity: 1;
@@ -386,7 +360,6 @@ $t-duration: 0.3s;
 
   &.is-active .chat-title-text {
     font-weight: 600;
-    color: #111827;
   }
 }
 
@@ -410,23 +383,7 @@ $t-duration: 0.3s;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-
-  opacity: 0;
-  max-width: 0;
-  margin-left: 0;
-  transition:
-    opacity ($t-duration * 0.5) ease,
-    max-width $t-duration $ease-spring,
-    margin $t-duration $ease-spring;
-
-  .is-expanded & {
-    opacity: 1;
-    max-width: 160px;
-    margin-left: 12px;
-    transition:
-      opacity ($t-duration * 0.7) ease ($t-duration * 0.2),
-      max-width $t-duration $ease-spring;
-  }
+  margin-left: 12px;
 }
 
 .chat-menu-btn {
@@ -442,9 +399,6 @@ $t-duration: 0.3s;
   cursor: pointer;
   opacity: 0;
   flex-shrink: 0;
-  transition:
-    opacity 0.2s,
-    background 0.2s;
 
   &:hover {
     background: rgba(0, 0, 0, 0.06);
@@ -455,10 +409,6 @@ $t-duration: 0.3s;
     height: 3.5px;
     border-radius: 50%;
     background: #6b7280;
-  }
-
-  .sidebar-container:not(.is-expanded) & {
-    display: none;
   }
 }
 
@@ -492,6 +442,7 @@ $t-duration: 0.3s;
   flex-direction: row;
   align-items: center;
   gap: 8px;
+  justify-content: flex-start;
   cursor: pointer;
   border-radius: 16px;
 

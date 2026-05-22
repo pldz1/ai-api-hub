@@ -387,14 +387,13 @@ watch(
 
   .ccia-status-sticky {
     position: absolute;
-    left: 50%;
+    left: 40%;
     bottom: calc(100% + 10px);
     z-index: 2;
     width: calc(100% - 16px);
     transform: translateX(-50%);
     display: flex;
     justify-content: flex-end;
-    pointer-events: none;
   }
 
   .ccia-status-pill {

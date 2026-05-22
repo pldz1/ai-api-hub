@@ -338,7 +338,7 @@ export class ChatDrawer extends ChatElemCreator {
   addUserQHTMLElem(content: ChatPromptContent[], mid: string): void {
     const res = this.createUserQHTMLElem(content, mid);
     if (!res) {
-      dsAlert({ type: "warn", message: tr("toast.drawUserQuestionFailed") });
+      // dsAlert({ type: "warn", message: tr("toast.drawUserQuestionFailed") });
     }
   }
 
