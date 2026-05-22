@@ -1,5 +1,5 @@
 <template>
-  <AppViewShell class="settings-page-shell">
+  <div class="settings-page-shell">
     <div class="settings-page">
       <aside class="settings-sidebar">
         <div class="settings-group-list">
@@ -58,11 +58,11 @@
             @update:models="updateImageEditModels"
           />
 
-          <AppSettings v-if="activeTab === 'app'" @export-settings="exportSettings" @import-settings="importSettings" @go-home="goLogin" />
+          <AppSettings v-if="activeTab === 'app'" @export-settings="exportSettings" @import-settings="importSettings" />
         </section>
       </main>
     </div>
-  </AppViewShell>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -70,7 +70,6 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useStore } from "vuex";
 import { useI18n } from "vue-i18n";
-import AppViewShell from "@/components/AppViewShell.vue";
 import ChatModels from "@/views/settings/components/ChatModels.vue";
 import ImageModels from "@/views/settings/components/ImageModels.vue";
 import ChatInsTemplateList from "@/views/settings/components/ChatInsTemplateList.vue";
@@ -124,14 +123,7 @@ function isUploadedJsonParseError(data: unknown): data is UploadedJsonParseError
   return Boolean(data) && typeof data === "object" && "__jsonParseError" in data;
 }
 
-const {
-  autosaveState,
-  draftModels,
-  draftTemplates,
-  shouldBlockUnload,
-  getDraftPayload,
-  syncDraftFromSource,
-} = useSettingsDraft({
+const { autosaveState, draftModels, draftTemplates, shouldBlockUnload, getDraftPayload, syncDraftFromSource } = useSettingsDraft({
   getInitialDraft: () => ({
     models: store.state.models,
     templates: store.state.chatInsTemplateList,
@@ -267,10 +259,6 @@ async function importSettings() {
   dsAlert({ type: "success", message: t("user.importSuccess") });
 }
 
-function goLogin() {
-  router.push({ path: "/login" });
-}
-
 function handleBeforeUnload(event) {
   if (!shouldBlockUnload.value) return;
   event.preventDefault();
@@ -289,39 +277,42 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .settings-page-shell {
-  background: linear-gradient(180deg, oklch(var(--b1)) 0%, oklch(var(--b2) / 0.82) 100%);
+  height: 100%;
+  background: transparent;
 }
 
 .settings-page {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
   height: 100%;
+  min-height: 0;
   font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   overflow: hidden;
 }
 
 .settings-sidebar {
-  padding: 28px 20px 24px;
-  border-right: 1px solid oklch(var(--b3) / 0.9);
-  background: linear-gradient(180deg, oklch(var(--b1) / 0.96) 0%, oklch(var(--b2) / 0.88) 100%);
-  backdrop-filter: blur(16px);
+  padding: 20px 16px 18px;
+  border-right: 1px solid rgba(17, 24, 39, 0.06);
+  background: rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(22px);
   overflow-y: auto;
 }
 
 .settings-group-list {
-  margin-top: 24px;
+  margin-top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .settings-nav-group {
   h3 {
     margin: 0 0 8px;
     padding: 0 4px;
-    color: oklch(var(--bc) / 0.5);
+    color: #9ca3af;
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 700;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
   }
 }
@@ -333,15 +324,15 @@ onBeforeUnmount(() => {
 }
 
 .settings-tab-button {
-  border: 1px solid oklch(var(--b3) / 0.3);
-  border-radius: 20px;
-  padding: 13px 14px;
+  border: 1px solid rgba(17, 24, 39, 0.06);
+  border-radius: 16px;
+  padding: 12px 14px;
   text-align: left;
-  background-color: oklch(var(--b1) / 0.56);
+  background: rgba(255, 255, 255, 0.84);
   display: flex;
   flex-direction: column;
   gap: 4px;
-  box-shadow: inset 0 1px 0 oklch(var(--b1) / 0.85);
+  box-shadow: 0 8px 24px rgba(31, 41, 55, 0.04);
   transition:
     background-color 0.2s ease,
     border-color 0.2s ease,
@@ -350,37 +341,36 @@ onBeforeUnmount(() => {
 
   span {
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 600;
+    color: #202124;
   }
 
   small {
     font-size: 11px;
     line-height: 1.4;
-    color: oklch(var(--bc) / 0.6);
+    color: #5f6368;
   }
 
   &:hover {
-    border-color: oklch(var(--n) / 0.12);
-    background-color: oklch(var(--b1) / 0.92);
+    border-color: rgba(17, 24, 39, 0.1);
+    background-color: rgba(255, 255, 255, 0.96);
     transform: translateY(-1px);
-    box-shadow: 0 10px 24px oklch(var(--n) / 0.05);
+    box-shadow: 0 12px 28px rgba(31, 41, 55, 0.06);
   }
 
   &.active {
-    border-color: oklch(var(--su) / 0.22);
-    background: linear-gradient(180deg, oklch(var(--b1)) 0%, oklch(var(--su) / 0.08) 100%);
-    box-shadow:
-      0 14px 28px oklch(var(--n) / 0.06),
-      inset 0 1px 0 oklch(var(--b1) / 0.96);
+    border-color: rgba(35, 95, 143, 0.14);
+    background: #eef6ff;
+    box-shadow: 0 14px 28px rgba(31, 41, 55, 0.06);
   }
 }
 
 .settings-main {
   min-width: 0;
-  padding: 28px 30px 24px;
+  padding: 20px 22px 18px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
   overflow: hidden;
 }
 
@@ -392,11 +382,11 @@ onBeforeUnmount(() => {
 }
 
 .settings-main-subtitle {
-  margin-top: 10px;
+  margin-top: 6px;
   max-width: 36rem;
   font-size: 13px;
   line-height: 1.65;
-  color: oklch(var(--bc) / 0.65);
+  color: #5f6368;
 }
 
 .settings-main-actions {
@@ -409,47 +399,48 @@ onBeforeUnmount(() => {
 
 .settings-status {
   border-radius: 999px;
-  padding: 8px 12px;
-  background-color: oklch(var(--n) / 0.05);
+  padding: 7px 12px;
+  background-color: rgba(255, 255, 255, 0.9);
   font-size: 12px;
-  color: oklch(var(--bc) / 0.65);
+  color: #5f6368;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid oklch(var(--b3) / 0.6);
+  border: 1px solid rgba(17, 24, 39, 0.06);
+  box-shadow: 0 8px 20px rgba(31, 41, 55, 0.04);
 
   .settings-status-dot {
     width: 7px;
     height: 7px;
     border-radius: 999px;
-    background-color: oklch(var(--bc) / 0.35);
+    background-color: rgba(95, 99, 104, 0.65);
     flex-shrink: 0;
   }
 
   &.dirty {
-    background-color: oklch(var(--wa) / 0.15);
-    color: oklch(var(--bc) / 0.85);
+    background-color: #fff7e8;
+    color: #6b4f1d;
 
     .settings-status-dot {
-      background-color: oklch(var(--wa));
+      background-color: #d97706;
     }
   }
 
   &.saving {
-    background-color: oklch(var(--p) / 0.12);
-    color: oklch(var(--bc) / 0.82);
+    background-color: #eef6ff;
+    color: #174466;
 
     .settings-status-dot {
-      background-color: oklch(var(--p));
+      background-color: #2563eb;
     }
   }
 
   &.error {
-    background-color: oklch(var(--er) / 0.16);
-    color: oklch(var(--bc) / 0.9);
+    background-color: #fff0f3;
+    color: #9f1239;
 
     .settings-status-dot {
-      background-color: oklch(var(--er));
+      background-color: #be123c;
     }
   }
 }
@@ -458,12 +449,12 @@ onBeforeUnmount(() => {
   min-height: 0;
   flex: 1;
   overflow: hidden;
-  border: 1px solid oklch(var(--b3) / 0.55);
-  border-radius: 30px;
-  background: linear-gradient(180deg, oklch(var(--b1) / 0.92) 0%, oklch(var(--b2) / 0.85) 100%);
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.9);
   box-shadow:
-    0 18px 50px oklch(var(--n) / 0.06),
-    inset 0 1px 0 oklch(var(--b1) / 0.95);
+    0 2px 6px rgba(17, 24, 39, 0.05),
+    0 4px 8px rgba(17, 24, 39, 0.06);
   padding: 20px;
 }
 
@@ -474,7 +465,7 @@ onBeforeUnmount(() => {
 
   .settings-sidebar {
     border-right: none;
-    border-bottom: 1px solid oklch(var(--b3));
+    border-bottom: 1px solid rgba(17, 24, 39, 0.06);
   }
 
   .settings-main-header {

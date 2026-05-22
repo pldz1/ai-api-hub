@@ -467,13 +467,14 @@ watch(
 
 <style lang="scss" scoped>
 .model-form-card {
-  border: 1px solid oklch(var(--b3) / 0.65);
-  border-radius: 20px;
-  background: linear-gradient(180deg, oklch(var(--b1)) 0%, oklch(var(--b2) / 0.65) 100%);
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.82);
   padding: 24px;
   box-shadow:
-    0 12px 32px oklch(var(--n) / 0.04),
-    inset 0 1px 0 oklch(var(--b1) / 0.92);
+    0 12px 30px rgba(31, 41, 55, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
 }
 
 .image-model-form {
@@ -486,10 +487,10 @@ watch(
 
 .model-form-section {
   margin-top: 18px;
-  border: 1px solid oklch(var(--b3) / 0.55);
+  border: 1px solid rgba(17, 24, 39, 0.06);
   border-radius: 18px;
   padding: 18px;
-  background: linear-gradient(180deg, oklch(var(--b1) / 0.88), oklch(var(--b2) / 0.68));
+  background: rgba(255, 255, 255, 0.68);
 }
 
 .model-section-head {
@@ -498,14 +499,14 @@ watch(
   h4 {
     font-size: 14px;
     font-weight: 700;
-    color: oklch(var(--bc) / 0.92);
+    color: #202124;
   }
 
   p {
     margin-top: 4px;
     font-size: 12px;
     line-height: 1.5;
-    color: oklch(var(--bc) / 0.62);
+    color: #5f6368;
   }
 }
 
@@ -519,13 +520,14 @@ watch(
   h3 {
     font-size: 18px;
     line-height: 1.15;
-    font-weight: 700;
+    font-weight: 600;
+    color: #202124;
   }
 
   p {
     margin-top: 6px;
     font-size: 12px;
-    color: oklch(var(--bc) / 0.65);
+    color: #5f6368;
   }
 }
 
@@ -538,9 +540,9 @@ watch(
   span {
     border-radius: 999px;
     padding: 5px 9px;
-    border: 1px solid oklch(var(--bc) / 0.07);
-    background: oklch(var(--b1) / 0.72);
-    color: oklch(var(--bc) / 0.66);
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    background: rgba(255, 255, 255, 0.84);
+    color: #5f6368;
     font-size: 11px;
     font-weight: 700;
   }
@@ -561,32 +563,32 @@ watch(
   align-items: center;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid oklch(var(--bc) / 0.1);
-  background: oklch(var(--b1) / 0.62);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: rgba(255, 255, 255, 0.74);
 
   .model-capability-indicator {
     width: 11px;
     height: 11px;
     grid-row: span 2;
     border-radius: 50%;
-    border: 1px solid oklch(var(--bc) / 0.24);
+    border: 1px solid rgba(95, 99, 104, 0.32);
 
     &.active {
-      border-color: oklch(var(--p) / 0.36);
-      background: oklch(var(--p));
-      box-shadow: 0 0 0 3px oklch(var(--p) / 0.1);
+      border-color: rgba(37, 99, 235, 0.32);
+      background: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
     }
   }
 
   span {
     font-size: 12px;
     font-weight: 700;
-    color: oklch(var(--bc) / 0.82);
+    color: #202124;
   }
 
   small {
     font-size: 11px;
-    color: oklch(var(--bc) / 0.5);
+    color: #6b7280;
   }
 
   &.disabled {
@@ -598,9 +600,10 @@ watch(
   flex-shrink: 0;
   border-radius: 999px;
   padding: 7px 11px;
-  background-color: oklch(var(--n) / 0.08);
+  background-color: #eef6ff;
   font-size: 11px;
-  color: oklch(var(--bc) / 0.7);
+  color: #174466;
+  border: 1px solid rgba(35, 95, 143, 0.14);
 }
 
 .model-form-grid {
@@ -618,7 +621,7 @@ watch(
   label {
     font-size: 12px;
     font-weight: 600;
-    color: oklch(var(--bc) / 0.85);
+    color: #374151;
   }
 }
 
@@ -642,6 +645,7 @@ watch(
   align-items: center;
   gap: 8px;
   min-height: 52px;
+  background: rgba(255, 255, 255, 0.96);
 
   input {
     flex: 1;
@@ -657,7 +661,7 @@ watch(
 .model-field-help {
   font-size: 11px;
   line-height: 1.5;
-  color: oklch(var(--bc) / 0.62);
+  color: #6b7280;
 }
 
 .model-suggestion-list {
@@ -676,10 +680,11 @@ watch(
 .model-info-card {
   border-radius: 14px;
   padding: 12px 14px;
-  background-color: oklch(var(--n) / 0.07);
+  background-color: #f7f7f6;
   font-size: 12px;
   line-height: 1.5;
-  color: oklch(var(--bc) / 0.75);
+  color: #374151;
+  border: 1px solid rgba(17, 24, 39, 0.05);
 
   code {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

@@ -248,6 +248,8 @@ export const languages = {
       copyText: "复制文本",
       deleteMessage: "删除消息",
       reasoning: "思考",
+      modelSettings: "设置模型参数",
+      cannotEditModel: "模型选择后无法更改",
     },
     input: {
       chatPlaceholder: "请输入对话内容",
@@ -410,7 +412,6 @@ export const languages = {
         resourcesDescription: "查看项目发布页，了解版本更新和构建包。",
         releases: "GitHub 发布页",
         navigation: "导航",
-        navigationDescription: "设置完成后直接回到首页，继续进入聊天或生图。",
         goLogin: "返回登录界面",
       },
     },
@@ -674,6 +675,8 @@ export const languages = {
       copyText: "Copy text",
       deleteMessage: "Delete message",
       reasoning: "Reasoning",
+      modelSettings: "Set the model parameters.",
+      cannotEditModel: "Can not change the model.",
     },
     input: {
       chatPlaceholder: "Type your message",
@@ -836,7 +839,6 @@ export const languages = {
         resourcesDescription: "Check the release page for updates and build artifacts.",
         releases: "GitHub Releases",
         navigation: "Navigation",
-        navigationDescription: "Return to the home screen and continue into chat or image generation.",
         goLogin: "Back to Login",
       },
     },

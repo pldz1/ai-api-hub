@@ -41,7 +41,7 @@ const { t } = useI18n();
   color: inherit;
   text-decoration: none;
   user-select: text;
-  cursor: text;
+  cursor: pointer;
 }
 
 .app-footer-copy a:hover {

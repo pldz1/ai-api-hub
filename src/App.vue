@@ -7,15 +7,13 @@
         </keep-alive>
       </router-view>
     </main>
-    <AppFooter />
   </div>
   <input id="global-file-upload-input" type="file" style="display: none" />
 </template>
 
 <script setup>
-import { onMounted } from "vue";
+import { computed, onMounted } from "vue";
 import { useStore } from "vuex";
-import AppFooter from "@/components/AppFooter.vue";
 import { getModels, getImageList } from "@/services";
 
 const store = useStore();
@@ -35,10 +33,6 @@ onMounted(async () => {
   font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   overflow: hidden;
   color: oklch(var(--bc));
-  background:
-    radial-gradient(circle at top left, oklch(var(--p) / 0.08), transparent 28%), radial-gradient(circle at top right, oklch(var(--a) / 0.08), transparent 26%),
-    linear-gradient(180deg, oklch(var(--b1) / 0.98), oklch(var(--b2) / 0.96));
-  /* 允许在webview中拷贝文字 */
   user-select: text;
 }
 

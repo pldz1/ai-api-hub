@@ -177,14 +177,14 @@ watch(
 }
 
 .template-form-card {
-  border: 1px solid oklch(var(--b3) / 0.6);
-  border-radius: 20px;
-  background: linear-gradient(180deg, oklch(var(--b1)) 0%, oklch(var(--b2) / 0.65) 100%);
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.82);
   padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 18px;
-  box-shadow: 0 10px 30px oklch(var(--n) / 0.04);
+  box-shadow: 0 10px 28px rgba(31, 41, 55, 0.04);
 }
 
 .template-form-field {
@@ -195,6 +195,7 @@ watch(
   label {
     font-size: 12px;
     font-weight: 600;
+    color: #374151;
   }
 }
 

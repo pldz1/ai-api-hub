@@ -26,22 +26,14 @@
           }}</a>
         </div>
       </section>
-
-      <section class="app-settings-card app-settings-card-danger">
-        <h3>{{ t("user.app.navigation") }}</h3>
-        <p>{{ t("user.app.navigationDescription") }}</p>
-        <div class="app-settings-actions">
-          <button class="btn btn-outline" @click="emit('go-home')">{{ t("user.app.goLogin") }}</button>
-        </div>
-      </section>
     </div>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useI18n } from "vue-i18n";
 
-const emit = defineEmits(["import-settings", "export-settings", "go-home"]);
+const emit = defineEmits(["import-settings", "export-settings"]);
 const { t } = useI18n();
 </script>
 
@@ -55,29 +47,31 @@ const { t } = useI18n();
 }
 
 .app-settings-card {
-  border: 1px solid oklch(var(--b3) / 0.6);
+  border: 1px solid rgba(17, 24, 39, 0.07);
   border-radius: 24px;
-  background: linear-gradient(180deg, oklch(var(--b1)) 0%, oklch(var(--b2) / 0.75) 100%);
+  background: rgba(255, 255, 255, 0.82);
   padding: 24px;
   box-shadow:
-    inset 0 1px 0 oklch(var(--b1) / 0.9),
-    0 10px 26px oklch(var(--n) / 0.04);
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 10px 26px rgba(31, 41, 55, 0.04);
 
   h3 {
     font-size: 18px;
-    font-weight: 700;
+    font-weight: 600;
+    color: #202124;
   }
 
   p {
     margin-top: 8px;
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.6;
-    color: oklch(var(--bc) / 0.65);
+    color: #5f6368;
   }
 }
 
 .app-settings-card-danger {
-  border-color: oklch(var(--er) / 0.35);
+  border-color: rgba(190, 18, 60, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(255, 240, 243, 0.72) 100%);
 }
 
 .app-settings-actions {

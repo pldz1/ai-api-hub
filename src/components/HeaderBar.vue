@@ -66,7 +66,7 @@ const navItems = computed(() => [
 ]);
 
 const onBackLogin = () => {
-  router.push({ path: "/home" });
+  router.push({ path: "/login" });
 };
 
 const isActivePath = (path) => route.path === path || route.path.startsWith(`${path}/`);

@@ -1,10 +1,7 @@
 import { createRouter, createWebHashHistory } from "vue-router";
-import LoginPage from "@/views/home/LoginPage.vue";
-import LandingPage from "@/views/home/LandingPage.vue";
-import ChatPage from "@/views/chat/ChatPage.vue";
+import LoginPage from "@/views/LoginPage.vue";
 import ImagePage from "@/views/image/ImagePage.vue";
-import SettingsView from "@/views/settings/SettingsView.vue";
-
+import MainView from "@/views/MainView.vue";
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
@@ -17,12 +14,12 @@ const router = createRouter({
       component: LoginPage,
     },
     {
-      path: "/home",
-      component: LandingPage,
+      path: "/main",
+      component: MainView,
     },
     {
       path: "/chat",
-      component: ChatPage,
+      component: MainView,
     },
     {
       path: "/image",
@@ -31,7 +28,7 @@ const router = createRouter({
     },
     {
       path: "/settings",
-      component: SettingsView,
+      component: MainView,
     },
   ],
 });
