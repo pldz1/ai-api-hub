@@ -29,6 +29,8 @@
       </div>
     </div>
   </section>
+  <!-- Click image to view -->
+  <ImageModal />
 </template>
 
 <script setup lang="ts">
@@ -42,6 +44,7 @@ import type { ChatPromptMessage } from "@/services/types";
 import ChatInputArea from "@/views/chat/ChatInputArea.vue";
 import ChatInsTemplate from "@/views/chat/ChatInsTemplate.vue";
 import ChatScrollActions from "@/views/chat/ChatScrollActions.vue";
+import ImageModal from "@/views/chat/ImageModal.vue";
 
 type ChatStartPayload = {
   message: ChatPromptMessage;

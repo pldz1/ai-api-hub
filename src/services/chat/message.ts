@@ -11,8 +11,20 @@ import type { ChatPromptContent, ChatPromptMessage, PackedPartChatMessage, Packe
 /**
  * Pack a user message with text and image content.
  */
-export function packUserMsg(id: string, texts: string, allowImages: boolean = true): ChatPromptMessage {
+export function packUserMsg(id: string | string[], texts: string, allowImages: boolean = true): ChatPromptMessage {
   const res: ChatPromptMessage = { role: "user", content: [{ type: "text", text: texts }] };
+  if (Array.isArray(id)) {
+    if (allowImages) {
+      id.forEach((url) => {
+        res.content.push({
+          type: "image_url",
+          image_url: { url, detail: "low" },
+        });
+      });
+    }
+    return res;
+  }
+
   const imgContainer = document.getElementById(id);
   if (imgContainer && allowImages) {
     const imgs = imgContainer.getElementsByTagName("img");

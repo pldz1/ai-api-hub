@@ -1,6 +1,6 @@
 <template>
   <!-- This view renders the chat input box, capabilities, and send controls. -->
-  <div id="component-chat-input-area" class="component-chat-input-area">
+  <div id="component-chat-input-area" class="component-chat-input-area" @paste="onPaste">
     <!-- Show live request timing and token usage when a session is active. -->
     <div v-show="isShowStatusSticky" class="ccia-status-sticky">
       <div class="ccia-status-pill">
@@ -15,7 +15,14 @@
     <div class="ccia-input-card" :class="{ 'is-home': props.isHome }">
       <div class="ccia-input-area">
         <!-- Preview uploaded images before sending the message. -->
-        <div id="ccia-chat-input-imgs" class="ccia-imgs-area"></div>
+        <div v-if="inputImages.length" class="ccia-imgs-area">
+          <div v-for="image in inputImages" :key="image.id" class="ccia-item">
+            <button class="ccia-image-button" type="button" :aria-label="t('image.viewMask')" @click="previewInputImage(image.src)">
+              <img class="ccia-image" :src="image.src" :alt="image.name" />
+            </button>
+            <button class="ccia-remove-button" type="button" :aria-label="t('image.removeImage')" @click.stop="removeInputImage(image.id)">x</button>
+          </div>
+        </div>
 
         <!-- Let the user compose a multi-line prompt with auto-resizing behavior. -->
         <div class="ccia-shell">
@@ -56,7 +63,7 @@
           <!-- Surface per-turn capabilities and the send or stop trigger. -->
           <div class="ccia-left-actions">
             <AppTooltip v-if="activeCapabilities.imageRead" :text="t('tooltip.uploadImage')" placement="top">
-              <button class="ccia-capability-chip" type="button" @click="uploadImageFile">
+              <button class="ccia-capability-chip" type="button" @click="openImageFilePicker">
                 <SvgIcon class="ccia-capability-icon" :src="attachIcon" />
                 <span>{{ t("input.capabilities.imageRead") }}</span>
               </button>
@@ -102,6 +109,7 @@
         </div>
       </div>
     </dialog>
+    <input ref="imageFileInputRef" class="ccia-file-input" type="file" accept="image/*" multiple @change="onImageFileChange" />
   </div>
 
   <!-- Mount the model settings dialog next to the composer for local control. -->
@@ -109,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useStore } from "vuex";
 import type { ChatModelConfig } from "@/types";
@@ -134,7 +142,7 @@ import {
 } from "@/models";
 import { packUserMsg } from "@/services";
 import type { ChatPromptMessage } from "@/services/types";
-import { addPasteEvent, debounce, dsAlert, isValidUserMsg, removePasteEvent, uploadImageFile } from "@/utils";
+import { debounce, dsAlert, getUuid, isValidUserMsg } from "@/utils";
 import ChatSettings from "@/views/chat/ChatSettings.vue";
 
 type InputCapabilityKey = string;
@@ -147,6 +155,14 @@ type StartChatPayload = {
 type ChatSettingsExpose = {
   openDialog: () => void;
 };
+
+type ChatInputImage = {
+  id: string;
+  name: string;
+  src: string;
+};
+
+const MAX_IMAGE_MB = 20;
 
 const props = withDefaults(
   defineProps<{
@@ -170,6 +186,8 @@ const inputText = ref("");
 const cciaTextareaRef = ref<HTMLTextAreaElement | null>(null);
 const startChatConfirmDialogRef = ref<HTMLDialogElement | null>(null);
 const chatSettingsRef = ref<ChatSettingsExpose | null>(null);
+const imageFileInputRef = ref<HTMLInputElement | null>(null);
+const inputImages = ref<ChatInputImage[]>([]);
 let startChatConfirmResolve: ((confirmed: boolean) => void) | null = null;
 
 const store = useStore();
@@ -276,9 +294,11 @@ const onSendInputData = async () => {
     if (!confirmed) return;
   }
 
-  const data = packUserMsg("ccia-chat-input-imgs", inputText.value, activeCapabilities.value.imageRead);
+  const imageUrls = inputImages.value.map((item) => item.src);
+  const data = packUserMsg(imageUrls, inputText.value, activeCapabilities.value.imageRead);
   if (isValidUserMsg(data)) {
     inputText.value = "";
+    inputImages.value = [];
     emit("on-start", {
       message: {
         ...data,
@@ -364,12 +384,73 @@ const onShowModelSettings = () => {
   chatSettingsRef.value?.openDialog();
 };
 
-onMounted(() => {
-  if (activeCapabilities.value.imageRead) addPasteEvent("component-chat-input-area");
-});
+function readFileAsInputImage(file: File): Promise<ChatInputImage | null> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/")) {
+      resolve(null);
+      return;
+    }
+
+    if (file.size / (1024 * 1024) > MAX_IMAGE_MB) {
+      dsAlert({ type: "error", message: t("toast.imageTooLarge", { max: MAX_IMAGE_MB }) });
+      resolve(null);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve({
+        id: getUuid("chatimg"),
+        name: file.name || "input-image.png",
+        src: String(reader.result || ""),
+      });
+    };
+    reader.onerror = () => {
+      dsAlert({ type: "error", message: t("image.imageReadFailed") });
+      resolve(null);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function addImageFiles(files: FileList | File[]) {
+  const nextImages = await Promise.all(Array.from(files).map((file) => readFileAsInputImage(file)));
+  inputImages.value = [...inputImages.value, ...(nextImages.filter(Boolean) as ChatInputImage[])];
+}
+
+function openImageFilePicker() {
+  imageFileInputRef.value?.click();
+}
+
+async function onImageFileChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (target.files?.length) await addImageFiles(target.files);
+  target.value = "";
+}
+
+async function onPaste(event: ClipboardEvent) {
+  if (!activeCapabilities.value.imageRead) return;
+  const files = Array.from(event.clipboardData?.items || [])
+    .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter(Boolean) as File[];
+
+  if (!files.length) return;
+  event.preventDefault();
+  await addImageFiles(files);
+}
+
+async function previewInputImage(src: string) {
+  await store.dispatch("setModalImage", src);
+  const dialog = document.getElementById("global_image_preview_modal") as HTMLDialogElement | null;
+  dialog?.showModal();
+}
+
+function removeInputImage(id: string) {
+  inputImages.value = inputImages.value.filter((item) => item.id !== id);
+}
 
 onBeforeUnmount(() => {
-  removePasteEvent("component-chat-input-area");
   clearRequestIntervals();
   resolveStartChatConfirmation(false);
 });
@@ -377,8 +458,7 @@ onBeforeUnmount(() => {
 watch(
   () => activeCapabilities.value.imageRead,
   (enabled) => {
-    removePasteEvent("component-chat-input-area");
-    if (enabled) addPasteEvent("component-chat-input-area");
+    if (!enabled) inputImages.value = [];
   },
 );
 
@@ -607,6 +687,10 @@ watch(
     }
   }
 
+  .ccia-file-input {
+    display: none;
+  }
+
   @media (max-width: 640px) {
     .ccia-status-pill {
       flex-wrap: wrap;
@@ -649,51 +733,51 @@ watch(
 <style lang="scss">
 .ccia-imgs-area {
   display: flex;
-  flex-direction: row;
-  max-height: 60px;
-  gap: 6px;
+  gap: 8px;
   max-width: 100%;
+  margin-bottom: 8px;
   overflow-y: hidden;
   overflow-x: auto;
-  padding-left: 52px;
-  margin-bottom: 6px;
+  padding: 0 4px 2px 8px;
 
   .ccia-item {
-    height: 50px;
-    width: 50px;
-    min-height: 50px;
-    min-width: 50px;
-    z-index: 1;
+    position: relative;
+    width: 72px;
+    height: 72px;
+    flex: 0 0 auto;
+  }
+
+  .ccia-image-button {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border: 1px solid rgba(17, 24, 39, 0.08);
+    border-radius: 8px;
+    padding: 0;
+    background: #fff;
+    cursor: pointer;
 
     .ccia-image {
-      height: 50px;
-      width: 50px;
+      display: block;
+      width: 100%;
+      height: 100%;
       object-fit: cover;
     }
+  }
 
-    .ccia-hover-item {
-      display: none;
-      position: absolute;
-      z-index: 2;
-
-      .ccia-hover-button {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 50px;
-        width: 50px;
-      }
-    }
-
-    &:hover {
-      .ccia-image {
-        opacity: 0.7;
-      }
-
-      .ccia-hover-item {
-        display: block;
-      }
-    }
+  .ccia-remove-button {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(17, 24, 39, 0.72);
+    color: #fff;
+    font-size: 14px;
+    line-height: 18px;
+    cursor: pointer;
   }
 }
 
