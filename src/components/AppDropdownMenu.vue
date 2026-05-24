@@ -26,7 +26,7 @@ import SvgIcon from "@/components/SvgIcon.vue";
 
 defineOptions({ inheritAttrs: false });
 
-type DropdownPlacement = "bottom-start" | "bottom-end";
+type DropdownPlacement = "bottom-start" | "bottom-end" | "top-start" | "top-end";
 
 type DropdownItem = {
   key: string;
@@ -73,10 +73,11 @@ const updatePosition = () => {
   const scrollY = window.scrollY;
   const scrollX = window.scrollX;
 
-  const top = rect.bottom + scrollY + 4;
+  const menuHeight = menuRef.value?.offsetHeight || 0;
+  const top = props.placement.startsWith("top") ? rect.top + scrollY - menuHeight - 4 : rect.bottom + scrollY + 4;
   let left = rect.left + scrollX;
 
-  if (props.placement.includes("end")) {
+  if (props.placement.endsWith("end")) {
     left = rect.right + scrollX - props.width;
   }
 

@@ -36,37 +36,13 @@
         <TemplatePanel v-if="activeTab === 'chat-templates'" :templates="typedDraftTemplates" @update:templates="updateDraftTemplates" />
 
         <!-- Chat model registry -->
-        <ModelPanel
-          v-else-if="activeTab === 'chat-models'"
-          kind="chat"
-          :models="draftModels.chat"
-          @update:models="updateChatModels"
-        />
+        <ModelPanel v-else-if="activeTab === 'chat-models'" kind="chat" :models="draftModels.chat" @update:models="updateChatModels" />
 
-        <!-- Image generation model registry -->
-        <ModelPanel
-          v-else-if="activeTab === 'image-generation-models'"
-          kind="image"
-          operation="generation"
-          title-key="user.imageGenerationModels.title"
-          description-key="user.imageGenerationModels.description"
-          :models="draftModels.imageGeneration"
-          @update:models="updateImageGenerationModels"
-        />
-
-        <!-- Image editing model registry -->
-        <ModelPanel
-          v-else-if="activeTab === 'image-edit-models'"
-          kind="image"
-          operation="edit"
-          title-key="user.imageEditModels.title"
-          description-key="user.imageEditModels.description"
-          :models="draftModels.imageEdit"
-          @update:models="updateImageEditModels"
-        />
+        <!-- Image model registry -->
+        <ModelPanel v-else-if="activeTab === 'image-models'" kind="image" :models="draftModels.image" @update:models="updateImageModels" />
 
         <!-- App-level import/export tools -->
-        <AppSettingsPanel v-else @export-settings="exportSettings" @import-settings="importSettings" />
+        <AppPanel v-else @export-settings="exportSettings" @import-settings="importSettings" />
       </section>
     </main>
   </div>
@@ -76,7 +52,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useStore } from "vuex";
-import AppSettingsPanel from "./AppSettingsPanel.vue";
+import AppPanel from "./AppPanel.vue";
 import ModelPanel from "./ModelPanel.vue";
 import TemplatePanel from "./TemplatePanel.vue";
 import { buildPersistedModelSettingsPayload, migratePersistedModelSettings } from "@/models";
@@ -84,7 +60,7 @@ import { exportChatSessionSettings, getChatInsTemplateList, getModels, importCha
 import { dsAlert, getSettingsImportValidationError, isSettingsImportPackage, isValidSettingsImport, uploadJsonFile } from "@/utils";
 import type { ChatModelConfig, ImageModelConfig, ModelSettings, PersistedModelSettingsPayload, SettingsImportPayload } from "@/types";
 
-type SettingTabKey = "chat-templates" | "chat-models" | "image-generation-models" | "image-edit-models" | "app";
+type SettingTabKey = "chat-templates" | "chat-models" | "image-models" | "app";
 type SettingTabItem = { key: SettingTabKey; label: string; description: string };
 type SettingTabGroup = { key: string; label: string; items: SettingTabItem[] };
 type ChatInstructionTemplate = { id: string; name: string; value: string };
@@ -106,7 +82,7 @@ interface UploadedJsonParseError {
 }
 
 function createEmptyModelSettings(): ModelSettings {
-  return { chat: [], imageGeneration: [], imageEdit: [], image: [] };
+  return { chat: [], image: [] };
 }
 
 function clonePlainData<T>(data: T): T {
@@ -249,10 +225,7 @@ const settingGroups = computed<SettingTabGroup[]>(() => [
   {
     key: "image",
     label: t("user.groups.image"),
-    items: [
-      { key: "image-generation-models", label: t("user.tabs.imageGeneration.label"), description: t("user.tabs.imageGeneration.description") },
-      { key: "image-edit-models", label: t("user.tabs.imageEdit.label"), description: t("user.tabs.imageEdit.description") },
-    ],
+    items: [{ key: "image-models", label: t("user.tabs.imageModels.label"), description: t("user.tabs.imageModels.description") }],
   },
   {
     key: "app",
@@ -277,7 +250,9 @@ const { autosaveState, draftModels, draftTemplates, shouldBlockUnload, getDraftP
 });
 
 const typedDraftTemplates = computed<ChatInstructionTemplate[]>(() => draftTemplates.value as ChatInstructionTemplate[]);
-const activeTabInfo = computed(() => settingGroups.value.flatMap((group) => group.items).find((item) => item.key === activeTab.value) || settingGroups.value[0].items[0]);
+const activeTabInfo = computed(
+  () => settingGroups.value.flatMap((group) => group.items).find((item) => item.key === activeTab.value) || settingGroups.value[0].items[0],
+);
 const statusLabel = computed(() => {
   // Map save state to localized copy for the status pill.
   if (autosaveState.value === "saving") return t("common.saving");
@@ -303,12 +278,8 @@ function updateChatModels(nextModels: ChatModelConfig[]) {
   draftModels.value = { ...draftModels.value, chat: nextModels };
 }
 
-function updateImageGenerationModels(nextModels: ImageModelConfig[]) {
-  draftModels.value = { ...draftModels.value, imageGeneration: nextModels, image: nextModels };
-}
-
-function updateImageEditModels(nextModels: ImageModelConfig[]) {
-  draftModels.value = { ...draftModels.value, imageEdit: nextModels };
+function updateImageModels(nextModels: ImageModelConfig[]) {
+  draftModels.value = { ...draftModels.value, image: nextModels };
 }
 
 function buildSettingsExportFilename(date = new Date()): string {

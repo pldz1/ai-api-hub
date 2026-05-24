@@ -1,5 +1,15 @@
 import { tr } from "@/i18n";
-import type { ApiMethod, ApiResponse, ChatListItem, ImageDataItem, RequestBody, RequestHeaders, StoredChatMessage } from "@/services/types";
+import type {
+  ApiMethod,
+  ApiResponse,
+  ChatListItem,
+  ImageConversationListItem,
+  ImageDataItem,
+  RequestBody,
+  RequestHeaders,
+  StoredChatMessage,
+  StoredImageConversation,
+} from "@/services/types";
 
 const STORAGE_KEY = "chat-playground.local-storage.v2";
 const IMAGE_DB_NAME = "ai-api-hub-images";
@@ -23,6 +33,7 @@ interface LocalStorageState {
   chatInsTemplateList: string;
   chats: StoredChatState[];
   images: StoredImageRecord[];
+  imageConversations: StoredImageConversation[];
 }
 
 type LocalRouteHandler = (body: RequestBody) => Promise<ApiResponse>;
@@ -37,12 +48,11 @@ const DEFAULT_STATE: LocalStorageState = {
   chatInsTemplateList: "",
   chats: [],
   images: [],
+  imageConversations: [],
 };
 
 const DEFAULT_MODELS = {
   chat: [],
-  imageGeneration: [],
-  imageEdit: [],
   image: [],
 };
 
@@ -79,6 +89,10 @@ function assertStorageStateWritten(state: LocalStorageState): void {
 
 function findChat(state: LocalStorageState, cid: string): StoredChatState | null {
   return state.chats.find((item) => item.cid === cid) || null;
+}
+
+function findImageConversation(state: LocalStorageState, iid: string): StoredImageConversation | null {
+  return state.imageConversations.find((item) => item.iid === iid) || null;
 }
 
 function ok<TData = null>(data: TData = null as TData, log = "Successfully."): ApiResponse<TData> {
@@ -375,6 +389,52 @@ async function handleDeleteImage(body: RequestBody): Promise<ApiResponse<null>> 
   return ok(null);
 }
 
+async function handleGetImageConversationList(): Promise<ApiResponse<ImageConversationListItem[]>> {
+  const state = readStorageState();
+  return ok(state.imageConversations.map(({ iid, iname }) => ({ iid, iname })));
+}
+
+async function handleAddImageConversation(body: RequestBody): Promise<ApiResponse<null>> {
+  const state = readStorageState();
+  const iid = asString(body.iid);
+  const iname = asString(body.iname);
+  if (!iid) return fail("Image conversation id is required.");
+
+  if (!findImageConversation(state, iid)) {
+    state.imageConversations.push({
+      iid,
+      iname,
+      messages: "[]",
+    });
+    assertStorageStateWritten(state);
+  }
+
+  return ok(null);
+}
+
+async function handleDeleteImageConversation(body: RequestBody): Promise<ApiResponse<null>> {
+  const state = readStorageState();
+  const iid = asString(body.iid);
+  state.imageConversations = state.imageConversations.filter((item) => item.iid !== iid);
+  assertStorageStateWritten(state);
+  return ok(null);
+}
+
+async function handleGetImageConversationMessages(body: RequestBody): Promise<ApiResponse<string>> {
+  const state = readStorageState();
+  return ok(findImageConversation(state, asString(body.iid))?.messages || "[]");
+}
+
+async function handleSetImageConversationMessages(body: RequestBody): Promise<ApiResponse<null>> {
+  const state = readStorageState();
+  const iid = asString(body.iid);
+  const conversation = findImageConversation(state, iid);
+  if (!conversation) return fail("Image conversation not found.");
+  conversation.messages = asString(body.messages, "[]");
+  assertStorageStateWritten(state);
+  return ok(null);
+}
+
 const ROUTES: Record<string, LocalRouteHandler> = {
   "/_api/workspace/login": handleLogin,
   "/_api/workspace/getModels": handleGetModels,
@@ -393,6 +453,11 @@ const ROUTES: Record<string, LocalRouteHandler> = {
   "/_api/image/getImageList": handleGetImageList,
   "/_api/image/pushImage": handlePushImage,
   "/_api/image/deleteImage": handleDeleteImage,
+  "/_api/image/getConversationList": handleGetImageConversationList,
+  "/_api/image/addConversation": handleAddImageConversation,
+  "/_api/image/deleteConversation": handleDeleteImageConversation,
+  "/_api/image/getConversationMessages": handleGetImageConversationMessages,
+  "/_api/image/setConversationMessages": handleSetImageConversationMessages,
 };
 
 export async function requestStorage<TData = unknown>(endpoint: string, body: RequestBody = {}): Promise<ApiResponse<TData>> {

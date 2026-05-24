@@ -2,6 +2,7 @@ export * from "./shared";
 export * from "./provider";
 export * from "./model";
 export * from "./settings";
+export * from "./conversation";
 export type {
   ModelConfigBase as ImageModelConfigBase,
   ModelParamDef as ImageModelParamDef,

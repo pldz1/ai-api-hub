@@ -196,8 +196,28 @@ onMounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 8px 22px 18px;
   overflow: hidden;
+  background: radial-gradient(circle at 12% 0%, rgba(59, 130, 246, 0.05), transparent 30%), linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.chat-card-container::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 210px;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0) 0%, rgba(248, 250, 252, 0.92) 46%, #f8fafc 68%, #f8fafc 100%);
+}
+
+.chat-card-container :deep(.chat-template-display-card) {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 28px max(24px, calc((100% - 900px) / 2)) 230px;
+  background: transparent;
 }
 
 .ccdc-messages-container {
@@ -206,6 +226,7 @@ onMounted(() => {
   min-height: 0;
   opacity: 0;
   pointer-events: none;
+  z-index: 1;
 }
 
 .ccdc-messages-container.active {
@@ -218,27 +239,34 @@ onMounted(() => {
   height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 8px max(56px, calc((100% - 840px) / 2)) 18px;
+  padding: 28px max(24px, calc((100% - 900px) / 2)) 230px;
 }
 
 .cccd-bottom {
-  position: relative;
-  z-index: 2;
-  padding-top: 10px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  z-index: 6;
+  display: flex;
+  justify-content: center;
+  padding: 0 18px;
 }
 
 .cccd-input-area {
+  width: 100%;
   display: flex;
   justify-content: center;
 }
 
 @media (max-width: 900px) {
-  .chat-card-container {
-    padding-inline: 14px;
+  .cccd-scroll-window {
+    padding: 18px 14px 240px;
   }
 
-  .cccd-scroll-window {
-    padding-inline: 18px;
+  .chat-card-container :deep(.chat-template-display-card) {
+    inset: 0;
+    padding: 18px 14px 240px;
   }
 }
 </style>

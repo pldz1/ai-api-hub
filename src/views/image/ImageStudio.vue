@@ -48,9 +48,9 @@ import { useI18n } from "vue-i18n";
 import { buildDefaultImageSettings, buildImageGenerationParams, getModelImageParamDefs, mergeImageSettingsWithModel } from "@/models";
 import { deleteImage, generateImage, getImageList, pushImage } from "@/services";
 import { copyToClipboard, dsAlert, saveToLocal } from "@/utils";
-import ImagePreviewPanel from "@/views/image/components/ImagePreviewPanel.vue";
-import ImageSettingsPanel from "@/views/image/components/ImageSettingsPanel.vue";
-import ImageWorkspacePanel from "@/views/image/components/ImageWorkspacePanel.vue";
+import ImagePreviewPanel from "@/views/image/ImagePreviewPanel.vue";
+import ImageSettingsPanel from "@/views/image/ImageSettingsPanel.vue";
+import ImageWorkspacePanel from "@/views/image/ImageWorkspacePanel.vue";
 
 const props = defineProps({
   mode: {
@@ -68,7 +68,7 @@ const emit = defineEmits(["switch-to-edit"]);
 const store = useStore();
 const { t } = useI18n();
 
-const imageModels = computed(() => (isEditMode.value ? store.state.models.imageEdit : store.state.models.imageGeneration));
+const imageModels = computed(() => store.state.models.image || []);
 const imageList = computed(() => store.state.imageList);
 const getImageId = (item) => String(item?.id ?? "");
 const selectedImage = computed(() => imageList.value.find((item) => getImageId(item) === selectedImageId.value) || null);

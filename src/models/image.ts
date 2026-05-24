@@ -102,16 +102,13 @@ export function getDefaultImageEditParamDefs(): ImageModelParamDef[] {
  * `image` and `mask`.
  */
 export function getModelImageParamDefs(model: LooseModelConfig = {}): ImageModelParamDef[] {
-  const defaultDefs = model?.imageOperation === "edit" ? getDefaultImageEditParamDefs() : getDefaultImageParamDefs();
+  const defaultDefs = getDefaultImageEditParamDefs();
   const supportedKeys = new Set(imageParamPresetList.map((item) => item.key).filter(Boolean));
   const configuredDefs =
     Array.isArray(model?.imageParamDefs) && model.imageParamDefs.length > 0
       ? model.imageParamDefs.filter((item) => item.key && supportedKeys.has(item.key))
       : defaultDefs;
-  const defs =
-    model?.imageOperation === "edit"
-      ? [...configuredDefs, ...getDefaultImageEditParamDefs().filter((defaultDef) => !configuredDefs.some((item) => item.key === defaultDef.key))]
-      : configuredDefs;
+  const defs = [...configuredDefs, ...getDefaultImageEditParamDefs().filter((defaultDef) => !configuredDefs.some((item) => item.key === defaultDef.key))];
   const seen = new Set();
 
   return defs.map((item) => normalizeImageParamDef(item)).filter((item) => item.key && !seen.has(item.key) && (seen.add(item.key), true));

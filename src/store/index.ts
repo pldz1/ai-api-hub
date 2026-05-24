@@ -55,6 +55,15 @@ const mutations = {
   RESET_IMAGE_LIST: createStateMutation("resetImageList"),
   PUSH_IMAGE: createStateMutation("pushImage"),
   DELETE_IMAGE: createStateMutation("deleteImage"),
+  RESET_IMAGE_CONVERSATION_LIST: createStateMutation("resetImageConversationList"),
+  PUSH_IMAGE_CONVERSATION: createStateMutation("pushImageConversation"),
+  DELETE_IMAGE_CONVERSATION: createStateMutation("deleteImageConversation"),
+  SET_CURRENT_IMAGE_CONVERSATION_ID: createStateMutation("setCurImageConversationId"),
+  RESET_IMAGE_MESSAGES: createStateMutation("resetImageMessages"),
+  PUSH_IMAGE_MESSAGE: createStateMutation("pushImageMessage"),
+  UPDATE_IMAGE_MESSAGE: createStateMutation("updateImageMessage"),
+  SET_IMAGE_RUNTIME: createStateMutation("setImageRuntime"),
+  RESET_IMAGE_RUNTIME: createStateMutation("resetImageRuntime"),
   SET_MODAL_IMAGE: createStateMutation("setModalImage"),
 };
 
@@ -89,6 +98,15 @@ const passthroughActions = {
   resetImageList: "RESET_IMAGE_LIST",
   pushImage: "PUSH_IMAGE",
   deleteImage: "DELETE_IMAGE",
+  resetImageConversationList: "RESET_IMAGE_CONVERSATION_LIST",
+  pushImageConversation: "PUSH_IMAGE_CONVERSATION",
+  deleteImageConversation: "DELETE_IMAGE_CONVERSATION",
+  setCurImageConversationId: "SET_CURRENT_IMAGE_CONVERSATION_ID",
+  resetImageMessages: "RESET_IMAGE_MESSAGES",
+  pushImageMessage: "PUSH_IMAGE_MESSAGE",
+  updateImageMessage: "UPDATE_IMAGE_MESSAGE",
+  setImageRuntime: "SET_IMAGE_RUNTIME",
+  resetImageRuntime: "RESET_IMAGE_RUNTIME",
   setModalImage: "SET_MODAL_IMAGE",
 };
 

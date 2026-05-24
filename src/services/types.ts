@@ -84,6 +84,17 @@ export interface ImageDataItem {
   src: string;
 }
 
+export interface ImageConversationListItem {
+  iid: string;
+  iname: string;
+}
+
+export interface StoredImageConversation {
+  iid: string;
+  iname: string;
+  messages: string;
+}
+
 export type ImageParamPrimitive = string | number | boolean | null | undefined;
 export type ImageParamValue = ImageParamPrimitive | Record<string, unknown> | unknown[];
 

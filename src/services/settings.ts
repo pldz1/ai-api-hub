@@ -14,8 +14,6 @@ type ChatInstructionTemplate = {
 
 const emptyModelSettings = (): ModelSettings => ({
   chat: [],
-  imageGeneration: [],
-  imageEdit: [],
   image: [],
 });
 

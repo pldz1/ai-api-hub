@@ -17,9 +17,9 @@ export type ModelConfig = ChatModelConfig | ImageModelConfig;
  */
 export interface ModelSettings {
   chat: ChatModelConfig[];
-  imageGeneration: ImageModelConfig[];
-  imageEdit: ImageModelConfig[];
   image: ImageModelConfig[];
+  imageGeneration?: ImageModelConfig[];
+  imageEdit?: ImageModelConfig[];
 }
 
 /**
@@ -30,9 +30,9 @@ export interface ModelSettings {
  */
 export interface PersistedModelSettingsPayload {
   chat: ChatProviderPayload[];
-  imageGeneration: ImageProviderPayload[];
-  imageEdit: ImageProviderPayload[];
-  image?: ImageProviderPayload[];
+  image: ImageProviderPayload[];
+  imageGeneration?: ImageProviderPayload[];
+  imageEdit?: ImageProviderPayload[];
 }
 
 /**

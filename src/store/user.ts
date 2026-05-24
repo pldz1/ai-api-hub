@@ -38,7 +38,7 @@ export const UserState = {
   /**
    * All configured models.
    */
-  models: { chat: [], imageGeneration: [], imageEdit: [], image: [] },
+  models: { chat: [], image: [] },
 
   /**
    * Currently selected chat model.

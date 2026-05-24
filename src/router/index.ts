@@ -1,6 +1,5 @@
 import { createRouter, createWebHashHistory } from "vue-router";
 import LoginPage from "@/views/LoginPage.vue";
-import ImagePage from "@/views/image/ImagePage.vue";
 import MainView from "@/views/MainView.vue";
 const router = createRouter({
   history: createWebHashHistory(),
@@ -24,9 +23,9 @@ const router = createRouter({
       props: true,
     },
     {
-      path: "/image",
+      path: "/image/:iid?",
       name: "image",
-      component: ImagePage,
+      component: MainView,
       props: true,
     },
     {

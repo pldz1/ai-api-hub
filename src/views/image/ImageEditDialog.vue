@@ -1,0 +1,372 @@
+<template>
+  <dialog ref="dialogRef" class="image-edit-dialog" @click="onDialogClick" @cancel.prevent="close">
+    <div class="ied-shell" @click.stop>
+      <header class="ied-toolbar">
+        <button class="ied-icon-button" type="button" :aria-label="t('common.close')" @click="close">×</button>
+        <div class="ied-toolbar-actions">
+          <button class="ied-icon-button" type="button" :aria-label="t('image.clearBrush')" @click="clearMask">⌫</button>
+          <button class="ied-secondary-button" type="button" @click="downloadImage">{{ t("image.download") }}</button>
+          <label class="ied-brush-control">
+            <span>{{ t("image.brushSize") }}</span>
+            <input v-model.number="brushSize" type="range" min="8" max="96" step="1" />
+          </label>
+          <button class="ied-save-button" type="button" @click="save">{{ t("common.save") }}</button>
+        </div>
+      </header>
+
+      <main class="ied-stage">
+        <div class="ied-canvas-frame" :style="canvasFrameStyle">
+          <canvas ref="imageCanvasRef" class="ied-canvas ied-image-layer"></canvas>
+          <canvas
+            ref="maskCanvasRef"
+            class="ied-canvas ied-mask-layer"
+            @pointerdown="startPaint"
+            @pointermove="paint"
+            @pointerup="stopPaint"
+            @pointerleave="stopPaint"
+          ></canvas>
+        </div>
+      </main>
+    </div>
+  </dialog>
+</template>
+
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, ref } from "vue";
+import { useI18n } from "vue-i18n";
+import { dsAlert } from "@/utils";
+import type { ImageInputAttachment } from "@/types";
+
+const emit = defineEmits<{
+  apply: [payload: { image: ImageInputAttachment; mask: ImageInputAttachment }];
+  close: [];
+}>();
+
+const dialogRef = ref<HTMLDialogElement | null>(null);
+const { t } = useI18n();
+const imageCanvasRef = ref<HTMLCanvasElement | null>(null);
+const maskCanvasRef = ref<HTMLCanvasElement | null>(null);
+const sourceImage = ref<ImageInputAttachment | null>(null);
+const brushSize = ref(36);
+const isPainting = ref(false);
+const canvasAspectRatio = ref("1 / 1");
+const naturalSize = ref({ width: 1, height: 1 });
+const stageSize = ref({ width: 1, height: 1 });
+const canvasFrameStyle = computed(() => {
+  const naturalWidth = Math.max(1, naturalSize.value.width);
+  const naturalHeight = Math.max(1, naturalSize.value.height);
+  const availableWidth = Math.max(1, stageSize.value.width);
+  const availableHeight = Math.max(1, stageSize.value.height);
+  const scale = Math.min(availableWidth / naturalWidth, availableHeight / naturalHeight, 1);
+
+  return {
+    width: `${Math.round(naturalWidth * scale)}px`,
+    height: `${Math.round(naturalHeight * scale)}px`,
+  };
+});
+
+function imageParamToDataUrl(image: ImageInputAttachment | null) {
+  if (!image?.data) return "";
+  if (String(image.data).startsWith("data:")) return image.data;
+  return `data:${image.content_type || "image/png"};base64,${image.data}`;
+}
+
+function getPoint(event: PointerEvent) {
+  const canvas = maskCanvasRef.value;
+  if (!canvas) return { x: 0, y: 0 };
+  const rect = canvas.getBoundingClientRect();
+  const xRatio = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 0;
+  const yRatio = rect.height > 0 ? (event.clientY - rect.top) / rect.height : 0;
+
+  return {
+    x: Math.min(Math.max(xRatio, 0), 1) * canvas.width,
+    y: Math.min(Math.max(yRatio, 0), 1) * canvas.height,
+  };
+}
+
+function drawBrush(event: PointerEvent) {
+  const canvas = maskCanvasRef.value;
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const point = getPoint(event);
+  ctx.save();
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.beginPath();
+  ctx.arc(point.x, point.y, brushSize.value / 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function startPaint(event: PointerEvent) {
+  isPainting.value = true;
+  (event.currentTarget as HTMLElement | null)?.setPointerCapture?.(event.pointerId);
+  drawBrush(event);
+}
+
+function paint(event: PointerEvent) {
+  if (!isPainting.value) return;
+  drawBrush(event);
+}
+
+function stopPaint(event: PointerEvent) {
+  isPainting.value = false;
+  (event.currentTarget as HTMLElement | null)?.releasePointerCapture?.(event.pointerId);
+}
+
+function clearMask() {
+  const canvas = maskCanvasRef.value;
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function canvasToAttachment(canvas: HTMLCanvasElement, filename: string): ImageInputAttachment {
+  const dataUrl = canvas.toDataURL("image/png");
+  return {
+    id: filename,
+    filename,
+    content_type: "image/png",
+    data: dataUrl.split(",")[1] || "",
+    previewUrl: dataUrl,
+  };
+}
+
+function downloadImage() {
+  const canvas = imageCanvasRef.value;
+  if (!canvas) return;
+
+  canvas.toBlob((blob) => {
+    if (!blob) {
+      dsAlert({ type: "error", message: t("image.downloadFailed") });
+      return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = sourceImage.value?.filename || "edit-input.png";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, "image/png");
+}
+
+function save() {
+  const imageCanvas = imageCanvasRef.value;
+  const maskCanvas = maskCanvasRef.value;
+  if (!imageCanvas || !maskCanvas) return;
+
+  emit("apply", {
+    image: canvasToAttachment(imageCanvas, "edit-input.png"),
+    mask: canvasToAttachment(maskCanvas, "edit-mask.png"),
+  });
+  close();
+}
+
+async function loadImage() {
+  const dataUrl = imageParamToDataUrl(sourceImage.value);
+  if (!dataUrl) return;
+  await nextTick();
+  updateStageSize();
+
+  const image = new Image();
+  image.onload = () => {
+    const width = image.naturalWidth || image.width;
+    const height = image.naturalHeight || image.height;
+    const imageCanvas = imageCanvasRef.value;
+    const maskCanvas = maskCanvasRef.value;
+    if (!imageCanvas || !maskCanvas) return;
+
+    imageCanvas.width = width;
+    imageCanvas.height = height;
+    maskCanvas.width = width;
+    maskCanvas.height = height;
+    naturalSize.value = { width, height };
+    canvasAspectRatio.value = `${width} / ${height}`;
+
+    const imageCtx = imageCanvas.getContext("2d");
+    imageCtx?.clearRect(0, 0, width, height);
+    imageCtx?.drawImage(image, 0, 0, width, height);
+    clearMask();
+  };
+  image.onerror = () => dsAlert({ type: "error", message: t("image.loadFailed") });
+  image.src = dataUrl;
+}
+
+function updateStageSize() {
+  const viewportWidth = window.innerWidth || 1;
+  const viewportHeight = window.innerHeight || 1;
+  stageSize.value = {
+    width: Math.max(1, Math.min(viewportWidth - 88, 1280)),
+    height: Math.max(1, viewportHeight - 130),
+  };
+}
+
+async function open(image: ImageInputAttachment) {
+  sourceImage.value = image;
+  updateStageSize();
+  dialogRef.value?.showModal();
+  await loadImage();
+}
+
+function close() {
+  if (dialogRef.value?.open) dialogRef.value.close();
+  emit("close");
+}
+
+function onDialogClick(event: MouseEvent) {
+  if (event.target === dialogRef.value) close();
+}
+
+window.addEventListener("resize", updateStageSize);
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", updateStageSize);
+});
+
+defineExpose({ open, close });
+</script>
+
+<style lang="scss" scoped>
+.image-edit-dialog {
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+
+  &::backdrop {
+    background: rgba(18, 18, 18, 0.92);
+  }
+}
+
+.ied-shell {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-rows: 58px minmax(0, 1fr);
+  color: #fff;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 42%), #242424;
+}
+
+.ied-toolbar {
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 22px;
+}
+
+.ied-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ied-icon-button {
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: #fff;
+  font-size: 25px;
+  line-height: 1;
+}
+
+.ied-brush-control {
+  min-width: 148px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+
+  input {
+    width: 104px;
+    accent-color: #fff;
+  }
+}
+
+.ied-secondary-button,
+.ied-save-button {
+  height: 50px;
+  padding: 0 22px;
+  border: none;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.ied-secondary-button {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.ied-save-button {
+  background: #fff;
+  color: #111827;
+}
+
+.ied-stage {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px 44px 38px;
+  overflow: hidden;
+}
+
+.ied-canvas-frame {
+  position: relative;
+  flex: 0 0 auto;
+  background: #fff;
+  box-shadow: 0 22px 80px rgba(0, 0, 0, 0.32);
+  overflow: hidden;
+}
+
+.ied-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.ied-mask-layer {
+  cursor: crosshair;
+  opacity: 0.48;
+  touch-action: none;
+}
+
+@media (max-width: 720px) {
+  .ied-toolbar {
+    padding: 0 12px;
+  }
+
+  .ied-brush-control {
+    min-width: 116px;
+
+    input {
+      width: 76px;
+    }
+  }
+
+  .ied-stage {
+    padding: 14px;
+  }
+
+  .ied-canvas-frame {
+    max-width: calc(100vw - 28px);
+  }
+}
+</style>

@@ -80,7 +80,7 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { dsAlert } from "@/utils";
-import ImageBrushEditor from "@/views/image/components/ImageBrushEditor.vue";
+import ImageBrushEditor from "@/views/image/ImageBrushEditor.vue";
 
 const props = defineProps({
   prompt: {

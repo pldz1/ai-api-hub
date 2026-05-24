@@ -1,4 +1,4 @@
-import type { ChatModelCapabilities, ChatModelConfig, ChatProviderPayload, ImageModelConfig, ImageOperation, ImageProviderPayload, ModelSettings, PersistedModelSettingsPayload } from "@/types";
+import type { ChatModelCapabilities, ChatModelConfig, ChatProviderPayload, ImageModelConfig, ImageProviderPayload, ModelSettings, PersistedModelSettingsPayload } from "@/types";
 import { cloneJson, getModelRequestId, sanitizeModelCapabilityOverrides, type LooseModelConfig, type LooseModelSettings } from "./common";
 import { isAzureChatModel, normalizeChatModelConfig } from "./chat";
 import { normalizeImageModelConfig } from "./image";
@@ -65,7 +65,7 @@ function sanitizeImageModelConfig(model: ImageModelConfig): ImageModelConfig {
     provider: model.provider,
     apiKey: model.apiKey,
     model: model.model,
-    imageOperation: model.imageOperation,
+    imageOperation: "generation",
     ...("baseURL" in model ? { baseURL: model.baseURL } : {}),
     ...("endpoint" in model ? { endpoint: model.endpoint } : {}),
     ...("deployment" in model ? { deployment: model.deployment } : {}),
@@ -81,15 +81,17 @@ function sanitizeImageModelConfig(model: ImageModelConfig): ImageModelConfig {
  */
 export function sanitizeModelSettings(data: Partial<ModelSettings> | null | undefined = {}): ModelSettings {
   const normalized = data || {};
-  const legacyImageModels = Array.isArray(normalized.image) ? normalized.image : [];
-  const imageGenerationModels = Array.isArray(normalized.imageGeneration) ? normalized.imageGeneration : legacyImageModels;
-  const imageEditModels = Array.isArray(normalized.imageEdit) ? normalized.imageEdit : legacyImageModels;
+  const imageModels = Array.isArray(normalized.image)
+    ? normalized.image
+    : Array.isArray(normalized.imageGeneration)
+      ? normalized.imageGeneration
+      : Array.isArray(normalized.imageEdit)
+        ? normalized.imageEdit
+        : [];
 
   return {
     chat: (Array.isArray(normalized.chat) ? normalized.chat : []).map((item) => sanitizeChatModelConfig(item as ChatModelConfig)),
-    imageGeneration: (Array.isArray(imageGenerationModels) ? imageGenerationModels : []).map((item) => sanitizeImageModelConfig(item as ImageModelConfig)),
-    imageEdit: (Array.isArray(imageEditModels) ? imageEditModels : []).map((item) => sanitizeImageModelConfig(item as ImageModelConfig)),
-    image: (Array.isArray(imageGenerationModels) ? imageGenerationModels : []).map((item) => sanitizeImageModelConfig(item as ImageModelConfig)),
+    image: imageModels.map((item) => sanitizeImageModelConfig(item as ImageModelConfig)),
   };
 }
 
@@ -99,23 +101,24 @@ export function sanitizeModelSettings(data: Partial<ModelSettings> | null | unde
  * This is the main read-path bridge for old exports or older persisted payloads.
  */
 export function migratePersistedModelSettings(data: LooseModelSettings | null | undefined = {}): ModelSettings {
-  const migrateModelEntries = (items: unknown[] = [], kind = "", imageOperation: ImageOperation | "" = "") =>
+  const migrateModelEntries = (items: unknown[] = [], kind = "") =>
     (Array.isArray(items) ? items : []).map((item) => {
       if (kind === "chat") return normalizeChatModelConfig(item as LooseModelConfig);
-      if (kind === "image")
-        return normalizeImageModelConfig(item as LooseModelConfig, imageOperation || (item as LooseModelConfig)?.imageOperation || "generation");
+      if (kind === "image") return normalizeImageModelConfig(item as LooseModelConfig, "generation");
       return item;
     });
 
-  const legacyImageModels = Array.isArray(data?.image) ? data.image : [];
-  const imageGenerationModels = Array.isArray(data?.imageGeneration) ? data.imageGeneration : legacyImageModels;
-  const imageEditModels = Array.isArray(data?.imageEdit) ? data.imageEdit : legacyImageModels;
+  const imageModels = Array.isArray(data?.image)
+    ? data.image
+    : Array.isArray(data?.imageGeneration)
+      ? data.imageGeneration
+      : Array.isArray(data?.imageEdit)
+        ? data.imageEdit
+        : [];
 
   return sanitizeModelSettings({
     chat: migrateModelEntries(data?.chat, "chat") as ChatModelConfig[],
-    imageGeneration: migrateModelEntries(imageGenerationModels, "image", "generation") as ImageModelConfig[],
-    imageEdit: migrateModelEntries(imageEditModels, "image", "edit") as ImageModelConfig[],
-    image: migrateModelEntries(imageGenerationModels, "image", "generation") as ImageModelConfig[],
+    image: migrateModelEntries(imageModels, "image") as ImageModelConfig[],
   });
 }
 
@@ -153,8 +156,8 @@ function buildPersistedChatModelConfig(model: LooseModelConfig | ChatModelConfig
 }
 
 /** Builds the persisted image payload written to storage/export for one model. */
-function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConfig, imageOperation: ImageOperation): ImageProviderPayload {
-  const modelConfig = normalizeImageModelConfig(model as LooseModelConfig, imageOperation);
+function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConfig): ImageProviderPayload {
+  const modelConfig = normalizeImageModelConfig(model as LooseModelConfig, "generation");
   const basePayload = {
     name: modelConfig.name,
     provider: modelConfig.provider,
@@ -191,7 +194,6 @@ export function buildPersistedModelSettingsPayload(data: LooseModelSettings | nu
   const persistedSettings = migratePersistedModelSettings(data);
   return {
     chat: persistedSettings.chat.map((item) => buildPersistedChatModelConfig(item)),
-    imageGeneration: persistedSettings.imageGeneration.map((item) => buildPersistedImageModelConfig(item, "generation")),
-    imageEdit: persistedSettings.imageEdit.map((item) => buildPersistedImageModelConfig(item, "edit")),
+    image: persistedSettings.image.map((item) => buildPersistedImageModelConfig(item)),
   };
 }

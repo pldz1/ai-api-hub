@@ -36,9 +36,8 @@
             <span>{{ modelListMeta(model) }}</span>
           </div>
           <div v-if="isImageKind" class="settings-list-badges">
-            <span :class="{ active: supportsImageInput(model as ImageModelConfig) }">
-              {{ supportsImageInput(model as ImageModelConfig) ? t("user.imageModels.inputImageBadge") : t("user.imageModels.textOnlyBadge") }}
-            </span>
+            <span class="active">Generation</span>
+            <span class="active">Edit</span>
           </div>
         </button>
         <div v-if="models.length === 0" class="settings-empty-list">
@@ -63,7 +62,6 @@
             :model="currentModel"
             :model-suggestions="modelSuggestions"
             :kind="kind"
-            :operation="operation"
             @update:model="updateCurrentModel"
           />
         </template>
@@ -81,22 +79,20 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import ModelEditor from "./ModelEditor.vue";
 import { chatModelTypeList, imageModelTypeList } from "@/constants";
-import { getModelImageParamDefs, isAzureImageModel } from "@/models";
+import { isAzureImageModel } from "@/models";
 import { append4Random } from "@/utils";
-import type { ChatModelConfig, ImageModelConfig, ImageOperation, ModelConfig, ModelKind } from "@/types";
+import type { ChatModelConfig, ImageModelConfig, ModelConfig, ModelKind } from "@/types";
 
 const props = withDefaults(
   defineProps<{
     models?: (ChatModelConfig | ImageModelConfig)[];
     kind?: ModelKind;
-    operation?: ImageOperation;
     titleKey?: string;
     descriptionKey?: string;
   }>(),
   {
     models: () => [],
     kind: "chat",
-    operation: "generation",
     titleKey: "",
     descriptionKey: "",
   },
@@ -137,7 +133,7 @@ function addModel() {
         baseURL: "https://api.openai.com/v1",
         apiKey: "",
         model: "",
-        imageOperation: props.operation,
+        imageOperation: "generation",
       } as ImageModelConfig)
     : ({
         name: append4Random(t("user.chatModels.defaultName")),
@@ -177,11 +173,6 @@ function modelListMeta(model: ChatModelConfig | ImageModelConfig) {
   if (!isImageKind.value) return model.model || t("common.unsetModelId");
   const imageModel = model as ImageModelConfig;
   return (isAzureImageModel(imageModel) ? imageModel.endpoint : "baseURL" in imageModel ? imageModel.baseURL : "") || t("user.modelCard.fields.imageUrl");
-}
-
-function supportsImageInput(model: ImageModelConfig) {
-  // 🖼️ Badge image models that can accept image input parameters.
-  return getModelImageParamDefs(model).some((item) => item.type === "image");
 }
 
 watch(

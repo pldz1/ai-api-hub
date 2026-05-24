@@ -53,6 +53,15 @@ export {
   type ImageModelParamType,
   type ImageParamDefaultValue,
   type ImageSelectOption,
+  type ImageConversationMessage,
+  type ImageConversationInfo,
+  type ImageConversationMode,
+  type ImageConversationRole,
+  type ImageInputAttachment,
+  type ImageMessageStatus,
+  type ImagePayload,
+  type ImageTurnRequest,
+  type ImageTurnResponse,
 } from "./image";
 
 export {

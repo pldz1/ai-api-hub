@@ -147,13 +147,11 @@ const props = withDefaults(
     model?: ModelEditorInput;
     modelSuggestions?: ChatSelectOption[];
     kind?: ModelKind;
-    operation?: ImageOperation;
   }>(),
   {
     model: () => ({}),
     modelSuggestions: () => [],
     kind: "chat",
-    operation: "generation",
   },
 );
 const emit = defineEmits<{ "update:model": [model: ModelConfig] }>();
@@ -272,7 +270,7 @@ function normalizeModelFields() {
   const modelId = localModel.model.trim();
   if (isImageModel.value) {
     localModel.provider = localModel.provider === "Azure OpenAI" ? "Azure OpenAI" : "OpenAI";
-    localModel.imageOperation = props.operation;
+    localModel.imageOperation = "generation";
     localModel.model = modelId;
     if (localModel.provider === "Azure OpenAI") {
       localModel.baseURL = "";
@@ -331,7 +329,7 @@ function buildImageModelPayload(): ImageModelConfig {
     name: localModel.name,
     apiKey: localModel.apiKey,
     model: localModel.model,
-    imageOperation: props.operation,
+    imageOperation: "generation" as ImageOperation,
   };
 
   if (localModel.provider === "Azure OpenAI") {
