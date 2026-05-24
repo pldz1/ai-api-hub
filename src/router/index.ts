@@ -6,15 +6,8 @@ const router = createRouter({
   routes: [
     {
       path: "/",
-      redirect: "/login",
-    },
-    {
-      path: "/login",
+      name: "home",
       component: LoginPage,
-    },
-    {
-      path: "/main",
-      redirect: "/chat",
     },
     {
       path: "/chat/:cid?",

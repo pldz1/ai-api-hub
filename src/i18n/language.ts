@@ -306,6 +306,9 @@ export const languages = {
         title: "图像模型",
       },
       importInvalid: "不是有效的设置 JSON。",
+      importLinkConfirm: "导入后会覆盖当前模型配置；如果配置包包含提示词模板，也会覆盖当前模板。是否继续？",
+      importLinkConfirmAction: "导入配置",
+      importLinkConfirmTitle: "导入链接中的配置？",
       importReadError: "读取 JSON 文件失败。",
       importSuccess: "已导入配置，系统会自动保存。",
       modelCard: {
@@ -721,6 +724,9 @@ export const languages = {
         title: "Image Models",
       },
       importInvalid: "This is not a valid settings JSON file.",
+      importLinkConfirm: "Importing will replace your current model configuration. If the package includes prompt templates, those templates will also be replaced. Continue?",
+      importLinkConfirmAction: "Import settings",
+      importLinkConfirmTitle: "Import settings from this link?",
       importReadError: "Failed to read the JSON file.",
       importSuccess: "Settings imported. Autosave will persist them shortly.",
       modelCard: {

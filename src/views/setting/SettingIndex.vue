@@ -55,10 +55,18 @@ import { useStore } from "vuex";
 import AppPanel from "./AppPanel.vue";
 import ModelPanel from "./ModelPanel.vue";
 import TemplatePanel from "./TemplatePanel.vue";
-import { buildPersistedModelSettingsPayload, migratePersistedModelSettings } from "@/models";
-import { exportChatSessionSettings, getChatInsTemplateList, getModels, importChatSessionSettings, setChatInsTemplateList, setModels } from "@/services";
-import { dsAlert, getSettingsImportValidationError, isSettingsImportPackage, isValidSettingsImport, uploadJsonFile } from "@/utils";
-import type { ChatModelConfig, ImageModelConfig, ModelSettings, PersistedModelSettingsPayload, SettingsImportPayload } from "@/types";
+import { buildPersistedModelSettingsPayload } from "@/models";
+import {
+  SETTINGS_IMPORTED_EVENT,
+  exportChatSessionSettings,
+  getChatInsTemplateList,
+  getModels,
+  importSettingsPayload,
+  setChatInsTemplateList,
+  setModels,
+} from "@/services";
+import { dsAlert, uploadJsonFile } from "@/utils";
+import type { ChatModelConfig, ImageModelConfig, ModelSettings, SettingsImportPayload } from "@/types";
 
 type SettingTabKey = "chat-templates" | "chat-models" | "image-models" | "app";
 type SettingTabItem = { key: SettingTabKey; label: string; description: string };
@@ -333,26 +341,12 @@ async function importSettings() {
     dsAlert({ type: "error", message: t("user.importReadError") });
     return;
   }
-  if (!isValidSettingsImport(jsonData)) {
-    const validationError = getSettingsImportValidationError(jsonData);
-    dsAlert({
-      duration: 5000,
-      type: "error",
-      message: validationError ? `${t("user.importInvalid")} ${validationError}` : t("user.importInvalid"),
-    });
-    return;
-  }
 
-  if (isSettingsImportPackage(jsonData)) {
-    const importedPackage = clonePlainData(jsonData) as SettingsImportPayload;
-    draftModels.value = migratePersistedModelSettings(importedPackage.models);
-    if (Array.isArray(importedPackage.templates)) draftTemplates.value = clonePlainData(importedPackage.templates);
-    if (Array.isArray(importedPackage.chatSessions)) await importChatSessionSettings(importedPackage.chatSessions);
-  } else {
-    draftModels.value = migratePersistedModelSettings(clonePlainData(jsonData) as PersistedModelSettingsPayload);
-  }
-
-  dsAlert({ type: "success", message: t("user.importSuccess") });
+  if (!(await importSettingsPayload(jsonData))) return;
+  syncDraftFromSource({
+    models: store.state.models,
+    templates: store.state.chatInsTemplateList,
+  });
 }
 
 function handleBeforeUnload(event: BeforeUnloadEvent) {
@@ -364,10 +358,12 @@ function handleBeforeUnload(event: BeforeUnloadEvent) {
 onMounted(async () => {
   await ensureLatestStoreData();
   window.addEventListener("beforeunload", handleBeforeUnload);
+  window.addEventListener(SETTINGS_IMPORTED_EVENT, ensureLatestStoreData);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("beforeunload", handleBeforeUnload);
+  window.removeEventListener(SETTINGS_IMPORTED_EVENT, ensureLatestStoreData);
 });
 </script>
 

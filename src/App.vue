@@ -9,23 +9,48 @@
     </main>
   </div>
   <input id="global-file-upload-input" type="file" style="display: none" />
+  <ConfigConfirm ref="configImportConfirmDialogRef" />
 </template>
 
-<script setup>
-import { computed, onMounted } from "vue";
+<script setup lang="ts">
+import { onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import { useStore } from "vuex";
-import { getModels, getImageList } from "@/services";
+import ConfigConfirm from "@/components/ConfigConfirm.vue";
+import { getInitialRouteConfigValue, getModels, getImageList, importSettingsFromConfigValue } from "@/services";
 
 const store = useStore();
+const route = useRoute();
+const configImportConfirmDialogRef = ref<{ confirm: () => Promise<boolean> } | null>(null);
+const importedConfigValues = new Set<string>();
+
+async function importRouteConfig(routeText = "") {
+  const routeConfigValue = getInitialRouteConfigValue(routeText);
+  if (!routeConfigValue || importedConfigValues.has(routeConfigValue)) return;
+
+  const confirmed = await configImportConfirmDialogRef.value?.confirm();
+  if (!confirmed) return;
+
+  importedConfigValues.add(routeConfigValue);
+  await importSettingsFromConfigValue(routeConfigValue);
+}
 
 onMounted(async () => {
   await store.dispatch("login");
   await getModels();
+  await importRouteConfig();
   await getImageList();
 });
+
+watch(
+  () => route.fullPath,
+  async (fullPath) => {
+    await importRouteConfig(fullPath);
+  },
+);
 </script>
 
-<style>
+<style lang="scss">
 #app {
   position: fixed;
   inset: 0;
