@@ -1,5 +1,7 @@
 <template>
-  <div class="component-chat-input-area" id="component-chat-input-area">
+  <!-- This view renders the chat input box, capabilities, and send controls. -->
+  <div id="component-chat-input-area" class="component-chat-input-area">
+    <!-- Show live request timing and token usage when a session is active. -->
     <div v-show="isShowStatusSticky" class="ccia-status-sticky">
       <div class="ccia-status-pill">
         <span class="ccia-status-time">({{ t("chat.timeCost") + " : " + elapsedSeconds }}s)</span>
@@ -9,10 +11,13 @@
       </div>
     </div>
 
+    <!-- Wrap the editable prompt area and action controls in a single composer card. -->
     <div class="ccia-input-card" :class="{ 'is-home': props.isHome }">
       <div class="ccia-input-area">
-        <div class="ccia-imgs-area" id="ccia-chat-input-imgs"></div>
+        <!-- Preview uploaded images before sending the message. -->
+        <div id="ccia-chat-input-imgs" class="ccia-imgs-area"></div>
 
+        <!-- Let the user compose a multi-line prompt with auto-resizing behavior. -->
         <div class="ccia-shell">
           <textarea
             ref="cciaTextareaRef"
@@ -24,25 +29,23 @@
           ></textarea>
         </div>
 
+        <!-- Split model controls from per-message capability toggles and send actions. -->
         <div class="ccia-capability-row">
-          <!-- Right actions -->
+          <!-- Keep the model selector and settings entry point together. -->
           <div class="ccia-right-actions">
-            <!-- Select model -->
             <div class="ccia-model-area">
-              <select v-if="!isModelSelectionReadonly" class="ccia-model-select" v-model="selectedModel">
+              <select v-if="!isModelSelectionReadonly" v-model="selectedModel" class="ccia-model-select">
                 <option disabled :value="null">{{ t("input.selectChatModel") }}</option>
                 <option v-for="m in chatModels" :key="m.name" :value="m">
                   {{ m.name }}
                 </option>
               </select>
-              <!-- Lock model selector. -->
               <div v-else class="ccia-model-lock">
                 <AppTooltip :text="t('tooltip.cannotEditModel')" placement="top">
                   {{ lockedModelName }}
                 </AppTooltip>
               </div>
             </div>
-            <!-- Set model parameters -->
             <AppTooltip :text="t('tooltip.modelSettings')" placement="top">
               <button class="ccia-model-setting-button" type="button" @click="onShowModelSettings">
                 <SvgIcon :src="paramIcon" />
@@ -50,10 +53,10 @@
             </AppTooltip>
           </div>
 
+          <!-- Surface per-turn capabilities and the send or stop trigger. -->
           <div class="ccia-left-actions">
-            <!-- Image read: This operation will trigger a file browser dialog; therefore, it should not be included within a for loop. -->
             <AppTooltip v-if="activeCapabilities.imageRead" :text="t('tooltip.uploadImage')" placement="top">
-              <button class="ccia-capability-chip" @click="uploadImageFile" type="button">
+              <button class="ccia-capability-chip" type="button" @click="uploadImageFile">
                 <SvgIcon class="ccia-capability-icon" :src="attachIcon" />
                 <span>{{ t("input.capabilities.imageRead") }}</span>
               </button>
@@ -69,9 +72,8 @@
                 <span>{{ item.label }}</span>
               </button>
             </AppTooltip>
-            <!-- Send/stop request. -->
             <AppTooltip :text="t('tooltip.sendOrStop')" placement="top">
-              <button class="ccia-send-button" :class="{ stopping: props.isChatting }" @click="onSendInputData" type="button">
+              <button class="ccia-send-button" :class="{ stopping: props.isChatting }" type="button" @click="onSendInputData">
                 <SvgIcon class="ccia-send-icon" :src="props.isChatting ? pauseIcon : arrowUpIcon" />
               </button>
             </AppTooltip>
@@ -80,6 +82,7 @@
       </div>
     </div>
 
+    <!-- Confirm the selected model before starting a brand-new chat session. -->
     <dialog
       ref="startChatConfirmDialogRef"
       class="modal ccia-start-chat-confirm"
@@ -101,16 +104,23 @@
     </dialog>
   </div>
 
-  <ChatSettings />
+  <!-- Mount the model settings dialog next to the composer for local control. -->
+  <ChatSettings ref="chatSettingsRef" />
 </template>
 
-<script setup>
-import { useStore } from "vuex";
-import { ref, onMounted, onBeforeUnmount, computed, watch } from "vue";
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { addPasteEvent, removePasteEvent, uploadImageFile, isValidUserMsg, dsAlert } from "@/utils";
-import { packUserMsg } from "@/services";
-import { debounce } from "@/utils";
+import { useStore } from "vuex";
+import type { ChatModelConfig } from "@/types/chat";
+import attachIcon from "@/assets/svg/attach24.svg";
+import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
+import paramIcon from "@/assets/svg/param24.svg";
+import pauseIcon from "@/assets/svg/pause32.svg";
+import thinkingIcon from "@/assets/svg/thinking24.svg";
+import webIcon from "@/assets/svg/web24.svg";
+import AppTooltip from "@/components/AppTooltip.vue";
+import SvgIcon from "@/components/SvgIcon.vue";
 import {
   buildDefaultChatSettings,
   chatTurnCapabilityKeys,
@@ -120,49 +130,59 @@ import {
   getModelRequestId,
   getSnapshotEnabledCapabilities,
   getSnapshotSupportedCapabilities,
+  type LooseModelConfig,
 } from "@/models";
-import AppTooltip from "@/components/AppTooltip.vue";
-import SvgIcon from "@/components/SvgIcon.vue";
-import attachIcon from "@/assets/svg/attach24.svg";
-import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
-import pauseIcon from "@/assets/svg/pause32.svg";
-import webIcon from "@/assets/svg/web24.svg";
-import thinkingIcon from "@/assets/svg/thinking24.svg";
-import paramIcon from "@/assets/svg/param24.svg";
+import { packUserMsg } from "@/services";
+import type { ChatPromptMessage } from "@/services/types";
+import { addPasteEvent, debounce, dsAlert, isValidUserMsg, removePasteEvent, uploadImageFile } from "@/utils";
 import ChatSettings from "@/views/chat/ChatSettings.vue";
 
-const props = defineProps({
-  isChatting: {
-    type: Boolean,
-    default: false,
-  },
-  modelSelectionReadonly: {
-    type: Boolean,
-    default: false,
-  },
-  isHome: {
-    type: Boolean,
-    default: false,
-  },
-});
+type InputCapabilityKey = string;
 
-const emit = defineEmits(["on-start", "on-stop"]);
+type StartChatPayload = {
+  message: ChatPromptMessage;
+  model: ChatModelConfig | null;
+};
+
+type ChatSettingsExpose = {
+  openDialog: () => void;
+};
+
+const props = withDefaults(
+  defineProps<{
+    isChatting?: boolean;
+    modelSelectionReadonly?: boolean;
+    isHome?: boolean;
+  }>(),
+  {
+    isChatting: false,
+    modelSelectionReadonly: false,
+    isHome: false,
+  },
+);
+
+const emit = defineEmits<{
+  "on-start": [payload: StartChatPayload];
+  "on-stop": [];
+}>();
+
 const inputText = ref("");
-const cciaTextareaRef = ref(null);
-const startChatConfirmDialogRef = ref(null);
-let startChatConfirmResolve = null;
+const cciaTextareaRef = ref<HTMLTextAreaElement | null>(null);
+const startChatConfirmDialogRef = ref<HTMLDialogElement | null>(null);
+const chatSettingsRef = ref<ChatSettingsExpose | null>(null);
+let startChatConfirmResolve: ((confirmed: boolean) => void) | null = null;
 
 const store = useStore();
 const { t } = useI18n();
-const chatModels = computed(() => store.state.models.chat);
-const curChatId = computed(() => store.state.curChatId);
+const chatModels = computed<ChatModelConfig[]>(() => store.state.models.chat || []);
+const curChatId = computed<string>(() => store.state.curChatId || "");
 const curConversation = computed(() => store.state.curConversation);
-const inputCapabilities = computed(() => store.state.inputCapabilities);
+const inputCapabilities = computed<Record<string, boolean>>(() => store.state.inputCapabilities || {});
 const activeRuntime = computed(() => (curChatId.value ? store.state.chatRuntimeById?.[curChatId.value] || null : null));
 const sessionTokenUsage = computed(() => store.state.sessionTokenUsage || { input_tokens: 0, output_tokens: 0, total_tokens: 0 });
-const selectedModel = ref(null);
+const selectedModel = ref<ChatModelConfig | null>(null);
 const elapsedMs = ref(0);
-let timerIntervalId = null;
+let timerIntervalId: number | null = null;
 
 const isModelSelectionReadonly = computed(() => Boolean(props.modelSelectionReadonly || curChatId.value));
 const draftSnapshot = computed(() => createConversationModelSnapshot(selectedModel.value));
@@ -182,14 +202,14 @@ const formattedTokens = computed(() => ({
 const isChatRunning = computed(() => Boolean(activeRuntime.value?.pending || ["loading", "streaming"].includes(activeRuntime.value?.status || "")));
 const isShowStatusSticky = computed(() => isChatRunning.value || Number(sessionTokenUsage.value.total_tokens || 0) > 0);
 
-const capabilityLabelKeys = {
+const capabilityLabelKeys: Record<string, string> = {
   webSearch: "input.capabilities.webSearch",
   reasoning: "input.capabilities.reasoning",
 };
-const capabilityTooltipKeys = {
+const capabilityTooltipKeys: Record<string, string> = {
   reasoning: "tooltip.reasoning",
 };
-const capabilityIcons = {
+const capabilityIcons: Record<string, string> = {
   webSearch: webIcon,
   reasoning: thinkingIcon,
 };
@@ -205,7 +225,8 @@ const visibleTurnCapabilities = computed(() =>
       icon: capabilityIcons[key],
     })),
 );
-const getModelSelectionKey = (model) => [model?.provider, model?.name, getModelRequestId(model), getModelDeployment(model)].join("|");
+
+const getModelSelectionKey = (model: LooseModelConfig | null) => [model?.provider, model?.name, getModelRequestId(model), getModelDeployment(model)].join("|");
 
 watch(
   () => chatModels.value,
@@ -256,8 +277,7 @@ const onSendInputData = async () => {
   }
 
   const data = packUserMsg("ccia-chat-input-imgs", inputText.value, activeCapabilities.value.imageRead);
-  const flag = isValidUserMsg(data);
-  if (flag) {
+  if (isValidUserMsg(data)) {
     inputText.value = "";
     emit("on-start", {
       message: {
@@ -278,12 +298,12 @@ const onSendInputData = async () => {
   }
 };
 
-const onToggleCapability = async (key, value) => {
+const onToggleCapability = async (key: InputCapabilityKey, value: boolean) => {
   await store.dispatch("setInputCapability", { key, value });
 };
 
 const requestStartChatConfirmation = () =>
-  new Promise((resolve) => {
+  new Promise<boolean>((resolve) => {
     const dialog = startChatConfirmDialogRef.value;
     if (!dialog?.showModal) {
       resolve(false);
@@ -294,7 +314,7 @@ const requestStartChatConfirmation = () =>
     dialog.showModal();
   });
 
-const resolveStartChatConfirmation = (confirmed) => {
+const resolveStartChatConfirmation = (confirmed: boolean) => {
   if (startChatConfirmResolve) {
     startChatConfirmResolve(Boolean(confirmed));
     startChatConfirmResolve = null;
@@ -305,7 +325,7 @@ const resolveStartChatConfirmation = (confirmed) => {
 };
 
 const clearRequestIntervals = () => {
-  if (timerIntervalId) {
+  if (timerIntervalId !== null) {
     clearInterval(timerIntervalId);
     timerIntervalId = null;
   }
@@ -321,15 +341,15 @@ const startRequestTimer = () => {
 };
 
 const onInputText = async () => {
-  if (cciaTextareaRef.value) {
-    cciaTextareaRef.value.style.height = "auto";
-    cciaTextareaRef.value.style.height = `${cciaTextareaRef.value.scrollHeight}px`;
-  }
+  const textarea = cciaTextareaRef.value;
+  if (!textarea) return;
+  textarea.style.height = "auto";
+  textarea.style.height = `${textarea.scrollHeight}px`;
 };
 
 const debounceInputText = debounce(onInputText, 50);
 
-const onEnterKeydown = async (event) => {
+const onEnterKeydown = async (event: KeyboardEvent) => {
   if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
     await onSendInputData();
@@ -341,7 +361,7 @@ const onShowModelSettings = () => {
     dsAlert({ type: "warn", message: t("chat.chooseModelFirst") });
     return;
   }
-  global_chat_model_settings.showModal();
+  chatSettingsRef.value?.openDialog();
 };
 
 onMounted(() => {
@@ -470,7 +490,7 @@ watch(
   .ccia-model-lock {
     width: 160px;
     height: 32px;
-    padding: 0px 4px;
+    padding: 0 4px;
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -502,15 +522,6 @@ watch(
     color: #fff;
     border: none;
     box-shadow: 0 8px 20px rgba(17, 24, 39, 0.16);
-    transition:
-      transform 0.15s ease,
-      background-color 0.15s ease,
-      box-shadow 0.15s ease;
-
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 10px 22px rgba(17, 24, 39, 0.22);
-    }
 
     &.stopping {
       background-color: #be123c;

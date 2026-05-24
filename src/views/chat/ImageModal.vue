@@ -1,18 +1,21 @@
 <template>
+  <!-- This view shows the chat image preview modal. -->
   <dialog id="global_image_preview_modal" class="modal global-image-preview-modal">
     <div class="modal-box">
+      <!-- Provide a simple close control for the fullscreen image preview. -->
       <form method="dialog">
-        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2 close-forum" @click="handleClose">✕</button>
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2 close-forum" type="button">x</button>
       </form>
 
+      <!-- Scale the selected image to fit within the viewport. -->
       <img class="img-container" :src="imgSrc" />
     </div>
   </dialog>
 </template>
 
-<script setup>
-import { useStore } from "vuex";
+<script setup lang="ts">
 import { computed } from "vue";
+import { useStore } from "vuex";
 
 const store = useStore();
 const imgSrc = computed(() => store.state.modalImgSrc);

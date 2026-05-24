@@ -1,4 +1,4 @@
-import { sanitizeModelSettings, toRuntimeChatModelConfig } from "@/models";
+import { normalizeChatModelConfig, sanitizeModelSettings } from "@/models";
 
 export const WORKSPACE_ID = "__workspace__";
 export const WORKSPACE_LABEL = "Workspace";
@@ -90,7 +90,7 @@ export const UserState = {
    * Set current chat model info.
    */
   setCurChatModel(data: unknown) {
-    this.curChatModel = data ? toRuntimeChatModelConfig(data) : null;
+    this.curChatModel = data ? normalizeChatModelConfig(data) : null;
   },
 
   /**

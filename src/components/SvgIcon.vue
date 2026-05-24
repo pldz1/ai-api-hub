@@ -1,22 +1,23 @@
 <template>
+  <!-- This component renders either a colored SVG image or a masked icon. -->
+  <!-- Switch between direct image rendering and CSS mask rendering. -->
   <span class="svg-icon" :class="{ 'svg-icon-mask': !colored }" :style="colored ? null : iconStyle" aria-hidden="true">
     <img v-if="colored" class="svg-icon-img" :src="src" alt="" />
   </span>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from "vue";
 
-const props = defineProps({
-  src: {
-    type: String,
-    required: true,
+const props = withDefaults(
+  defineProps<{
+    src: string;
+    colored?: boolean;
+  }>(),
+  {
+    colored: false,
   },
-  colored: {
-    type: Boolean,
-    default: false,
-  },
-});
+);
 
 const iconStyle = computed(() => ({
   "--svg-icon-url": `url("${props.src}")`,

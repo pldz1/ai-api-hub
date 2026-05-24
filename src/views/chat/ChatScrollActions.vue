@@ -1,10 +1,13 @@
 <template>
+  <!-- This view renders quick actions for scrolling the chat list. -->
   <div class="cccd-scroll-actions">
+    <!-- Jump to the first visible message when the list is scrolled down. -->
     <AppTooltip text="To top" placement="left">
       <button class="cccd-scroll-action" :class="{ disabled: !canScrollTop }" type="button" aria-label="To top" @click="$emit('scroll-top')">
         <SvgIcon class="cccd-scroll-action-icon" :src="arrowUpIcon" />
       </button>
     </AppTooltip>
+    <!-- Jump back to the latest message near the bottom of the list. -->
     <AppTooltip text="To bottom" placement="left">
       <button class="cccd-scroll-action" :class="{ disabled: !canScrollBottom }" type="button" aria-label="To bottom" @click="$emit('scroll-bottom')">
         <SvgIcon class="cccd-scroll-action-icon is-bottom" :src="arrowUpIcon" />
@@ -14,22 +17,25 @@
 </template>
 
 <script setup lang="ts">
+import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
-import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 
-defineProps({
-  canScrollTop: {
-    type: Boolean,
-    default: false,
+withDefaults(
+  defineProps<{
+    canScrollTop?: boolean;
+    canScrollBottom?: boolean;
+  }>(),
+  {
+    canScrollTop: false,
+    canScrollBottom: false,
   },
-  canScrollBottom: {
-    type: Boolean,
-    default: false,
-  },
-});
+);
 
-defineEmits(["scroll-top", "scroll-bottom"]);
+defineEmits<{
+  "scroll-top": [];
+  "scroll-bottom": [];
+}>();
 </script>
 
 <style lang="scss" scoped>

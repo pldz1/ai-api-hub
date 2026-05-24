@@ -1,10 +1,15 @@
 <template>
+  <!-- This component renders a dropdown menu with a custom trigger. -->
+  <!-- Expose the trigger slot while forwarding inherited attributes. -->
   <div ref="triggerRef" class="app-dropdown-trigger" v-bind="attrs">
     <slot name="trigger" :toggle="toggleOpen" :open="open" />
   </div>
+  <!-- Teleport the popup menu to the document body for stable positioning. -->
   <Teleport to="body">
     <div v-if="open" ref="menuRef" class="app-dropdown-menu" :style="menuStyle">
+      <!-- Prefer a fully custom menu body when the default slot is provided. -->
       <slot v-if="$slots.default" :close="closeMenu" />
+      <!-- Fall back to rendering a simple action list from the items prop. -->
       <template v-else>
         <button v-for="item in items" :key="item.key" class="app-dropdown-item" :class="{ active: item.active, danger: item.danger }" @click="selectItem(item)">
           <SvgIcon v-if="item.icon" class="app-dropdown-item-icon" :src="item.icon" />
@@ -15,32 +20,43 @@
   </Teleport>
 </template>
 
-<script setup>
-defineOptions({ inheritAttrs: false });
-
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useAttrs } from "vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 
-const props = defineProps({
-  items: {
-    type: Array,
-    default: () => [],
-  },
-  placement: {
-    type: String,
-    default: "bottom-start",
-  },
-  width: {
-    type: Number,
-    default: 160,
-  },
-});
+defineOptions({ inheritAttrs: false });
 
-const emit = defineEmits(["select"]);
+type DropdownPlacement = "bottom-start" | "bottom-end";
+
+type DropdownItem = {
+  key: string;
+  label: string;
+  icon?: string;
+  active?: boolean;
+  danger?: boolean;
+  value?: string;
+};
+
+const props = withDefaults(
+  defineProps<{
+    items?: DropdownItem[];
+    placement?: DropdownPlacement;
+    width?: number;
+  }>(),
+  {
+    items: () => [],
+    placement: "bottom-start",
+    width: 160,
+  },
+);
+
+const emit = defineEmits<{
+  select: [item: DropdownItem];
+}>();
 
 const attrs = useAttrs();
-const triggerRef = ref(null);
-const menuRef = ref(null);
+const triggerRef = ref<HTMLElement | null>(null);
+const menuRef = ref<HTMLElement | null>(null);
 const open = ref(false);
 const position = ref({ top: 0, left: 0 });
 
@@ -57,7 +73,7 @@ const updatePosition = () => {
   const scrollY = window.scrollY;
   const scrollX = window.scrollX;
 
-  let top = rect.bottom + scrollY + 4;
+  const top = rect.bottom + scrollY + 4;
   let left = rect.left + scrollX;
 
   if (props.placement.includes("end")) {
@@ -67,10 +83,12 @@ const updatePosition = () => {
   position.value = { top, left };
 };
 
-const onDocumentClick = (event) => {
+const onDocumentClick = (event: MouseEvent) => {
   const triggerEl = triggerRef.value;
   const menuEl = menuRef.value;
-  if (triggerEl?.contains(event.target) || menuEl?.contains(event.target)) return;
+  const target = event.target;
+  if (!(target instanceof Node)) return;
+  if (triggerEl?.contains(target) || menuEl?.contains(target)) return;
   closeMenu();
 };
 
@@ -106,7 +124,7 @@ const toggleOpen = async () => {
   await openMenu();
 };
 
-const selectItem = (item) => {
+const selectItem = (item: DropdownItem) => {
   emit("select", item);
   closeMenu();
 };
@@ -149,10 +167,6 @@ onBeforeUnmount(() => {
   font-size: 13px;
   font-weight: 600;
   color: oklch(var(--bc) / 0.86);
-  transition:
-    background-color 0.18s ease,
-    color 0.18s ease,
-    transform 0.18s ease;
 }
 
 .app-dropdown-item-icon {
@@ -175,10 +189,6 @@ onBeforeUnmount(() => {
 .app-dropdown-item:hover .app-dropdown-item-icon,
 .app-dropdown-item.active .app-dropdown-item-icon {
   color: oklch(var(--bc));
-}
-
-.app-dropdown-item:hover {
-  transform: translateX(1px);
 }
 
 .app-dropdown-item.danger {

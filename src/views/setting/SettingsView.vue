@@ -1,91 +1,95 @@
 <template>
-  <div class="settings-page-shell">
-    <div class="settings-page">
-      <aside class="settings-sidebar">
-        <div class="settings-group-list">
-          <section v-for="group in settingGroups" :key="group.key" class="settings-nav-group">
-            <h3>{{ group.label }}</h3>
-            <div class="settings-tab-list">
-              <button
-                v-for="item in group.items"
-                :key="item.key"
-                class="settings-tab-button"
-                :class="{ active: activeTab === item.key }"
-                @click="activeTab = item.key"
-              >
-                <span>{{ item.label }}</span>
-                <small>{{ item.description }}</small>
-              </button>
-            </div>
-          </section>
+  <div class="settings-page">
+    <aside class="settings-sidebar">
+      <section v-for="group in settingGroups" :key="group.key" class="settings-nav-group">
+        <h3>{{ group.label }}</h3>
+        <button
+          v-for="item in group.items"
+          :key="item.key"
+          class="settings-tab-button"
+          :class="{ active: activeTab === item.key }"
+          @click="activeTab = item.key"
+        >
+          <span>{{ item.label }}</span>
+          <small>{{ item.description }}</small>
+        </button>
+      </section>
+    </aside>
+
+    <main class="settings-main">
+      <header class="settings-main-header">
+        <p>{{ activeTabInfo.description }}</p>
+        <div class="settings-status" :class="statusClass">
+          <span class="settings-status-dot"></span>
+          <span>{{ statusLabel }}</span>
         </div>
-      </aside>
+      </header>
 
-      <main class="settings-main">
-        <header class="settings-main-header">
-          <div>
-            <p class="settings-main-subtitle">{{ activeTabInfo.description }}</p>
-          </div>
+      <section class="settings-main-content">
+        <TemplatePanel v-if="activeTab === 'chat-templates'" :templates="typedDraftTemplates" @update:templates="updateDraftTemplates" />
 
-          <div class="settings-main-actions">
-            <div class="settings-status" :class="statusClass">
-              <span class="settings-status-dot"></span>
-              <span>{{ statusLabel }}</span>
-            </div>
-          </div>
-        </header>
+        <ModelPanel
+          v-else-if="activeTab === 'chat-models'"
+          kind="chat"
+          :models="draftModels.chat"
+          @update:models="updateChatModels"
+        />
 
-        <section class="settings-main-content">
-          <ChatInsTemplateList v-if="activeTab === 'chat-templates'" :templates="draftTemplates" @update:templates="updateDraftTemplates" />
+        <ModelPanel
+          v-else-if="activeTab === 'image-generation-models'"
+          kind="image"
+          operation="generation"
+          title-key="user.imageGenerationModels.title"
+          description-key="user.imageGenerationModels.description"
+          :models="draftModels.imageGeneration"
+          @update:models="updateImageGenerationModels"
+        />
 
-          <ChatModels v-if="activeTab === 'chat-models'" :models="draftModels.chat" @update:models="updateChatModels" />
+        <ModelPanel
+          v-else-if="activeTab === 'image-edit-models'"
+          kind="image"
+          operation="edit"
+          title-key="user.imageEditModels.title"
+          description-key="user.imageEditModels.description"
+          :models="draftModels.imageEdit"
+          @update:models="updateImageEditModels"
+        />
 
-          <ImageModels
-            v-if="activeTab === 'image-generation-models'"
-            title-key="user.imageGenerationModels.title"
-            description-key="user.imageGenerationModels.description"
-            model-operation="generation"
-            :models="draftModels.imageGeneration"
-            @update:models="updateImageGenerationModels"
-          />
-
-          <ImageModels
-            v-if="activeTab === 'image-edit-models'"
-            title-key="user.imageEditModels.title"
-            description-key="user.imageEditModels.description"
-            model-operation="edit"
-            :models="draftModels.imageEdit"
-            @update:models="updateImageEditModels"
-          />
-
-          <AppSettings v-if="activeTab === 'app'" @export-settings="exportSettings" @import-settings="importSettings" />
-        </section>
-      </main>
-    </div>
+        <AppSettingsPanel v-else @export-settings="exportSettings" @import-settings="importSettings" />
+      </section>
+    </main>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
-import { useStore } from "vuex";
 import { useI18n } from "vue-i18n";
-import ChatModels from "@/views/settings/components/ChatModels.vue";
-import ImageModels from "@/views/settings/components/ImageModels.vue";
-import ChatInsTemplateList from "@/views/settings/components/ChatInsTemplateList.vue";
-import AppSettings from "@/views/settings/components/AppSettings.vue";
+import { useStore } from "vuex";
+import AppSettingsPanel from "./AppSettingsPanel.vue";
+import ModelPanel from "./ModelPanel.vue";
+import TemplatePanel from "./TemplatePanel.vue";
 import { buildPersistedModelSettingsPayload, migratePersistedModelSettings } from "@/models";
-import { exportChatSessionSettings, getModels, getChatInsTemplateList, importChatSessionSettings, setModels, setChatInsTemplateList } from "@/services";
-import { uploadJsonFile, isValidSettingsImport, getSettingsImportValidationError, isSettingsImportPackage, dsAlert } from "@/utils";
-import { useSettingsDraft } from "./useSettingsDraft";
+import { exportChatSessionSettings, getChatInsTemplateList, getModels, importChatSessionSettings, setChatInsTemplateList, setModels } from "@/services";
+import { dsAlert, getSettingsImportValidationError, isSettingsImportPackage, isValidSettingsImport, uploadJsonFile } from "@/utils";
+import { useSettingsDraft } from "./settingsDraft";
 import type { ChatModelConfig } from "@/types/chat";
-import type { ImageModelConfig, PersistedModelSettingsPayload, SettingsImportPayload } from "@/types/image";
+import type { ImageModelConfig } from "@/types/image";
+import type { PersistedModelSettingsPayload, SettingsImportPayload } from "@/types/settings";
+
+type SettingTabKey = "chat-templates" | "chat-models" | "image-generation-models" | "image-edit-models" | "app";
+type SettingTabItem = { key: SettingTabKey; label: string; description: string };
+type SettingTabGroup = { key: string; label: string; items: SettingTabItem[] };
+type ChatInstructionTemplate = { id: string; name: string; value: string };
+
+interface UploadedJsonParseError {
+  __jsonParseError: string;
+}
 
 const store = useStore();
-const router = useRouter();
 const { t } = useI18n();
+const activeTab = ref<SettingTabKey>("chat-models");
 
-const settingGroups = computed(() => [
+const settingGroups = computed<SettingTabGroup[]>(() => [
   {
     key: "chat",
     label: t("user.groups.chat"),
@@ -109,20 +113,6 @@ const settingGroups = computed(() => [
   },
 ]);
 
-const activeTab = ref("chat-models");
-
-interface UploadedJsonParseError {
-  __jsonParseError: string;
-}
-
-function clonePlainData<T>(data: T): T {
-  return JSON.parse(JSON.stringify(data));
-}
-
-function isUploadedJsonParseError(data: unknown): data is UploadedJsonParseError {
-  return Boolean(data) && typeof data === "object" && "__jsonParseError" in data;
-}
-
 const { autosaveState, draftModels, draftTemplates, shouldBlockUnload, getDraftPayload, syncDraftFromSource } = useSettingsDraft({
   getInitialDraft: () => ({
     models: store.state.models,
@@ -138,47 +128,42 @@ const { autosaveState, draftModels, draftTemplates, shouldBlockUnload, getDraftP
   },
 });
 
-const activeTabInfo = computed(() => {
-  return settingGroups.value.flatMap((group) => group.items).find((item) => item.key === activeTab.value) || settingGroups.value[0].items[0];
-});
-
+const typedDraftTemplates = computed<ChatInstructionTemplate[]>(() => draftTemplates.value as ChatInstructionTemplate[]);
+const activeTabInfo = computed(() => settingGroups.value.flatMap((group) => group.items).find((item) => item.key === activeTab.value) || settingGroups.value[0].items[0]);
 const statusLabel = computed(() => {
   if (autosaveState.value === "saving") return t("common.saving");
   if (autosaveState.value === "error") return t("common.saveError");
   if (autosaveState.value === "dirty") return t("common.autosavePending");
   return t("common.saved");
 });
-
 const statusClass = computed(() => ({
   dirty: autosaveState.value === "dirty",
   saving: autosaveState.value === "saving",
   error: autosaveState.value === "error",
 }));
 
+function clonePlainData<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data));
+}
+
+function isUploadedJsonParseError(data: unknown): data is UploadedJsonParseError {
+  return Boolean(data) && typeof data === "object" && "__jsonParseError" in data;
+}
+
+function updateDraftTemplates(nextTemplates: ChatInstructionTemplate[]) {
+  draftTemplates.value = nextTemplates;
+}
+
 function updateChatModels(nextModels: ChatModelConfig[]) {
-  draftModels.value = {
-    ...draftModels.value,
-    chat: nextModels,
-  };
+  draftModels.value = { ...draftModels.value, chat: nextModels };
 }
 
 function updateImageGenerationModels(nextModels: ImageModelConfig[]) {
-  draftModels.value = {
-    ...draftModels.value,
-    imageGeneration: nextModels,
-    image: nextModels,
-  };
+  draftModels.value = { ...draftModels.value, imageGeneration: nextModels, image: nextModels };
 }
 
 function updateImageEditModels(nextModels: ImageModelConfig[]) {
-  draftModels.value = {
-    ...draftModels.value,
-    imageEdit: nextModels,
-  };
-}
-
-function updateDraftTemplates(nextTemplates: unknown[]) {
-  draftTemplates.value = nextTemplates;
+  draftModels.value = { ...draftModels.value, imageEdit: nextModels };
 }
 
 function buildSettingsExportFilename(date = new Date()): string {
@@ -198,25 +183,23 @@ async function ensureLatestStoreData() {
 
 async function exportSettings() {
   const draft = getDraftPayload();
-  const chatSessions = await exportChatSessionSettings();
   const payload: SettingsImportPayload = {
     schema: "ai-api-hub",
     version: "0.0.1",
     exportedAt: new Date().toISOString(),
     models: buildPersistedModelSettingsPayload(draft.models),
     templates: draft.templates,
-    chatSessions,
+    chatSessions: await exportChatSessionSettings(),
   };
-  const jsonStr = JSON.stringify(payload, null, 2);
-  const blob = new Blob([jsonStr], { type: "application/json" });
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
+  const anchor = document.createElement("a");
 
-  a.href = url;
-  a.download = buildSettingsExportFilename();
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  anchor.href = url;
+  anchor.download = buildSettingsExportFilename();
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
   URL.revokeObjectURL(url);
   dsAlert({ type: "success", message: t("user.exportSuccess") });
 }
@@ -227,12 +210,10 @@ async function importSettings() {
     dsAlert({ type: "error", duration: 6000, message: `${t("user.importReadError")} ${jsonData.__jsonParseError}` });
     return;
   }
-
   if (!jsonData) {
     dsAlert({ type: "error", message: t("user.importReadError") });
     return;
   }
-
   if (!isValidSettingsImport(jsonData)) {
     const validationError = getSettingsImportValidationError(jsonData);
     dsAlert({
@@ -246,12 +227,8 @@ async function importSettings() {
   if (isSettingsImportPackage(jsonData)) {
     const importedPackage = clonePlainData(jsonData) as SettingsImportPayload;
     draftModels.value = migratePersistedModelSettings(importedPackage.models);
-    if (Array.isArray(importedPackage.templates)) {
-      draftTemplates.value = clonePlainData(importedPackage.templates);
-    }
-    if (Array.isArray(importedPackage.chatSessions)) {
-      await importChatSessionSettings(importedPackage.chatSessions);
-    }
+    if (Array.isArray(importedPackage.templates)) draftTemplates.value = clonePlainData(importedPackage.templates);
+    if (Array.isArray(importedPackage.chatSessions)) await importChatSessionSettings(importedPackage.chatSessions);
   } else {
     draftModels.value = migratePersistedModelSettings(clonePlainData(jsonData) as PersistedModelSettingsPayload);
   }
@@ -259,7 +236,7 @@ async function importSettings() {
   dsAlert({ type: "success", message: t("user.importSuccess") });
 }
 
-function handleBeforeUnload(event) {
+function handleBeforeUnload(event: BeforeUnloadEvent) {
   if (!shouldBlockUnload.value) return;
   event.preventDefault();
   event.returnValue = "";
@@ -276,39 +253,33 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" scoped>
-.settings-page-shell {
-  height: 100%;
-  background: transparent;
-}
-
 .settings-page {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 260px minmax(0, 1fr);
   height: 100%;
   min-height: 0;
-  font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   overflow: hidden;
 }
 
 .settings-sidebar {
-  padding: 20px 16px 18px;
+  padding: 24px 16px;
   border-right: 1px solid rgba(17, 24, 39, 0.06);
-  background: rgba(255, 255, 255, 0.52);
+  background: rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(22px);
   overflow-y: auto;
 }
 
-.settings-group-list {
-  margin-top: 8px;
+.settings-nav-group {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
+  gap: 8px;
 
-.settings-nav-group {
+  & + & {
+    margin-top: 18px;
+  }
+
   h3 {
-    margin: 0 0 8px;
-    padding: 0 4px;
+    margin: 0 4px;
     color: #9ca3af;
     font-size: 11px;
     font-weight: 700;
@@ -317,27 +288,18 @@ onBeforeUnmount(() => {
   }
 }
 
-.settings-tab-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .settings-tab-button {
   border: 1px solid rgba(17, 24, 39, 0.06);
   border-radius: 16px;
   padding: 12px 14px;
   text-align: left;
   background: rgba(255, 255, 255, 0.84);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
   box-shadow: 0 8px 24px rgba(31, 41, 55, 0.04);
-  transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+
+  span,
+  small {
+    display: block;
+  }
 
   span {
     font-size: 14px;
@@ -346,22 +308,16 @@ onBeforeUnmount(() => {
   }
 
   small {
+    margin-top: 4px;
     font-size: 11px;
     line-height: 1.4;
     color: #5f6368;
   }
 
-  &:hover {
-    border-color: rgba(17, 24, 39, 0.1);
-    background-color: rgba(255, 255, 255, 0.96);
-    transform: translateY(-1px);
-    box-shadow: 0 12px 28px rgba(31, 41, 55, 0.06);
-  }
-
+  &:hover,
   &.active {
     border-color: rgba(35, 95, 143, 0.14);
     background: #eef6ff;
-    box-shadow: 0 14px 28px rgba(31, 41, 55, 0.06);
   }
 }
 
@@ -379,22 +335,13 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: flex-start;
   gap: 18px;
-}
 
-.settings-main-subtitle {
-  margin-top: 6px;
-  max-width: 36rem;
-  font-size: 13px;
-  line-height: 1.65;
-  color: #5f6368;
-}
-
-.settings-main-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  p {
+    max-width: 36rem;
+    font-size: 13px;
+    line-height: 1.65;
+    color: #5f6368;
+  }
 }
 
 .settings-status {
@@ -407,14 +354,12 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   border: 1px solid rgba(17, 24, 39, 0.06);
-  box-shadow: 0 8px 20px rgba(31, 41, 55, 0.04);
 
   .settings-status-dot {
     width: 7px;
     height: 7px;
     border-radius: 999px;
     background-color: rgba(95, 99, 104, 0.65);
-    flex-shrink: 0;
   }
 
   &.dirty {
@@ -470,10 +415,6 @@ onBeforeUnmount(() => {
 
   .settings-main-header {
     flex-direction: column;
-  }
-
-  .settings-main-actions {
-    justify-content: flex-start;
   }
 }
 </style>

@@ -50,7 +50,7 @@ export function isAnthropicChatModel(model: LooseModelConfig | null | undefined)
  * It mainly fills defaults, migrates legacy field names, and narrows the
  * provider-specific fields to the stable `ChatModelConfig` union.
  */
-export function toRuntimeChatModelConfig(model: LooseModelConfig | null | undefined = {}): ChatModelConfig {
+export function normalizeChatModelConfig(model: LooseModelConfig | null | undefined = {}): ChatModelConfig {
   const data = model || {};
   const provider = getLegacyProvider(data);
   const nextProvider = provider === "Azure OpenAI" || provider === "Anthropic" || provider === "Azure AI Foundry" ? provider : "OpenAI";
@@ -215,25 +215,25 @@ export function getEffectiveCapabilities(
 export function createConversationModelSnapshot(
   model: LooseModelConfig | null | undefined,
 ): ConversationModelSnapshot | null {
-  const runtimeModel = toRuntimeChatModelConfig(model);
-  if (!runtimeModel?.name || !runtimeModel?.apiKey) return null;
+  const modelConfig = normalizeChatModelConfig(model);
+  if (!modelConfig?.name || !modelConfig?.apiKey) return null;
 
-  const modelId = getModelRequestId(runtimeModel);
-  const modelConfigId = `${runtimeModel.provider}:${runtimeModel.name}:${modelId}:${getModelDeployment(runtimeModel) || modelId}`;
+  const modelId = getModelRequestId(modelConfig);
+  const modelConfigId = `${modelConfig.provider}:${modelConfig.name}:${modelId}:${getModelDeployment(modelConfig) || modelId}`;
 
   return {
     modelConfigId,
     catalogModelId: modelId,
-    displayName: runtimeModel.name || modelId,
-    provider: runtimeModel.provider,
-    apiKey: runtimeModel.apiKey,
-    modelConfig: runtimeModel,
+    displayName: modelConfig.name || modelId,
+    provider: modelConfig.provider,
+    apiKey: modelConfig.apiKey,
+    modelConfig,
   };
 }
 
 /** Restores canonical user model config from a saved conversation snapshot. */
 export function getModelFromSnapshot(snapshot: ConversationModelSnapshot | null | undefined): ChatModelConfig | null {
-  return snapshot?.modelConfig ? toRuntimeChatModelConfig(snapshot.modelConfig) : null;
+  return snapshot?.modelConfig ? normalizeChatModelConfig(snapshot.modelConfig) : null;
 }
 
 /**

@@ -1,5 +1,7 @@
 <template>
+  <!-- This component displays a floating tooltip for its wrapped content. -->
   <span class="app-tooltip-host">
+    <!-- Wrap the trigger content and attach hover and focus listeners. -->
     <span
       ref="triggerRef"
       class="app-tooltip-trigger"
@@ -11,6 +13,7 @@
     >
       <slot />
     </span>
+    <!-- Render the tooltip bubble outside the normal layout flow. -->
     <Teleport :to="teleportTarget">
       <div v-if="visible" ref="tooltipRef" class="app-tooltip-bubble" :class="`is-${resolvedPlacement}`" :style="tooltipStyle">
         {{ text }}
@@ -19,29 +22,31 @@
   </span>
 </template>
 
-<script setup>
-defineOptions({ inheritAttrs: false });
-
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useAttrs } from "vue";
 
-const props = defineProps({
-  text: {
-    type: String,
-    default: "",
+defineOptions({ inheritAttrs: false });
+
+type TooltipPlacement = "top" | "bottom" | "left" | "right";
+
+const props = withDefaults(
+  defineProps<{
+    text?: string;
+    placement?: TooltipPlacement;
+  }>(),
+  {
+    text: "",
+    placement: "top",
   },
-  placement: {
-    type: String,
-    default: "top",
-  },
-});
+);
 
 const attrs = useAttrs();
-const triggerRef = ref(null);
-const tooltipRef = ref(null);
+const triggerRef = ref<HTMLElement | null>(null);
+const tooltipRef = ref<HTMLElement | null>(null);
 const visible = ref(false);
 const position = ref({ top: 0, left: 0 });
-const resolvedPlacement = ref(props.placement);
-const teleportTarget = ref("body");
+const resolvedPlacement = ref<TooltipPlacement>(props.placement);
+const teleportTarget = ref<string | HTMLElement>("body");
 
 const GAP = 10;
 const VIEWPORT_PADDING = 12;
@@ -58,11 +63,11 @@ function getTooltipSize() {
   return { width: rect.width, height: rect.height };
 }
 
-function clamp(value, min, max) {
+function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function computePlacementPosition(placement, rect, tooltipSize) {
+function computePlacementPosition(placement: TooltipPlacement, rect: DOMRect, tooltipSize: { width: number; height: number }) {
   const { width, height } = tooltipSize;
 
   switch (placement) {
@@ -89,7 +94,7 @@ function computePlacementPosition(placement, rect, tooltipSize) {
   }
 }
 
-function fitsViewport(nextPosition, tooltipSize) {
+function fitsViewport(nextPosition: { top: number; left: number }, tooltipSize: { width: number; height: number }) {
   const viewportLeft = VIEWPORT_PADDING;
   const viewportTop = VIEWPORT_PADDING;
   const viewportRight = window.innerWidth - VIEWPORT_PADDING;
@@ -103,7 +108,7 @@ function fitsViewport(nextPosition, tooltipSize) {
   );
 }
 
-function clampToViewport(nextPosition, tooltipSize) {
+function clampToViewport(nextPosition: { top: number; left: number }, tooltipSize: { width: number; height: number }) {
   const minLeft = VIEWPORT_PADDING;
   const minTop = VIEWPORT_PADDING;
   const maxLeft = window.innerWidth - tooltipSize.width - VIEWPORT_PADDING;
@@ -121,9 +126,11 @@ const updatePosition = () => {
   if (!triggerEl || !tooltipEl) return;
   const rect = triggerEl.getBoundingClientRect();
   const tooltipSize = getTooltipSize();
-  const placements = [props.placement, "top", "bottom", "right", "left"].filter((item, index, list) => item && list.indexOf(item) === index);
+  const placements = [props.placement, "top", "bottom", "right", "left"].filter(
+    (item, index, list): item is TooltipPlacement => Boolean(item) && list.indexOf(item) === index,
+  );
 
-  let nextPlacement = props.placement;
+  let nextPlacement: TooltipPlacement = props.placement;
   let nextPosition = computePlacementPosition(nextPlacement, rect, tooltipSize);
 
   for (const placement of placements) {
@@ -151,7 +158,7 @@ const unbindViewportEvents = () => {
 
 const showTooltip = async () => {
   if (!props.text) return;
-  teleportTarget.value = triggerRef.value?.closest?.("dialog[open]") || "body";
+  teleportTarget.value = triggerRef.value?.closest?.("dialog[open]") ?? "body";
   visible.value = true;
   await nextTick();
   updatePosition();

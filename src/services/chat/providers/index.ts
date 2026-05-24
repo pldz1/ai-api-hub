@@ -1,6 +1,7 @@
 import { getModelDeployment, getModelRequestId, isAnthropicChatModel, isAzureChatModel, isOpenAIChatModel } from "@/models";
-import type { ChatCompletionParams, ChatModelConfig, ChatProviderRuntimeConfig } from "@/types/chat";
+import type { ChatCompletionParams, ChatModelConfig } from "@/types/chat";
 import type { ChatCallback, ChatRequestOptions, PackedChatMessage } from "@/services/types";
+import type { ChatProviderRuntimeConfig } from "./types";
 
 import { AzureOpenAIClient } from "./azure-openai";
 import { AnthropicClient } from "./anthropic";
@@ -10,6 +11,7 @@ export { AnthropicClient } from "./anthropic";
 export { AzureOpenAIClient } from "./azure-openai";
 export { DeepSeekClient } from "./deepseek";
 export { OpenAIClient } from "./openai";
+export type { ChatProviderRuntimeConfig } from "./types";
 export { normalizeUsage } from "./usage";
 
 /**

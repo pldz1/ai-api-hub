@@ -1,5 +1,7 @@
 <template>
+  <!-- This component renders the application footer and credit link. -->
   <footer class="app-footer">
+    <!-- Keep the product version and repository credit in one compact line. -->
     <span class="app-footer-copy">
       AI API HUB · v0.0.1 ·
       <a href="https://github.com/pldz1/ai-api-hub" target="_blank" rel="noopener noreferrer">{{ t("footer.credit", { author: "pldz1" }) }}</a>
@@ -7,7 +9,7 @@
   </footer>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useI18n } from "vue-i18n";
 
 const { t } = useI18n();
@@ -20,9 +22,6 @@ const { t } = useI18n();
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent !important;
-  background-image: none !important;
-  backdrop-filter: none;
   color: oklch(var(--bc) / 0.56);
   font-size: 10px;
   font-weight: 500;

@@ -1,9 +1,12 @@
 <template>
+  <!-- This view renders the chat message area and input composer. -->
   <section class="chat-card-container">
+    <!-- Show starter templates before a conversation has been created. -->
     <ChatInsTemplate v-show="isShowTemplate" @on-update="onDrawTemplateIns" />
 
+    <!-- Render the live message list and its floating scroll shortcuts. -->
     <div class="ccdc-messages-container" :class="{ active: !isShowTemplate }">
-      <div id="chat-messages-container" class="cccd-scroll-window" ref="innerRef" @scroll="updateScrollActions"></div>
+      <div id="chat-messages-container" ref="innerRef" class="cccd-scroll-window" @scroll="updateScrollActions"></div>
       <ChatScrollActions
         v-show="!isShowTemplate"
         :can-scroll-top="canScrollTop"
@@ -13,6 +16,7 @@
       />
     </div>
 
+    <!-- Keep the chat composer fixed at the bottom of the view. -->
     <div class="cccd-bottom">
       <div class="cccd-input-area">
         <ChatInputArea
@@ -21,34 +25,40 @@
           :is-home="isShowTemplate"
           @on-start="onStartChat"
           @on-stop="onStopChat"
-        ></ChatInputArea>
+        />
       </div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { useStore } from "vuex";
-import { dsLoading } from "@/utils";
-import { ref, watch, computed, onMounted, nextTick } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useStore } from "vuex";
+import type { ChatModelConfig } from "@/types/chat";
+import { dsLoading } from "@/utils";
 import { ChatDrawer, addChat, getAllMessage, getChatSettings, getChatSessionRunner, resetCurrentChatDraft, stopChatSession } from "@/services";
-
+import type { ChatPromptMessage } from "@/services/types";
 import ChatInputArea from "@/views/chat/ChatInputArea.vue";
 import ChatInsTemplate from "@/views/chat/ChatInsTemplate.vue";
 import ChatScrollActions from "@/views/chat/ChatScrollActions.vue";
 
+type ChatStartPayload = {
+  message: ChatPromptMessage;
+  model: ChatModelConfig | null;
+};
+
 const store = useStore();
 const route = useRoute();
 const router = useRouter();
-const innerRef = ref(null);
+const innerRef = ref<HTMLElement | null>(null);
 const canScrollTop = ref(false);
 const canScrollBottom = ref(false);
 
 const drawer = new ChatDrawer(true);
-const curChatId = computed(() => store.state.curChatId);
+const curChatId = computed<string>(() => store.state.curChatId || "");
 const curConversation = computed(() => (curChatId.value ? store.state.chatConversationsById?.[curChatId.value] || null : null));
-const activeMessages = computed(() => (curChatId.value ? store.state.chatMessagesById?.[curChatId.value] || [] : []));
+const activeMessages = computed<ChatPromptMessage[]>(() => (curChatId.value ? store.state.chatMessagesById?.[curChatId.value] || [] : []));
 const activeRuntime = computed(() => (curChatId.value ? store.state.chatRuntimeById?.[curChatId.value] || null : null));
 const routeChatId = computed(() => (typeof route.params.cid === "string" ? route.params.cid : ""));
 const isChatting = computed(() => Boolean(activeRuntime.value?.pending || ["loading", "streaming"].includes(activeRuntime.value?.status)));
@@ -63,16 +73,16 @@ const updateScrollActions = () => {
 };
 
 const scrollMessagesToTop = () => {
-  if (!innerRef.value) return;
-  innerRef.value.scrollTo({ top: 0, behavior: "smooth" });
+  innerRef.value?.scrollTo({ top: 0, behavior: "smooth" });
 };
 
 const scrollMessagesToBottom = () => {
-  if (!innerRef.value) return;
-  innerRef.value.scrollTo({ top: innerRef.value.scrollHeight, behavior: "smooth" });
+  const el = innerRef.value;
+  if (!el) return;
+  el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
 };
 
-const renderCurrentConversation = async ({ stickToBottom = false } = {}) => {
+const renderCurrentConversation = async ({ stickToBottom = false }: { stickToBottom?: boolean } = {}) => {
   drawer.renderConversation(activeMessages.value);
   drawer.syncDraftAssistant(activeRuntime.value || {});
   await nextTick();
@@ -148,9 +158,8 @@ watch(
   },
 );
 
-const onStartChat = async (payload) => {
-  const message = payload?.message || payload;
-  const selectedModel = payload?.model || null;
+const onStartChat = async (payload: ChatStartPayload) => {
+  const { message, model: selectedModel } = payload;
 
   if (!curChatId.value) {
     const created = await addChat(null, selectedModel);
@@ -169,7 +178,7 @@ const onStopChat = async () => {
   stopChatSession(curChatId.value);
 };
 
-const onDrawTemplateIns = (messages) => {
+const onDrawTemplateIns = (messages: ChatPromptMessage[]) => {
   drawer.renderConversation(messages);
 };
 
@@ -190,13 +199,13 @@ onMounted(() => {
   padding: 8px 22px 18px;
   overflow: hidden;
 }
+
 .ccdc-messages-container {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.18s ease;
 }
 
 .ccdc-messages-container.active {
@@ -223,13 +232,6 @@ onMounted(() => {
   justify-content: center;
 }
 
-.cccd-footer-note {
-  margin: 12px 0 0;
-  text-align: center;
-  color: #4b5563;
-  font-size: 15px;
-}
-
 @media (max-width: 900px) {
   .chat-card-container {
     padding-inline: 14px;
@@ -237,10 +239,6 @@ onMounted(() => {
 
   .cccd-scroll-window {
     padding-inline: 18px;
-  }
-
-  .cccd-footer-note {
-    font-size: 13px;
   }
 }
 </style>

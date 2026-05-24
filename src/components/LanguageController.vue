@@ -1,6 +1,9 @@
 <template>
+  <!-- This component lets users switch the application language. -->
+  <!-- Pair the language selector with a tooltip and dropdown menu. -->
   <AppTooltip :text="t('language.tooltip')" placement="bottom">
     <AppDropdownMenu :items="localeOptions" placement="bottom-end" :width="140" @select="handleLocaleChange">
+      <!-- Use a compact trigger button that opens the locale list. -->
       <template #trigger="{ toggle }">
         <button type="button" class="btn m-1 controller-button" @click="toggle">
           {{ t("language.label") }}
@@ -13,21 +16,28 @@
   </AppTooltip>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { setAppLocale } from "@/i18n";
 import AppTooltip from "@/components/AppTooltip.vue";
 import AppDropdownMenu from "@/components/AppDropdownMenu.vue";
 
+type LocaleOption = {
+  key: "zh-CN" | "en-US";
+  value: "zh-CN" | "en-US";
+  label: string;
+  active: boolean;
+};
+
 const { t, locale } = useI18n();
 
-const localeOptions = computed(() => [
+const localeOptions = computed<LocaleOption[]>(() => [
   { key: "zh-CN", value: "zh-CN", label: t("language.options.zh-CN"), active: locale.value === "zh-CN" },
   { key: "en-US", value: "en-US", label: t("language.options.en-US"), active: locale.value === "en-US" },
 ]);
 
-const handleLocaleChange = (item) => {
+const handleLocaleChange = (item: LocaleOption) => {
   setAppLocale(item.value);
 };
 </script>

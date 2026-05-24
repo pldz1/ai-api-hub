@@ -23,10 +23,10 @@ export function isAzureImageModel(model: LooseModelConfig | null | undefined): m
 /**
  * Normalizes loose/legacy image model data into the canonical user config shape.
  *
- * Like `toRuntimeChatModelConfig`, this still returns user configuration rather
+ * Like `normalizeChatModelConfig`, this still returns user configuration rather
  * than low-level HTTP/runtime request args.
  */
-export function toRuntimeImageModelConfig(model: LooseModelConfig | null | undefined = {}, imageOperation: ImageOperation = "generation"): ImageModelConfig {
+export function normalizeImageModelConfig(model: LooseModelConfig | null | undefined = {}, imageOperation: ImageOperation = "generation"): ImageModelConfig {
   const data = model || {};
   const provider = getLegacyProvider(data) === "Azure OpenAI" ? "Azure OpenAI" : "OpenAI";
   const modelId = getModelRequestId(data);

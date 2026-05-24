@@ -21,9 +21,9 @@
         <h3>{{ t("user.app.resources") }}</h3>
         <p>{{ t("user.app.resourcesDescription") }}</p>
         <div class="app-settings-actions">
-          <a class="btn btn-outline" href="https://github.com/pldz1/ai-api-hub/releases" target="_blank" rel="noopener noreferrer">{{
-            t("user.app.releases")
-          }}</a>
+          <a class="btn btn-outline" href="https://github.com/pldz1/ai-api-hub/releases" target="_blank" rel="noopener noreferrer">
+            {{ t("user.app.releases") }}
+          </a>
         </div>
       </section>
     </div>
@@ -33,7 +33,11 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 
-const emit = defineEmits(["import-settings", "export-settings"]);
+const emit = defineEmits<{
+  "import-settings": [];
+  "export-settings": [];
+}>();
+
 const { t } = useI18n();
 </script>
 
@@ -42,8 +46,6 @@ const { t } = useI18n();
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  overflow-y: auto;
-  padding-right: 4px;
 }
 
 .app-settings-card {
@@ -51,9 +53,7 @@ const { t } = useI18n();
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.82);
   padding: 24px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 10px 26px rgba(31, 41, 55, 0.04);
+  box-shadow: 0 10px 28px rgba(31, 41, 55, 0.04);
 
   h3 {
     font-size: 18px;
@@ -69,20 +69,11 @@ const { t } = useI18n();
   }
 }
 
-.app-settings-card-danger {
-  border-color: rgba(190, 18, 60, 0.12);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(255, 240, 243, 0.72) 100%);
-}
-
 .app-settings-actions {
   margin-top: 18px;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-
-  .btn {
-    min-height: 42px;
-  }
 }
 
 @media (max-width: 1100px) {

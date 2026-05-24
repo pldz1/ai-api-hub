@@ -1,5 +1,7 @@
 <template>
+  <!-- This component renders the app header, branding, navigation, and controls. -->
   <div class="component-header-bar">
+    <!-- Group branding and navigation on the leading side of the header. -->
     <div class="comphb-left">
       <button class="comphb-brand" @click="onBackLogin">
         <SvgIcon class="comphb-brand-mark" :src="appIcon" colored style="width: 28px; height: 28px" />
@@ -7,6 +9,7 @@
           <span class="comphb-brand-kicker">AI API HUB</span>
         </div>
       </button>
+      <!-- Show primary route navigation when the header menu is enabled. -->
       <div v-if="showNavigation" class="comphb-nav-shell">
         <nav class="comphb-nav" :aria-label="t('header.menu')">
           <button
@@ -24,6 +27,7 @@
         </nav>
       </div>
     </div>
+    <!-- Keep language and theme controls aligned on the trailing side. -->
     <div class="comphb-actions">
       <LanguageController />
       <ThemeController class="comphb-theme-controller"></ThemeController>
@@ -31,7 +35,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
@@ -43,23 +47,30 @@ import ThemeController from "@/components/ThemeController.vue";
 import LanguageController from "@/components/LanguageController.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 
-const props = defineProps({
-  showNavigation: {
-    type: Boolean,
-    default: true,
+type NavItem = {
+  key: string;
+  label: string;
+  icon: string;
+  path: string;
+};
+
+const props = withDefaults(
+  defineProps<{
+    showNavigation?: boolean;
+    showMenu?: boolean;
+  }>(),
+  {
+    showNavigation: true,
+    showMenu: true,
   },
-  showMenu: {
-    type: Boolean,
-    default: true,
-  },
-});
+);
 
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 
 const showNavigation = computed(() => props.showNavigation && props.showMenu);
-const navItems = computed(() => [
+const navItems = computed<NavItem[]>(() => [
   { key: "chat", label: t("header.chat"), icon: navChatIcon, path: "/chat" },
   { key: "image", label: t("header.image"), icon: navImageIcon, path: "/image" },
   { key: "settings", label: t("header.settings"), icon: navSettingsIcon, path: "/settings" },
@@ -69,9 +80,9 @@ const onBackLogin = () => {
   router.push({ path: "/login" });
 };
 
-const isActivePath = (path) => route.path === path || route.path.startsWith(`${path}/`);
+const isActivePath = (path: string) => route.path === path || route.path.startsWith(`${path}/`);
 
-const onSelectNavItem = (path) => {
+const onSelectNavItem = (path: string) => {
   if (!isActivePath(path)) {
     router.push({ path });
   }

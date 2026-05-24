@@ -2,16 +2,14 @@
   <div class="model-form-card" :class="{ 'image-model-form': isImageModel }">
     <div class="model-form-header">
       <div>
-        <h3>{{ t(cardTitleKey) }}</h3>
-        <p>{{ t(cardSubtitleKey) }}</p>
+        <h3>{{ t(isImageModel ? "user.modelCard.imageTitle" : "user.modelCard.chatTitle") }}</h3>
+        <p>{{ t(isImageModel ? "user.modelCard.imageSubtitle" : "user.modelCard.chatSubtitle") }}</p>
         <div v-if="isImageModel" class="model-capability-row">
-          <span>{{ activeProtocolLabel }}</span>
+          <span>{{ isAzure ? "Azure OpenAI" : "OpenAI" }}</span>
           <span>{{ hasImageInputParam ? t("user.modelCard.imageInputEnabled") : t("user.modelCard.imageInputDisabled") }}</span>
         </div>
       </div>
-      <div v-if="props.modelKind === 'chat' && localModel.model" class="model-behavior-chip">
-        {{ modelBehaviorHint }}
-      </div>
+      <div v-if="props.kind === 'chat' && localModel.model" class="model-behavior-chip">{{ modelBehaviorHint }}</div>
     </div>
 
     <section class="model-form-section">
@@ -21,99 +19,83 @@
       </div>
 
       <div class="model-form-grid">
-        <div class="model-form-field">
-          <label>{{ t("user.modelCard.fields.name") }}</label>
-          <input type="text" class="input input-bordered w-full" v-model.trim="localModel.name" />
-        </div>
+        <label class="model-form-field">
+          <span>{{ t("user.modelCard.fields.name") }}</span>
+          <input v-model.trim="localModel.name" type="text" class="input input-bordered w-full" />
+        </label>
 
-        <div v-if="!isImageModel" class="model-form-field model-form-field-span">
-          <label>{{ t("user.modelCard.fields.model") }}</label>
-          <select class="select select-bordered w-full" v-model="localModel.model">
+        <label v-if="!isImageModel" class="model-form-field model-form-field-span">
+          <span>{{ t("user.modelCard.fields.model") }}</span>
+          <select v-model="localModel.model" class="select select-bordered w-full">
             <optgroup v-for="group in groupedModelSuggestions" :key="group.key" :label="group.label">
-              <option v-for="item in group.items" :key="item.value" :value="item.value">
-                {{ item.name }}
-              </option>
+              <option v-for="item in group.items" :key="item.value" :value="item.value">{{ item.name }}</option>
             </optgroup>
           </select>
-          <div class="model-field-help">
-            {{ t("user.modelCard.chatModelHelp") }}
-          </div>
-        </div>
+          <small>{{ t("user.modelCard.chatModelHelp") }}</small>
+        </label>
 
-        <div class="model-form-field">
-          <label>{{ t("user.modelCard.fields.provider") }}</label>
-          <select class="select select-bordered w-full" v-model="localModel.provider">
-            <option v-for="ai in availableModelProviderList" :key="ai.value" :value="ai.value">
-              {{ ai.name }}
-            </option>
+        <label class="model-form-field">
+          <span>{{ t("user.modelCard.fields.provider") }}</span>
+          <select v-model="localModel.provider" class="select select-bordered w-full">
+            <option v-for="ai in availableModelProviderList" :key="ai.value" :value="ai.value">{{ ai.name }}</option>
           </select>
-        </div>
+        </label>
 
         <div v-if="isImageModel && !isAzure" class="model-form-field model-form-field-span">
           <label>{{ t("user.modelCard.fields.modelOverride") }}</label>
-          <input type="text" class="input input-bordered w-full" :placeholder="modelPlaceholder" v-model.trim="localModel.model" />
-          <div class="model-field-help">
-            {{ t("user.modelCard.imageModelHelp") }}
-          </div>
+          <input v-model.trim="localModel.model" type="text" class="input input-bordered w-full" :placeholder="t('user.modelCard.placeholders.imageModelId')" />
+          <small>{{ t("user.modelCard.imageModelHelp") }}</small>
           <div class="model-suggestion-list">
             <button
-              v-for="item in visibleModelSuggestions"
+              v-for="item in modelSuggestions"
               :key="item.value"
               type="button"
               class="btn btn-sm"
               :class="localModel.model === item.value ? 'btn-neutral' : 'btn-outline'"
-              @click="applySuggestedModel(item.value)"
+              @click="localModel.model = item.value"
             >
               {{ item.name }}
             </button>
           </div>
         </div>
 
-        <div v-if="isOpenAIStyle" class="model-form-field model-form-field-span">
-          <label>{{ isImageModel ? t("user.modelCard.fields.imageUrl") : t("user.modelCard.fields.baseUrl") }}</label>
-          <input type="text" class="input input-bordered w-full" v-model.trim="localModel.baseURL" />
-          <div v-if="isImageModel" class="model-field-help">
-            {{ t("user.modelCard.imageBaseUrlHelp") }}
-          </div>
-        </div>
+        <label v-if="isOpenAIStyle" class="model-form-field model-form-field-span">
+          <span>{{ isImageModel ? t("user.modelCard.fields.imageUrl") : t("user.modelCard.fields.baseUrl") }}</span>
+          <input v-model.trim="localModel.baseURL" type="text" class="input input-bordered w-full" />
+          <small v-if="isImageModel">{{ t("user.modelCard.imageBaseUrlHelp") }}</small>
+        </label>
 
-        <div v-if="isAzure" class="model-form-field model-form-field-span">
-          <label>{{ t("user.modelCard.fields.endpoint") }}</label>
-          <input type="text" class="input input-bordered w-full" v-model.trim="localModel.endpoint" />
-          <div v-if="isImageModel" class="model-field-help">
-            {{ t("user.modelCard.azureEndpointHelp") }}
-          </div>
-        </div>
+        <label v-if="isAzure" class="model-form-field model-form-field-span">
+          <span>{{ t("user.modelCard.fields.endpoint") }}</span>
+          <input v-model.trim="localModel.endpoint" type="text" class="input input-bordered w-full" />
+          <small v-if="isImageModel">{{ t("user.modelCard.azureEndpointHelp") }}</small>
+        </label>
 
-        <div v-if="isAzure" class="model-form-field">
-          <label>{{ t("user.modelCard.fields.apiVersion") }}</label>
-          <input type="text" class="input input-bordered w-full" v-model.trim="localModel.apiVersion" />
-          <div v-if="isImageModel" class="model-field-help">
-            {{ t("user.modelCard.azureApiVersionHelp") }}
-          </div>
-        </div>
+        <label v-if="isAzure" class="model-form-field">
+          <span>{{ t("user.modelCard.fields.apiVersion") }}</span>
+          <input v-model.trim="localModel.apiVersion" type="text" class="input input-bordered w-full" />
+          <small v-if="isImageModel">{{ t("user.modelCard.azureApiVersionHelp") }}</small>
+        </label>
 
-        <div v-if="isAzure" class="model-form-field">
-          <label>{{ t("user.modelCard.fields.deployment") }}</label>
-          <input type="text" class="input input-bordered w-full" v-model.trim="localModel.deployment" />
-        </div>
+        <label v-if="isAzure" class="model-form-field">
+          <span>{{ t("user.modelCard.fields.deployment") }}</span>
+          <input v-model.trim="localModel.deployment" type="text" class="input input-bordered w-full" />
+        </label>
 
         <div class="model-form-field model-form-field-span">
           <label>{{ t("user.modelCard.fields.apiKey") }}</label>
           <label class="input input-bordered model-key-input">
-            <input type="password" class="grow" v-model.trim="localModel.apiKey" />
+            <input v-model.trim="localModel.apiKey" type="password" class="grow" />
             <button type="button" class="btn btn-ghost btn-sm" @click="copyApiKey">
               <SvgIcon :src="copyIcon" />
             </button>
           </label>
         </div>
 
-        <div v-if="requestSummary" class="model-form-field model-form-field-span">
-          <label>{{ t("user.modelCard.fields.requestTarget") }}</label>
-          <div class="model-info-card">
-            {{ requestSummary }}
-          </div>
-        </div>
+        <label v-if="requestSummary" class="model-form-field model-form-field-span">
+          <span>{{ t("user.modelCard.fields.requestTarget") }}</span>
+          <div class="model-info-card">{{ requestSummary }}</div>
+        </label>
       </div>
     </section>
 
@@ -122,7 +104,6 @@
         <h4>{{ t("user.modelCard.capabilitiesTitle") }}</h4>
         <p>{{ t("user.modelCard.capabilitiesDescription") }}</p>
       </div>
-
       <div class="model-capability-grid">
         <div v-for="item in chatCapabilityRows" :key="item.key" class="model-capability-toggle" :class="{ disabled: !item.supported }">
           <span class="model-capability-indicator" :class="{ active: item.supported }"></span>
@@ -137,72 +118,51 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { dsAlert } from "@/utils";
 import copyIcon from "@/assets/svg/copy16.svg";
 import SvgIcon from "@/components/SvgIcon.vue";
+import { chatDisplayedCapabilityKeys, defaultChatModelEditorState, defaultImageModelEditorState, imageModelProviderList, providerList } from "@/constants";
+import { dsAlert } from "@/utils";
+import { getChatModelCapabilities, getChatModelInfo, getModelImageParamDefs, getModelRequestId, sanitizeModelCapabilityOverrides } from "@/models";
 import type { ChatModelConfig, ChatModelEditorState, SelectOption } from "@/types/chat";
 import type { ImageModelConfig, ImageModelEditorState, ImageOperation } from "@/types/image";
 import type { ModelConfig, ModelKind } from "@/types/settings";
-import {
-  defaultChatModelEditorState,
-  defaultImageModelEditorState,
-  providerList,
-  chatDisplayedCapabilityKeys,
-  imageModelProviderList,
-} from "@/constants";
-import {
-  getChatModelInfo,
-  getChatModelCapabilities,
-  getModelImageParamDefs,
-  getModelRequestId,
-  sanitizeModelCapabilityOverrides,
-} from "@/models";
 
 type ModelEditorState = Omit<ChatModelEditorState, "provider"> & {
   provider: ChatModelEditorState["provider"] | ImageModelEditorState["provider"];
   imageOperation: ImageOperation;
 };
-
-type ModelEditorInput = Partial<ModelConfig> & {
-  apiType?: ModelEditorState["provider"];
-};
-
-function createEmptyModelEditorState(): ModelEditorState {
-  return {
-    ...structuredClone(defaultChatModelEditorState),
-    imageOperation: defaultImageModelEditorState.imageOperation,
-  };
-}
+type ModelEditorInput = Partial<ModelConfig> & { apiType?: ModelEditorState["provider"] };
 
 const props = withDefaults(
   defineProps<{
     model?: ModelEditorInput;
     modelSuggestions?: SelectOption[];
-    modelKind?: ModelKind;
-    imageOperation?: ImageOperation;
+    kind?: ModelKind;
+    operation?: ImageOperation;
   }>(),
   {
     model: () => ({}),
     modelSuggestions: () => [],
-    modelKind: "chat",
-    imageOperation: "generation",
+    kind: "chat",
+    operation: "generation",
   },
 );
-
-const emit = defineEmits<{
-  "update:model": [model: ModelConfig];
-}>();
+const emit = defineEmits<{ "update:model": [model: ModelConfig] }>();
 const { t } = useI18n();
-const localModel = reactive<ModelEditorState>(createEmptyModelEditorState());
+
+const localModel = reactive<ModelEditorState>({
+  ...structuredClone(defaultChatModelEditorState),
+  imageOperation: defaultImageModelEditorState.imageOperation,
+});
 let isSyncingFromProps = false;
 let lastModelSnapshot = "";
 
-const visibleModelSuggestions = computed(() => props.modelSuggestions);
-const capabilityLabelKeys: Record<string, string> = {
-  reasoning: "input.capabilities.reasoning",
-  webSearch: "input.capabilities.webSearch",
-  imageRead: "input.capabilities.imageRead",
-};
+const isImageModel = computed(() => props.kind === "image");
+const isAzure = computed(() => localModel.provider === "Azure OpenAI");
+const isOpenAIStyle = computed(() => localModel.provider === "OpenAI" || localModel.provider === "Anthropic" || localModel.provider === "Azure AI Foundry");
+const hasImageInputParam = computed(() => isImageModel.value && getModelImageParamDefs(localModel).some((item) => item.type === "image"));
+const resolvedModelId = computed(() => getModelRequestId(localModel));
+
 const getModelFamily = (model = "") => {
   const normalizedType = model.trim().toLowerCase();
   if (/^claude-/.test(normalizedType)) return "claude";
@@ -218,15 +178,13 @@ const groupedModelSuggestions = computed(() => {
   const groupMap = new Map(groups.map((group) => [group.key, group]));
   const seen = new Set<string>();
 
-  visibleModelSuggestions.value.forEach((item) => {
+  props.modelSuggestions.forEach((item) => {
     seen.add(item.value);
     groupMap.get(getModelFamily(item.value))?.items.push(item);
   });
-
   if (localModel.model && !seen.has(localModel.model)) {
     groupMap.get(getModelFamily(localModel.model))?.items.push({ value: localModel.model, name: localModel.model });
   }
-
   return groups.filter((group) => group.items.length > 0);
 });
 const availableModelProviderList = computed(() => {
@@ -240,15 +198,6 @@ const availableModelProviderList = computed(() => {
         : new Set(providerList.map((item) => item.value));
   return providerList.filter((item) => allowedProviders.has(item.value));
 });
-const isImageModel = computed(() => props.modelKind === "image");
-const isAzure = computed(() => localModel.provider === "Azure OpenAI");
-const isOpenAIStyle = computed(() => localModel.provider === "OpenAI" || localModel.provider === "Anthropic" || localModel.provider === "Azure AI Foundry");
-const hasImageInputParam = computed(() => isImageModel.value && getModelImageParamDefs(localModel).some((item) => item.type === "image"));
-const activeProtocolLabel = computed(() => (isAzure.value ? "Azure OpenAI" : "OpenAI"));
-const modelPlaceholder = computed(() => {
-  return props.modelKind === "image" ? t("user.modelCard.placeholders.imageModelId") : t("user.modelCard.placeholders.chatModelId");
-});
-const resolvedModelId = computed(() => getModelRequestId(localModel));
 const modelBehaviorHint = computed(() => {
   const modelInfo = getChatModelInfo(localModel.model, localModel.provider);
   const modeText = modelInfo.isReasonModel ? t("user.modelCard.behavior.reasoning") : t("user.modelCard.behavior.chat");
@@ -257,36 +206,36 @@ const modelBehaviorHint = computed(() => {
 });
 const requestSummary = computed(() => {
   if (isImageModel.value) {
-    if (isAzure.value) {
-      if (!localModel.deployment) return "";
-      return t("user.modelCard.azureRequestTarget", { deployment: localModel.deployment });
-    }
-
+    if (isAzure.value) return localModel.deployment ? t("user.modelCard.azureRequestTarget", { deployment: localModel.deployment }) : "";
     return localModel.baseURL ? t("user.modelCard.imageRequestTarget", { url: localModel.baseURL }) : "";
   }
-
-  if (isAzure.value) {
-    if (!localModel.deployment) return "";
-    return t("user.modelCard.azureRequestTarget", { deployment: localModel.deployment });
-  }
-
-  if (!resolvedModelId.value) return "";
-  return t("user.modelCard.openAIRequestTarget", { model: resolvedModelId.value });
+  if (isAzure.value) return localModel.deployment ? t("user.modelCard.azureRequestTarget", { deployment: localModel.deployment }) : "";
+  return resolvedModelId.value ? t("user.modelCard.openAIRequestTarget", { model: resolvedModelId.value }) : "";
 });
-const cardTitleKey = computed(() => (props.modelKind === "image" ? "user.modelCard.imageTitle" : "user.modelCard.chatTitle"));
-const cardSubtitleKey = computed(() => (props.modelKind === "image" ? "user.modelCard.imageSubtitle" : "user.modelCard.chatSubtitle"));
-const supportedChatCapabilities = computed(() => getChatModelCapabilities(localModel.model, localModel.provider));
-const chatCapabilityRows = computed(() =>
-  chatDisplayedCapabilityKeys.map((key) => ({
+const capabilityLabelKeys: Record<string, string> = {
+  reasoning: "input.capabilities.reasoning",
+  webSearch: "input.capabilities.webSearch",
+  imageRead: "input.capabilities.imageRead",
+};
+const chatCapabilityRows = computed(() => {
+  const supported = getChatModelCapabilities(localModel.model, localModel.provider);
+  return chatDisplayedCapabilityKeys.map((key) => ({
     key,
     label: t(capabilityLabelKeys[key] || key),
-    supported: supportedChatCapabilities.value[key],
-  })),
-);
+    supported: supported[key],
+  }));
+});
 const providerDefaultBaseUrls: Record<string, string> = {
   OpenAI: "https://api.openai.com/v1",
   Anthropic: "https://api.anthropic.com",
 };
+
+function createEmptyModelEditorState(): ModelEditorState {
+  return {
+    ...structuredClone(defaultChatModelEditorState),
+    imageOperation: defaultImageModelEditorState.imageOperation,
+  };
+}
 
 function syncProviderBaseURL(provider = "", force = false) {
   if ((!force && isSyncingFromProps) || isImageModel.value) return;
@@ -305,16 +254,14 @@ function syncProviderForModel(force = false) {
 
 function normalizeModelFields() {
   const modelId = localModel.model.trim();
-
   if (isImageModel.value) {
     localModel.provider = localModel.provider === "Azure OpenAI" ? "Azure OpenAI" : "OpenAI";
-    localModel.imageOperation = props.imageOperation;
+    localModel.imageOperation = props.operation;
     localModel.model = modelId;
     if (localModel.provider === "Azure OpenAI") {
       localModel.baseURL = "";
       return;
     }
-
     localModel.endpoint = "";
     localModel.deployment = "";
     localModel.apiVersion = "";
@@ -322,12 +269,10 @@ function normalizeModelFields() {
   }
 
   localModel.model = modelId;
-
   if (isAzure.value) {
     localModel.baseURL = "";
     return;
   }
-
   if (isOpenAIStyle.value) {
     localModel.endpoint = "";
     localModel.deployment = "";
@@ -370,7 +315,7 @@ function buildImageModelPayload(): ImageModelConfig {
     name: localModel.name,
     apiKey: localModel.apiKey,
     model: localModel.model,
-    imageOperation: props.imageOperation,
+    imageOperation: props.operation,
   };
 
   if (localModel.provider === "Azure OpenAI") {
@@ -392,20 +337,16 @@ function buildImageModelPayload(): ImageModelConfig {
 
 function createModelPayload(): ModelConfig {
   normalizeModelFields();
-  if (props.modelKind === "image") {
-    return buildImageModelPayload();
-  }
-
-  return buildChatModelPayload();
+  return isImageModel.value ? buildImageModelPayload() : buildChatModelPayload();
 }
 
 function syncFromProps(model?: ModelEditorInput) {
   const legacyModel = model || {};
-  const chatModel = props.modelKind === "chat" ? (model as Partial<ChatModelConfig> | undefined) : undefined;
+  const chatModel = props.kind === "chat" ? (model as Partial<ChatModelConfig> | undefined) : undefined;
   const hasCustomCapabilities = Boolean(chatModel?.enabledCapabilities && Object.keys(chatModel.enabledCapabilities).length > 0);
   isSyncingFromProps = true;
   Object.assign(localModel, createEmptyModelEditorState(), model || {}, {
-    provider: legacyModel?.provider || legacyModel?.apiType || "",
+    provider: legacyModel.provider || legacyModel.apiType || "",
   });
   localModel.enabledCapabilitiesMode = chatModel?.enabledCapabilitiesMode === "custom" || hasCustomCapabilities ? "custom" : "inherit";
   localModel.enabledCapabilities = sanitizeModelCapabilityOverrides(chatModel?.enabledCapabilities);
@@ -425,26 +366,16 @@ function emitModelUpdate() {
   emit("update:model", nextModel);
 }
 
-const applySuggestedModel = (value: string) => {
-  localModel.model = value;
-};
-
-const copyApiKey = () => {
+function copyApiKey() {
   navigator.clipboard
     .writeText(localModel.apiKey)
-    .then(() => {
-      dsAlert({ type: "success", message: t("toast.copyApiKeySuccess") });
-    })
-    .catch((err) => {
-      dsAlert({ type: "error", message: t("toast.copyApiKeyFailed", { error: String(err) }) });
-    });
-};
+    .then(() => dsAlert({ type: "success", message: t("toast.copyApiKeySuccess") }))
+    .catch((err) => dsAlert({ type: "error", message: t("toast.copyApiKeyFailed", { error: String(err) }) }));
+}
 
 watch(
   () => props.model,
-  (newModel) => {
-    syncFromProps(newModel);
-  },
+  (newModel) => syncFromProps(newModel),
   { deep: true, immediate: true },
 );
 
@@ -459,9 +390,7 @@ watch(
 
 watch(
   () => JSON.stringify(localModel),
-  () => {
-    emitModelUpdate();
-  },
+  () => emitModelUpdate(),
 );
 </script>
 
@@ -471,43 +400,7 @@ watch(
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.82);
   padding: 24px;
-  box-shadow:
-    0 12px 30px rgba(31, 41, 55, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(14px);
-}
-
-.image-model-form {
-  padding: 20px;
-
-  .model-form-section {
-    margin-top: 14px;
-  }
-}
-
-.model-form-section {
-  margin-top: 18px;
-  border: 1px solid rgba(17, 24, 39, 0.06);
-  border-radius: 18px;
-  padding: 18px;
-  background: rgba(255, 255, 255, 0.68);
-}
-
-.model-section-head {
-  margin-bottom: 14px;
-
-  h4 {
-    font-size: 14px;
-    font-weight: 700;
-    color: #202124;
-  }
-
-  p {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.5;
-    color: #5f6368;
-  }
+  box-shadow: 0 10px 28px rgba(31, 41, 55, 0.04);
 }
 
 .model-form-header {
@@ -548,14 +441,110 @@ watch(
   }
 }
 
+.model-behavior-chip {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 7px 11px;
+  background-color: #eef6ff;
+  font-size: 11px;
+  color: #174466;
+  border: 1px solid rgba(35, 95, 143, 0.14);
+}
+
+.model-form-section {
+  margin-top: 18px;
+  border: 1px solid rgba(17, 24, 39, 0.06);
+  border-radius: 18px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.model-section-head {
+  margin-bottom: 14px;
+
+  h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #202124;
+  }
+
+  p {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #5f6368;
+  }
+}
+
+.model-form-grid,
 .model-capability-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 14px 18px;
+}
+
+.model-form-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+
+  span,
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  small {
+    font-size: 11px;
+    line-height: 1.5;
+    color: #6b7280;
+  }
+}
+
+.model-form-field-span {
+  grid-column: 1 / -1;
+}
+
+.model-key-input {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  background: rgba(255, 255, 255, 0.96);
+
+  input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.model-suggestion-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  .btn {
+    min-height: 36px;
+    padding-inline: 12px;
+    border-radius: 999px;
+    font-size: 12px;
+  }
+}
+
+.model-info-card {
+  border-radius: 14px;
+  padding: 12px 14px;
+  background-color: #f7f7f6;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #374151;
+  border: 1px solid rgba(17, 24, 39, 0.05);
 }
 
 .model-capability-toggle {
-  min-width: 0;
   min-height: 48px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -596,103 +585,9 @@ watch(
   }
 }
 
-.model-behavior-chip {
-  flex-shrink: 0;
-  border-radius: 999px;
-  padding: 7px 11px;
-  background-color: #eef6ff;
-  font-size: 11px;
-  color: #174466;
-  border: 1px solid rgba(35, 95, 143, 0.14);
-}
-
-.model-form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 18px;
-}
-
-.model-form-field {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-
-  label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #374151;
-  }
-}
-
-.image-model-form .model-form-field {
-  gap: 6px;
-}
-
-.image-model-form :deep(.input),
-.image-model-form :deep(.select) {
-  min-height: 46px;
-  border-radius: 14px;
-}
-
-.model-form-field-span {
-  grid-column: 1 / -1;
-}
-
-.model-key-input {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 52px;
-  background: rgba(255, 255, 255, 0.96);
-
-  input {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .btn {
-    margin-left: auto;
-    flex-shrink: 0;
-  }
-}
-
-.model-field-help {
-  font-size: 11px;
-  line-height: 1.5;
-  color: #6b7280;
-}
-
-.model-suggestion-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-
-  .btn {
-    min-height: 36px;
-    padding-inline: 12px;
-    border-radius: 999px;
-    font-size: 12px;
-  }
-}
-
-.model-info-card {
-  border-radius: 14px;
-  padding: 12px 14px;
-  background-color: #f7f7f6;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #374151;
-  border: 1px solid rgba(17, 24, 39, 0.05);
-
-  code {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  }
-}
-
 @media (max-width: 900px) {
-  .model-form-grid {
+  .model-form-grid,
+  .model-capability-grid {
     grid-template-columns: 1fr;
   }
 

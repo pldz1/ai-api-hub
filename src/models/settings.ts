@@ -2,13 +2,12 @@ import type {
   ImageModelConfig,
   ImageOperation,
   ImageProviderPayload,
-  PersistedModelSettingsPayload,
 } from "@/types/image";
 import type { ChatModelCapabilities, ChatModelConfig, ChatProviderPayload } from "@/types/chat";
-import type { ModelSettings } from "@/types/settings";
+import type { ModelSettings, PersistedModelSettingsPayload } from "@/types/settings";
 import { cloneJson, getModelRequestId, sanitizeModelCapabilityOverrides, type LooseModelConfig, type LooseModelSettings } from "./common";
-import { isAzureChatModel, toRuntimeChatModelConfig } from "./chat";
-import { toRuntimeImageModelConfig } from "./image";
+import { isAzureChatModel, normalizeChatModelConfig } from "./chat";
+import { normalizeImageModelConfig } from "./image";
 
 type ChatCapabilityConfigInput = {
   enabledCapabilitiesMode?: "inherit" | "custom";
@@ -108,9 +107,9 @@ export function sanitizeModelSettings(data: Partial<ModelSettings> | null | unde
 export function migratePersistedModelSettings(data: LooseModelSettings | null | undefined = {}): ModelSettings {
   const migrateModelEntries = (items: unknown[] = [], kind = "", imageOperation: ImageOperation | "" = "") =>
     (Array.isArray(items) ? items : []).map((item) => {
-      if (kind === "chat") return toRuntimeChatModelConfig(item as LooseModelConfig);
+      if (kind === "chat") return normalizeChatModelConfig(item as LooseModelConfig);
       if (kind === "image")
-        return toRuntimeImageModelConfig(item as LooseModelConfig, imageOperation || (item as LooseModelConfig)?.imageOperation || "generation");
+        return normalizeImageModelConfig(item as LooseModelConfig, imageOperation || (item as LooseModelConfig)?.imageOperation || "generation");
       return item;
     });
 
@@ -133,57 +132,57 @@ export function migratePersistedModelSettings(data: LooseModelSettings | null | 
  * it takes current user config and emits only stable persisted fields.
  */
 function buildPersistedChatModelConfig(model: LooseModelConfig | ChatModelConfig): ChatProviderPayload {
-  const runtimeModel = toRuntimeChatModelConfig(model as LooseModelConfig);
+  const modelConfig = normalizeChatModelConfig(model as LooseModelConfig);
   const basePayload = {
-    name: runtimeModel.name,
-    provider: runtimeModel.provider,
-    apiKey: runtimeModel.apiKey,
-    model: getModelRequestId(runtimeModel),
-    ...getPersistedCapabilityFields(runtimeModel),
+    name: modelConfig.name,
+    provider: modelConfig.provider,
+    apiKey: modelConfig.apiKey,
+    model: getModelRequestId(modelConfig),
+    ...getPersistedCapabilityFields(modelConfig),
   };
 
-  if (isAzureChatModel(runtimeModel)) {
+  if (isAzureChatModel(modelConfig)) {
     return {
       ...basePayload,
       provider: "Azure OpenAI",
-      endpoint: runtimeModel.endpoint,
-      deployment: runtimeModel.deployment,
-      apiVersion: runtimeModel.apiVersion,
+      endpoint: modelConfig.endpoint,
+      deployment: modelConfig.deployment,
+      apiVersion: modelConfig.apiVersion,
     };
   }
 
   return {
     ...basePayload,
-    provider: runtimeModel.provider,
-    baseURL: "baseURL" in runtimeModel ? runtimeModel.baseURL : "",
+    provider: modelConfig.provider,
+    baseURL: "baseURL" in modelConfig ? modelConfig.baseURL : "",
   } as ChatProviderPayload;
 }
 
 /** Builds the persisted image payload written to storage/export for one model. */
 function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConfig, imageOperation: ImageOperation): ImageProviderPayload {
-  const runtimeModel = toRuntimeImageModelConfig(model as LooseModelConfig, imageOperation);
+  const modelConfig = normalizeImageModelConfig(model as LooseModelConfig, imageOperation);
   const basePayload = {
-    name: runtimeModel.name,
-    provider: runtimeModel.provider,
-    apiKey: runtimeModel.apiKey,
-    model: getModelRequestId(runtimeModel),
-    imageOperation: runtimeModel.imageOperation,
+    name: modelConfig.name,
+    provider: modelConfig.provider,
+    apiKey: modelConfig.apiKey,
+    model: getModelRequestId(modelConfig),
+    imageOperation: modelConfig.imageOperation,
   };
 
-  if (runtimeModel.provider === "Azure OpenAI") {
+  if (modelConfig.provider === "Azure OpenAI") {
     return {
       ...basePayload,
       provider: "Azure OpenAI",
-      endpoint: runtimeModel.endpoint,
-      deployment: runtimeModel.deployment,
-      apiVersion: runtimeModel.apiVersion,
+      endpoint: modelConfig.endpoint,
+      deployment: modelConfig.deployment,
+      apiVersion: modelConfig.apiVersion,
     };
   }
 
   return {
     ...basePayload,
     provider: "OpenAI",
-    baseURL: runtimeModel.baseURL,
+    baseURL: modelConfig.baseURL,
   };
 }
 

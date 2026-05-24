@@ -1,6 +1,9 @@
 <template>
+  <!-- This component lets users switch the active application theme. -->
+  <!-- Pair the theme selector with a tooltip and dropdown menu. -->
   <AppTooltip :text="t('theme.tooltip')" placement="bottom">
     <AppDropdownMenu :items="themeOptions" placement="bottom-end" :width="140" @select="handleThemeChange">
+      <!-- Use a compact trigger button that opens the theme list. -->
       <template #trigger="{ toggle }">
         <button type="button" class="btn m-1 btn-color1" @click="toggle">
           {{ t("theme.label") }}
@@ -13,16 +16,23 @@
   </AppTooltip>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { applyTheme, getStoredTheme } from "@/utils/theme";
 import AppTooltip from "@/components/AppTooltip.vue";
 import AppDropdownMenu from "@/components/AppDropdownMenu.vue";
 
+type ThemeOption = {
+  key: string;
+  value: string;
+  label: string;
+  active: boolean;
+};
+
 const { t } = useI18n();
 const currentTheme = ref(getStoredTheme());
-const themeOptions = computed(() => [
+const themeOptions = computed<ThemeOption[]>(() => [
   { key: "light", value: "light", label: t("theme.options.light"), active: currentTheme.value === "light" },
   { key: "dark", value: "dark", label: t("theme.options.dark"), active: currentTheme.value === "dark" },
   { key: "cupcake", value: "cupcake", label: t("theme.options.cupcake"), active: currentTheme.value === "cupcake" },
@@ -30,12 +40,7 @@ const themeOptions = computed(() => [
   { key: "lemonade", value: "lemonade", label: t("theme.options.lemonade"), active: currentTheme.value === "lemonade" },
 ]);
 
-/**
- * 当用户更改主题选择时，获取单选按钮的 value，
- * 然后将该值设置到 <html> 标签的 data-theme 属性上，
- * DaisyUI 会自动根据这个属性应用对应的主题样式。
- */
-const handleThemeChange = (item) => {
+const handleThemeChange = (item: ThemeOption) => {
   currentTheme.value = item.value;
   applyTheme(item.value);
 };

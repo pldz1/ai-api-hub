@@ -17,7 +17,7 @@ import { useRoute } from "vue-router";
 import LeftView from "@/views/layout/LeftView.vue";
 import RightView from "@/views/layout/RightView.vue";
 import ChatCard from "./chat/ChatCard.vue";
-import SettingsView from "./settings/SettingsView.vue";
+import SettingsView from "./setting/SettingsView.vue";
 
 const sidebarExpanded = ref(true);
 const route = useRoute();

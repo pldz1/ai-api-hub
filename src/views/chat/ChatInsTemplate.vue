@@ -1,9 +1,12 @@
 <template>
+  <!-- This view shows starter prompt templates for a new chat. -->
   <div class="chat-template-display-card">
+    <!-- Introduce the empty state with a lightweight headline and subtitle. -->
     <div class="ctdc-copy">
       <h1 class="ctdc-title">Over to you{{ userSuffix }}</h1>
       <p class="ctdc-subtitle">Start a new conversation or reuse one of your prompt templates.</p>
     </div>
+    <!-- Offer built-in and saved prompt shortcuts as reusable chips. -->
     <div class="ctdc-templates">
       <div class="ctdc-templates-container">
         <button v-for="inst in insTemplateList" :key="inst.id" class="ctdc-template-chip" @click="onSelectInst(inst.id)">
@@ -14,29 +17,38 @@
   </div>
 </template>
 
-<script setup>
-import { useStore } from "vuex";
+<script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
+import { useStore } from "vuex";
 import { getBuiltinChatInsTemplateList } from "@/models";
+import type { ChatPromptMessage } from "@/services/types";
 import { addChat } from "@/services";
-import { dsAlert, append4Random } from "@/utils";
+import { append4Random, dsAlert } from "@/utils";
 
-const emit = defineEmits(["on-update"]);
+type ChatInstructionTemplate = {
+  id: string;
+  name: string;
+  value: string;
+};
+
+const emit = defineEmits<{
+  "on-update": [messages: ChatPromptMessage[]];
+}>();
 
 const store = useStore();
 const router = useRouter();
 const { t, locale } = useI18n();
 const curChatModelSettings = computed(() => store.state.curChatModelSettings);
 const userSuffix = computed(() => (store.state.username && store.state.username !== "__workspace__" ? `, ${store.state.username}` : ""));
-const insTemplateList = computed(() => {
+const insTemplateList = computed<ChatInstructionTemplate[]>(() => {
   locale.value;
   return [...getBuiltinChatInsTemplateList(), ...store.state.chatInsTemplateList];
 });
 
-const onSelectInst = async (id) => {
-  const instObj = insTemplateList?.value?.find((inst) => inst.id === id);
+const onSelectInst = async (id: string) => {
+  const instObj = insTemplateList.value.find((inst) => inst.id === id);
   if (!instObj) {
     dsAlert({ type: "error", message: t("chat.invalidTemplate") });
     return;
@@ -72,7 +84,8 @@ const onSelectInst = async (id) => {
   padding: 0 24px;
   background:
     radial-gradient(circle at 52% 36%, rgba(191, 224, 255, 0.75), rgba(191, 224, 255, 0.34) 18%, rgba(255, 255, 255, 0) 42%),
-    radial-gradient(circle at 50% 50%, rgba(217, 235, 255, 0.7), rgba(255, 255, 255, 0) 52%), linear-gradient(180deg, #ffffff 0%, #fbfbfb 100%);
+    radial-gradient(circle at 50% 50%, rgba(217, 235, 255, 0.7), rgba(255, 255, 255, 0) 52%),
+    linear-gradient(180deg, #ffffff 0%, #fbfbfb 100%);
 }
 
 .ctdc-copy {

@@ -1,7 +1,7 @@
 import type { ImageOperation, ModelConfigBase } from "./shared";
 
 /**
- * User-owned image model configuration persisted in settings/import/export.
+ * User-owned image model configuration persisted in setting/import/export.
  */
 export interface ImageProviderPayloadBase extends ModelConfigBase {
   imageOperation: ImageOperation;

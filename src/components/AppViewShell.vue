@@ -1,20 +1,24 @@
 <template>
+  <!-- This component provides the shared page shell with header and content slots. -->
   <div class="app-view-shell">
+    <!-- Reserve the top area for the common application header. -->
     <header class="app-view-header">
       <HeaderBar />
     </header>
 
+    <!-- Render an optional toolbar slot between the header and page body. -->
     <div v-if="$slots.toolbar" class="app-view-toolbar">
       <slot name="toolbar" />
     </div>
 
+    <!-- Render the main page content in the flexible body area. -->
     <main class="app-view-body">
       <slot />
     </main>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import HeaderBar from "@/components/HeaderBar.vue";
 </script>
 

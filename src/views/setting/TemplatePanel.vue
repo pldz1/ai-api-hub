@@ -5,30 +5,22 @@
         <h2>{{ t("user.templates.title") }}</h2>
         <p>{{ t("user.templates.description") }}</p>
       </div>
-      <div class="section-actions">
-        <button class="btn btn-neutral" @click="addTemplate">
-          {{ t("user.templates.add") }}
-        </button>
-      </div>
+      <button class="btn btn-neutral" @click="addTemplate">{{ t("user.templates.add") }}</button>
     </div>
 
     <div class="settings-workspace">
       <aside class="settings-list-panel">
         <button
-          v-for="(template, index) in props.templates"
+          v-for="(template, index) in templates"
           :key="template.id"
           class="settings-list-item"
           :class="{ active: index === selectedIndex }"
-          @click="selectIndex(index)"
+          @click="selectedIndex = index"
         >
           <div class="settings-list-title">{{ template.name || t("common.unnamedTemplate") }}</div>
-          <div class="settings-list-meta">
-            {{ summarizeTemplate(template.value) }}
-          </div>
+          <div class="settings-list-meta">{{ summarizeTemplate(template.value) }}</div>
         </button>
-        <div v-if="props.templates.length === 0" class="settings-empty-list">
-          {{ t("user.templates.emptyList") }}
-        </div>
+        <div v-if="templates.length === 0" class="settings-empty-list">{{ t("user.templates.emptyList") }}</div>
       </aside>
 
       <section class="settings-detail-panel">
@@ -45,43 +37,34 @@
           </div>
 
           <div class="template-form-card">
-            <div class="template-form-field">
-              <label>{{ t("user.templates.name") }}</label>
-              <input type="text" class="input input-bordered w-full" :value="currentTemplate.name" @input="updateField('name', $event.target.value)" />
-            </div>
-
-            <div class="template-form-field">
-              <label>{{ t("user.templates.instruction") }}</label>
-              <textarea
-                class="textarea textarea-bordered template-textarea"
-                :value="currentTemplate.value"
-                @input="updateField('value', $event.target.value)"
-              ></textarea>
-            </div>
+            <label>
+              <span>{{ t("user.templates.name") }}</span>
+              <input type="text" class="input input-bordered w-full" :value="currentTemplate.name" @input="updateField('name', $event)" />
+            </label>
+            <label>
+              <span>{{ t("user.templates.instruction") }}</span>
+              <textarea class="textarea textarea-bordered template-textarea" :value="currentTemplate.value" @input="updateField('value', $event)" />
+            </label>
           </div>
         </template>
 
-        <div v-else class="settings-empty-detail">
-          {{ t("user.templates.emptyDetail") }}
-        </div>
+        <div v-else class="settings-empty-detail">{{ t("user.templates.emptyDetail") }}</div>
       </section>
     </div>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { append4Random, getUuid } from "@/utils";
 
-const props = defineProps({
-  templates: {
-    type: Array,
-    default: () => [],
-  },
-});
+type ChatInstructionTemplate = { id: string; name: string; value: string };
 
-const emit = defineEmits(["update:templates"]);
+const props = withDefaults(defineProps<{ templates?: ChatInstructionTemplate[] }>(), {
+  templates: () => [],
+});
+const emit = defineEmits<{ "update:templates": [templates: ChatInstructionTemplate[]] }>();
 const { t } = useI18n();
 const selectedIndex = ref(-1);
 
@@ -90,27 +73,11 @@ const currentTemplate = computed(() => {
   return props.templates[selectedIndex.value];
 });
 
-const selectIndex = (index) => {
-  selectedIndex.value = index;
-};
-
-const updateTemplates = (nextTemplates) => {
+function updateTemplates(nextTemplates: ChatInstructionTemplate[]) {
   emit("update:templates", nextTemplates);
-};
+}
 
-const updateField = (field, value) => {
-  if (selectedIndex.value < 0) return;
-  const nextTemplates = props.templates.map((item, index) => {
-    if (index !== selectedIndex.value) return item;
-    return {
-      ...item,
-      [field]: value,
-    };
-  });
-  updateTemplates(nextTemplates);
-};
-
-const addTemplate = () => {
+function addTemplate() {
   const nextTemplate = {
     id: getUuid("inst"),
     name: append4Random(t("user.templates.defaultName")),
@@ -119,9 +86,9 @@ const addTemplate = () => {
   const nextTemplates = [...props.templates, nextTemplate];
   updateTemplates(nextTemplates);
   selectedIndex.value = nextTemplates.length - 1;
-};
+}
 
-const duplicateTemplate = () => {
+function duplicateTemplate() {
   if (!currentTemplate.value) return;
   const duplicated = {
     ...structuredClone(currentTemplate.value),
@@ -131,40 +98,30 @@ const duplicateTemplate = () => {
   const nextTemplates = [...props.templates, duplicated];
   updateTemplates(nextTemplates);
   selectedIndex.value = nextTemplates.length - 1;
-};
+}
 
-const deleteTemplate = () => {
+function deleteTemplate() {
   if (selectedIndex.value < 0) return;
   const nextTemplates = props.templates.filter((_, index) => index !== selectedIndex.value);
   updateTemplates(nextTemplates);
-  if (nextTemplates.length === 0) {
-    selectedIndex.value = -1;
-  } else if (selectedIndex.value >= nextTemplates.length) {
-    selectedIndex.value = nextTemplates.length - 1;
-  }
-};
+  selectedIndex.value = Math.min(selectedIndex.value, nextTemplates.length - 1);
+}
 
-const summarizeTemplate = (value) => {
+function updateField(field: "name" | "value", event: Event) {
+  const target = event.target;
+  if (selectedIndex.value < 0 || !(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return;
+  updateTemplates(props.templates.map((item, index) => (index === selectedIndex.value ? { ...item, [field]: target.value } : item)));
+}
+
+function summarizeTemplate(value: string) {
   if (!value) return t("user.templates.emptyContent");
   return value.length > 64 ? `${value.slice(0, 64)}...` : value;
-};
+}
 
 watch(
   () => props.templates.length,
-  (newLength) => {
-    if (newLength === 0) {
-      selectedIndex.value = -1;
-      return;
-    }
-
-    if (selectedIndex.value === -1) {
-      selectedIndex.value = 0;
-      return;
-    }
-
-    if (selectedIndex.value >= newLength) {
-      selectedIndex.value = newLength - 1;
-    }
+  (length) => {
+    selectedIndex.value = length === 0 ? -1 : Math.min(Math.max(selectedIndex.value, 0), length - 1);
   },
   { immediate: true },
 );
@@ -173,7 +130,8 @@ watch(
 <style lang="scss" scoped>
 .detail-toolbar-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .template-form-card {
@@ -185,14 +143,14 @@ watch(
   flex-direction: column;
   gap: 18px;
   box-shadow: 0 10px 28px rgba(31, 41, 55, 0.04);
-}
-
-.template-form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 
   label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  span {
     font-size: 12px;
     font-weight: 600;
     color: #374151;
