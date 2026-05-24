@@ -1,4 +1,4 @@
-import type { ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelOption, ChatModelProvider } from "@/types/chat";
+import type { ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelOption, ChatModelProvider } from "@/types";
 
 export type ChatModelCatalogItem = ChatModelOption & {
   provider?: ChatModelProvider;

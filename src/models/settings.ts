@@ -1,10 +1,4 @@
-import type {
-  ImageModelConfig,
-  ImageOperation,
-  ImageProviderPayload,
-} from "@/types/image";
-import type { ChatModelCapabilities, ChatModelConfig, ChatProviderPayload } from "@/types/chat";
-import type { ModelSettings, PersistedModelSettingsPayload } from "@/types/settings";
+import type { ChatModelCapabilities, ChatModelConfig, ChatProviderPayload, ImageModelConfig, ImageOperation, ImageProviderPayload, ModelSettings, PersistedModelSettingsPayload } from "@/types";
 import { cloneJson, getModelRequestId, sanitizeModelCapabilityOverrides, type LooseModelConfig, type LooseModelSettings } from "./common";
 import { isAzureChatModel, normalizeChatModelConfig } from "./chat";
 import { normalizeImageModelConfig } from "./image";

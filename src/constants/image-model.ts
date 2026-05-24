@@ -1,6 +1,6 @@
-import type { ImageModelSettings, ImageModelProvider, ModelParamDef, SelectOption } from "@/types/image";
+import type { ImageModelSettings, ImageModelProvider, ImageModelParamDef, ImageSelectOption } from "@/types";
 
-type LooseParamDef = Partial<ModelParamDef> & { key?: string };
+type LooseParamDef = Partial<ImageModelParamDef> & { key?: string };
 
 export const imageParamPresetList: LooseParamDef[] = [
   {
@@ -53,7 +53,7 @@ export const imageParamPresetList: LooseParamDef[] = [
   },
 ];
 
-export const imageModelTypeList: SelectOption[] = [
+export const imageModelTypeList: ImageSelectOption[] = [
   { value: "gpt-image-1.5", name: "gpt-image-1.5" },
   { value: "gpt-image-1", name: "gpt-image-1" },
   { value: "gpt-image-1-mini", name: "gpt-image-1-mini" },
@@ -62,7 +62,7 @@ export const imageModelTypeList: SelectOption[] = [
   { value: "dall-e-3", name: "dall-e-3" },
 ];
 
-export const imageModelProviderList: SelectOption<ImageModelProvider>[] = [
+export const imageModelProviderList: ImageSelectOption<ImageModelProvider>[] = [
   { value: "OpenAI", name: "OpenAI" },
   { value: "Azure OpenAI", name: "Azure OpenAI" },
 ];
@@ -77,7 +77,7 @@ export const defImageModelSeting = {
   n: 1,
 } satisfies ImageModelSettings;
 
-export const imageModelSize: SelectOption[] = [
+export const imageModelSize: ImageSelectOption[] = [
   { name: "1024x1024", value: "1024x1024" },
   { name: "1024x1792", value: "1024x1792" },
   { name: "1792x1024", value: "1792x1024" },

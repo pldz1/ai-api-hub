@@ -75,9 +75,7 @@ import TemplatePanel from "./TemplatePanel.vue";
 import { buildPersistedModelSettingsPayload, migratePersistedModelSettings } from "@/models";
 import { exportChatSessionSettings, getChatInsTemplateList, getModels, importChatSessionSettings, setChatInsTemplateList, setModels } from "@/services";
 import { dsAlert, getSettingsImportValidationError, isSettingsImportPackage, isValidSettingsImport, uploadJsonFile } from "@/utils";
-import type { ChatModelConfig } from "@/types/chat";
-import type { ImageModelConfig } from "@/types/image";
-import type { ModelSettings, PersistedModelSettingsPayload, SettingsImportPayload } from "@/types/settings";
+import type { ChatModelConfig, ImageModelConfig, ModelSettings, PersistedModelSettingsPayload, SettingsImportPayload } from "@/types";
 
 type SettingTabKey = "chat-templates" | "chat-models" | "image-generation-models" | "image-edit-models" | "app";
 type SettingTabItem = { key: SettingTabKey; label: string; description: string };

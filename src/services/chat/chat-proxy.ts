@@ -11,7 +11,7 @@ import {
   isOpenAIChatModel,
 } from "@/models";
 import { tr } from "@/i18n";
-import type { ChatCompletionParams, ChatModelCapabilities, ChatModelConfig, ChatModelSettings, ConversationModelSnapshot } from "@/types/chat";
+import type { ChatCompletionParams, ChatModelCapabilities, ChatModelConfig, ChatModelSettings, ConversationModelSnapshot } from "@/types";
 import type { ChatCallback, ChatPromptMessage, PackedChatMessage } from "@/services/types";
 
 import { packMessageV1, packMessageV2 } from "./message";

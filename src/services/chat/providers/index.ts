@@ -1,5 +1,5 @@
 import { getModelDeployment, getModelRequestId, isAnthropicChatModel, isAzureChatModel, isOpenAIChatModel } from "@/models";
-import type { ChatCompletionParams, ChatModelConfig } from "@/types/chat";
+import type { ChatCompletionParams, ChatModelConfig } from "@/types";
 import type { ChatCallback, ChatRequestOptions, PackedChatMessage } from "@/services/types";
 import type { ChatProviderRuntimeConfig } from "./types";
 

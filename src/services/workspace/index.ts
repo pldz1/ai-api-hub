@@ -4,7 +4,7 @@ import { buildPersistedModelSettingsPayload, migratePersistedModelSettings } fro
 import { dsAlert, getChatTemplateListValidationError, getModelSettingValidationError } from "@/utils";
 import { apiRequest } from "../storage";
 import type { ApiResponse } from "@/services/types";
-import type { ModelSettings } from "@/types/settings";
+import type { ModelSettings } from "@/types";
 
 type ChatInstructionTemplate = {
   id: string;

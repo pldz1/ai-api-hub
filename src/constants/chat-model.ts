@@ -1,7 +1,7 @@
-import type { ChatModelCapabilities, ChatModelOption, ChatModelProvider, SelectOption } from "@/types/chat";
+import type { ChatModelCapabilities, ChatModelOption, ChatModelProvider, ChatSelectOption } from "@/types";
 import { chatModelCatalog } from "./model-list";
 
-export const providerList: SelectOption<ChatModelProvider>[] = [
+export const providerList: ChatSelectOption<ChatModelProvider>[] = [
   { value: "OpenAI", name: "OpenAI" },
   { value: "Azure OpenAI", name: "Azure OpenAI" },
   { value: "Anthropic", name: "Anthropic Direct" },

@@ -123,9 +123,7 @@ import SvgIcon from "@/components/SvgIcon.vue";
 import { chatDisplayedCapabilityKeys, defaultChatModelEditorState, defaultImageModelEditorState, imageModelProviderList, providerList } from "@/constants";
 import { dsAlert } from "@/utils";
 import { getChatModelCapabilities, getChatModelInfo, getModelImageParamDefs, getModelRequestId, sanitizeModelCapabilityOverrides } from "@/models";
-import type { ChatModelConfig, ChatModelEditorState, SelectOption } from "@/types/chat";
-import type { ImageModelConfig, ImageModelEditorState, ImageOperation } from "@/types/image";
-import type { ModelConfig, ModelKind } from "@/types/settings";
+import type { ChatModelConfig, ChatModelEditorState, ChatSelectOption, ImageModelConfig, ImageModelEditorState, ImageOperation, ModelConfig, ModelKind } from "@/types";
 
 type ModelEditorState = Omit<ChatModelEditorState, "provider"> & {
   provider: ChatModelEditorState["provider"] | ImageModelEditorState["provider"];
@@ -136,7 +134,7 @@ type ModelEditorInput = Partial<ModelConfig> & { apiType?: ModelEditorState["pro
 const props = withDefaults(
   defineProps<{
     model?: ModelEditorInput;
-    modelSuggestions?: SelectOption[];
+    modelSuggestions?: ChatSelectOption[];
     kind?: ModelKind;
     operation?: ImageOperation;
   }>(),
@@ -171,9 +169,9 @@ const getModelFamily = (model = "") => {
 };
 const groupedModelSuggestions = computed(() => {
   const groups = [
-    { key: "openai", label: t("user.modelCard.suggestionGroups.openai"), items: [] as SelectOption[] },
-    { key: "claude", label: t("user.modelCard.suggestionGroups.claude"), items: [] as SelectOption[] },
-    { key: "custom", label: t("user.modelCard.suggestionGroups.custom"), items: [] as SelectOption[] },
+    { key: "openai", label: t("user.modelCard.suggestionGroups.openai"), items: [] as ChatSelectOption[] },
+    { key: "claude", label: t("user.modelCard.suggestionGroups.claude"), items: [] as ChatSelectOption[] },
+    { key: "custom", label: t("user.modelCard.suggestionGroups.custom"), items: [] as ChatSelectOption[] },
   ];
   const groupMap = new Map(groups.map((group) => [group.key, group]));
   const seen = new Set<string>();

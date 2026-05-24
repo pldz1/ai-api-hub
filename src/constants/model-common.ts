@@ -1,5 +1,4 @@
-import type { ChatModelEditorState } from "@/types/chat";
-import type { ImageModelEditorState } from "@/types/image";
+import type { ChatModelEditorState, ImageModelEditorState } from "@/types";
 
 export const defaultChatModelEditorState: ChatModelEditorState = {
   name: "",

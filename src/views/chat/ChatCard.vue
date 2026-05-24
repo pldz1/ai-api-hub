@@ -35,7 +35,7 @@
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
-import type { ChatModelConfig } from "@/types/chat";
+import type { ChatModelConfig } from "@/types";
 import { dsLoading } from "@/utils";
 import { ChatDrawer, addChat, getAllMessage, getChatSettings, getChatSessionRunner, resetCurrentChatDraft, stopChatSession } from "@/services";
 import type { ChatPromptMessage } from "@/services/types";

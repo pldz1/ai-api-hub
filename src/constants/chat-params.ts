@@ -1,6 +1,6 @@
-import type { ModelParamDef } from "@/types/chat";
+import type { ChatModelParamDef } from "@/types";
 
-type LooseParamDef = Partial<ModelParamDef> & { key?: string };
+type LooseParamDef = Partial<ChatModelParamDef> & { key?: string };
 
 export const chatParamPresetList: LooseParamDef[] = [
   {

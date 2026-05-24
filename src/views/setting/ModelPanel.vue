@@ -80,9 +80,7 @@ import ModelEditor from "./ModelEditor.vue";
 import { chatModelTypeList, imageModelTypeList } from "@/constants";
 import { getModelImageParamDefs, isAzureImageModel } from "@/models";
 import { append4Random } from "@/utils";
-import type { ChatModelConfig } from "@/types/chat";
-import type { ImageModelConfig, ImageOperation } from "@/types/image";
-import type { ModelConfig, ModelKind } from "@/types/settings";
+import type { ChatModelConfig, ImageModelConfig, ImageOperation, ModelConfig, ModelKind } from "@/types";
 
 const props = withDefaults(
   defineProps<{

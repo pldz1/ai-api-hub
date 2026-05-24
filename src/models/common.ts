@@ -1,7 +1,16 @@
-import type { CapabilityOverrideMode, ChatFormProvider, ChatModelCapabilities, ModelParamDef as ChatModelParamDef } from "@/types/chat";
-import type { ParamDefaultValue as ChatParamDefaultValue } from "@/types/chat";
-import type { ModelSettings } from "@/types/settings";
-import type { ImageModelProvider, ImageOperation, ModelParamDef as ImageModelParamDef, ModelParamType, ParamDefaultValue as ImageParamDefaultValue } from "@/types/image";
+import type {
+  CapabilityOverrideMode,
+  ChatFormProvider,
+  ChatModelCapabilities,
+  ChatModelParamDef,
+  ChatParamDefaultValue,
+  ModelSettings,
+  ImageModelProvider,
+  ImageOperation,
+  ImageModelParamDef,
+  ImageModelParamType,
+  ImageParamDefaultValue,
+} from "@/types";
 
 type WorkspaceParamDefaultValue = ChatParamDefaultValue | ImageParamDefaultValue;
 
@@ -114,7 +123,7 @@ export function sanitizeModelCapabilityOverrides(enabledCapabilities: unknown = 
  * This is the common coercion layer used by both chat and image settings so the
  * same stored value can be safely interpreted as number/boolean/object/etc.
  */
-export function parseParamValue<T = WorkspaceParamDefaultValue>(type: ModelParamType | string = "string", value: unknown = undefined, fallback: T = undefined as T): T {
+export function parseParamValue<T = WorkspaceParamDefaultValue>(type: ImageModelParamType | string = "string", value: unknown = undefined, fallback: T = undefined as T): T {
   if (value === undefined || value === null || value === "") {
     return fallback;
   }
@@ -169,7 +178,7 @@ export function parseParamValue<T = WorkspaceParamDefaultValue>(type: ModelParam
  * Returns whether a normalized parameter value is meaningful enough to include
  * in a provider request payload.
  */
-export function hasMeaningfulParamValue(type: ModelParamType | string = "string", value: unknown = undefined): boolean {
+export function hasMeaningfulParamValue(type: ImageModelParamType | string = "string", value: unknown = undefined): boolean {
   if (value === undefined || value === null) return false;
   if (type === "string" && value === "") return false;
   if (type === "array") return Array.isArray(value);

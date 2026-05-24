@@ -1,5 +1,4 @@
-import type { ChatMessageRole, ChatModelCapabilities } from "@/types/chat";
-import type { ImageModelConfig } from "@/types/image";
+import type { ChatMessageRole, ChatModelCapabilities, ImageModelConfig } from "@/types";
 
 export type ApiMethod = "get" | "post" | "put" | "patch" | "delete";
 export type RequestBody = Record<string, unknown>;

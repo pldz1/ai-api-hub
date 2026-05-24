@@ -112,7 +112,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useStore } from "vuex";
-import type { ChatModelConfig } from "@/types/chat";
+import type { ChatModelConfig } from "@/types";
 import attachIcon from "@/assets/svg/attach24.svg";
 import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import paramIcon from "@/assets/svg/param24.svg";

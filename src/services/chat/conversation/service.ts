@@ -4,7 +4,7 @@ import { apiRequest } from "../../storage";
 import { dsAlert, isValidChatInfoArray, getUuid, generateRandomCname } from "@/utils";
 import { tr } from "@/i18n";
 import type { ChatListItem, ChatPromptMessage, StoredChatMessage } from "@/services/types";
-import type { ChatModelConfig, ChatModelSettings, ConversationModelSnapshot, ExportedChatSessionSettings, PersistedChatSettingsPayload } from "@/types/chat";
+import type { ChatModelConfig, ChatModelSettings, ConversationModelSnapshot, ExportedChatSessionSettings, PersistedChatSettingsPayload } from "@/types";
 
 /**
  * Chat conversation service.

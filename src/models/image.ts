@@ -1,4 +1,4 @@
-import type { ImageModelConfig, ImageModelSettings, ImageOperation, ModelParamDef } from "@/types/image";
+import type { ImageModelConfig, ImageModelSettings, ImageOperation, ImageModelParamDef } from "@/types";
 import { defImageModelSeting, imageParamPresetList } from "@/constants/image-model";
 import {
   cloneJson,
@@ -55,7 +55,7 @@ export function normalizeImageModelConfig(model: LooseModelConfig | null | undef
 }
 
 /** Merges a raw image parameter definition with the built-in preset defaults. */
-export function normalizeImageParamDef(def: LooseParamDef = {}): ModelParamDef {
+export function normalizeImageParamDef(def: LooseParamDef = {}): ImageModelParamDef {
   const preset = getImageParamPreset(def.key);
   const nextType = def.type || preset?.type || "string";
   const fallbackDefaultValue = Object.prototype.hasOwnProperty.call(preset || {}, "defaultValue") ? cloneJson(preset.defaultValue) : "";
@@ -76,12 +76,12 @@ export function normalizeImageParamDef(def: LooseParamDef = {}): ModelParamDef {
 }
 
 /** Returns default parameter definitions for image generation models. */
-export function getDefaultImageParamDefs(): ModelParamDef[] {
+export function getDefaultImageParamDefs(): ImageModelParamDef[] {
   return ["quality", "output_format"].map((key) => normalizeImageParamDef({ key }));
 }
 
 /** Returns default parameter definitions for image edit models. */
-export function getDefaultImageEditParamDefs(): ModelParamDef[] {
+export function getDefaultImageEditParamDefs(): ImageModelParamDef[] {
   return ["quality", "output_format", "image", "mask"].map((key) => normalizeImageParamDef({ key }));
 }
 
@@ -91,7 +91,7 @@ export function getDefaultImageEditParamDefs(): ModelParamDef[] {
  * Edit models are guaranteed to include image-edit specific parameters such as
  * `image` and `mask`.
  */
-export function getModelImageParamDefs(model: LooseModelConfig = {}): ModelParamDef[] {
+export function getModelImageParamDefs(model: LooseModelConfig = {}): ImageModelParamDef[] {
   const defaultDefs = model?.imageOperation === "edit" ? getDefaultImageEditParamDefs() : getDefaultImageParamDefs();
   const supportedKeys = new Set(imageParamPresetList.map((item) => item.key).filter(Boolean));
   const configuredDefs =
