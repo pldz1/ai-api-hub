@@ -112,10 +112,10 @@ function getImageConversationName(prompt = ""): string {
   return `Image ${monthDay} ${time}`;
 }
 
-async function persistActiveImageMessages(): Promise<boolean> {
-  const id = store.state.curImageConversationId || "";
-  if (!id) return false;
-  const res = await setImageConversationMessagesAPI(id, store.state.imageMessages || []);
+async function persistImageMessages(iid: string): Promise<boolean> {
+  if (!iid) return false;
+  const messages = store.state.imageMessagesById?.[iid] || (iid === store.state.curImageConversationId ? store.state.imageMessages || [] : []);
+  const res = await setImageConversationMessagesAPI(iid, messages);
   if (!res.flag) {
     dsAlert({ type: "error", message: tr("toast.imagePushFailed", { error: res.log }) });
     return false;
@@ -186,14 +186,19 @@ export async function submitImageMessage(request: ImageTurnRequest): Promise<Ima
     size: request.size,
   });
 
-  await store.dispatch("pushImageMessage", userMessage);
-  await store.dispatch("pushImageMessage", assistantMessage);
-  await persistActiveImageMessages();
+  await store.dispatch("pushImageMessage", { iid: conversationId, message: userMessage });
+  await store.dispatch("pushImageMessage", { iid: conversationId, message: assistantMessage });
+  await persistImageMessages(conversationId);
   await store.dispatch("setImageRuntime", {
-    pending: true,
-    status: "loading",
-    startedAt: Date.now(),
-    elapsedMs: 0,
+    iid: conversationId,
+    runtime: {
+      pending: true,
+      status: "loading",
+      completedNotice: false,
+      startedAt: Date.now(),
+      elapsedMs: 0,
+      error: "",
+    },
   });
 
   const startedAt = performance.now();
@@ -212,12 +217,17 @@ export async function submitImageMessage(request: ImageTurnRequest): Promise<Ima
       elapsedMs,
     };
 
-    await store.dispatch("updateImageMessage", completed);
-    await persistActiveImageMessages();
+    await store.dispatch("updateImageMessage", { iid: conversationId, message: completed });
+    await persistImageMessages(conversationId);
     await store.dispatch("setImageRuntime", {
-      pending: false,
-      status: "success",
-      elapsedMs,
+      iid: conversationId,
+      runtime: {
+        pending: false,
+        status: "success",
+        completedNotice: store.state.curImageConversationId !== conversationId,
+        elapsedMs,
+        error: "",
+      },
     });
 
     for (const image of response.images) {
@@ -235,12 +245,17 @@ export async function submitImageMessage(request: ImageTurnRequest): Promise<Ima
       elapsedMs,
     };
 
-    await store.dispatch("updateImageMessage", failed);
-    await persistActiveImageMessages();
+    await store.dispatch("updateImageMessage", { iid: conversationId, message: failed });
+    await persistImageMessages(conversationId);
     await store.dispatch("setImageRuntime", {
-      pending: false,
-      status: "error",
-      elapsedMs,
+      iid: conversationId,
+      runtime: {
+        pending: false,
+        status: "error",
+        completedNotice: store.state.curImageConversationId !== conversationId,
+        elapsedMs,
+        error: failed.error,
+      },
     });
     return failed;
   }
@@ -267,14 +282,13 @@ export async function addImageConversation(name = ""): Promise<boolean> {
   const item: ImageConversationInfo = { iid, iname };
   await store.dispatch("pushImageConversation", item);
   await store.dispatch("setCurImageConversationId", iid);
-  await store.dispatch("resetImageMessages", []);
+  await store.dispatch("resetImageMessages", { iid, messages: [] });
   return true;
 }
 
 export async function getImageConversationMessages(iid: string): Promise<boolean> {
   if (!iid) {
     await store.dispatch("setCurImageConversationId", "");
-    await store.dispatch("resetImageMessages", []);
     return true;
   }
 
@@ -283,11 +297,11 @@ export async function getImageConversationMessages(iid: string): Promise<boolean
   try {
     const messages = JSON.parse(res.data || "[]");
     await store.dispatch("setCurImageConversationId", iid);
-    await store.dispatch("resetImageMessages", Array.isArray(messages) ? messages : []);
+    await store.dispatch("resetImageMessages", { iid, messages: Array.isArray(messages) ? messages : [] });
     return true;
   } catch {
     await store.dispatch("setCurImageConversationId", iid);
-    await store.dispatch("resetImageMessages", []);
+    await store.dispatch("resetImageMessages", { iid, messages: [] });
     return false;
   }
 }

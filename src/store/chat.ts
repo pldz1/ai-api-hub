@@ -43,6 +43,7 @@ function createChatRuntime() {
   return {
     status: "idle",
     pending: false,
+    completedNotice: false,
     sessionTokenTotal: 0,
     sessionTokenUsage: emptyTokenUsage(),
     draftMessageId: "",
@@ -146,6 +147,12 @@ export const ChatState = {
     }
 
     this._ensureChatEntry(cid);
+    if (this.chatRuntimeById[cid]?.completedNotice) {
+      this.chatRuntimeById[cid] = cloneRuntime({
+        ...this.chatRuntimeById[cid],
+        completedNotice: false,
+      });
+    }
     const conversation = this.chatConversationsById[cid] || null;
     this.curConversation = conversation;
 

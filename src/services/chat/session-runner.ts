@@ -50,9 +50,11 @@ class ChatSessionRunner {
   }
 
   clearDraft(status = "idle", extra = {}) {
+    const isBackgroundComplete = ["success", "error", "stopped"].includes(status) && store.state.curChatId !== this.chatId;
     this.updateRuntime({
       status,
       pending: false,
+      completedNotice: isBackgroundComplete,
       draftMessageId: "",
       draftAssistantContent: "",
       draftReasoningContent: "",

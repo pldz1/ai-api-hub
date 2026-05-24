@@ -90,14 +90,14 @@
               </button>
             </AppTooltip>
 
-            <select v-model="selectedModelIndex" class="image-model-select" :disabled="isSubmitting || availableModels.length === 0">
+            <select v-model="selectedModelIndex" class="image-model-select" :disabled="isCurrentConversationSubmitting || availableModels.length === 0">
               <option :value="-1" disabled>{{ availableModels.length ? t("image.selectModel") : t("image.imageModelNotConfigured") }}</option>
               <option v-for="(model, index) in availableModels" :key="`${model.name}-${index}`" :value="index">
                 {{ model.name || model.model }}
               </option>
             </select>
 
-            <select v-model="size" class="image-size-select" :disabled="isSubmitting">
+            <select v-model="size" class="image-size-select" :disabled="isCurrentConversationSubmitting">
               <option v-for="item in imageModelSize" :key="item.value" :value="item.value">
                 {{ item.name }}
               </option>
@@ -132,7 +132,7 @@ import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import attachIcon from "@/assets/svg/attach24.svg";
 import navImageIcon from "@/assets/svg/navImage24.svg";
 import { imageModelSize } from "@/constants";
-import { getImageConversationMessages, submitImageMessage } from "@/services/image";
+import { addImageConversation, getImageConversationMessages, submitImageMessage } from "@/services/image";
 import { dsAlert, getUuid, saveToLocal } from "@/utils";
 import type { ImageConversationMessage, ImageInputAttachment, ImagePayload, ImageModelConfig } from "@/types";
 
@@ -155,10 +155,12 @@ const imageEditDialogRef = ref<{ open: (image: ImageInputAttachment) => void } |
 
 const messages = computed<ImageConversationMessage[]>(() => store.state.imageMessages || []);
 const routeImageId = computed(() => (typeof route.params.iid === "string" ? route.params.iid : ""));
+const activeImageRuntime = computed(() => (routeImageId.value ? store.state.imageRuntimeById?.[routeImageId.value] || null : store.state.imageRuntime || null));
 const mode = computed(() => (attachments.value.length > 0 ? "edit" : "generation"));
 const availableModels = computed<ImageModelConfig[]>(() => store.state.models.image || []);
 const selectedModel = computed<ImageModelConfig | null>(() => availableModels.value[selectedModelIndex.value] || null);
-const isSendDisabled = computed(() => isSubmitting.value || !prompt.value.trim() || !selectedModel.value);
+const isCurrentConversationSubmitting = computed(() => Boolean(activeImageRuntime.value?.pending || activeImageRuntime.value?.status === "loading"));
+const isSendDisabled = computed(() => isCurrentConversationSubmitting.value || !prompt.value.trim() || !selectedModel.value);
 
 function resizeTextarea() {
   const textarea = textareaRef.value;
@@ -305,6 +307,15 @@ async function send() {
   hasEditedMask.value = false;
   resizeTextarea();
 
+  if (!routeImageId.value) {
+    const created = await addImageConversation(currentPrompt.slice(0, 28));
+    if (!created || !store.state.curImageConversationId) {
+      isSubmitting.value = false;
+      return;
+    }
+    await router.replace({ name: "image", params: { iid: store.state.curImageConversationId } });
+  }
+
   const result = await submitImageMessage({
     mode: currentAttachments.length ? "edit" : "generation",
     prompt: currentPrompt,
@@ -316,10 +327,6 @@ async function send() {
 
   if (result?.status === "error") {
     dsAlert({ type: "error", message: result.error || t("image.imageRequestFailed") });
-  }
-
-  if (!routeImageId.value && store.state.curImageConversationId) {
-    await router.replace({ name: "image", params: { iid: store.state.curImageConversationId } });
   }
 
   isSubmitting.value = false;
@@ -357,13 +364,18 @@ async function useImageForEdit(image: ImagePayload) {
 watch(
   () => routeImageId.value,
   async (id) => {
-    await getImageConversationMessages(id);
     if (!id) {
+      await getImageConversationMessages(id);
       await store.dispatch("resetImageRuntime");
+      isSubmitting.value = false;
       prompt.value = "";
       attachments.value = [];
       hasEditedMask.value = false;
       resizeTextarea();
+    } else if (store.state.imageLoadedById?.[id]) {
+      await store.dispatch("setCurImageConversationId", id);
+    } else {
+      await getImageConversationMessages(id);
     }
     scrollToBottom();
   },

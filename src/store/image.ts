@@ -1,3 +1,25 @@
+function createImageRuntime() {
+  return {
+    pending: false,
+    status: "idle",
+    completedNotice: false,
+    startedAt: 0,
+    elapsedMs: 0,
+    error: "",
+  };
+}
+
+function cloneImageRuntime(runtime = {}) {
+  return {
+    ...createImageRuntime(),
+    ...runtime,
+  };
+}
+
+function getRuntimeStatusByMessages(messages = []) {
+  return messages.length > 0 ? "success" : "idle";
+}
+
 export const ImageState = {
   /**
    *  @type {T_ImageDataItem[]}
@@ -22,11 +44,39 @@ export const ImageState = {
   /**
    *  @type {{ pending: boolean, status: string, startedAt: number, elapsedMs: number }}
    */
-  imageRuntime: {
-    pending: false,
-    status: "idle",
-    startedAt: 0,
-    elapsedMs: 0,
+  imageRuntime: createImageRuntime(),
+
+  /**
+   * Per image-conversation runtime and message caches.
+   */
+  imageMessagesById: {},
+  imageRuntimeById: {},
+  imageLoadedById: {},
+
+  _ensureImageEntry(iid) {
+    if (!iid) return;
+    if (!this.imageMessagesById[iid]) this.imageMessagesById[iid] = [];
+    if (!this.imageRuntimeById[iid]) this.imageRuntimeById[iid] = createImageRuntime();
+    if (!this.imageLoadedById[iid]) this.imageLoadedById[iid] = false;
+  },
+
+  _syncActiveImageState() {
+    const iid = this.curImageConversationId;
+    if (!iid) {
+      this.imageMessages = [];
+      this.imageRuntime = createImageRuntime();
+      return;
+    }
+
+    this._ensureImageEntry(iid);
+    if (this.imageRuntimeById[iid]?.completedNotice) {
+      this.imageRuntimeById[iid] = cloneImageRuntime({
+        ...this.imageRuntimeById[iid],
+        completedNotice: false,
+      });
+    }
+    this.imageMessages = this.imageMessagesById[iid] || [];
+    this.imageRuntime = cloneImageRuntime(this.imageRuntimeById[iid]);
   },
 
   resetImageList(t) {
@@ -55,45 +105,117 @@ export const ImageState = {
       return;
     }
     this.imageConversationList.push(item);
+    this._ensureImageEntry(item?.iid);
   },
 
   deleteImageConversation(id) {
     this.imageConversationList = this.imageConversationList.filter((item) => item.iid !== id);
+    delete this.imageMessagesById[id];
+    delete this.imageRuntimeById[id];
+    delete this.imageLoadedById[id];
     if (this.curImageConversationId === id) {
       this.curImageConversationId = "";
-      this.imageMessages = [];
+      this._syncActiveImageState();
     }
   },
 
   setCurImageConversationId(id = "") {
     this.curImageConversationId = id;
+    this._syncActiveImageState();
   },
 
-  resetImageMessages(messages = []) {
-    this.imageMessages = [...messages];
+  resetImageMessages(data: any = []) {
+    const iid = Array.isArray(data) ? this.curImageConversationId : data?.iid || this.curImageConversationId;
+    const messages = Array.isArray(data) ? data : data?.messages || [];
+
+    if (!iid) {
+      this.imageMessages = [...messages];
+      return;
+    }
+
+    this._ensureImageEntry(iid);
+    this.imageMessagesById[iid] = [...messages];
+    this.imageLoadedById[iid] = true;
+
+    const currentRuntime = this.imageRuntimeById[iid] || createImageRuntime();
+    if (!currentRuntime.pending) {
+      currentRuntime.status = getRuntimeStatusByMessages(this.imageMessagesById[iid]);
+    }
+    this.imageRuntimeById[iid] = cloneImageRuntime(currentRuntime);
+
+    if (iid === this.curImageConversationId) this._syncActiveImageState();
   },
 
-  pushImageMessage(message) {
-    this.imageMessages.push(message);
-  },
+  pushImageMessage(data) {
+    const iid = data?.iid || this.curImageConversationId;
+    const message = data?.message || data;
+    if (!iid || !message) return;
 
-  updateImageMessage(message) {
-    const index = this.imageMessages.findIndex((item) => item.id === message?.id);
-    if (index >= 0) {
-      this.imageMessages.splice(index, 1, { ...this.imageMessages[index], ...message });
+    this._ensureImageEntry(iid);
+    this.imageMessagesById[iid].push(message);
+    this.imageLoadedById[iid] = true;
+
+    if (iid === this.curImageConversationId) {
+      this.imageMessages = this.imageMessagesById[iid];
     }
   },
 
-  setImageRuntime(runtime = {}) {
-    this.imageRuntime = { ...this.imageRuntime, ...runtime };
+  updateImageMessage(data) {
+    const iid = data?.iid || this.curImageConversationId;
+    const message = data?.message || data;
+    if (!iid || !message) return;
+
+    this._ensureImageEntry(iid);
+    const messages = this.imageMessagesById[iid];
+    const index = messages.findIndex((item) => item.id === message?.id);
+    if (index >= 0) {
+      messages.splice(index, 1, { ...messages[index], ...message });
+    }
+
+    if (iid === this.curImageConversationId) {
+      this.imageMessages = messages;
+    }
   },
 
-  resetImageRuntime() {
-    this.imageRuntime = {
-      pending: false,
-      status: "idle",
-      startedAt: 0,
-      elapsedMs: 0,
+  setImageRuntime(data: any = {}) {
+    const iid = data?.iid || this.curImageConversationId;
+    const runtime = data?.runtime || data;
+
+    if (!iid) {
+      this.imageRuntime = cloneImageRuntime({
+        ...this.imageRuntime,
+        ...runtime,
+      });
+      return;
+    }
+
+    this._ensureImageEntry(iid);
+    this.imageRuntimeById[iid] = cloneImageRuntime({
+      ...this.imageRuntimeById[iid],
+      ...runtime,
+    });
+
+    if (iid === this.curImageConversationId) {
+      this.imageRuntime = cloneImageRuntime(this.imageRuntimeById[iid]);
+    }
+  },
+
+  resetImageRuntime(data: any = {}) {
+    const iid = typeof data === "string" ? data : data?.iid || this.curImageConversationId;
+
+    if (!iid) {
+      this.imageRuntime = createImageRuntime();
+      return;
+    }
+
+    this._ensureImageEntry(iid);
+    this.imageRuntimeById[iid] = {
+      ...createImageRuntime(),
+      status: getRuntimeStatusByMessages(this.imageMessagesById[iid] || []),
     };
+
+    if (iid === this.curImageConversationId) {
+      this.imageRuntime = cloneImageRuntime(this.imageRuntimeById[iid]);
+    }
   },
 };

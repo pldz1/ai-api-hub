@@ -76,7 +76,15 @@
                     />
 
                     <!-- Chat rows keep actions hidden until hover/active state so long titles remain easy to scan. -->
-                    <div v-else class="chat-item" :class="{ 'is-active': activeRouteChatId === item.cid, 'is-selected': isDeleteMode && selectedChatIds.includes(item.cid) }">
+                    <div
+                      v-else
+                      class="chat-item"
+                      :class="{
+                        'is-active': activeRouteChatId === item.cid,
+                        'is-selected': isDeleteMode && selectedChatIds.includes(item.cid),
+                        'has-runtime-status': hasChatRuntimeStatus(item.cid),
+                      }"
+                    >
                       <input
                         v-if="isDeleteMode"
                         v-model="selectedChatIds"
@@ -89,6 +97,13 @@
                       <button class="chat-main-btn" type="button" @click="onSelectChat(item)">
                         <span class="chat-title-text">{{ item.cname }}</span>
                       </button>
+                      <span
+                        v-if="hasChatRuntimeStatus(item.cid)"
+                        class="session-status-dot"
+                        :class="getChatRuntimeStatusClass(item.cid)"
+                        :title="getChatRuntimeLabel(item.cid)"
+                        aria-hidden="true"
+                      ></span>
 
                       <!-- Per-chat actions live in a dropdown; each action confirms before touching persisted chat data. -->
                       <AppDropdownMenu placement="bottom-end">
@@ -134,7 +149,14 @@
                 <div v-if="imageConversationList.length === 0" class="empty-tip">No image conversations yet</div>
                 <div v-else class="recents-list">
                   <div v-for="item in imageConversationList" :key="item.iid" class="chat-item-wrapper">
-                    <div class="chat-item" :class="{ 'is-active': activeRouteImageId === item.iid, 'is-selected': isDeleteMode && selectedImageConversationIds.includes(item.iid) }">
+                    <div
+                      class="chat-item"
+                      :class="{
+                        'is-active': activeRouteImageId === item.iid,
+                        'is-selected': isDeleteMode && selectedImageConversationIds.includes(item.iid),
+                        'has-runtime-status': hasImageRuntimeStatus(item.iid),
+                      }"
+                    >
                       <input
                         v-if="isDeleteMode"
                         v-model="selectedImageConversationIds"
@@ -147,6 +169,13 @@
                       <button class="chat-main-btn" type="button" @click="onSelectImageConversation(item)">
                         <span class="chat-title-text">{{ item.iname }}</span>
                       </button>
+                      <span
+                        v-if="hasImageRuntimeStatus(item.iid)"
+                        class="session-status-dot"
+                        :class="getImageRuntimeStatusClass(item.iid)"
+                        :title="getImageRuntimeLabel(item.iid)"
+                        aria-hidden="true"
+                      ></span>
 
                       <AppDropdownMenu placement="bottom-end">
                         <template #trigger="{ toggle }">
@@ -322,6 +351,44 @@ const localeOptions = computed<SidebarOption[]>(() => [
 
 const activeLanguageMark = computed(() => (locale.value === "zh-CN" ? "ZH" : "EN"));
 const selectedConversationCount = computed(() => selectedChatIds.value.length + selectedImageConversationIds.value.length);
+const runningStatuses = new Set(["loading", "streaming"]);
+const completedStatuses = new Set(["success", "error", "stopped"]);
+
+const getChatRuntime = (cid: string) => store.state.chatRuntimeById?.[cid] || null;
+const getImageRuntime = (iid: string) => store.state.imageRuntimeById?.[iid] || null;
+
+const isRuntimeRunning = (runtime: any) => Boolean(runtime?.pending || runningStatuses.has(runtime?.status || ""));
+const isRuntimeCompletedNotice = (runtime: any) => Boolean(runtime?.completedNotice && completedStatuses.has(runtime?.status || ""));
+
+const hasChatRuntimeStatus = (cid: string) => {
+  const runtime = getChatRuntime(cid);
+  return isRuntimeRunning(runtime) || isRuntimeCompletedNotice(runtime);
+};
+
+const hasImageRuntimeStatus = (iid: string) => {
+  const runtime = getImageRuntime(iid);
+  return isRuntimeRunning(runtime) || isRuntimeCompletedNotice(runtime);
+};
+
+const getRuntimeStatusClass = (runtime: any) => ({
+  "is-running": isRuntimeRunning(runtime),
+  "is-complete": isRuntimeCompletedNotice(runtime) && runtime?.status === "success",
+  "is-error": isRuntimeCompletedNotice(runtime) && runtime?.status === "error",
+  "is-stopped": isRuntimeCompletedNotice(runtime) && runtime?.status === "stopped",
+});
+
+const getChatRuntimeStatusClass = (cid: string) => getRuntimeStatusClass(getChatRuntime(cid));
+const getImageRuntimeStatusClass = (iid: string) => getRuntimeStatusClass(getImageRuntime(iid));
+
+const getRuntimeLabel = (runtime: any) => {
+  if (isRuntimeRunning(runtime)) return "Running";
+  if (runtime?.status === "error") return "Finished with error";
+  if (runtime?.status === "stopped") return "Stopped";
+  return "Completed";
+};
+
+const getChatRuntimeLabel = (cid: string) => getRuntimeLabel(getChatRuntime(cid));
+const getImageRuntimeLabel = (iid: string) => getRuntimeLabel(getImageRuntime(iid));
 
 watch(chatList, (items) => {
   const ids = new Set(items.map((item) => item.cid));
@@ -967,6 +1034,7 @@ $radius-md: 12px;
 }
 
 .chat-item {
+  position: relative;
   display: flex;
   align-items: center;
   height: 44px;
@@ -1049,6 +1117,42 @@ $radius-md: 12px;
     height: 3.5px;
     border-radius: 50%;
     background: #6b7280;
+  }
+}
+
+.session-status-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  margin-right: 4px;
+  border-radius: 999px;
+  background: #2563eb;
+  box-shadow: 0 0 0 2px #ffffff;
+
+  &.is-running {
+    background: #22c55e;
+    animation: sessionStatusPulse 1.2s ease-in-out infinite;
+  }
+
+  &.is-error {
+    background: #ef4444;
+  }
+
+  &.is-stopped {
+    background: #94a3b8;
+  }
+}
+
+@keyframes sessionStatusPulse {
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.72;
+  }
+
+  50% {
+    transform: scale(1.18);
+    opacity: 1;
   }
 }
 
