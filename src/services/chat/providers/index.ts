@@ -7,12 +7,7 @@ import { AzureOpenAIClient } from "./azure-openai";
 import { AnthropicClient } from "./anthropic";
 import { OpenAIClient } from "./openai";
 
-export { AnthropicClient } from "./anthropic";
-export { AzureOpenAIClient } from "./azure-openai";
-export { DeepSeekClient } from "./deepseek";
-export { OpenAIClient } from "./openai";
 export type { ChatProviderRuntimeConfig } from "./types";
-export { normalizeUsage } from "./usage";
 
 /**
  * Common executor interface used by chat runtime after a provider has been

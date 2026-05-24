@@ -6,5 +6,4 @@
  */
 export * from "./chat";
 export * from "./image";
-export * from "./markdown/md-render";
 export * from "./settings";

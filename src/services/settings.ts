@@ -19,11 +19,11 @@ const emptyModelSettings = (): ModelSettings => ({
   image: [],
 });
 
-export const loginAPI = (): Promise<ApiResponse<null>> => apiRequest("post", "/_api/workspace/login", {});
-export const getModelsAPI = (): Promise<ApiResponse<string>> => apiRequest("post", "/_api/workspace/getModels", {});
-export const setModelsAPI = (data: string): Promise<ApiResponse<null>> => apiRequest("post", "/_api/workspace/setModels", { data });
-export const getChatInsTemplateListAPI = (): Promise<ApiResponse<string>> => apiRequest("post", "/_api/workspace/getChatInsTemplateList", {});
-export const setChatInsTemplateListAPI = (data: string): Promise<ApiResponse<null>> =>
+const loginAPI = (): Promise<ApiResponse<null>> => apiRequest("post", "/_api/workspace/login", {});
+const getModelsAPI = (): Promise<ApiResponse<string>> => apiRequest("post", "/_api/workspace/getModels", {});
+const setModelsAPI = (data: string): Promise<ApiResponse<null>> => apiRequest("post", "/_api/workspace/setModels", { data });
+const getChatInsTemplateListAPI = (): Promise<ApiResponse<string>> => apiRequest("post", "/_api/workspace/getChatInsTemplateList", {});
+const setChatInsTemplateListAPI = (data: string): Promise<ApiResponse<null>> =>
   apiRequest("post", "/_api/workspace/setChatInsTemplateList", { data });
 
 function parseStoredJson<T>(raw: string, fallback: T): T {

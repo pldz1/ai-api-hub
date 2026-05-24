@@ -1,5 +1,5 @@
-export const APP_THEME_KEY = "ai-api-hub-theme";
-export const DEFAULT_THEME = "light";
+const APP_THEME_KEY = "ai-api-hub-theme";
+const DEFAULT_THEME = "light";
 
 function normalizeTheme(theme) {
   return (theme || "").trim() || DEFAULT_THEME;

@@ -1,15 +1,5 @@
 import { tr } from "@/i18n";
 
-/** Returns whether a string can be parsed into a JSON array. */
-export function isArrayTypeStr(jsonStr) {
-  try {
-    const parsedData = JSON.parse(jsonStr);
-    return Array.isArray(parsedData);
-  } catch (error) {
-    return false;
-  }
-}
-
 /**
  * Returns whether one user message contains at least one non-empty text part
  * or one valid image URL part.
@@ -154,8 +144,6 @@ export const getModelSettingValidationError = (data) => {
 
   return "";
 };
-
-export const isValidModelSetting = (data) => !getModelSettingValidationError(data);
 
 function isPlainObject(data) {
   return Boolean(data) && typeof data === "object" && !Array.isArray(data);

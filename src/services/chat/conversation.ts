@@ -14,15 +14,15 @@ import { removeChatSessionRunner } from "./session-runner";
  * settings. Provider requests are handled by `chat-proxy.ts`.
  */
 
-export const getChatListAPI = () => apiRequest<ChatListItem[]>("post", "/_api/chat/getChatList", {});
-export const getChatSettingsAPI = (cid: string) => apiRequest<string>("post", "/_api/chat/getChatSettings", { cid });
-export const setChatSettingsAPI = (cid: string, data: string) => apiRequest<null>("post", "/_api/chat/setChatSettings", { cid, data });
-export const addChatAPI = (cid: string, cname: string) => apiRequest<null>("post", "/_api/chat/addChat", { cid, cname });
-export const deleteChatAPI = (cid: string) => apiRequest<null>("post", "/_api/chat/deleteChat", { cid });
-export const renameChatAPI = (cid: string, cname: string) => apiRequest<null>("post", "/_api/chat/renameChat", { cid, cname });
-export const getAllMessageAPI = (cid: string) => apiRequest<StoredChatMessage[]>("post", "/_api/chat/getAllMessage", { cid });
-export const addMessageAPI = (cid: string, mid: string, message: string) => apiRequest<null>("post", "/_api/chat/addMessage", { cid, mid, message });
-export const deleteMessageAPI = (cid: string, mid: string) => apiRequest<null>("post", "/_api/chat/deleteMessage", { cid, mid });
+const getChatListAPI = () => apiRequest<ChatListItem[]>("post", "/_api/chat/getChatList", {});
+const getChatSettingsAPI = (cid: string) => apiRequest<string>("post", "/_api/chat/getChatSettings", { cid });
+const setChatSettingsAPI = (cid: string, data: string) => apiRequest<null>("post", "/_api/chat/setChatSettings", { cid, data });
+const addChatAPI = (cid: string, cname: string) => apiRequest<null>("post", "/_api/chat/addChat", { cid, cname });
+const deleteChatAPI = (cid: string) => apiRequest<null>("post", "/_api/chat/deleteChat", { cid });
+const renameChatAPI = (cid: string, cname: string) => apiRequest<null>("post", "/_api/chat/renameChat", { cid, cname });
+const getAllMessageAPI = (cid: string) => apiRequest<StoredChatMessage[]>("post", "/_api/chat/getAllMessage", { cid });
+const addMessageAPI = (cid: string, mid: string, message: string) => apiRequest<null>("post", "/_api/chat/addMessage", { cid, mid, message });
+const deleteMessageAPI = (cid: string, mid: string) => apiRequest<null>("post", "/_api/chat/deleteMessage", { cid, mid });
 
 function parseChatSettingsPayload(
   rawData: string | PersistedChatSettingsPayload | Partial<ChatModelSettings> | null,
@@ -55,7 +55,7 @@ function buildChatSettingsPayloadFromState(
   };
 }
 
-export function buildChatSettingsPayload(cid: string): PersistedChatSettingsPayload {
+function buildChatSettingsPayload(cid: string): PersistedChatSettingsPayload {
   const conversation = store.state.chatConversationsById?.[cid] || store.state.curConversation;
   const settings = store.state.chatSettingsById?.[cid] || store.state.curChatModelSettings;
 

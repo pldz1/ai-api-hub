@@ -12,16 +12,16 @@ import type { ApiResponse, ImageDataItem, ImageGenerationParams, ImageGeneration
  * request details live under `image/providers`.
  */
 
-export const getImageListAPI = (): Promise<ApiResponse<ImageDataItem[]>> => apiRequest("post", "/_api/image/getImageList", {});
+const getImageListAPI = (): Promise<ApiResponse<ImageDataItem[]>> => apiRequest("post", "/_api/image/getImageList", {});
 
-export const pushImageAPI = (id: string, prompt: string, url: string): Promise<ApiResponse<ImageDataItem>> =>
+const pushImageAPI = (id: string, prompt: string, url: string): Promise<ApiResponse<ImageDataItem>> =>
   apiRequest("post", "/_api/image/pushImage", {
     image_id: id,
     image_prompt: prompt,
     image_url: url,
   });
 
-export const deleteImageAPI = (id: string): Promise<ApiResponse<null>> =>
+const deleteImageAPI = (id: string): Promise<ApiResponse<null>> =>
   apiRequest("post", "/_api/image/deleteImage", {
     image_id: id,
   });

@@ -27,7 +27,7 @@ In store terms, the chat module now keeps:
 
 The main execution flow is:
 
-1. `conversation/service.ts` loads persisted chat metadata and message history.
+1. `conversation.ts` loads persisted chat metadata and message history.
 2. `session-runner.ts` starts or stops model requests for a specific chat id.
 3. `chat-proxy.ts` resolves the chat's model snapshot and settings, then calls the provider.
 4. `rendering/` paints the currently active conversation and its draft assistant output.
