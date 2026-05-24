@@ -1,5 +1,6 @@
 <template>
   <div class="settings-section">
+    <!-- Template panel header and primary creation action -->
     <div class="section-header">
       <div>
         <h2>{{ t("user.templates.title") }}</h2>
@@ -9,6 +10,7 @@
     </div>
 
     <div class="settings-workspace">
+      <!-- Saved instruction templates list -->
       <aside class="settings-list-panel">
         <button
           v-for="(template, index) in templates"
@@ -23,6 +25,7 @@
         <div v-if="templates.length === 0" class="settings-empty-list">{{ t("user.templates.emptyList") }}</div>
       </aside>
 
+      <!-- Selected template editor -->
       <section class="settings-detail-panel">
         <template v-if="currentTemplate">
           <div class="detail-toolbar">
@@ -37,6 +40,7 @@
           </div>
 
           <div class="template-form-card">
+            <!-- Template metadata and prompt body -->
             <label>
               <span>{{ t("user.templates.name") }}</span>
               <input type="text" class="input input-bordered w-full" :value="currentTemplate.name" @input="updateField('name', $event)" />
@@ -68,6 +72,7 @@ const emit = defineEmits<{ "update:templates": [templates: ChatInstructionTempla
 const { t } = useI18n();
 const selectedIndex = ref(-1);
 
+// Keep the selected index guarded because templates can be removed by autosave/import updates.
 const currentTemplate = computed(() => {
   if (selectedIndex.value < 0 || selectedIndex.value >= props.templates.length) return null;
   return props.templates[selectedIndex.value];
@@ -90,6 +95,7 @@ function addTemplate() {
 
 function duplicateTemplate() {
   if (!currentTemplate.value) return;
+  // Clone the active template so edits never mutate the original item by reference.
   const duplicated = {
     ...structuredClone(currentTemplate.value),
     id: getUuid("inst"),
@@ -113,6 +119,7 @@ function updateField(field: "name" | "value", event: Event) {
   updateTemplates(props.templates.map((item, index) => (index === selectedIndex.value ? { ...item, [field]: target.value } : item)));
 }
 
+// Keep a compact preview for the list without changing the full template content.
 function summarizeTemplate(value: string) {
   if (!value) return t("user.templates.emptyContent");
   return value.length > 64 ? `${value.slice(0, 64)}...` : value;
@@ -121,6 +128,7 @@ function summarizeTemplate(value: string) {
 watch(
   () => props.templates.length,
   (length) => {
+    // Re-anchor selection after add/delete/import operations.
     selectedIndex.value = length === 0 ? -1 : Math.min(Math.max(selectedIndex.value, 0), length - 1);
   },
   { immediate: true },

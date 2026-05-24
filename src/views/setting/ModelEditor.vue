@@ -1,5 +1,6 @@
 <template>
   <div class="model-form-card" :class="{ 'image-model-form': isImageModel }">
+    <!-- Model identity, provider capability summary, and behavior hints -->
     <div class="model-form-header">
       <div>
         <h3>{{ t(isImageModel ? "user.modelCard.imageTitle" : "user.modelCard.chatTitle") }}</h3>
@@ -12,6 +13,7 @@
       <div v-if="props.kind === 'chat' && localModel.model" class="model-behavior-chip">{{ modelBehaviorHint }}</div>
     </div>
 
+    <!-- Connection and request routing fields -->
     <section class="model-form-section">
       <div class="model-section-head">
         <h4>{{ t("user.modelCard.sections.connectionTitle") }}</h4>
@@ -19,11 +21,13 @@
       </div>
 
       <div class="model-form-grid">
+        <!-- Shared display name field -->
         <label class="model-form-field">
           <span>{{ t("user.modelCard.fields.name") }}</span>
           <input v-model.trim="localModel.name" type="text" class="input input-bordered w-full" />
         </label>
 
+        <!-- Chat model selector with grouped suggestions -->
         <label v-if="!isImageModel" class="model-form-field model-form-field-span">
           <span>{{ t("user.modelCard.fields.model") }}</span>
           <select v-model="localModel.model" class="select select-bordered w-full">
@@ -34,6 +38,7 @@
           <small>{{ t("user.modelCard.chatModelHelp") }}</small>
         </label>
 
+        <!-- Provider selector changes the required connection fields below -->
         <label class="model-form-field">
           <span>{{ t("user.modelCard.fields.provider") }}</span>
           <select v-model="localModel.provider" class="select select-bordered w-full">
@@ -41,6 +46,7 @@
           </select>
         </label>
 
+        <!-- Image model override for OpenAI-compatible endpoints -->
         <div v-if="isImageModel && !isAzure" class="model-form-field model-form-field-span">
           <label>{{ t("user.modelCard.fields.modelOverride") }}</label>
           <input v-model.trim="localModel.model" type="text" class="input input-bordered w-full" :placeholder="t('user.modelCard.placeholders.imageModelId')" />
@@ -59,12 +65,14 @@
           </div>
         </div>
 
+        <!-- OpenAI-style base URL -->
         <label v-if="isOpenAIStyle" class="model-form-field model-form-field-span">
           <span>{{ isImageModel ? t("user.modelCard.fields.imageUrl") : t("user.modelCard.fields.baseUrl") }}</span>
           <input v-model.trim="localModel.baseURL" type="text" class="input input-bordered w-full" />
           <small v-if="isImageModel">{{ t("user.modelCard.imageBaseUrlHelp") }}</small>
         </label>
 
+        <!-- Azure-specific connection fields -->
         <label v-if="isAzure" class="model-form-field model-form-field-span">
           <span>{{ t("user.modelCard.fields.endpoint") }}</span>
           <input v-model.trim="localModel.endpoint" type="text" class="input input-bordered w-full" />
@@ -82,6 +90,7 @@
           <input v-model.trim="localModel.deployment" type="text" class="input input-bordered w-full" />
         </label>
 
+        <!-- Secret entry with a copy helper -->
         <div class="model-form-field model-form-field-span">
           <label>{{ t("user.modelCard.fields.apiKey") }}</label>
           <label class="input input-bordered model-key-input">
@@ -92,6 +101,7 @@
           </label>
         </div>
 
+        <!-- Read-only request target preview -->
         <label v-if="requestSummary" class="model-form-field model-form-field-span">
           <span>{{ t("user.modelCard.fields.requestTarget") }}</span>
           <div class="model-info-card">{{ requestSummary }}</div>
@@ -99,6 +109,7 @@
       </div>
     </section>
 
+    <!-- Chat model capability preview -->
     <section v-if="!isImageModel" class="model-form-section">
       <div class="model-section-head">
         <h4>{{ t("user.modelCard.capabilitiesTitle") }}</h4>
@@ -161,6 +172,7 @@ const isOpenAIStyle = computed(() => localModel.provider === "OpenAI" || localMo
 const hasImageInputParam = computed(() => isImageModel.value && getModelImageParamDefs(localModel).some((item) => item.type === "image"));
 const resolvedModelId = computed(() => getModelRequestId(localModel));
 
+// Group suggestions by model family so the selector remains readable as options grow.
 const getModelFamily = (model = "") => {
   const normalizedType = model.trim().toLowerCase();
   if (/^claude-/.test(normalizedType)) return "claude";
@@ -186,6 +198,7 @@ const groupedModelSuggestions = computed(() => {
   return groups.filter((group) => group.items.length > 0);
 });
 const availableModelProviderList = computed(() => {
+  // Limit providers to combinations that the request builders can route correctly.
   if (isImageModel.value) return imageModelProviderList;
   const modelFamily = getModelFamily(localModel.model);
   const allowedProviders =
@@ -197,12 +210,14 @@ const availableModelProviderList = computed(() => {
   return providerList.filter((item) => allowedProviders.has(item.value));
 });
 const modelBehaviorHint = computed(() => {
+  // ⚙️ Surface the resolved chat request behavior without exposing implementation fields.
   const modelInfo = getChatModelInfo(localModel.model, localModel.provider);
   const modeText = modelInfo.isReasonModel ? t("user.modelCard.behavior.reasoning") : t("user.modelCard.behavior.chat");
   const formatText = modelInfo.msgTypeVersion === "v1" ? t("user.modelCard.behavior.v1") : t("user.modelCard.behavior.v2");
   return `${modeText} · ${formatText}`;
 });
 const requestSummary = computed(() => {
+  // Show the target route that will be used after provider-specific normalization.
   if (isImageModel.value) {
     if (isAzure.value) return localModel.deployment ? t("user.modelCard.azureRequestTarget", { deployment: localModel.deployment }) : "";
     return localModel.baseURL ? t("user.modelCard.imageRequestTarget", { url: localModel.baseURL }) : "";
@@ -236,6 +251,7 @@ function createEmptyModelEditorState(): ModelEditorState {
 }
 
 function syncProviderBaseURL(provider = "", force = false) {
+  // Auto-fill defaults only while the user has not customized the base URL.
   if ((!force && isSyncingFromProps) || isImageModel.value) return;
   const knownDefaults = Object.values(providerDefaultBaseUrls);
   const nextDefault = providerDefaultBaseUrls[provider] || "";
@@ -244,6 +260,7 @@ function syncProviderBaseURL(provider = "", force = false) {
 }
 
 function syncProviderForModel(force = false) {
+  // Keep provider valid when switching between OpenAI and Claude model families.
   if ((!force && isSyncingFromProps) || isImageModel.value) return;
   if (!availableModelProviderList.value.some((item) => item.value === localModel.provider)) {
     localModel.provider = availableModelProviderList.value[0]?.value || "";
@@ -251,6 +268,7 @@ function syncProviderForModel(force = false) {
 }
 
 function normalizeModelFields() {
+  // Remove incompatible fields before emitting so persisted models have one routing shape.
   const modelId = localModel.model.trim();
   if (isImageModel.value) {
     localModel.provider = localModel.provider === "Azure OpenAI" ? "Azure OpenAI" : "OpenAI";
@@ -339,6 +357,7 @@ function createModelPayload(): ModelConfig {
 }
 
 function syncFromProps(model?: ModelEditorInput) {
+  // Sync external selection changes into local edit state without immediately re-emitting.
   const legacyModel = model || {};
   const chatModel = props.kind === "chat" ? (model as Partial<ChatModelConfig> | undefined) : undefined;
   const hasCustomCapabilities = Boolean(chatModel?.enabledCapabilities && Object.keys(chatModel.enabledCapabilities).length > 0);
@@ -356,6 +375,7 @@ function syncFromProps(model?: ModelEditorInput) {
 }
 
 function emitModelUpdate() {
+  // Snapshot comparisons avoid parent update loops while fields are normalized in place.
   if (isSyncingFromProps) return;
   const nextModel = createModelPayload();
   const nextSnapshot = JSON.stringify(nextModel);

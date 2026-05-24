@@ -116,6 +116,10 @@ inside the conversation snapshot.
 
 If you are deciding where new code should go:
 
+- If it is a static catalog, select option list, or parameter preset, keep it in
+  `src/constants`.
+- If it builds default settings, merges saved settings, or derives request
+  fields from a selected model, keep it in `src/models`.
 - If it edits/saves/imports user model fields, use payload/config types.
 - If it locks a conversation to a chosen model, use snapshot types.
 - If it is about executing a provider request, keep it in `services/*/providers`.

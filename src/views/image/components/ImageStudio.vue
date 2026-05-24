@@ -45,7 +45,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useStore } from "vuex";
 import { useI18n } from "vue-i18n";
-import { defImageModelSeting } from "@/constants";
 import { buildDefaultImageSettings, buildImageGenerationParams, getModelImageParamDefs, mergeImageSettingsWithModel } from "@/models";
 import { deleteImage, generateImage, getImageList, pushImage } from "@/services";
 import { copyToClipboard, dsAlert, saveToLocal } from "@/utils";
@@ -100,7 +99,7 @@ const isSendDisabled = computed(() => {
   return !workspaceImageParamKey.value || !promptInputImage.value;
 });
 
-const imageModelSettings = ref(structuredClone(defImageModelSeting));
+const imageModelSettings = ref(buildDefaultImageSettings(null));
 const generationUsage = ref({ input_tokens: 0, output_tokens: 0, total_tokens: 0 });
 const elapsedSeconds = ref(0);
 const isGenerating = ref(false);

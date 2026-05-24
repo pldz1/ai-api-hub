@@ -1,5 +1,6 @@
 <template>
   <div class="settings-section">
+    <!-- App settings header -->
     <div class="section-header">
       <div>
         <h2>{{ t("user.app.title") }}</h2>
@@ -8,6 +9,7 @@
     </div>
 
     <div class="app-settings-grid">
+      <!-- Settings backup and restore actions -->
       <section class="app-settings-card">
         <h3>{{ t("user.app.importExport") }}</h3>
         <p>{{ t("user.app.importExportDescription") }}</p>
@@ -17,6 +19,7 @@
         </div>
       </section>
 
+      <!-- Project resources -->
       <section class="app-settings-card">
         <h3>{{ t("user.app.resources") }}</h3>
         <p>{{ t("user.app.resourcesDescription") }}</p>
@@ -33,6 +36,7 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 
+// Parent view owns import/export workflows; this panel only exposes the actions.
 const emit = defineEmits<{
   "import-settings": [];
   "export-settings": [];

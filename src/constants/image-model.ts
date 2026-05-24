@@ -1,4 +1,4 @@
-import type { ImageModelSettings, ImageModelProvider, ImageModelParamDef, ImageSelectOption } from "@/types";
+import type { ImageModelProvider, ImageModelParamDef, ImageSelectOption } from "@/types";
 
 type LooseParamDef = Partial<ImageModelParamDef> & { key?: string };
 
@@ -66,16 +66,6 @@ export const imageModelProviderList: ImageSelectOption<ImageModelProvider>[] = [
   { value: "OpenAI", name: "OpenAI" },
   { value: "Azure OpenAI", name: "Azure OpenAI" },
 ];
-
-export const defImageModelSeting = {
-  model: null,
-  prompt: "",
-  size: "1024x1024",
-  quality: "",
-  mask: null,
-  image: null,
-  n: 1,
-} satisfies ImageModelSettings;
 
 export const imageModelSize: ImageSelectOption[] = [
   { name: "1024x1024", value: "1024x1024" },

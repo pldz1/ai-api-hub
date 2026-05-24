@@ -1,5 +1,6 @@
 <template>
   <div class="settings-page">
+    <!-- Settings navigation grouped by feature area -->
     <aside class="settings-sidebar">
       <header class="settings-sidebar-header">
         <h2>{{ t("user.app.title") }}</h2>
@@ -20,6 +21,7 @@
       </section>
     </aside>
 
+    <!-- Active settings workspace and autosave status -->
     <main class="settings-main">
       <header class="settings-main-header">
         <p>{{ activeTabInfo.description }}</p>
@@ -30,8 +32,10 @@
       </header>
 
       <section class="settings-main-content">
+        <!-- Chat instruction templates -->
         <TemplatePanel v-if="activeTab === 'chat-templates'" :templates="typedDraftTemplates" @update:templates="updateDraftTemplates" />
 
+        <!-- Chat model registry -->
         <ModelPanel
           v-else-if="activeTab === 'chat-models'"
           kind="chat"
@@ -39,6 +43,7 @@
           @update:models="updateChatModels"
         />
 
+        <!-- Image generation model registry -->
         <ModelPanel
           v-else-if="activeTab === 'image-generation-models'"
           kind="image"
@@ -49,6 +54,7 @@
           @update:models="updateImageGenerationModels"
         />
 
+        <!-- Image editing model registry -->
         <ModelPanel
           v-else-if="activeTab === 'image-edit-models'"
           kind="image"
@@ -59,6 +65,7 @@
           @update:models="updateImageEditModels"
         />
 
+        <!-- App-level import/export tools -->
         <AppSettingsPanel v-else @export-settings="exportSettings" @import-settings="importSettings" />
       </section>
     </main>
@@ -107,6 +114,7 @@ function clonePlainData<T>(data: T): T {
 }
 
 function normalizeDraftPayload(payload: Partial<SettingsDraftPayload> | null | undefined = {}): SettingsDraftPayload {
+  // Normalize older or partial settings payloads before they enter the editable draft.
   return {
     models: {
       ...createEmptyModelSettings(),
@@ -124,6 +132,7 @@ function serializeDraftPayload(payload: SettingsDraftPayload): string {
 }
 
 function useSettingsDraft(options: UseSettingsDraftOptions) {
+  // 💾 Local draft state lets the UI autosave without mutating persisted data mid-edit.
   const autosaveDelay = options.autosaveDelay ?? 500;
   const draftModels = ref<ModelSettings>(createEmptyModelSettings());
   const draftTemplates = ref<unknown[]>([]);
@@ -148,6 +157,7 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
   const shouldBlockUnload = computed(() => autosaveState.value === "saving" || hasUnsavedChanges.value);
 
   function syncDraftFromSource(payload: Partial<SettingsDraftPayload> | null | undefined = options.getInitialDraft()) {
+    // Hydration resets the save baseline so initial store data is not treated as dirty.
     isHydrating = true;
     const normalizedPayload = normalizeDraftPayload(payload);
     draftModels.value = normalizedPayload.models;
@@ -158,6 +168,7 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
   }
 
   async function persistCurrentDraft(): Promise<boolean> {
+    // Ignore overlapping save cycles; the watcher will schedule another pass after edits.
     if (isHydrating || isPersisting) return false;
     if (!hasUnsavedChanges.value) {
       autosaveState.value = "saved";
@@ -184,6 +195,7 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
   }
 
   function scheduleAutosave() {
+    // Debounce draft changes so rapid field edits produce a single persistence write.
     if (isHydrating || isPersisting) return;
     if (!hasUnsavedChanges.value) {
       autosaveState.value = "saved";
@@ -267,6 +279,7 @@ const { autosaveState, draftModels, draftTemplates, shouldBlockUnload, getDraftP
 const typedDraftTemplates = computed<ChatInstructionTemplate[]>(() => draftTemplates.value as ChatInstructionTemplate[]);
 const activeTabInfo = computed(() => settingGroups.value.flatMap((group) => group.items).find((item) => item.key === activeTab.value) || settingGroups.value[0].items[0]);
 const statusLabel = computed(() => {
+  // Map save state to localized copy for the status pill.
   if (autosaveState.value === "saving") return t("common.saving");
   if (autosaveState.value === "error") return t("common.saveError");
   if (autosaveState.value === "dirty") return t("common.autosavePending");
@@ -305,6 +318,7 @@ function buildSettingsExportFilename(date = new Date()): string {
 }
 
 async function ensureLatestStoreData() {
+  // Refresh persisted settings before editing so the draft starts from the newest source.
   await getModels();
   await getChatInsTemplateList();
   syncDraftFromSource({
@@ -314,6 +328,7 @@ async function ensureLatestStoreData() {
 }
 
 async function exportSettings() {
+  // 📦 Export models, templates, and chat sessions into one portable settings package.
   const draft = getDraftPayload();
   const payload: SettingsImportPayload = {
     schema: "ai-api-hub",
@@ -337,6 +352,7 @@ async function exportSettings() {
 }
 
 async function importSettings() {
+  // Validate imports before applying them because imported data updates multiple stores.
   const jsonData = await uploadJsonFile();
   if (isUploadedJsonParseError(jsonData)) {
     dsAlert({ type: "error", duration: 6000, message: `${t("user.importReadError")} ${jsonData.__jsonParseError}` });

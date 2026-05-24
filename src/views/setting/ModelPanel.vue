@@ -1,5 +1,6 @@
 <template>
   <div class="settings-section">
+    <!-- Model panel header and list actions -->
     <div class="section-header">
       <div>
         <h2>{{ t(resolvedTitleKey) }}</h2>
@@ -17,6 +18,7 @@
     </div>
 
     <div class="settings-workspace">
+      <!-- Configured models list -->
       <aside class="settings-list-panel">
         <button
           v-for="(model, index) in models"
@@ -44,6 +46,7 @@
         </div>
       </aside>
 
+      <!-- Selected model details and editor -->
       <section class="settings-detail-panel">
         <template v-if="currentModel">
           <div class="detail-toolbar">
@@ -107,10 +110,12 @@ const resolvedTitleKey = computed(() => props.titleKey || (isImageKind.value ? "
 const resolvedDescriptionKey = computed(() => props.descriptionKey || (isImageKind.value ? "user.imageModels.description" : "user.chatModels.description"));
 const modelSuggestions = computed(() => (isImageKind.value ? imageModelTypeList : chatModelTypeList));
 const currentModel = computed(() => {
+  // Guard selection because parent updates can shrink or replace the model array.
   if (selectedIndex.value < 0 || selectedIndex.value >= props.models.length) return null;
   return props.models[selectedIndex.value];
 });
 const detailSummary = computed(() => {
+  // Show the most useful routing detail for the currently selected model.
   if (!currentModel.value) return "";
   if (!isImageKind.value) return currentModel.value.provider || t("user.chatModels.providerHint");
   const model = currentModel.value as ImageModelConfig;
@@ -124,6 +129,7 @@ function updateModels(nextModels: (ChatModelConfig | ImageModelConfig)[]) {
 }
 
 function addModel() {
+  // Seed new models with provider defaults so the editor starts from a usable shape.
   const nextModel = isImageKind.value
     ? ({
         name: append4Random(t("user.imageModels.defaultName")),
@@ -167,18 +173,21 @@ function updateCurrentModel(nextModel: ModelConfig) {
 }
 
 function modelListMeta(model: ChatModelConfig | ImageModelConfig) {
+  // Image models are identified by endpoint/base URL, while chat models use model IDs.
   if (!isImageKind.value) return model.model || t("common.unsetModelId");
   const imageModel = model as ImageModelConfig;
   return (isAzureImageModel(imageModel) ? imageModel.endpoint : "baseURL" in imageModel ? imageModel.baseURL : "") || t("user.modelCard.fields.imageUrl");
 }
 
 function supportsImageInput(model: ImageModelConfig) {
+  // 🖼️ Badge image models that can accept image input parameters.
   return getModelImageParamDefs(model).some((item) => item.type === "image");
 }
 
 watch(
   () => props.models.length,
   (length) => {
+    // Keep selection stable when models are added, deleted, or imported.
     selectedIndex.value = length === 0 ? -1 : Math.min(Math.max(selectedIndex.value, 0), length - 1);
   },
   { immediate: true },

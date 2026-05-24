@@ -1,5 +1,5 @@
 import type { ImageModelConfig, ImageModelSettings, ImageOperation, ImageModelParamDef } from "@/types";
-import { defImageModelSeting, imageParamPresetList } from "@/constants/image-model";
+import { imageParamPresetList } from "@/constants/image-model";
 import {
   cloneJson,
   getLegacyProvider,
@@ -9,6 +9,16 @@ import {
   type LooseModelConfig,
   type LooseParamDef,
 } from "./common";
+
+const defaultImageModelSettings = {
+  model: null,
+  prompt: "",
+  size: "1024x1024",
+  quality: "",
+  mask: null,
+  image: null,
+  n: 1,
+} satisfies ImageModelSettings;
 
 /** Returns the built-in preset definition for one image parameter key. */
 function getImageParamPreset(key = ""): LooseParamDef | null {
@@ -112,7 +122,7 @@ export function getModelImageParamDefs(model: LooseModelConfig = {}): ImageModel
  * parameter definitions.
  */
 export function buildDefaultImageSettings(model: LooseModelConfig | null = null): ImageModelSettings {
-  const settings = cloneJson(defImageModelSeting);
+  const settings = cloneJson(defaultImageModelSettings);
   const defs = getModelImageParamDefs(model || {});
 
   defs.forEach((item) => {
@@ -128,11 +138,11 @@ export function buildDefaultImageSettings(model: LooseModelConfig | null = null)
 export function mergeImageSettingsWithModel(model: LooseModelConfig | null = null, settings: Partial<ImageModelSettings> = {}): ImageModelSettings {
   const coreSettings: Partial<ImageModelSettings> = {
     model: settings.model ?? null,
-    prompt: typeof settings.prompt === "string" ? settings.prompt : defImageModelSeting.prompt,
-    size: typeof settings.size === "string" && settings.size ? settings.size : defImageModelSeting.size,
+    prompt: typeof settings.prompt === "string" ? settings.prompt : defaultImageModelSettings.prompt,
+    size: typeof settings.size === "string" && settings.size ? settings.size : defaultImageModelSettings.size,
     image: settings.image ?? null,
     mask: settings.mask ?? null,
-    n: settings.n ?? defImageModelSeting.n,
+    n: settings.n ?? defaultImageModelSettings.n,
   };
   const mergedSettings = {
     ...buildDefaultImageSettings(model),
@@ -145,7 +155,7 @@ export function mergeImageSettingsWithModel(model: LooseModelConfig | null = nul
   });
 
   if (!Number.isFinite(Number(mergedSettings.n)) || Number(mergedSettings.n) < 1) {
-    mergedSettings.n = defImageModelSeting.n;
+    mergedSettings.n = defaultImageModelSettings.n;
   } else {
     mergedSettings.n = Number(mergedSettings.n);
   }
