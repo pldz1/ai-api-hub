@@ -6,6 +6,10 @@
       <RightView>
         <ChatCard v-if="routeName === 'chat'" />
         <SettingsView v-else-if="routeName === 'settings'" />
+
+        <template #footer>
+          <AppFooter />
+        </template>
       </RightView>
     </div>
   </div>
@@ -16,6 +20,7 @@ import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
 import LeftView from "@/views/layout/LeftView.vue";
 import RightView from "@/views/layout/RightView.vue";
+import AppFooter from "@/components/AppFooter.vue";
 import ChatCard from "./chat/ChatCard.vue";
 import SettingsView from "./setting/SettingsView.vue";
 

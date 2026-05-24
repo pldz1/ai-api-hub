@@ -64,14 +64,6 @@ export const chatParamPresetList: LooseParamDef[] = [
     step: 0.01,
   },
   {
-    key: "stop",
-    label: "stop",
-    type: "array",
-    descriptionKey: "chat.stopTip",
-    defaultValue: [],
-    placeholder: '["END", "STOP"]',
-  },
-  {
     key: "reasoning_effort",
     label: "reasoning_effort",
     type: "string",

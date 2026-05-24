@@ -3,14 +3,14 @@
   <footer class="app-footer">
     <!-- Keep the product version and repository credit in one compact line. -->
     <span class="app-footer-copy">
-      AI API HUB · v0.0.1 ·
-      <a href="https://github.com/pldz1/ai-api-hub" target="_blank" rel="noopener noreferrer">{{ t("footer.credit", { author: "pldz1" }) }}</a>
+      <a :href="REPO_SOURCE_LINK" target="_blank" rel="noopener noreferrer">{{ APP_NAME + "·" + APP_VERSION }}</a>
     </span>
   </footer>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
+import { APP_NAME, APP_VERSION, REPO_SOURCE_LINK } from "@/constants";
 
 const { t } = useI18n();
 </script>

@@ -40,7 +40,7 @@
         <div v-if="chatList.length === 0" class="empty-tip">{{ t("chat.noChats") }}</div>
         <div v-else class="recents-list">
           <div v-for="item in chatList" :key="item.cid" class="chat-item-wrapper">
-            <!-- edit chat name input -->
+            <!-- Inline rename input replaces only the active chat row, keeping the list layout stable. -->
             <input
               v-if="isShowOptionCid === item.cid && isEditChatName"
               ref="editChatNameInputElRef"
@@ -48,15 +48,16 @@
               type="text"
               class="rename-input"
               @blur="changeChatName"
-              @keydown.enter="changeChatName"
+              @keydown.enter.prevent="changeChatName"
             />
 
-            <!-- chat item -->
+            <!-- Chat rows keep actions hidden until hover/active state so long titles remain easy to scan. -->
             <div v-else class="chat-item" :class="{ 'is-active': cid === item.cid }">
               <button class="chat-main-btn" type="button" @click="onSelectChat(item)">
                 <span class="chat-title-text">{{ item.cname }}</span>
               </button>
 
+              <!-- Per-chat actions live in a dropdown; each action confirms before touching persisted chat data. -->
               <AppDropdownMenu placement="bottom-end">
                 <template #trigger="{ toggle }">
                   <button class="chat-menu-btn" :aria-label="t('chat.moreActions')" @click.stop="toggle">
@@ -66,10 +67,12 @@
                   </button>
                 </template>
                 <template #default="{ close }">
-                  <button class="menu-option" @click="onEditChatName(item.cid, close)">
+                  <button class="menu-option" type="button" @click="onEditChatName(item, close)">
+                    <SvgIcon class="menu-option-icon" :src="editIcon" />
                     <span>{{ t("chat.renameChat") }}</span>
                   </button>
-                  <button class="menu-option is-danger" @click="onDeleteChat(item.cid, close)">
+                  <button class="menu-option is-danger" type="button" @click="onDeleteChat(item, close)">
+                    <SvgIcon class="menu-option-icon" :src="deleteIcon" />
                     <span>{{ t("chat.deleteChat") }}</span>
                   </button>
                 </template>
@@ -85,6 +88,38 @@
           <span v-if="isExpanded">{{ t("home.settingsTitle") }}</span>
         </div>
       </div>
+
+      <!--
+        ⚠️ Keep this dialog teleported to body.
+        Native dialog returns to normal DOM flow for a frame on close; if it stays inside
+        the sidebar, the modal can visibly jump left before disappearing.
+      -->
+      <Teleport to="body">
+        <dialog
+          ref="chatActionConfirmDialogRef"
+          class="modal sidebar-action-confirm"
+          @cancel.prevent="resolveChatActionConfirmation(false)"
+          @close="resolveChatActionConfirmation(false)"
+        >
+          <div class="modal-box">
+            <h3 class="sidebar-confirm-title">{{ chatActionConfirm.title }}</h3>
+            <p class="sidebar-confirm-message">{{ chatActionConfirm.message }}</p>
+            <div class="modal-action sidebar-confirm-actions">
+              <button class="btn btn-ghost" type="button" @click="resolveChatActionConfirmation(false)">
+                {{ t("chat.confirmActionCancel") }}
+              </button>
+              <button
+                class="btn"
+                :class="chatActionConfirm.danger ? 'btn-error' : 'btn-primary'"
+                type="button"
+                @click="resolveChatActionConfirmation(true)"
+              >
+                {{ chatActionConfirm.confirmText }}
+              </button>
+            </div>
+          </div>
+        </dialog>
+      </Teleport>
     </div>
   </aside>
 </template>
@@ -101,6 +136,8 @@ import settingIcon from "@/assets/svg/setting24.svg";
 import libraryIcon from "@/assets/svg/navImage24.svg";
 import collapseIcon from "@/assets/svg/collapse24.svg";
 import expandIcon from "@/assets/svg/expand24.svg";
+import editIcon from "@/assets/svg/edit24.svg";
+import deleteIcon from "@/assets/svg/delete16.svg";
 import AppDropdownMenu from "@/components/AppDropdownMenu.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
@@ -123,8 +160,20 @@ const activeRouteChatId = computed(() => (typeof route.params.cid === "string" ?
 const isShowOptionCid = ref("");
 const isEditChatName = ref(false);
 const editChatName = ref("");
+const originalChatName = ref("");
 const editChatNameInputElRef = ref<HTMLInputElement[] | null>(null);
+const chatActionConfirmDialogRef = ref<HTMLDialogElement | null>(null);
+const chatActionConfirm = ref({
+  title: "",
+  message: "",
+  confirmText: "",
+  danger: false,
+});
+const isRenameSubmitting = ref(false);
+let chatActionConfirmResolve: ((confirmed: boolean) => void) | null = null;
 
+// New-chat behavior has one special case: when already on the draft chat route,
+// reset the local draft instead of pushing the same route again.
 const onNewChat = async () => {
   if (route.name === "chat" && !activeRouteChatId.value) {
     await resetCurrentChatDraft();
@@ -140,8 +189,50 @@ const onSelectChat = async (item: any) => {
   await router.push({ name: "chat", params: { cid: item.cid } });
 };
 
-const onDeleteChat = async (chatId: string, closeMenu: () => void) => {
+// Convert the shared native dialog into an awaitable confirmation step.
+// This keeps rename/delete flows linear and prevents service calls from running
+// until the user makes an explicit choice.
+const requestChatActionConfirmation = (payload: { title: string; message: string; confirmText: string; danger?: boolean }) =>
+  new Promise<boolean>((resolve) => {
+    const dialog = chatActionConfirmDialogRef.value;
+    if (!dialog?.showModal) {
+      resolve(false);
+      return;
+    }
+
+    chatActionConfirm.value = {
+      title: payload.title,
+      message: payload.message,
+      confirmText: payload.confirmText,
+      danger: Boolean(payload.danger),
+    };
+    chatActionConfirmResolve = resolve;
+    dialog.showModal();
+  });
+
+const resolveChatActionConfirmation = (confirmed: boolean) => {
+  if (chatActionConfirmResolve) {
+    chatActionConfirmResolve(Boolean(confirmed));
+    chatActionConfirmResolve = null;
+  }
+
+  const dialog = chatActionConfirmDialogRef.value;
+  if (dialog?.open) dialog.close();
+};
+
+// Delete is destructive, so it always asks first. If the deleted chat is open,
+// route back to the draft chat view to avoid rendering a missing conversation.
+const onDeleteChat = async (item: any, closeMenu: () => void) => {
   closeMenu?.();
+  const chatId = item?.cid || "";
+  const confirmed = await requestChatActionConfirmation({
+    title: t("chat.confirmDeleteChatTitle"),
+    message: t("chat.confirmDeleteChat", { name: item?.cname || "" }),
+    confirmText: t("chat.confirmDeleteChatConfirm"),
+    danger: true,
+  });
+  if (!confirmed) return;
+
   if (chatId) await deleteChat(chatId);
   if (chatId && chatId === activeRouteChatId.value) {
     await router.replace({ name: "chat" });
@@ -149,21 +240,48 @@ const onDeleteChat = async (chatId: string, closeMenu: () => void) => {
   isShowOptionCid.value = "";
 };
 
-const onEditChatName = async (chatId: string, closeMenu: () => void) => {
+// Start inline rename with the existing name selected. Keep a copy of the original
+// value so the confirmation can show the exact before/after rename.
+const onEditChatName = async (item: any, closeMenu: () => void) => {
   closeMenu?.();
+  const chatId = item?.cid || "";
   isShowOptionCid.value = chatId;
   isEditChatName.value = true;
-  editChatName.value = "";
+  originalChatName.value = item?.cname || "";
+  editChatName.value = originalChatName.value;
   await nextTick();
   if (editChatNameInputElRef.value?.[0]) {
     editChatNameInputElRef.value[0].focus();
+    editChatNameInputElRef.value[0].select();
   }
 };
 
+// Important: Enter submits and then the input can blur, so this path may be invoked
+// twice. The submit lock prevents duplicate confirmation dialogs and duplicate API calls.
 const changeChatName = async () => {
-  if (editChatName.value) await renameChat(isShowOptionCid.value, editChatName.value);
+  if (isRenameSubmitting.value) return;
+  const nextName = editChatName.value.trim();
+  const chatId = isShowOptionCid.value;
+
+  if (!chatId || !nextName || nextName === originalChatName.value) {
+    isEditChatName.value = false;
+    editChatName.value = "";
+    originalChatName.value = "";
+    isShowOptionCid.value = "";
+    return;
+  }
+
+  isRenameSubmitting.value = true;
+  const confirmed = await requestChatActionConfirmation({
+    title: t("chat.confirmRenameChatTitle"),
+    message: t("chat.confirmRenameChat", { oldName: originalChatName.value, newName: nextName }),
+    confirmText: t("chat.confirmRenameChatConfirm"),
+  });
+  if (confirmed) await renameChat(chatId, nextName);
+  isRenameSubmitting.value = false;
   isEditChatName.value = false;
   editChatName.value = "";
+  originalChatName.value = "";
   isShowOptionCid.value = "";
 };
 
@@ -409,6 +527,98 @@ $radius-md: 12px;
     height: 3.5px;
     border-radius: 50%;
     background: #6b7280;
+  }
+}
+
+.menu-option {
+  width: 100%;
+  min-width: 150px;
+  height: 38px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+
+  &:hover,
+  &:focus-visible {
+    background: #f3f4f6;
+    color: #111827;
+    outline: none;
+
+    .menu-option-icon {
+      color: #111827;
+    }
+  }
+
+  &.is-danger {
+    color: #dc2626;
+
+    .menu-option-icon {
+      color: #ef4444;
+    }
+
+    &:hover,
+    &:focus-visible {
+      background: #fef2f2;
+      color: #b91c1c;
+
+      .menu-option-icon {
+        color: #dc2626;
+      }
+    }
+  }
+}
+
+.menu-option-icon {
+  width: 16px;
+  height: 16px;
+  color: #6b7280;
+  flex-shrink: 0;
+  transition: color 0.16s ease;
+}
+
+.sidebar-action-confirm {
+  // DaisyUI animates dialog backdrops by default; disable it here to avoid a visible mask flash.
+  &::backdrop {
+    background: rgba(17, 24, 39, 0.24);
+    animation: none;
+  }
+
+  .modal-box {
+    max-width: 420px;
+    border: 1px solid oklch(var(--bc) / 0.12);
+    background: oklch(var(--b1));
+    border-radius: 8px;
+    box-shadow: 0 18px 48px oklch(var(--bc) / 0.16);
+  }
+
+  .sidebar-confirm-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: oklch(var(--bc));
+  }
+
+  .sidebar-confirm-message {
+    margin: 12px 0 0;
+    line-height: 1.55;
+    color: oklch(var(--bc) / 0.72);
+  }
+
+  .sidebar-confirm-actions {
+    gap: 8px;
   }
 }
 

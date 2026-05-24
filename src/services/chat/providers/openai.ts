@@ -52,7 +52,6 @@ function normalizeOpenAIResponsesParams(params: ChatCompletionParams = {}): Json
     verbosity,
     frequency_penalty,
     presence_penalty,
-    stop,
     ...requestParams
   } = params || {};
 

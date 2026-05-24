@@ -51,7 +51,6 @@ function normalizeAzureResponsesParams(params: ChatCompletionParams = {}): JsonO
     verbosity,
     frequency_penalty,
     presence_penalty,
-    stop,
     ...requestParams
   } = params || {};
 

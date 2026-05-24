@@ -1,6 +1,10 @@
 <template>
   <div class="settings-page">
     <aside class="settings-sidebar">
+      <header class="settings-sidebar-header">
+        <h2>{{ t("user.app.title") }}</h2>
+      </header>
+
       <section v-for="group in settingGroups" :key="group.key" class="settings-nav-group">
         <h3>{{ group.label }}</h3>
         <button
@@ -62,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useStore } from "vuex";
 import AppSettingsPanel from "./AppSettingsPanel.vue";
@@ -71,18 +75,152 @@ import TemplatePanel from "./TemplatePanel.vue";
 import { buildPersistedModelSettingsPayload, migratePersistedModelSettings } from "@/models";
 import { exportChatSessionSettings, getChatInsTemplateList, getModels, importChatSessionSettings, setChatInsTemplateList, setModels } from "@/services";
 import { dsAlert, getSettingsImportValidationError, isSettingsImportPackage, isValidSettingsImport, uploadJsonFile } from "@/utils";
-import { useSettingsDraft } from "./settingsDraft";
 import type { ChatModelConfig } from "@/types/chat";
 import type { ImageModelConfig } from "@/types/image";
-import type { PersistedModelSettingsPayload, SettingsImportPayload } from "@/types/settings";
+import type { ModelSettings, PersistedModelSettingsPayload, SettingsImportPayload } from "@/types/settings";
 
 type SettingTabKey = "chat-templates" | "chat-models" | "image-generation-models" | "image-edit-models" | "app";
 type SettingTabItem = { key: SettingTabKey; label: string; description: string };
 type SettingTabGroup = { key: string; label: string; items: SettingTabItem[] };
 type ChatInstructionTemplate = { id: string; name: string; value: string };
+type SettingsAutosaveState = "saved" | "dirty" | "saving" | "error";
+
+interface SettingsDraftPayload {
+  models: ModelSettings;
+  templates: unknown[];
+}
+
+interface UseSettingsDraftOptions {
+  autosaveDelay?: number;
+  getInitialDraft: () => SettingsDraftPayload;
+  persistDraft: (draft: SettingsDraftPayload) => Promise<boolean>;
+}
 
 interface UploadedJsonParseError {
   __jsonParseError: string;
+}
+
+function createEmptyModelSettings(): ModelSettings {
+  return { chat: [], imageGeneration: [], imageEdit: [], image: [] };
+}
+
+function clonePlainData<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data));
+}
+
+function normalizeDraftPayload(payload: Partial<SettingsDraftPayload> | null | undefined = {}): SettingsDraftPayload {
+  return {
+    models: {
+      ...createEmptyModelSettings(),
+      ...clonePlainData(payload?.models || createEmptyModelSettings()),
+    },
+    templates: clonePlainData(payload?.templates || []),
+  };
+}
+
+function serializeDraftPayload(payload: SettingsDraftPayload): string {
+  return JSON.stringify({
+    models: payload.models,
+    templates: payload.templates,
+  });
+}
+
+function useSettingsDraft(options: UseSettingsDraftOptions) {
+  const autosaveDelay = options.autosaveDelay ?? 500;
+  const draftModels = ref<ModelSettings>(createEmptyModelSettings());
+  const draftTemplates = ref<unknown[]>([]);
+  const autosaveState = ref<SettingsAutosaveState>("saved");
+  const lastSavedSnapshot = ref("");
+  let autosaveTimer: number | null = null;
+  let isHydrating = false;
+  let isPersisting = false;
+
+  function getDraftPayload(): SettingsDraftPayload {
+    return {
+      models: clonePlainData(draftModels.value),
+      templates: clonePlainData(draftTemplates.value),
+    };
+  }
+
+  function getDraftSnapshot(): string {
+    return serializeDraftPayload(getDraftPayload());
+  }
+
+  const hasUnsavedChanges = computed(() => getDraftSnapshot() !== lastSavedSnapshot.value);
+  const shouldBlockUnload = computed(() => autosaveState.value === "saving" || hasUnsavedChanges.value);
+
+  function syncDraftFromSource(payload: Partial<SettingsDraftPayload> | null | undefined = options.getInitialDraft()) {
+    isHydrating = true;
+    const normalizedPayload = normalizeDraftPayload(payload);
+    draftModels.value = normalizedPayload.models;
+    draftTemplates.value = normalizedPayload.templates;
+    lastSavedSnapshot.value = serializeDraftPayload(normalizedPayload);
+    autosaveState.value = "saved";
+    isHydrating = false;
+  }
+
+  async function persistCurrentDraft(): Promise<boolean> {
+    if (isHydrating || isPersisting) return false;
+    if (!hasUnsavedChanges.value) {
+      autosaveState.value = "saved";
+      return true;
+    }
+
+    const nextDraft = getDraftPayload();
+    isPersisting = true;
+    autosaveState.value = "saving";
+
+    try {
+      const persisted = await options.persistDraft(nextDraft);
+      if (!persisted) {
+        autosaveState.value = "error";
+        return false;
+      }
+
+      lastSavedSnapshot.value = serializeDraftPayload(nextDraft);
+      autosaveState.value = "saved";
+      return true;
+    } finally {
+      isPersisting = false;
+    }
+  }
+
+  function scheduleAutosave() {
+    if (isHydrating || isPersisting) return;
+    if (!hasUnsavedChanges.value) {
+      autosaveState.value = "saved";
+      return;
+    }
+
+    autosaveState.value = "dirty";
+    if (autosaveTimer) window.clearTimeout(autosaveTimer);
+    autosaveTimer = window.setTimeout(() => {
+      persistCurrentDraft();
+    }, autosaveDelay);
+  }
+
+  watch(
+    [draftModels, draftTemplates],
+    () => {
+      scheduleAutosave();
+    },
+    { deep: true },
+  );
+
+  onBeforeUnmount(() => {
+    if (autosaveTimer) window.clearTimeout(autosaveTimer);
+  });
+
+  syncDraftFromSource();
+
+  return {
+    autosaveState,
+    draftModels,
+    draftTemplates,
+    shouldBlockUnload,
+    getDraftPayload,
+    syncDraftFromSource,
+  };
 }
 
 const store = useStore();
@@ -141,10 +279,6 @@ const statusClass = computed(() => ({
   saving: autosaveState.value === "saving",
   error: autosaveState.value === "error",
 }));
-
-function clonePlainData<T>(data: T): T {
-  return JSON.parse(JSON.stringify(data));
-}
 
 function isUploadedJsonParseError(data: unknown): data is UploadedJsonParseError {
   return Boolean(data) && typeof data === "object" && "__jsonParseError" in data;
@@ -267,6 +401,18 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(22px);
   overflow-y: auto;
+}
+
+.settings-sidebar-header {
+  margin: 0 4px 22px;
+
+  h2 {
+    margin: 0;
+    color: #202124;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
 }
 
 .settings-nav-group {
