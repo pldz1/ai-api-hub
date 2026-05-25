@@ -170,15 +170,15 @@ async function deleteImageSource(imageId: string): Promise<void> {
 
 function normalizeStoredImageRecords(items: unknown[] = []): StoredImageRecord[] {
   const records: Array<StoredImageRecord | null> = (Array.isArray(items) ? items : []).map((item) => {
-      const record = item && typeof item === "object" ? (item as StoredImageRecord) : null;
-      const id = asString(record?.id);
-      if (!id) return null;
-      return {
-        id,
-        prompt: asString(record?.prompt),
-        src: asString(record?.src),
-      };
-    });
+    const record = item && typeof item === "object" ? (item as StoredImageRecord) : null;
+    const id = asString(record?.id);
+    if (!id) return null;
+    return {
+      id,
+      prompt: asString(record?.prompt),
+      src: asString(record?.src),
+    };
+  });
 
   return records.filter((item): item is StoredImageRecord => Boolean(item));
 }
@@ -223,10 +223,6 @@ async function urlToDataUrl(url: string): Promise<string> {
     reader.onerror = () => reject(new Error(tr("storage.imageDataUrlFailed")));
     reader.readAsDataURL(blob);
   });
-}
-
-async function handleLogin(): Promise<ApiResponse<null>> {
-  return ok(null, tr("toast.loginSuccess"));
 }
 
 async function handleGetModels(): Promise<ApiResponse<string>> {
@@ -436,7 +432,6 @@ async function handleSetImageConversationMessages(body: RequestBody): Promise<Ap
 }
 
 const ROUTES: Record<string, LocalRouteHandler> = {
-  "/_api/workspace/login": handleLogin,
   "/_api/workspace/getModels": handleGetModels,
   "/_api/workspace/setModels": handleSetModels,
   "/_api/workspace/getChatInsTemplateList": handleGetChatInsTemplateList,

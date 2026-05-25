@@ -1,5 +1,13 @@
-import type { ChatModelCapabilities, ChatModelConfig, ChatProviderPayload, ImageModelConfig, ImageProviderPayload, ModelSettings, PersistedModelSettingsPayload } from "@/types";
-import { cloneJson, getModelRequestId, sanitizeModelCapabilityOverrides, type LooseModelConfig, type LooseModelSettings } from "./common";
+import type {
+  ChatModelCapabilities,
+  ChatModelConfig,
+  ChatProviderPayload,
+  ImageModelConfig,
+  ImageProviderPayload,
+  ModelSettings,
+  PersistedModelSettingsPayload,
+} from "@/types";
+import { type LooseModelConfig, type LooseModelSettings } from "./common";
 import { isAzureChatModel, normalizeChatModelConfig } from "./chat";
 import { normalizeImageModelConfig } from "./image";
 
@@ -11,6 +19,33 @@ type ChatCapabilityConfigInput = {
 /** Returns whether the user explicitly saved any chat capability overrides. */
 function hasCapabilityOverrides(enabledCapabilities: ChatCapabilityConfigInput["enabledCapabilities"] | null | undefined = {}): boolean {
   return Boolean(enabledCapabilities && Object.keys(enabledCapabilities).length > 0);
+}
+
+const modelCapabilityKeys: (keyof ChatModelCapabilities)[] = ["imageRead", "webSearch"];
+
+/**
+ * Filters capability override data to the stable chat capability contract.
+ *
+ * This helper also migrates old `imageInput` data into the current `imageRead`
+ * field so user settings remain compatible after schema changes.
+ */
+export function sanitizeModelCapabilityOverrides(enabledCapabilities: unknown = {}): Partial<ChatModelCapabilities> {
+  const source = (enabledCapabilities && typeof enabledCapabilities === "object" ? enabledCapabilities : {}) as Partial<ChatModelCapabilities> & {
+    imageInput?: boolean;
+  };
+  const next: Partial<ChatModelCapabilities> = {};
+
+  modelCapabilityKeys.forEach((key) => {
+    if (key === "imageRead") {
+      const imageRead = source.imageRead ?? source.imageInput;
+      if (typeof imageRead === "boolean") next.imageRead = imageRead;
+      return;
+    }
+
+    if (typeof source[key] === "boolean") next[key] = source[key];
+  });
+
+  return next;
 }
 
 /**
@@ -34,7 +69,7 @@ function getPersistedCapabilityFields(model: ChatCapabilityConfigInput | null | 
   if (getCapabilityOverrideMode(model) !== "custom") return {};
   return {
     enabledCapabilitiesMode: "custom" as const,
-    enabledCapabilities: cloneJson(sanitizeModelCapabilityOverrides(model?.enabledCapabilities)),
+    enabledCapabilities: structuredClone(sanitizeModelCapabilityOverrides(model?.enabledCapabilities)),
   };
 }
 
@@ -134,7 +169,7 @@ function buildPersistedChatModelConfig(model: LooseModelConfig | ChatModelConfig
     name: modelConfig.name,
     provider: modelConfig.provider,
     apiKey: modelConfig.apiKey,
-    model: getModelRequestId(modelConfig),
+    model: modelConfig.model,
     ...getPersistedCapabilityFields(modelConfig),
   };
 
@@ -162,7 +197,7 @@ function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConf
     name: modelConfig.name,
     provider: modelConfig.provider,
     apiKey: modelConfig.apiKey,
-    model: getModelRequestId(modelConfig),
+    model: modelConfig.model,
     imageOperation: modelConfig.imageOperation,
   };
 

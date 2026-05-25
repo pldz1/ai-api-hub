@@ -3,12 +3,6 @@ import { normalizeChatModelConfig, sanitizeModelSettings } from "@/models";
 export const WORKSPACE_ID = "__workspace__";
 export const WORKSPACE_LABEL = "Workspace";
 
-type UserLoginPayload = {
-  username?: string;
-  password?: string;
-  uid?: string;
-};
-
 export const UserState = {
   /**
    * Fixed local workspace identifier.
@@ -54,23 +48,6 @@ export const UserState = {
    * Current chat id.
    */
   curChatId: "",
-
-  /**
-   * Set current workspace identity.
-   */
-  setUserLoginInfo(_data: UserLoginPayload) {
-    this.username = WORKSPACE_ID;
-    this.password = "";
-    this.uid = WORKSPACE_ID;
-    this.basicAuth = "";
-  },
-
-  /**
-   * Single-workspace mode stays logged in.
-   */
-  setIsLoggedIn(_data: boolean) {
-    this.isLoggedIn = true;
-  },
 
   /**
    * Set all configured models.

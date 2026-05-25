@@ -43,7 +43,4 @@ export type AnthropicCompatibleChatProviderPayload = AnthropicChatProviderPayloa
 /** Provider payloads that use a base URL instead of Azure deployment routing. */
 export type OpenAIStyleChatProviderPayload = OpenAIChatProviderPayload | AnthropicCompatibleChatProviderPayload;
 /** All persisted chat model payloads owned by the user. */
-export type ChatProviderPayload =
-  | OpenAIChatProviderPayload
-  | AzureOpenAIChatProviderPayload
-  | AnthropicCompatibleChatProviderPayload;
+export type ChatProviderPayload = OpenAIChatProviderPayload | AzureOpenAIChatProviderPayload | AnthropicCompatibleChatProviderPayload;

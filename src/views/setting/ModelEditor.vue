@@ -10,7 +10,6 @@
           <span>{{ hasImageInputParam ? t("user.modelCard.imageInputEnabled") : t("user.modelCard.imageInputDisabled") }}</span>
         </div>
       </div>
-      <div v-if="props.kind === 'chat' && localModel.model" class="model-behavior-chip">{{ modelBehaviorHint }}</div>
     </div>
 
     <!-- Connection and request routing fields -->
@@ -133,8 +132,17 @@ import copyIcon from "@/assets/svg/copy16.svg";
 import SvgIcon from "@/components/SvgIcon.vue";
 import { chatDisplayedCapabilityKeys, defaultChatModelEditorState, defaultImageModelEditorState, imageModelProviderList, providerList } from "@/constants";
 import { dsAlert } from "@/utils";
-import { getChatModelCapabilities, getChatModelInfo, getModelImageParamDefs, getModelRequestId, sanitizeModelCapabilityOverrides } from "@/models";
-import type { ChatModelConfig, ChatModelEditorState, ChatSelectOption, ImageModelConfig, ImageModelEditorState, ImageOperation, ModelConfig, ModelKind } from "@/types";
+import { getChatModelCapabilities, getChatModelInfo, getModelImageParamDefs, sanitizeModelCapabilityOverrides } from "@/models";
+import type {
+  ChatModelConfig,
+  ChatModelEditorState,
+  ChatSelectOption,
+  ImageModelConfig,
+  ImageModelEditorState,
+  ImageOperation,
+  ModelConfig,
+  ModelKind,
+} from "@/types";
 
 type ModelEditorState = Omit<ChatModelEditorState, "provider"> & {
   provider: ChatModelEditorState["provider"] | ImageModelEditorState["provider"];
@@ -168,7 +176,7 @@ const isImageModel = computed(() => props.kind === "image");
 const isAzure = computed(() => localModel.provider === "Azure OpenAI");
 const isOpenAIStyle = computed(() => localModel.provider === "OpenAI" || localModel.provider === "Anthropic" || localModel.provider === "Azure AI Foundry");
 const hasImageInputParam = computed(() => isImageModel.value && getModelImageParamDefs(localModel).some((item) => item.type === "image"));
-const resolvedModelId = computed(() => getModelRequestId(localModel));
+const resolvedModelId = computed(() => localModel?.model);
 
 // Group suggestions by model family so the selector remains readable as options grow.
 const getModelFamily = (model = "") => {
@@ -207,13 +215,7 @@ const availableModelProviderList = computed(() => {
         : new Set(providerList.map((item) => item.value));
   return providerList.filter((item) => allowedProviders.has(item.value));
 });
-const modelBehaviorHint = computed(() => {
-  // ⚙️ Surface the resolved chat request behavior without exposing implementation fields.
-  const modelInfo = getChatModelInfo(localModel.model, localModel.provider);
-  const modeText = modelInfo.isReasonModel ? t("user.modelCard.behavior.reasoning") : t("user.modelCard.behavior.chat");
-  const formatText = modelInfo.msgTypeVersion === "v1" ? t("user.modelCard.behavior.v1") : t("user.modelCard.behavior.v2");
-  return `${modeText} · ${formatText}`;
-});
+
 const requestSummary = computed(() => {
   // Show the target route that will be used after provider-specific normalization.
   if (isImageModel.value) {
@@ -224,7 +226,6 @@ const requestSummary = computed(() => {
   return resolvedModelId.value ? t("user.modelCard.openAIRequestTarget", { model: resolvedModelId.value }) : "";
 });
 const capabilityLabelKeys: Record<string, string> = {
-  reasoning: "input.capabilities.reasoning",
   webSearch: "input.capabilities.webSearch",
   imageRead: "input.capabilities.imageRead",
 };
@@ -456,17 +457,6 @@ watch(
     font-weight: 700;
   }
 }
-
-.model-behavior-chip {
-  flex-shrink: 0;
-  border-radius: 999px;
-  padding: 7px 11px;
-  background-color: #eef6ff;
-  font-size: 11px;
-  color: #174466;
-  border: 1px solid rgba(35, 95, 143, 0.14);
-}
-
 .model-form-section {
   margin-top: 18px;
   border: 1px solid rgba(17, 24, 39, 0.06);

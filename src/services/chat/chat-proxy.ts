@@ -5,7 +5,6 @@ import {
   getChatModelInfo,
   getModelDeployment,
   getModelFromSnapshot,
-  getModelRequestId,
   isAnthropicChatModel,
   isAzureChatModel,
   isOpenAIChatModel,
@@ -59,7 +58,7 @@ export class ChatProxy {
   }
 
   resolveModelId(model: Partial<ChatModelConfig>): string {
-    return getModelRequestId(model);
+    return model?.model;
   }
 
   abort(): void {
@@ -70,7 +69,7 @@ export class ChatProxy {
 
   async chat(data: ChatPromptMessage[], context: ChatRequestContext = {}, callback: ChatCallback = (response) => console.log(response)): Promise<boolean> {
     const model = this.resolveModel(context);
-    const hasRequestTarget = isAzureChatModel(model) ? Boolean(getModelDeployment(model)) : Boolean(getModelRequestId(model));
+    const hasRequestTarget = isAzureChatModel(model) ? Boolean(getModelDeployment(model)) : Boolean(model?.model);
     if (!this.executor || !model?.name || !model?.apiKey || !hasRequestTarget) {
       dsAlert({
         type: "warn",
@@ -133,7 +132,6 @@ export class ChatProxy {
     return {
       ...buildChatCompletionParams(activeModel, settings || store.state.curChatModelSettings),
       webSearch: Boolean(turnCapabilities.webSearch),
-      reasoningBoost: Boolean(turnCapabilities.reasoning),
     };
   }
 }

@@ -34,7 +34,7 @@
           </div>
         </div>
 
-        <button class="hlcc-login-button" @click="onLogin">{{ t("login.loginAction") }}</button>
+        <button class="hlcc-login-button" @click="onStart">{{ t("login.loginAction") }}</button>
       </section>
     </div>
   </div>
@@ -43,8 +43,6 @@
 <script setup>
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { login, getModels } from "@/services";
-import { dsLoading } from "@/utils";
 import ThemeController from "@/components/ThemeController.vue";
 import LanguageController from "@/components/LanguageController.vue";
 import { APP_NAME } from "@/constants";
@@ -52,14 +50,8 @@ import { APP_NAME } from "@/constants";
 const router = useRouter();
 const { t } = useI18n();
 
-const onLogin = async () => {
-  dsLoading(true);
-  const flag = await login();
-  if (flag) {
-    router.push({ path: "/chat" });
-    await getModels();
-  }
-  dsLoading(false);
+const onStart = async () => {
+  router.push({ path: "/chat" });
 };
 </script>
 

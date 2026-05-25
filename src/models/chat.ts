@@ -8,39 +8,33 @@ import type {
   ConversationModelSnapshot,
   ChatModelParamDef,
   ChatParamDefaultValue,
+  ChatModelEditorState,
 } from "@/types";
 import { tr } from "@/i18n";
-import { chatDisplayedCapabilityKeys, chatTurnCapabilityKeys, defaultModelCapabilities } from "@/constants/chat-model";
-import { chatParamPresetList } from "@/constants/chat-params";
-import { chatModelCatalog, type ChatModelCatalogItem } from "@/constants/model-list";
-import {
-  cloneJson,
-  getLegacyProvider,
-  getModelDeployment,
-  getModelRequestId,
-  parseParamValue,
-  type LooseModelConfig,
-} from "./common";
+import { chatParamPresetList, defaultModelCapabilities, chatModelCatalog, type ChatModelCatalogItem, baseCapabilityProfile } from "@/constants";
+import { LooseModelConfig, parseParamValue } from "./common";
 
 type LooseChatParamDef = Partial<ChatModelParamDef> & { key?: string };
 
-export { chatDisplayedCapabilityKeys, chatTurnCapabilityKeys, defaultModelCapabilities };
-export { getModelDeployment, getModelRequestId, parseParamValue as parseChatParamValue } from "./common";
-
 /** Returns whether a user model config should use Azure OpenAI routing. */
-export function isAzureChatModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "Azure OpenAI" } {
-  return getLegacyProvider(model) === "Azure OpenAI";
+export function isAzureChatModel(model: ChatModelConfig | null | undefined): model is ChatModelConfig & { provider: "Azure OpenAI" } {
+  return model?.provider === "Azure OpenAI";
 }
 
 /** Returns whether a user model config should use direct OpenAI-compatible routing. */
-export function isOpenAIChatModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "OpenAI" } {
-  return getLegacyProvider(model) === "OpenAI";
+export function isOpenAIChatModel(model: ChatModelConfig | null | undefined): model is ChatModelConfig & { provider: "OpenAI" } {
+  return model?.provider === "OpenAI";
 }
 
 /** Returns whether a user model config should use Anthropic-compatible routing. */
 export function isAnthropicChatModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "Anthropic" | "Azure AI Foundry" } {
-  const provider = getLegacyProvider(model);
+  const provider = model?.provider;
   return provider === "Anthropic" || provider === "Azure AI Foundry";
+}
+
+/** Returns the Azure deployment name used when building Azure runtime config. */
+export function getModelDeployment(model: { deployment?: string; model?: string; provider?: string } | null | undefined): string {
+  return String(model?.deployment || "").trim();
 }
 
 /**
@@ -51,82 +45,58 @@ export function isAnthropicChatModel(model: LooseModelConfig | null | undefined)
  * provider-specific fields to the stable `ChatModelConfig` union.
  */
 export function normalizeChatModelConfig(model: LooseModelConfig | null | undefined = {}): ChatModelConfig {
-  const data = model || {};
-  const provider = getLegacyProvider(data);
+  const provider = model?.provider;
   const nextProvider = provider === "Azure OpenAI" || provider === "Anthropic" || provider === "Azure AI Foundry" ? provider : "OpenAI";
-  const modelId = getModelRequestId(data);
+  const modelId = model?.model;
   const basePayload = {
-    name: String(data.name || "").trim(),
-    apiKey: String(data.apiKey || "").trim(),
+    name: String(model?.name || "").trim(),
+    apiKey: String(model?.apiKey || "").trim(),
     model: modelId,
-    enabledCapabilitiesMode: data.enabledCapabilitiesMode === "custom" ? "custom" as const : "inherit" as const,
-    enabledCapabilities: data.enabledCapabilities,
+    enabledCapabilitiesMode: model?.enabledCapabilitiesMode === "custom" ? ("custom" as const) : ("inherit" as const),
+    enabledCapabilities: model?.enabledCapabilities,
   };
 
   if (nextProvider === "Azure OpenAI") {
     return {
       ...basePayload,
       provider: "Azure OpenAI",
-      endpoint: String(data.endpoint || "").trim(),
-      deployment: String(data.deployment || "").trim(),
-      apiVersion: String(data.apiVersion || "").trim(),
+      endpoint: String(model?.endpoint || "").trim(),
+      deployment: String(model?.deployment || "").trim(),
+      apiVersion: String(model?.apiVersion || "").trim(),
     };
   }
 
   return {
     ...basePayload,
     provider: nextProvider,
-    baseURL: String(data.baseURL || "").trim(),
+    baseURL: String(model.baseURL || "").trim(),
   };
 }
 
 function findChatModelCatalogItem(model = "", provider = ""): ChatModelCatalogItem | null {
-  const normalizedModel = (model || "").trim().toLowerCase();
-  const normalizedProvider = (provider || "").trim().toLowerCase();
+  const targetModel = model.trim().toLowerCase();
+  const targetProvider = provider.trim().toLowerCase();
+
+  if (!targetModel) return null;
+
   return (
     chatModelCatalog.find((item) => {
-      const itemProvider = (item.provider || "").trim().toLowerCase();
-      return item.value.toLowerCase() === normalizedModel && (!itemProvider || !normalizedProvider || itemProvider === normalizedProvider);
-    }) || null
+      const itemModel = item.value.toLowerCase();
+      const itemProvider = item.provider?.trim().toLowerCase() ?? "";
+
+      if (itemModel !== targetModel) return false;
+
+      if (targetProvider && itemProvider !== targetProvider) return false;
+
+      return true;
+    }) ?? null
   );
 }
 
 /** Returns the full capability profile declared by the model catalog. */
 export function getChatModelCapabilityProfile(model = "", provider = ""): ChatModelCapabilityProfile {
   const catalogItem = findChatModelCatalogItem(model, provider);
-  return (
-    catalogItem?.capabilityProfile || {
-      modalities: {
-        textInput: true,
-        textOutput: true,
-        imageInput: false,
-        imageOutput: false,
-        audioInput: false,
-        audioOutput: false,
-        videoInput: false,
-        videoOutput: false,
-      },
-      features: {
-        reasoning: false,
-        streaming: true,
-        functionCalling: false,
-        structuredOutputs: false,
-        fineTuning: false,
-      },
-      tools: {
-        webSearch: false,
-        imageGeneration: false,
-        fileSearch: false,
-        codeInterpreter: false,
-        hostedShell: false,
-        skills: false,
-        mcp: false,
-        applyPatch: false,
-        computerUse: false,
-        toolSearch: false,
-      },
-    }
-  );
+  return catalogItem?.capabilityProfile || baseCapabilityProfile;
 }
 
 /**
@@ -139,8 +109,6 @@ export function getChatModelCapabilities(model = "", provider = "OpenAI"): ChatM
   const uiCapabilities: ChatModelCapabilities = {
     imageRead: profile.modalities.imageInput,
     webSearch: profile.tools.webSearch,
-    reasoning: profile.features.reasoning,
-    functionCalling: profile.features.functionCalling,
   };
   return normalizeModelCapabilities(uiCapabilities, { ...defaultModelCapabilities, ...uiCapabilities });
 }
@@ -196,11 +164,7 @@ export function getEffectiveCapabilities(
   const enabledCaps = normalizeModelCapabilities(enabled, supportedCaps);
   const next = { ...defaultModelCapabilities };
   (Object.keys(next) as (keyof ChatModelCapabilities)[]).forEach((key) => {
-    if (chatTurnCapabilityKeys.includes(key)) {
-      next[key] = Boolean(supportedCaps[key] && enabledCaps[key] && turnOptions?.[key]);
-    } else {
-      next[key] = Boolean(supportedCaps[key] && enabledCaps[key]);
-    }
+    next[key] = Boolean(supportedCaps[key] && enabledCaps[key]);
   });
   return next;
 }
@@ -212,13 +176,11 @@ export function getEffectiveCapabilities(
  * lock the conversation to a stable model. Derived runtime data is intentionally
  * excluded and recomputed later from `modelConfig`.
  */
-export function createConversationModelSnapshot(
-  model: LooseModelConfig | null | undefined,
-): ConversationModelSnapshot | null {
+export function createConversationModelSnapshot(model: LooseModelConfig | null | undefined): ConversationModelSnapshot | null {
   const modelConfig = normalizeChatModelConfig(model);
   if (!modelConfig?.name || !modelConfig?.apiKey) return null;
 
-  const modelId = getModelRequestId(modelConfig);
+  const modelId = modelConfig.model;
   const modelConfigId = `${modelConfig.provider}:${modelConfig.name}:${modelId}:${getModelDeployment(modelConfig) || modelId}`;
 
   return {
@@ -282,7 +244,7 @@ export function getChatModelInfo(model = "", provider = ""): ChatModelOption {
     isReasonModel: false,
     msgTypeVersion: "v2",
     capabilityProfile: getChatModelCapabilityProfile(model, provider),
-    capabilities: { webSearch: false, reasoning: false, imageRead: false },
+    capabilities: { webSearch: false, imageRead: false },
   };
 }
 
@@ -305,7 +267,7 @@ function getChatParamPreset(key = ""): LooseChatParamDef | null {
 export function normalizeChatParamDef(def: LooseChatParamDef = {}): ChatModelParamDef {
   const preset = getChatParamPreset(def.key);
   const nextType = def.type || preset?.type || "string";
-  const nextDefaultValue = parseParamValue<ChatParamDefaultValue>(nextType, def.defaultValue, cloneJson(preset?.defaultValue ?? ""));
+  const nextDefaultValue = parseParamValue<ChatParamDefaultValue>(nextType, def.defaultValue, structuredClone(preset?.defaultValue ?? ""));
 
   return {
     key: String(def.key || preset?.key || "").trim(),
@@ -338,8 +300,8 @@ export function getChatParamKeysForModel(model = "", provider = ""): string[] {
  * built-in catalog definitions are used.
  */
 export function getModelChatParamDefs(model: LooseModelConfig = {}): ChatModelParamDef[] {
-  const provider = getLegacyProvider(model);
-  const modelId = getModelRequestId(model);
+  const provider = model?.provider;
+  const modelId = model?.model;
   const hasCustomDefs = Array.isArray(model?.chatParamDefs) && model.chatParamDefs.length > 0;
   const defs = hasCustomDefs ? model.chatParamDefs : getDefaultChatParamDefs(modelId, provider);
   const seen = new Set();
@@ -357,11 +319,11 @@ export function getModelChatParamDefs(model: LooseModelConfig = {}): ChatModelPa
  * request parameter definition.
  */
 export function buildDefaultChatSettings(model: LooseModelConfig | null = null): ChatModelSettings {
-  const settings = cloneJson(createDefaultChatSettings());
+  const settings = structuredClone(createDefaultChatSettings());
   const defs = getModelChatParamDefs(model || {});
 
   defs.forEach((item) => {
-    settings[item.key] = cloneJson(item.defaultValue);
+    settings[item.key] = structuredClone(item.defaultValue);
   });
 
   return settings;
@@ -377,27 +339,24 @@ export function mergeChatSettingsWithModel(model: LooseModelConfig | null = null
   const defaultSettings = createDefaultChatSettings();
   const defs = getModelChatParamDefs(model || {});
   const nextSettings = { ...settings };
-  if (defs.some((item) => item.key === "max_completion_tokens") && !("max_completion_tokens" in nextSettings) && "max_tokens" in nextSettings) {
-    nextSettings.max_completion_tokens = nextSettings.max_tokens;
-  }
 
   const coreSettings: Partial<ChatModelSettings> = {
     prompts: Array.isArray(nextSettings.prompts) ? nextSettings.prompts : undefined,
     passedMsgLen: nextSettings.passedMsgLen,
   };
   const mergedSettings = {
-    ...cloneJson(defaultSettings),
+    ...structuredClone(defaultSettings),
     ...buildDefaultChatSettings(model),
     ...nextSettings,
     ...coreSettings,
   };
 
   defs.forEach((item) => {
-    mergedSettings[item.key] = parseParamValue(item.type, mergedSettings[item.key], cloneJson(item.defaultValue));
+    mergedSettings[item.key] = parseParamValue(item.type, mergedSettings[item.key], structuredClone(item.defaultValue));
   });
 
   if (!Array.isArray(mergedSettings.prompts)) {
-    mergedSettings.prompts = cloneJson(defaultSettings.prompts);
+    mergedSettings.prompts = structuredClone(defaultSettings.prompts);
   }
 
   if (!Number.isFinite(Number(mergedSettings.passedMsgLen))) {
@@ -421,7 +380,7 @@ export function buildChatCompletionParams(model: LooseModelConfig | null = null,
   const params: ChatCompletionParams = {};
 
   defs.forEach((item) => {
-    const value = parseParamValue(item.type, mergedSettings[item.key], cloneJson(item.defaultValue));
+    const value = parseParamValue(item.type, mergedSettings[item.key], structuredClone(item.defaultValue));
 
     if (value === undefined || value === null) return;
     if (item.type === "string" && value === "") return;

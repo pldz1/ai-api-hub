@@ -21,7 +21,7 @@ export interface ChatModelOption extends SelectOption {
   isReasonModel: boolean;
   msgTypeVersion: "v1" | "v2";
   capabilityProfile: ChatModelCapabilityProfile;
-  capabilities: Pick<ChatModelCapabilities, "webSearch" | "reasoning" | "imageRead">;
+  capabilities: Pick<ChatModelCapabilities, "webSearch" | "imageRead">;
 }
 
 /** Chat model plus resolved parameter definitions used by runtime/settings UI. */
@@ -110,7 +110,6 @@ export interface ChatCompletionParams extends ChatParamRecord {
   stream?: boolean;
   stream_options?: ChatStreamOptions;
   webSearch?: boolean;
-  reasoningBoost?: boolean;
 }
 
 /**

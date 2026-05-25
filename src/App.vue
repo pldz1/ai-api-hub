@@ -15,11 +15,9 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
-import { useStore } from "vuex";
 import ConfigConfirm from "@/components/ConfigConfirm.vue";
 import { getInitialRouteConfigValue, getModels, getImageList, importSettingsFromConfigValue } from "@/services";
 
-const store = useStore();
 const route = useRoute();
 const configImportConfirmDialogRef = ref<{ confirm: () => Promise<boolean> } | null>(null);
 const importedConfigValues = new Set<string>();
@@ -36,7 +34,6 @@ async function importRouteConfig(routeText = "") {
 }
 
 onMounted(async () => {
-  await store.dispatch("login");
   await getModels();
   await importRouteConfig();
   await getImageList();

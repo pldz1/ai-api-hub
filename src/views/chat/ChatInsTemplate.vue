@@ -22,10 +22,10 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { useStore } from "vuex";
-import { getBuiltinChatInsTemplateList } from "@/models";
 import type { ChatPromptMessage } from "@/services/types";
 import { addChat } from "@/services";
 import { append4Random, dsAlert } from "@/utils";
+import { chatInsTemplateList } from "@/constants";
 
 type ChatInstructionTemplate = {
   id: string;
@@ -44,7 +44,7 @@ const curChatModelSettings = computed(() => store.state.curChatModelSettings);
 const userSuffix = computed(() => (store.state.username && store.state.username !== "__workspace__" ? `, ${store.state.username}` : ""));
 const insTemplateList = computed<ChatInstructionTemplate[]>(() => {
   locale.value;
-  return [...getBuiltinChatInsTemplateList(), ...store.state.chatInsTemplateList];
+  return [...chatInsTemplateList, ...store.state.chatInsTemplateList];
 });
 
 const onSelectInst = async (id: string) => {
@@ -84,8 +84,7 @@ const onSelectInst = async (id: string) => {
   padding: 0 24px;
   background:
     radial-gradient(circle at 52% 36%, rgba(191, 224, 255, 0.75), rgba(191, 224, 255, 0.34) 18%, rgba(255, 255, 255, 0) 42%),
-    radial-gradient(circle at 50% 50%, rgba(217, 235, 255, 0.7), rgba(255, 255, 255, 0) 52%),
-    linear-gradient(180deg, #ffffff 0%, #fbfbfb 100%);
+    radial-gradient(circle at 50% 50%, rgba(217, 235, 255, 0.7), rgba(255, 255, 255, 0) 52%), linear-gradient(180deg, #ffffff 0%, #fbfbfb 100%);
 }
 
 .ctdc-copy {

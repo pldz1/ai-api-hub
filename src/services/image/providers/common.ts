@@ -1,4 +1,3 @@
-import { getModelRequestId } from "@/models";
 import { tr } from "@/i18n";
 import type {
   ImageGenerationParams,
@@ -89,7 +88,7 @@ export function buildImageRequestBody(
   const n = params?.n || 1;
   const quality = params?.quality || DEFAULT_IMAGE_QUALITY;
   const outputFormat = params?.outputFormat || DEFAULT_IMAGE_OUTPUT_FORMAT;
-  const imageModel = getModelRequestId(model);
+  const imageModel = model?.model;
   const extraParams = Object.fromEntries(
     Object.entries(params || {}).filter(([key, value]) => {
       if (RESERVED_IMAGE_PARAM_KEYS.includes(key)) return false;

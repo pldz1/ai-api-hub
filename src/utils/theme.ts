@@ -1,11 +1,11 @@
 const APP_THEME_KEY = "ai-api-hub-theme";
 const DEFAULT_THEME = "light";
 
-function normalizeTheme(theme) {
+function normalizeTheme(theme: string): string {
   return (theme || "").trim() || DEFAULT_THEME;
 }
 
-export function getStoredTheme() {
+export function getStoredTheme(): string {
   try {
     return normalizeTheme(localStorage.getItem(APP_THEME_KEY));
   } catch {
@@ -13,7 +13,7 @@ export function getStoredTheme() {
   }
 }
 
-export function applyTheme(theme = DEFAULT_THEME) {
+export function applyTheme(theme: string = DEFAULT_THEME): string {
   const nextTheme = normalizeTheme(theme);
 
   if (typeof document !== "undefined") {

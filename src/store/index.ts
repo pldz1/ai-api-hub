@@ -1,6 +1,6 @@
 import { createStore } from "vuex";
 import { ChatState } from "./chat";
-import { UserState, WORKSPACE_ID } from "./user";
+import { UserState } from "./user";
 import { ImageState } from "./image";
 import { ModalState } from "./modal";
 
@@ -23,8 +23,6 @@ function createStateMutation(methodName, afterMutate = null) {
 }
 
 const mutations = {
-  SET_USER_LOGIN_INFO: createStateMutation("setUserLoginInfo"),
-  SET_LOGIN_STATE: createStateMutation("setIsLoggedIn"),
   SET_MODELS: createStateMutation("setModels"),
   SET_CUR_CHAT_MODEL: createStateMutation("setCurChatModel"),
   SET_CHAT_INS_TEMPLATE_LIST: createStateMutation("setChatInsTemplateList"),
@@ -111,10 +109,6 @@ const passthroughActions = {
 };
 
 const actions = {
-  login({ commit }) {
-    commit("SET_USER_LOGIN_INFO", { username: WORKSPACE_ID, password: "", uid: WORKSPACE_ID });
-    commit("SET_LOGIN_STATE", true);
-  },
   ...Object.fromEntries(Object.entries(passthroughActions).map(([actionName, mutationName]) => [actionName, createCommitAction(mutationName)])),
 };
 

@@ -1,8 +1,7 @@
+import { defaultModelCapabilities } from "@/constants";
 import {
   buildDefaultChatSettings,
-  chatTurnCapabilityKeys,
   createConversationModelSnapshot,
-  defaultModelCapabilities,
   getSnapshotEnabledCapabilities,
   getModelFromSnapshot,
   getSnapshotSupportedCapabilities,
@@ -32,10 +31,6 @@ function createInputCapabilities(conversation = null) {
   const supported = getSnapshotSupportedCapabilities(conversation?.modelSnapshot) || defaultModelCapabilities;
   const enabled = getSnapshotEnabledCapabilities(conversation?.modelSnapshot) || defaultModelCapabilities;
   const capabilities = normalizeModelCapabilities(enabled, supported);
-  capabilities.reasoning = false;
-  chatTurnCapabilityKeys.forEach((key) => {
-    capabilities[key] = false;
-  });
   return capabilities;
 }
 

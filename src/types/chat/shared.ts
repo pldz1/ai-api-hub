@@ -8,7 +8,6 @@ export interface SelectOption<TValue extends string = string> {
   value: TValue;
   name: string;
 }
-
 export interface ChatModelModalities {
   textInput: boolean;
   textOutput: boolean;
@@ -21,11 +20,10 @@ export interface ChatModelModalities {
 }
 
 export interface ChatModelFeatures {
-  reasoning: boolean;
   streaming: boolean;
-  functionCalling: boolean;
   structuredOutputs: boolean;
   fineTuning: boolean;
+  reasoning: boolean;
 }
 
 export interface ChatModelTools {
@@ -39,6 +37,7 @@ export interface ChatModelTools {
   applyPatch: boolean;
   computerUse: boolean;
   toolSearch: boolean;
+  functionCalling: boolean;
 }
 
 export interface ChatModelCapabilityProfile {
@@ -50,8 +49,6 @@ export interface ChatModelCapabilityProfile {
 export interface ChatModelCapabilities {
   imageRead: boolean;
   webSearch: boolean;
-  reasoning: boolean;
-  functionCalling: boolean;
 }
 
 export type ParamDefaultValue = string | number | boolean | unknown[] | Record<string, unknown> | null;

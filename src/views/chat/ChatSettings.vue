@@ -58,11 +58,7 @@
 
             <!-- Keep array parameters editable as JSON text. -->
             <template v-else-if="item.type === 'array'">
-              <textarea
-                class="textarea textarea-bordered"
-                :value="arrayFieldInputs[item.key] || '[]'"
-                @input="onArrayFieldInput(item.key, $event)"
-              ></textarea>
+              <textarea class="textarea textarea-bordered" :value="arrayFieldInputs[item.key] || '[]'" @input="onArrayFieldInput(item.key, $event)"></textarea>
             </template>
 
             <!-- Fall back to a plain text field for all other parameter types. -->
@@ -83,7 +79,7 @@ import { useStore } from "vuex";
 import infoIcon from "@/assets/svg/info24.svg";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
-import { getModelChatParamDefs, mergeChatSettingsWithModel, parseChatParamValue } from "@/models";
+import { getModelChatParamDefs, mergeChatSettingsWithModel, parseParamValue } from "@/models";
 import { setChatSettings } from "@/services";
 import { dsAlert } from "@/utils";
 
@@ -150,7 +146,7 @@ const handleClose = async () => {
 
   activeParamDefs.value.forEach((item) => {
     if (item.type !== "array") return;
-    const parsedValue = parseChatParamValue("array", arrayFieldInputs[item.key], null);
+    const parsedValue = parseParamValue("array", arrayFieldInputs[item.key], null);
     if (parsedValue === null) {
       dsAlert({ type: "warn", message: t("chat.invalidArrayParam", { name: item.label || item.key }) });
       nextSettings[item.key] = Array.isArray(item.defaultValue) ? item.defaultValue : [];

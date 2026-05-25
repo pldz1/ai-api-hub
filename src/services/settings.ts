@@ -17,27 +17,14 @@ const emptyModelSettings = (): ModelSettings => ({
   image: [],
 });
 
-const loginAPI = (): Promise<ApiResponse<null>> => apiRequest("post", "/_api/workspace/login", {});
 const getModelsAPI = (): Promise<ApiResponse<string>> => apiRequest("post", "/_api/workspace/getModels", {});
 const setModelsAPI = (data: string): Promise<ApiResponse<null>> => apiRequest("post", "/_api/workspace/setModels", { data });
 const getChatInsTemplateListAPI = (): Promise<ApiResponse<string>> => apiRequest("post", "/_api/workspace/getChatInsTemplateList", {});
-const setChatInsTemplateListAPI = (data: string): Promise<ApiResponse<null>> =>
-  apiRequest("post", "/_api/workspace/setChatInsTemplateList", { data });
+const setChatInsTemplateListAPI = (data: string): Promise<ApiResponse<null>> => apiRequest("post", "/_api/workspace/setChatInsTemplateList", { data });
 
 function parseStoredJson<T>(raw: string, fallback: T): T {
   if (!raw) return fallback;
   return JSON.parse(raw) as T;
-}
-
-export async function login(): Promise<boolean> {
-  const res = await loginAPI();
-  if (!res.flag) {
-    dsAlert({ type: "error", message: tr("toast.loginFailed", { error: res.log }) });
-    return false;
-  }
-
-  await store.dispatch("login");
-  return true;
 }
 
 export async function getModels(): Promise<boolean> {

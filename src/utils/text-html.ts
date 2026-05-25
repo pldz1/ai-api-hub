@@ -1,4 +1,4 @@
-export function textToHtml(strData) {
-  // 用一个不存在的样式来替换换行 保证来回的切换
+export function textToHtml(strData: string): string {
+  // Replace line breaks with a non-existent style to ensure seamless toggling back and forth.
   return strData.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, '<br class="__NEW__LINE__"/>');
 }

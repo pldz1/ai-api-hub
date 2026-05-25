@@ -103,7 +103,7 @@ const emojiList = [
   "🐆",
 ];
 
-export function generateRandomCname() {
+export function generateRandomCname(): string {
   const randomEmoji = emojiList[Math.floor(Math.random() * emojiList.length)];
   const now = new Date();
   const locale = i18n.global.locale.value || "zh-CN";
@@ -113,7 +113,7 @@ export function generateRandomCname() {
   const time = now.toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",
-  }); // 格式为 hh:mm
+  });
 
   return tr("chat.generatedConversationTitle", {
     emoji: randomEmoji,
@@ -122,10 +122,7 @@ export function generateRandomCname() {
   });
 }
 
-/**
- * 字符串增加随机4位字符
- */
-export function append4Random(prefix) {
+export function append4Random(prefix: string): string {
   const randomId = Math.random().toString(36).slice(-4);
   return `${prefix}-${randomId}`;
 }

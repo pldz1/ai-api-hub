@@ -148,7 +148,6 @@ export const languages = {
     input: {
       capabilities: {
         imageRead: "图片",
-        reasoning: "思考",
         webSearch: "联网",
       },
       chatPlaceholder: "请输入对话内容",
@@ -240,7 +239,6 @@ export const languages = {
       copyText: "复制文本",
       deleteMessage: "删除消息",
       modelSettings: "设置模型参数",
-      reasoning: "思考",
       sendOrStop: "发送 / 停止",
       uploadImage: "上传图片",
     },
@@ -305,7 +303,6 @@ export const languages = {
         azureRequestTarget: "请求会发送到 Azure deployment={deployment}。",
         behavior: {
           chat: "普通对话",
-          reasoning: "推理模型",
           v1: "v1 消息格式",
           v2: "v2 消息格式",
         },
@@ -553,7 +550,6 @@ export const languages = {
     input: {
       capabilities: {
         imageRead: "Image",
-        reasoning: "Reasoning",
         webSearch: "WebSearch",
       },
       chatPlaceholder: "Type your message",
@@ -646,7 +642,6 @@ export const languages = {
       copyText: "Copy text",
       deleteMessage: "Delete message",
       modelSettings: "Set the model parameters.",
-      reasoning: "Reasoning",
       sendOrStop: "Send / stop",
       uploadImage: "Upload image",
     },
@@ -712,7 +707,6 @@ export const languages = {
         azureRequestTarget: "Requests target Azure deployment={deployment}.",
         behavior: {
           chat: "Chat",
-          reasoning: "Reasoning",
           v1: "v1 message mode",
           v2: "v2 message mode",
         },

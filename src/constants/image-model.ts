@@ -1,4 +1,4 @@
-import type { ImageModelProvider, ImageModelParamDef, ImageSelectOption } from "@/types";
+import type { ImageModelProvider, ImageModelParamDef, ImageSelectOption, ImageModelEditorState } from "@/types";
 
 type LooseParamDef = Partial<ImageModelParamDef> & { key?: string };
 
@@ -53,14 +53,7 @@ export const imageParamPresetList: LooseParamDef[] = [
   },
 ];
 
-export const imageModelTypeList: ImageSelectOption[] = [
-  { value: "gpt-image-1.5", name: "gpt-image-1.5" },
-  { value: "gpt-image-1", name: "gpt-image-1" },
-  { value: "gpt-image-1-mini", name: "gpt-image-1-mini" },
-  { value: "chatgpt-image-latest", name: "chatgpt-image-latest" },
-  { value: "dall-e-2", name: "dall-e-2" },
-  { value: "dall-e-3", name: "dall-e-3" },
-];
+export const imageModelTypeList: ImageSelectOption[] = [{ value: "gpt-image-2", name: "gpt-image-2" }];
 
 export const imageModelProviderList: ImageSelectOption<ImageModelProvider>[] = [
   { value: "OpenAI", name: "OpenAI" },
@@ -69,6 +62,23 @@ export const imageModelProviderList: ImageSelectOption<ImageModelProvider>[] = [
 
 export const imageModelSize: ImageSelectOption[] = [
   { name: "1024x1024", value: "1024x1024" },
-  { name: "1024x1792", value: "1024x1792" },
-  { name: "1792x1024", value: "1792x1024" },
+  { name: "1536x1024", value: "1536x1024" },
+  { name: "1024x1536", value: "1024x1536" },
+  { name: "2048x2048", value: "2048x2048" },
+  { name: "2048x1152", value: "2048x1152" },
+  { name: "3840x2160", value: "3840x2160" },
+  { name: "2160x3840", value: "2160x3840" },
+  { name: "auto ", value: "auto " },
 ];
+
+export const defaultImageModelEditorState: ImageModelEditorState = {
+  name: "",
+  provider: "",
+  baseURL: "",
+  endpoint: "",
+  apiKey: "",
+  model: "",
+  deployment: "",
+  apiVersion: "",
+  imageOperation: "generation",
+};

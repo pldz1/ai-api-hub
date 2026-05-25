@@ -46,7 +46,6 @@ function normalizeAzureResponsesParams(params: ChatCompletionParams = {}): JsonO
     webSearch,
     reasoningBoost,
     max_completion_tokens,
-    max_tokens,
     reasoning_effort,
     verbosity,
     frequency_penalty,
@@ -55,7 +54,7 @@ function normalizeAzureResponsesParams(params: ChatCompletionParams = {}): JsonO
   } = params || {};
 
   const responseParams: JsonObject = { ...requestParams };
-  if (max_completion_tokens || max_tokens) responseParams.max_output_tokens = max_completion_tokens || max_tokens;
+  if (max_completion_tokens) responseParams.max_output_tokens = max_completion_tokens;
   if (reasoningBoost || reasoning_effort) responseParams.reasoning = { effort: reasoningBoost ? "high" : reasoning_effort };
   if (verbosity) responseParams.text = { verbosity };
 

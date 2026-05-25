@@ -1,14 +1,6 @@
-import type { ImageModelConfig, ImageModelSettings, ImageOperation, ImageModelParamDef } from "@/types";
+import type { ImageModelConfig, ImageModelSettings, ImageOperation, ImageModelParamDef, ImageModelParamType } from "@/types";
 import { imageParamPresetList } from "@/constants/image-model";
-import {
-  cloneJson,
-  getLegacyProvider,
-  getModelRequestId,
-  hasMeaningfulParamValue,
-  parseParamValue,
-  type LooseModelConfig,
-  type LooseParamDef,
-} from "./common";
+import { parseParamValue, type LooseModelConfig, type LooseParamDef } from "./common";
 
 const defaultImageModelSettings = {
   model: null,
@@ -25,9 +17,22 @@ function getImageParamPreset(key = ""): LooseParamDef | null {
   return imageParamPresetList.find((item) => item.key === key) || null;
 }
 
+/**
+ * Returns whether a normalized parameter value is meaningful enough to include
+ * in a provider request payload.
+ */
+export function hasMeaningfulParamValue(type: ImageModelParamType | string = "string", value: unknown = undefined): boolean {
+  if (value === undefined || value === null) return false;
+  if (type === "string" && value === "") return false;
+  if (type === "array") return Array.isArray(value);
+  if (type === "object") return typeof value === "object" && !Array.isArray(value) && Object.keys(value).length > 0;
+  if (type === "image") return Boolean(value && typeof value === "object" && "filename" in value && "content_type" in value && "data" in value);
+  return true;
+}
+
 /** Returns whether a user image model config should use Azure OpenAI routing. */
 export function isAzureImageModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "Azure OpenAI" } {
-  return getLegacyProvider(model) === "Azure OpenAI";
+  return model?.provider === "Azure OpenAI";
 }
 
 /**
@@ -38,8 +43,8 @@ export function isAzureImageModel(model: LooseModelConfig | null | undefined): m
  */
 export function normalizeImageModelConfig(model: LooseModelConfig | null | undefined = {}, imageOperation: ImageOperation = "generation"): ImageModelConfig {
   const data = model || {};
-  const provider = getLegacyProvider(data) === "Azure OpenAI" ? "Azure OpenAI" : "OpenAI";
-  const modelId = getModelRequestId(data);
+  const provider = model?.provider === "Azure OpenAI" ? "Azure OpenAI" : "OpenAI";
+  const modelId = data.model;
 
   if (provider === "Azure OpenAI") {
     return {
@@ -68,7 +73,7 @@ export function normalizeImageModelConfig(model: LooseModelConfig | null | undef
 export function normalizeImageParamDef(def: LooseParamDef = {}): ImageModelParamDef {
   const preset = getImageParamPreset(def.key);
   const nextType = def.type || preset?.type || "string";
-  const fallbackDefaultValue = Object.prototype.hasOwnProperty.call(preset || {}, "defaultValue") ? cloneJson(preset.defaultValue) : "";
+  const fallbackDefaultValue = Object.prototype.hasOwnProperty.call(preset || {}, "defaultValue") ? structuredClone(preset.defaultValue) : "";
   const nextDefaultValue = parseParamValue(nextType, def.defaultValue, fallbackDefaultValue);
 
   return {
@@ -119,11 +124,11 @@ export function getModelImageParamDefs(model: LooseModelConfig = {}): ImageModel
  * parameter definitions.
  */
 export function buildDefaultImageSettings(model: LooseModelConfig | null = null): ImageModelSettings {
-  const settings = cloneJson(defaultImageModelSettings);
+  const settings = structuredClone(defaultImageModelSettings);
   const defs = getModelImageParamDefs(model || {});
 
   defs.forEach((item) => {
-    settings[item.key] = cloneJson(item.defaultValue);
+    settings[item.key] = structuredClone(item.defaultValue);
   });
 
   return settings;
@@ -148,7 +153,7 @@ export function mergeImageSettingsWithModel(model: LooseModelConfig | null = nul
 
   const defs = getModelImageParamDefs(model || {});
   defs.forEach((item) => {
-    mergedSettings[item.key] = parseParamValue(item.type, mergedSettings[item.key], cloneJson(item.defaultValue));
+    mergedSettings[item.key] = parseParamValue(item.type, mergedSettings[item.key], structuredClone(item.defaultValue));
   });
 
   if (!Number.isFinite(Number(mergedSettings.n)) || Number(mergedSettings.n) < 1) {
@@ -172,7 +177,7 @@ export function buildImageGenerationParams(model: LooseModelConfig | null = null
   const params: Record<string, unknown> = {};
 
   defs.forEach((item) => {
-    const value = parseParamValue(item.type, mergedSettings[item.key], cloneJson(item.defaultValue));
+    const value = parseParamValue(item.type, mergedSettings[item.key], structuredClone(item.defaultValue));
     if (!hasMeaningfulParamValue(item.type, value)) return;
     params[item.key] = value;
   });

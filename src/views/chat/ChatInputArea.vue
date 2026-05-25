@@ -125,24 +125,20 @@ import attachIcon from "@/assets/svg/attach24.svg";
 import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import paramIcon from "@/assets/svg/param24.svg";
 import pauseIcon from "@/assets/svg/pause32.svg";
-import thinkingIcon from "@/assets/svg/thinking24.svg";
 import webIcon from "@/assets/svg/web24.svg";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import {
   buildDefaultChatSettings,
-  chatTurnCapabilityKeys,
   createConversationModelSnapshot,
   getEffectiveCapabilities,
   getModelDeployment,
-  getModelRequestId,
   getSnapshotEnabledCapabilities,
   getSnapshotSupportedCapabilities,
-  type LooseModelConfig,
 } from "@/models";
 import { packUserMsg } from "@/services";
 import type { ChatPromptMessage } from "@/services/types";
-import { debounce, dsAlert, getUuid, isValidUserMsg } from "@/utils";
+import { dsAlert, getUuid, isValidUserMsg } from "@/utils";
 import ChatSettings from "@/views/chat/ChatSettings.vue";
 
 type InputCapabilityKey = string;
@@ -219,32 +215,33 @@ const formattedTokens = computed(() => ({
 }));
 const isChatRunning = computed(() => Boolean(activeRuntime.value?.pending || ["loading", "streaming"].includes(activeRuntime.value?.status || "")));
 const isShowStatusSticky = computed(() => isChatRunning.value || Number(sessionTokenUsage.value.total_tokens || 0) > 0);
-
 const capabilityLabelKeys: Record<string, string> = {
   webSearch: "input.capabilities.webSearch",
-  reasoning: "input.capabilities.reasoning",
 };
-const capabilityTooltipKeys: Record<string, string> = {
-  reasoning: "tooltip.reasoning",
-};
+
 const capabilityIcons: Record<string, string> = {
   webSearch: webIcon,
-  reasoning: thinkingIcon,
 };
 
-const visibleTurnCapabilities = computed(() =>
-  chatTurnCapabilityKeys
-    .filter((key) => key !== "imageRead")
-    .filter((key) => Boolean(activeSupportedCapabilities.value?.[key] && activeEnabledCapabilities.value?.[key]))
-    .map((key) => ({
-      key,
-      label: t(capabilityLabelKeys[key] || `input.capabilities.${key}`),
-      tooltip: t(capabilityTooltipKeys[key] || capabilityLabelKeys[key] || `input.capabilities.${key}`),
-      icon: capabilityIcons[key],
-    })),
-);
+const visibleTurnCapabilities = computed(() => {
+  const supported = activeSupportedCapabilities.value;
+  const enabled = activeEnabledCapabilities.value;
 
-const getModelSelectionKey = (model: LooseModelConfig | null) => [model?.provider, model?.name, getModelRequestId(model), getModelDeployment(model)].join("|");
+  return Object.keys(capabilityLabelKeys)
+    .filter((key) => key !== "imageRead" && supported?.[key] && enabled?.[key])
+    .map((key) => {
+      const translationKey = capabilityLabelKeys[key];
+      const text = t(translationKey);
+      return {
+        key,
+        label: text,
+        tooltip: text,
+        icon: capabilityIcons[key] || undefined,
+      };
+    });
+});
+
+const getModelSelectionKey = (model: ChatModelConfig | null) => [model?.provider, model?.name, model?.model, getModelDeployment(model)].join("|");
 
 watch(
   () => chatModels.value,
@@ -305,7 +302,6 @@ const onSendInputData = async () => {
         meta: {
           usedCapabilities: {
             ...activeCapabilities.value,
-            reasoning: Boolean(inputCapabilities.value.reasoning),
           },
         },
       },
@@ -365,6 +361,20 @@ const onInputText = async () => {
   if (!textarea) return;
   textarea.style.height = "auto";
   textarea.style.height = `${textarea.scrollHeight}px`;
+};
+
+const debounce = (fn: Function, delay: number, immediate: boolean = false) => {
+  let timer: number | null;
+  return function (...args: any) {
+    if (immediate && !timer) {
+      fn.apply(this, args);
+    }
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      if (!immediate) fn.apply(this, args);
+      timer = null;
+    }, delay);
+  };
 };
 
 const debounceInputText = debounce(onInputText, 50);
