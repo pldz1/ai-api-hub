@@ -3,7 +3,7 @@
   <footer class="app-footer">
     <!-- Keep the product version and repository credit in one compact line. -->
     <span class="app-footer-copy">
-      <a :href="REPO_SOURCE_LINK" target="_blank" rel="noopener noreferrer">{{ APP_NAME + "·" + APP_VERSION }}</a>
+      <a :href="REPO_SOURCE_LINK" target="_blank" rel="noopener noreferrer">{{ APP_NAME }} · {{ APP_VERSION }}</a>
     </span>
   </footer>
 </template>

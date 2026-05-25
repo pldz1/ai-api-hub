@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from "vue-router";
-import LoginPage from "@/views/LoginPage.vue";
+import HomePage from "@/views/HomePage.vue";
 import MainView from "@/views/MainView.vue";
 const router = createRouter({
   history: createWebHashHistory(),
@@ -7,7 +7,7 @@ const router = createRouter({
     {
       path: "/",
       name: "home",
-      component: LoginPage,
+      component: HomePage,
     },
     {
       path: "/chat/:cid?",

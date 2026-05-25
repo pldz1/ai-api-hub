@@ -3,9 +3,9 @@
     <div class="sidebar-wrapper">
       <!-- Header: Logo and Toggle Button -->
       <div class="sidebar-header">
-        <a v-if="isExpanded" class="brand-logo" href="/login">
+        <a v-if="isExpanded" class="brand-logo" href="/">
           <SvgIcon class="logo-icon" :src="brandIcon" colored />
-          <span class="logo-text">AI API HUB - v0.0.1</span>
+          <span class="logo-text">{{ APP_NAME }} · {{ APP_VERSION }}</span>
         </a>
 
         <AppTooltip :text="t('chat.sidebarToggle')" placement="right">
@@ -253,12 +253,7 @@
               <button class="btn btn-ghost" type="button" @click="resolveChatActionConfirmation(false)">
                 {{ t("chat.confirmActionCancel") }}
               </button>
-              <button
-                class="btn"
-                :class="chatActionConfirm.danger ? 'btn-error' : 'btn-primary'"
-                type="button"
-                @click="resolveChatActionConfirmation(true)"
-              >
+              <button class="btn" :class="chatActionConfirm.danger ? 'btn-error' : 'btn-primary'" type="button" @click="resolveChatActionConfirmation(true)">
                 {{ chatActionConfirm.confirmText }}
               </button>
             </div>
@@ -289,6 +284,7 @@ import deleteIcon from "@/assets/svg/delete16.svg";
 import AppDropdownMenu from "@/components/AppDropdownMenu.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
+import { APP_NAME, APP_VERSION } from "@/constants";
 
 const props = defineProps({
   expanded: { type: Boolean, default: true },

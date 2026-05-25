@@ -7,7 +7,7 @@
         <ThemeController />
       </div>
       <section class="hlcc-intro">
-        <span class="hlcc-kicker">AI API HUB</span>
+        <span class="hlcc-kicker">{{ APP_NAME }}</span>
         <h1 class="hlcc-title">{{ t("login.title") }}</h1>
         <p class="hlcc-copy">{{ t("login.description") }}</p>
         <div class="hlcc-badges">
@@ -47,6 +47,7 @@ import { login, getModels } from "@/services";
 import { dsLoading } from "@/utils";
 import ThemeController from "@/components/ThemeController.vue";
 import LanguageController from "@/components/LanguageController.vue";
+import { APP_NAME } from "@/constants";
 
 const router = useRouter();
 const { t } = useI18n();

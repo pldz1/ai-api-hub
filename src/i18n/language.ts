@@ -5,18 +5,6 @@ export const supportedLanguage = [en, cn];
 export const languages = {
   "zh-CN": {
     chat: {
-      builtinTemplates: {
-        gitEmojiAssistant: {
-          name: "🥳 Git emoji 助手",
-          value:
-            "你是一个 git commit 写手。把我给到你的信息整理成一句英文 commit message，并带上最合适的 emoji。你只输出最终结果，不要解释。可用 emoji 含义如下：🎨 结构改进/格式化代码，⚡️ 性能改善，🔥 删除代码或文件，🐛 修复 BUG，🚑 重大热修复，✨ 新特性，📝 文档，🚀 部署，💄 界面与样式，🎉 创世提交，✅ 测试，🔒 安全修复，🍎 苹果系统修复，🐧 Linux 修复，🏁 Windows 修复，🤖 Android 修复，🍏 iOS 修复，🔖 发布/版本标签，🚨 消除 linter 警告，🚧 进行中，💚 修复持续集成构建，⬇️ 降级依赖，⬆️ 升级依赖，📌 固定依赖版本，👷 持续集成构建系统，📈 分析或跟踪代码，♻️ 重构，🐳 Docker，➕ 添加依赖，➖ 删除依赖，🔧 配置修改，🌐 国际化与本地化，✏️ 修正拼写，💩 需要改进的坏代码，⏪ 回滚改动，🔀 合并分支，📦 更新编译产物或包，👽 适配外部 API 变动，🚚 文件移动或重命名，📄 许可，💥 破坏性改动，🍱 静态资源，👌 代码评审后修改，♿️ 可访问性，💡 源代码注释，🍻 醉写代码，💬 文案更新，🗃 数据库改动，🔊 添加日志，🔇 删除日志，👥 添加贡献者，🚸 改进用户体验，🏗 架构改动，📱 响应式设计，🤡 模拟相关，🥚 彩蛋，🙈 更新 .gitignore，📸 快照，⚗ 研究新事物，🔍 SEO，☸️ Kubernetes，🏷️ 类型更新。",
-        },
-        translationAssistant: {
-          name: "🔤 翻译助手",
-          value:
-            "你是一个高级翻译助手。如果我输入中文，请翻译成自然、符合语境的英文；如果我输入英文，也请翻译成自然、符合语境的中文。如果内容里包含行业术语，请给出你的合理判断。你只输出两部分：1. 最终译文；2. 翻译中的关键点，并清晰列出。",
-        },
-      },
       chooseModelFirst: "请先选择模型",
       confirmActionCancel: "取消",
       confirmDeleteChat: "删除“{name}”？此操作无法撤销。",
@@ -419,18 +407,6 @@ export const languages = {
   },
   "en-US": {
     chat: {
-      builtinTemplates: {
-        gitEmojiAssistant: {
-          name: "🥳 Git Emoji Assistant",
-          value:
-            "You write git commit messages. Turn my input into a single English commit message with the most suitable emoji. Output only the final commit message without explanation. Emoji meanings: 🎨 structure / formatting, ⚡️ performance, 🔥 remove code or files, 🐛 bug fix, 🚑 hotfix, ✨ feature, 📝 docs, 🚀 deployment, 💄 UI and style, 🎉 initial commit, ✅ tests, 🔒 security, 🍎 Apple fix, 🐧 Linux fix, 🏁 Windows fix, 🤖 Android fix, 🍏 iOS fix, 🔖 release / version tag, 🚨 lint fix, 🚧 work in progress, 💚 CI fix, ⬇️ downgrade deps, ⬆️ upgrade deps, 📌 pin deps, 👷 CI setup, 📈 analytics / tracking, ♻️ refactor, 🐳 Docker, ➕ add dependency, ➖ remove dependency, 🔧 config changes, 🌐 i18n / l10n, ✏️ typo fix, 💩 bad code, ⏪ revert, 🔀 merge, 📦 compiled assets or package updates, 👽 external API adaptation, 🚚 move or rename files, 📄 license, 💥 breaking change, 🍱 static assets, 👌 post-review updates, ♿️ accessibility, 💡 source comments, 🍻 drunken code, 💬 text updates, 🗃 database changes, 🔊 add logs, 🔇 remove logs, 👥 contributors, 🚸 UX improvements, 🏗 architecture, 📱 responsive design, 🤡 mocks, 🥚 easter egg, 🙈 update .gitignore, 📸 snapshots, ⚗ research, 🔍 SEO, ☸️ Kubernetes, 🏷️ type updates.",
-        },
-        translationAssistant: {
-          name: "🔤 Translation Assistant",
-          value:
-            "You are an advanced translation assistant. If I give you Chinese, translate it into natural English. If I give you English, translate it into natural Chinese. When the text includes industry-specific terminology, make a reasonable interpretation. Output only two parts: 1. The final translation. 2. The key translation decisions, listed clearly.",
-        },
-      },
       chooseModelFirst: "Choose a model first",
       confirmActionCancel: "Cancel",
       confirmDeleteChat: 'Delete "{name}"? This cannot be undone.',
@@ -724,7 +700,8 @@ export const languages = {
         title: "Image Models",
       },
       importInvalid: "This is not a valid settings JSON file.",
-      importLinkConfirm: "Importing will replace your current model configuration. If the package includes prompt templates, those templates will also be replaced. Continue?",
+      importLinkConfirm:
+        "Importing will replace your current model configuration. If the package includes prompt templates, those templates will also be replaced. Continue?",
       importLinkConfirmAction: "Import settings",
       importLinkConfirmTitle: "Import settings from this link?",
       importReadError: "Failed to read the JSON file.",
