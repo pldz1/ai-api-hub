@@ -1,7 +1,7 @@
 /**
  * Normalize provider token accounting into the shape consumed by chat history.
  */
-import type { TokenUsage } from "@/services/types";
+import type { TokenUsage } from "@/services/chat/types";
 
 export function normalizeUsage(usage: Record<string, unknown> | null | undefined): TokenUsage {
   if (!usage) return null;

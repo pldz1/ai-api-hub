@@ -1,6 +1,6 @@
-import type { TokenUsage } from "@/services/types";
+import type { TokenUsage } from "@/services/chat/types";
+import type { ImageInputFile } from "@/services/image/types";
 import type { ImageModelConfig } from "./model";
-import type { ImageParamValue } from "./shared";
 
 export type ImageConversationRole = "user" | "assistant";
 export type ImageConversationMode = "generation" | "edit";
@@ -15,7 +15,7 @@ export interface ImagePayload {
   height?: number;
 }
 
-export interface ImageInputAttachment extends ImageParamValue {
+export interface ImageInputAttachment extends ImageInputFile {
   id: string;
   previewUrl: string;
 }

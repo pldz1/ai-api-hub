@@ -1,6 +1,6 @@
 import { buildImageFormData, buildImageRequestBody, IMAGE_OPERATION_ENDPOINT, sendImageRequest, trimTrailingSlash } from "./common";
 import { tr } from "@/i18n";
-import type { ImageGenerationParams, ImageGenerationResult, ImageProviderModel, ImageRequest } from "@/services/types";
+import type { ImageGenerationParams, ImageGenerationResult, ImageProviderModel, ImageRequest } from "@/services/image/types";
 import { isAzureImageModel } from "@/models";
 
 function appendApiVersion(url: string, apiVersion: string): string {

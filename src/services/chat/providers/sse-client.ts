@@ -1,20 +1,6 @@
-export type JsonObject = Record<string, unknown>;
-export interface StreamJsonMessage {
-  data: string;
-  event?: string;
-  id?: string;
-  retry?: number;
-}
+import type { JsonObject, JsonRequestOptions, StreamJsonMessage, StreamJsonOptions } from "../types";
 
-export interface JsonRequestOptions {
-  headers?: Record<string, string>;
-  body?: JsonObject;
-  signal?: AbortSignal;
-}
-
-export interface StreamJsonOptions extends JsonRequestOptions {
-  onEvent: (data: JsonObject, message: StreamJsonMessage) => void | Promise<void>;
-}
+export type { JsonObject, JsonRequestOptions, StreamJsonMessage, StreamJsonOptions };
 
 function getErrorMessage(data: unknown, fallback: string): string {
   if (data && typeof data === "object") {

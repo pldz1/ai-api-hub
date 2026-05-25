@@ -1,20 +1,10 @@
 import { getModelDeployment, isAnthropicChatModel, isAzureChatModel, isOpenAIChatModel } from "@/models";
-import type { ChatCompletionParams, ChatModelConfig } from "@/types";
-import type { ChatCallback, ChatRequestOptions, PackedChatMessage } from "@/services/types";
-
-import { ChatModelProviderConfig } from "../types";
+import type { ChatModelConfig } from "@/types";
+import type { ChatCompletionParams, ChatModelProviderConfig, ChatExecutor } from "../types";
 
 import { AzureOpenAIClient } from "./azure-openai";
 import { AnthropicClient } from "./anthropic";
 import { OpenAIClient } from "./openai";
-
-/**
- * Common executor interface used by chat runtime after a provider has been
- * selected and initialized.
- */
-export interface ChatExecutor {
-  chat(messages: PackedChatMessage[], params?: ChatCompletionParams, callback?: ChatCallback | null, options?: ChatRequestOptions): Promise<void>;
-}
 
 /**
  * Converts user-owned chat model config into runtime-only provider constructor args.
@@ -71,3 +61,5 @@ export function createChatExecutor(config: ChatModelProviderConfig): ChatExecuto
 
   return new OpenAIClient(config.baseURL, config.apiKey, config.model);
 }
+
+export type { ChatExecutor };

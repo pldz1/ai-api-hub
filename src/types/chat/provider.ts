@@ -1,4 +1,5 @@
-import type { CapabilityOverrideMode, ChatModelCapabilities, ModelConfigBase } from "./shared";
+import type { ChatModelCapabilities } from "@/services/chat/types";
+import type { CapabilityOverrideMode, ModelConfigBase } from "./shared";
 
 /**
  * User-owned chat model configuration.

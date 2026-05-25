@@ -1,5 +1,5 @@
 // @ts-nocheck
-import type { ChatPromptContent, ChatPromptMessage, PackedPartChatMessage, PackedTextChatMessage } from "@/services/types";
+import type { ChatPromptContent, ChatPromptMessage, PackedPartChatMessage, PackedTextChatMessage } from "@/services/chat/types";
 
 /**
  * Chat message packing helpers.

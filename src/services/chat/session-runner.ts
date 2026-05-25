@@ -2,7 +2,7 @@ import store from "@/store";
 import { getModelFromSnapshot } from "@/models";
 import { getUuid } from "@/utils";
 import { tr } from "@/i18n";
-import type { ChatPromptMessage, ChatProviderResponse, TokenUsage } from "@/services/types";
+import type { ChatPromptMessage, ChatProviderResponse, TokenUsage } from "@/services/chat/types";
 
 import { addMessage } from "./conversation";
 import { ChatProxy } from "./chat-proxy";

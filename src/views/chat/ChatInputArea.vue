@@ -137,7 +137,7 @@ import {
   getSnapshotSupportedCapabilities,
 } from "@/models";
 import { packUserMsg } from "@/services";
-import type { ChatPromptMessage } from "@/services/types";
+import type { ChatPromptMessage } from "@/services/chat/types";
 import { dsAlert, getUuid, isValidUserMsg } from "@/utils";
 import ChatSettings from "@/views/chat/ChatSettings.vue";
 

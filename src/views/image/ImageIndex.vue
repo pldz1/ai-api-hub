@@ -52,11 +52,7 @@
     <div class="image-composer-wrap">
       <div class="image-composer" :class="{ 'has-images': attachments.length > 0 }" @paste="onPaste">
         <div v-if="attachments.length" class="image-input-preview-row">
-          <div
-            v-for="attachment in attachments"
-            :key="attachment.id"
-            class="image-input-preview"
-          >
+          <div v-for="attachment in attachments" :key="attachment.id" class="image-input-preview">
             <button
               class="image-input-preview-button"
               type="button"

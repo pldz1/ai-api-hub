@@ -1,9 +1,10 @@
 import store from "@/store";
 import { buildDefaultChatSettings, createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
-import { apiRequest } from "../storage";
+import { apiRequest } from "../app";
 import { dsAlert, isValidChatInfoArray, getUuid, generateRandomCname } from "@/utils";
 import { tr } from "@/i18n";
-import type { ChatListItem, ChatPromptMessage, StoredChatMessage } from "@/services/types";
+import type { ChatListItem, StoredChatMessage } from "@/services/types";
+import type { ChatPromptMessage } from "@/services/chat/types";
 import type { ChatModelConfig, ChatModelSettings, ConversationModelSnapshot, ExportedChatSessionSettings, PersistedChatSettingsPayload } from "@/types";
 import { removeChatSessionRunner } from "./session-runner";
 
@@ -24,9 +25,10 @@ const getAllMessageAPI = (cid: string) => apiRequest<StoredChatMessage[]>("post"
 const addMessageAPI = (cid: string, mid: string, message: string) => apiRequest<null>("post", "/_api/chat/addMessage", { cid, mid, message });
 const deleteMessageAPI = (cid: string, mid: string) => apiRequest<null>("post", "/_api/chat/deleteMessage", { cid, mid });
 
-function parseChatSettingsPayload(
-  rawData: string | PersistedChatSettingsPayload | Partial<ChatModelSettings> | null,
-): { modelSnapshot: ConversationModelSnapshot | null; settings: Partial<ChatModelSettings> } {
+function parseChatSettingsPayload(rawData: string | PersistedChatSettingsPayload | Partial<ChatModelSettings> | null): {
+  modelSnapshot: ConversationModelSnapshot | null;
+  settings: Partial<ChatModelSettings>;
+} {
   if (!rawData) return { modelSnapshot: null, settings: {} };
   const parsed = typeof rawData === "string" ? JSON.parse(rawData) : rawData;
   if (parsed && typeof parsed === "object" && "settings" in parsed) {
@@ -44,8 +46,7 @@ function buildChatSettingsPayloadFromState(
   fallbackModel: ChatModelConfig | null = null,
 ): PersistedChatSettingsPayload {
   const modelSnapshot =
-    conversation?.modelSnapshot ||
-    createConversationModelSnapshot(fallbackModel || store.state.curChatModel || store.state.models.chat?.[0] || null);
+    conversation?.modelSnapshot || createConversationModelSnapshot(fallbackModel || store.state.curChatModel || store.state.models.chat?.[0] || null);
   const model = getModelFromSnapshot(modelSnapshot) || fallbackModel || store.state.curChatModel || store.state.models.chat?.[0] || null;
 
   return {
@@ -67,7 +68,8 @@ function normalizeChatSettingsPayload(
   fallbackModel: ChatModelConfig | null = null,
 ): PersistedChatSettingsPayload {
   const payload = parseChatSettingsPayload(rawData);
-  const modelSnapshot = payload.modelSnapshot || createConversationModelSnapshot(fallbackModel || store.state.curChatModel || store.state.models.chat?.[0] || null);
+  const modelSnapshot =
+    payload.modelSnapshot || createConversationModelSnapshot(fallbackModel || store.state.curChatModel || store.state.models.chat?.[0] || null);
   const model = getModelFromSnapshot(modelSnapshot) || fallbackModel || store.state.curChatModel;
 
   return {

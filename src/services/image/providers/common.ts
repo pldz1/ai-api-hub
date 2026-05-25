@@ -1,13 +1,7 @@
 import { tr } from "@/i18n";
-import type {
-  ImageGenerationParams,
-  ImageGenerationResult,
-  ImageParamValue,
-  ImageProviderModel,
-  ImageRequest,
-  RequestBody,
-  TokenUsage,
-} from "@/services/types";
+import type { RequestBody } from "@/services/types";
+import type { ImageGenerationParams, ImageGenerationResult, ImageParamValue, ImageProviderModel, ImageRequest } from "@/services/image/types";
+import type { TokenUsage } from "@/services/chat/types";
 
 export const DEFAULT_IMAGE_QUALITY = "auto";
 export const DEFAULT_IMAGE_OUTPUT_FORMAT = "png";

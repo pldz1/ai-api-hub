@@ -58,12 +58,7 @@
             </button>
           </div>
 
-          <ModelEditor
-            :model="currentModel"
-            :model-suggestions="modelSuggestions"
-            :kind="kind"
-            @update:model="updateCurrentModel"
-          />
+          <ModelEditor :model="currentModel" :model-suggestions="modelSuggestions" :kind="kind" @update:model="updateCurrentModel" />
         </template>
 
         <div v-else class="settings-empty-detail">

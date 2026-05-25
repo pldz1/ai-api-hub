@@ -1,4 +1,4 @@
-import type { ImageModelProvider, ImageOperation, ImageParamValue, ModelParamDef, SelectOption } from "./shared";
+import type { ImageInputFile, ImageModelProvider, ImageOperation, ModelParamDef, SelectOption } from "@/services/image/types";
 import type { ImageProviderPayload } from "./provider";
 
 export interface ImageModelResolvedFields {
@@ -31,8 +31,8 @@ export interface ImageModelSettings {
   prompt: string;
   size: string;
   quality: string;
-  image: ImageParamValue | null;
-  mask: ImageParamValue | null;
+  image: ImageInputFile | null;
+  mask: ImageInputFile | null;
   n: number;
   [key: string]: unknown;
 }

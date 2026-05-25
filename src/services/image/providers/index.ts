@@ -1,7 +1,7 @@
 import { normalizeImageUsage } from "./common";
 import { generateAzureOpenAIImage } from "./azure-openai";
 import { generateOpenAIImage } from "./openai";
-import type { ImageGenerationParams, ImageGenerationResult, ImageProviderModel } from "@/services/types";
+import type { ImageGenerationParams, ImageGenerationResult, ImageProviderModel } from "@/services/image/types";
 
 export async function generateImageByProvider(model: ImageProviderModel, params: ImageGenerationParams): Promise<ImageGenerationResult> {
   try {

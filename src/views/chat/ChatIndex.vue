@@ -40,7 +40,7 @@ import { useStore } from "vuex";
 import type { ChatModelConfig } from "@/types";
 import { dsLoading } from "@/utils";
 import { ChatDrawer, addChat, getAllMessage, getChatSettings, getChatSessionRunner, resetCurrentChatDraft, stopChatSession } from "@/services";
-import type { ChatPromptMessage } from "@/services/types";
+import type { ChatPromptMessage } from "@/services/chat/types";
 import ChatInputArea from "@/views/chat/ChatInputArea.vue";
 import ChatInsTemplate from "@/views/chat/ChatInsTemplate.vue";
 import ChatScrollActions from "@/views/chat/ChatScrollActions.vue";

@@ -9,7 +9,7 @@ import copyIcon from "@/assets/svg/copy16.svg";
 import deleteIcon from "@/assets/svg/delete16.svg";
 import { createSvgIcon } from "@/utils/svg-icon";
 import { deleteMessage } from "../conversation";
-import type { ChatPromptContent } from "@/services/types";
+import type { ChatPromptContent } from "@/services/chat/types";
 
 /**
  * Chat message element factory.

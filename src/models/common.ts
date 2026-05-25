@@ -1,7 +1,6 @@
 import type {
   CapabilityOverrideMode,
   ChatFormProvider,
-  ChatModelCapabilities,
   ChatModelParamDef,
   ChatParamDefaultValue,
   ModelSettings,
@@ -11,6 +10,7 @@ import type {
   ImageModelParamType,
   ImageParamDefaultValue,
 } from "@/types";
+import type { ChatModelCapabilities } from "@/services/chat/types";
 
 type WorkspaceParamDefaultValue = ChatParamDefaultValue | ImageParamDefaultValue;
 

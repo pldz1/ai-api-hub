@@ -1,4 +1,5 @@
-import type { ImageOperation, ModelConfigBase } from "./shared";
+import type { ImageOperation } from "@/services/image/types";
+import type { ModelConfigBase } from "./shared";
 
 /**
  * User-owned image model configuration persisted in setting/import/export.

@@ -1,6 +1,5 @@
 import { OpenAIClient } from "./openai";
-import type { ChatCompletionParams } from "@/types";
-import type { ChatCallback, ChatRequestOptions, PackedChatMessage } from "@/services/types";
+import type { ChatCallback, ChatCompletionParams, ChatRequestOptions, PackedChatMessage } from "@/services/chat/types";
 
 function flattenLegacyMessages(messages: PackedChatMessage[]): PackedChatMessage[] {
   return messages.map((item) => {

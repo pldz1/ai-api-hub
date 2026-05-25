@@ -10,8 +10,8 @@ import {
   isOpenAIChatModel,
 } from "@/models";
 import { tr } from "@/i18n";
-import type { ChatCompletionParams, ChatModelCapabilities, ChatModelConfig, ChatModelSettings, ConversationModelSnapshot } from "@/types";
-import type { ChatCallback, ChatPromptMessage, PackedChatMessage } from "@/services/types";
+import type { ChatModelConfig, ChatModelSettings, ConversationModelSnapshot } from "@/types";
+import type { ChatCallback, ChatCompletionParams, ChatModelCapabilities, ChatPromptMessage, PackedChatMessage } from "@/services/chat/types";
 
 import { packMessageV1, packMessageV2 } from "./message";
 import { createChatExecutor, createChatProviderConfig, type ChatExecutor } from "./providers";

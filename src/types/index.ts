@@ -1,16 +1,12 @@
 export * from "./settings";
 
+// App-level chat types (user-owned config, editor state, conversation, etc.)
 export {
   type CapabilityOverrideMode,
-  type ChatCompletionParams,
   type ChatFormProvider,
-  type ChatMessageRole,
-  type ChatModelCapabilities,
-  type ChatModelCapabilityProfile,
   type ChatModelConfig,
   type ChatModelEditorState,
   type ChatModelOption,
-  type ChatModelProvider,
   type ChatModelResolvedFields,
   type ChatModelSettings,
   type ConversationModelSnapshot,
@@ -20,13 +16,12 @@ export {
   type PromptMessage,
   type ResolvedChatModelConfig,
   type ChatProviderPayload,
-  type ChatModelConfigBase,
-  type ChatModelParamDef,
-  type ChatModelParamType,
-  type ChatParamDefaultValue,
-  type ChatSelectOption,
 } from "./chat";
 
+// App-friendly aliases for AI-capability primitives.
+export type { ChatModelConfigBase, ChatModelParamDef, ChatModelParamType, ChatParamDefaultValue, ChatSelectOption } from "./chat";
+
+// User-owned provider payload types.
 export {
   type AzureOpenAIChatProviderPayload,
   type AzureAIFoundryChatProviderPayload,
@@ -37,6 +32,7 @@ export {
   type OpenAIStyleChatProviderPayload,
 } from "./chat";
 
+// Image types.
 export {
   type ImageModelConfig,
   type ImageModelEditorState,
@@ -45,7 +41,7 @@ export {
   type ImageModelResolvedFields,
   type ImageModelSettings,
   type ImageOperation,
-  type ImageParamValue,
+  type ImageInputFile,
   type ResolvedImageModelConfig,
   type ImageProviderPayload,
   type ImageModelConfigBase,
@@ -64,8 +60,4 @@ export {
   type ImageTurnResponse,
 } from "./image";
 
-export {
-  type AzureOpenAIImageProviderPayload,
-  type ImageProviderPayloadBase,
-  type OpenAIImageProviderPayload,
-} from "./image";
+export { type AzureOpenAIImageProviderPayload, type ImageProviderPayloadBase, type OpenAIImageProviderPayload } from "./image";

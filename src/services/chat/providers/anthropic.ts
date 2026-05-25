@@ -1,8 +1,7 @@
 import { normalizeUsage } from "./usage";
 import { requestJson, streamJsonEvents, type JsonObject } from "./sse-client";
 import { tr } from "@/i18n";
-import type { ChatCompletionParams } from "@/types";
-import type { ChatCallback, ChatProviderResponse, ChatRequestOptions, PackedChatMessage } from "@/services/types";
+import type { ChatCallback, ChatCompletionParams, ChatProviderResponse, ChatRequestOptions, PackedChatMessage } from "@/services/chat/types";
 
 type AnthropicProviderKind = "Anthropic" | "Azure AI Foundry";
 

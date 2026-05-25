@@ -7,7 +7,7 @@ import { renderBlock } from "../../markdown/md-render";
 import { ChatProxy } from "../chat-proxy";
 import { ChatElemCreator } from "./message-elements";
 import { addMessage } from "../conversation";
-import type { ChatPromptContent, ChatPromptMessage, ChatProviderResponse, TokenUsage } from "@/services/types";
+import type { ChatPromptContent, ChatPromptMessage, ChatProviderResponse, TokenUsage } from "@/services/chat/types";
 
 /**
  * Chat drawer.

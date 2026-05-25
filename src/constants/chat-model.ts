@@ -1,12 +1,5 @@
-import type {
-  ChatModelParamDef,
-  ChatModelCapabilities,
-  ChatModelCapabilityProfile,
-  ChatModelEditorState,
-  ChatModelOption,
-  ChatModelProvider,
-  ChatSelectOption,
-} from "@/types";
+import type { ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelProvider } from "@/services/chat/types";
+import type { ChatModelParamDef, ChatModelEditorState, ChatModelOption, ChatSelectOption } from "@/types";
 
 type LooseParamDef = Partial<ChatModelParamDef> & { key?: string };
 

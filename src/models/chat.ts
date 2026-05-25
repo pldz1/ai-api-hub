@@ -1,15 +1,5 @@
-import type {
-  ChatCompletionParams,
-  ChatModelCapabilities,
-  ChatModelCapabilityProfile,
-  ChatModelConfig,
-  ChatModelOption,
-  ChatModelSettings,
-  ConversationModelSnapshot,
-  ChatModelParamDef,
-  ChatParamDefaultValue,
-  ChatModelEditorState,
-} from "@/types";
+import type { ChatCompletionParams, ChatModelCapabilities, ChatModelCapabilityProfile } from "@/services/chat/types";
+import type { ChatModelConfig, ChatModelOption, ChatModelSettings, ConversationModelSnapshot, ChatModelParamDef, ChatParamDefaultValue } from "@/types";
 import { tr } from "@/i18n";
 import { chatParamPresetList, defaultModelCapabilities, chatModelCatalog, type ChatModelCatalogItem, baseCapabilityProfile } from "@/constants";
 import { LooseModelConfig, parseParamValue } from "./common";
@@ -69,7 +59,7 @@ export function normalizeChatModelConfig(model: LooseModelConfig | null | undefi
   return {
     ...basePayload,
     provider: nextProvider,
-    baseURL: String(model.baseURL || "").trim(),
+    baseURL: String(model?.baseURL || "").trim(),
   };
 }
 

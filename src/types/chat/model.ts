@@ -1,14 +1,13 @@
 import type {
-  CapabilityOverrideMode,
   ChatMessageRole,
   ChatModelCapabilities,
   ChatModelCapabilityProfile,
   ChatModelProvider,
-  ChatFormProvider,
+  ChatParamRecord,
   ModelParamDef,
-  ParamDefaultValue,
   SelectOption,
-} from "./shared";
+} from "@/services/chat/types";
+import type { CapabilityOverrideMode, ChatFormProvider } from "./shared";
 import type { ChatProviderPayload } from "./provider";
 
 /**
@@ -86,30 +85,14 @@ export interface PromptMessage {
 }
 
 /**
- * Canonical value type for one user-configurable chat parameter.
+ * Per-conversation chat settings merged with a model's parameter definitions.
  *
- * This is shared by settings state and the normalized request-param bag built
- * from those settings.
+ * `passedMsgLen` and `prompts` are stable app-level fields; the index signature
+ * holds model-specific request parameters such as temperature or max tokens.
  */
-export type ChatParamValue = ParamDefaultValue | undefined;
-export type ChatParamRecord = Record<string, ChatParamValue>;
-
-/** Stream options appended by runtime when building provider request params. */
-export interface ChatStreamOptions {
-  [key: string]: unknown;
-  include_usage?: boolean;
-}
-
-/**
- * Normalized request-param bag derived from chat settings.
- *
- * All model-specific keys keep the same names as the settings form. Runtime-only
- * control flags such as `stream` and turn toggles are added explicitly here.
- */
-export interface ChatCompletionParams extends ChatParamRecord {
-  stream?: boolean;
-  stream_options?: ChatStreamOptions;
-  webSearch?: boolean;
+export interface ChatModelSettings extends ChatParamRecord {
+  passedMsgLen: number;
+  prompts: PromptMessage[];
 }
 
 /**
@@ -129,15 +112,4 @@ export interface ExportedChatSessionSettings {
   cid: string;
   cname: string;
   payload: PersistedChatSettingsPayload;
-}
-
-/**
- * Per-conversation chat settings merged with a model's parameter definitions.
- *
- * `passedMsgLen` and `prompts` are stable app-level fields; the index signature
- * holds model-specific request parameters such as temperature or max tokens.
- */
-export interface ChatModelSettings extends ChatParamRecord {
-  passedMsgLen: number;
-  prompts: PromptMessage[];
 }
