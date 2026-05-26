@@ -11,7 +11,6 @@ export type { ModelParamDef, ModelParamType, ParamDefaultValue, SelectOption } f
 // ============================================================================
 
 export type ImageModelProvider = "OpenAI" | "Azure OpenAI";
-export type ImageOperation = "generation" | "edit";
 
 // ============================================================================
 // User-owned model config consumed by image services
@@ -21,7 +20,6 @@ export interface ImageModelConfigBase {
   name: string;
   apiKey: string;
   model: string;
-  imageOperation: ImageOperation;
 }
 
 export interface OpenAIImageModelConfig extends ImageModelConfigBase {
@@ -99,7 +97,6 @@ export interface ImageProviderModel {
   endpoint?: string;
   deployment?: string;
   apiVersion?: string;
-  imageOperation?: ImageOperation;
 }
 
 export type ImageModelParamType = "number" | "string" | "array" | "boolean" | "object" | "image";

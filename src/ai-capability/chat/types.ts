@@ -148,7 +148,7 @@ export interface ChatPromptMessage {
 }
 
 // ============================================================================
-// Packed / legacy message shapes (for older protocol versions)
+// Packed message shapes used when serializing normalized chat content
 // ============================================================================
 
 export interface PackedTextChatMessage {

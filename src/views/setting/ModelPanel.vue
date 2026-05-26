@@ -128,7 +128,6 @@ function addModel() {
         baseURL: "https://api.openai.com/v1",
         apiKey: "",
         model: "",
-        imageOperation: "generation",
       } as ImageModelConfig)
     : ({
         name: append4Random(t("user.chatModels.defaultName")),

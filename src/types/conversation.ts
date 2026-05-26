@@ -17,7 +17,7 @@ export type ChatFormProvider = ChatModelProvider | "";
  */
 export interface ChatModelOption extends SelectOption {
   isReasonModel: boolean;
-  msgTypeVersion: "v1" | "v2";
+  messageFormat: "text" | "parts";
   capabilityProfile: ChatModelCapabilityProfile;
   capabilities: Pick<ChatModelCapabilities, "webSearch" | "imageRead">;
 }

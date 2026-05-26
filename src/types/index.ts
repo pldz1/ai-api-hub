@@ -2,7 +2,7 @@
 export type { ChatModelConfig, ParamDefaultValue, ChatModelCapabilities } from "@/ai-capability/chat";
 
 // App-level chat types (user-owned config, editor state, conversation, etc.)
-export { 
+export {
   type ChatFormProvider,
   type ChatModelEditorState,
   type ChatModelOption,
@@ -12,15 +12,7 @@ export {
   type PersistedChatSettingsPayload,
 } from "./conversation";
 
-export type {
-  ImageModelConfig,
-  ImageModelProvider,
-  ImageOperation,
-  ImageInputFile,
-  ImageModelParamDef,
-  ImageModelParamType,
-  ImageSelectOption,
-} from "@/ai-capability/image";
+export type { ImageModelConfig, ImageModelProvider, ImageInputFile, ImageModelParamDef, ImageModelParamType, ImageSelectOption } from "@/ai-capability/image";
 
 // Image types.
 export {

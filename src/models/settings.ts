@@ -29,7 +29,6 @@ function sanitizeImageModelConfig(model: ImageModelConfig): ImageModelConfig {
     provider: model.provider,
     apiKey: model.apiKey,
     model: model.model,
-    imageOperation: "generation",
     ...("baseURL" in model ? { baseURL: model.baseURL } : {}),
     ...("endpoint" in model ? { endpoint: model.endpoint } : {}),
     ...("deployment" in model ? { deployment: model.deployment } : {}),
@@ -93,7 +92,6 @@ function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConf
     provider: modelConfig.provider,
     apiKey: modelConfig.apiKey,
     model: modelConfig.model,
-    imageOperation: modelConfig.imageOperation,
   };
 
   if (modelConfig.provider === "Azure OpenAI") {

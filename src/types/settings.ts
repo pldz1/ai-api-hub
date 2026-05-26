@@ -1,5 +1,5 @@
 import type { ChatModelConfig } from "@/ai-capability/chat/types";
-import type { ImageModelConfig, ImageModelProvider, ImageOperation } from "@/ai-capability/image/types";
+import type { ImageModelConfig, ImageModelProvider } from "@/ai-capability/image/types";
 import type { ChatFormProvider, ExportedChatSessionSettings } from "./conversation";
 
 export type ModelKind = "chat" | "image";
@@ -57,5 +57,4 @@ export interface LooseModelConfig {
   modelType?: string;
   deployment?: string;
   apiVersion?: string;
-  imageOperation?: ImageOperation | "";
 }

@@ -1,6 +1,8 @@
 import type { ChatCallback, ChatCompletionParams, ChatModelCapabilities, ChatModelConfig, ChatPromptMessage, PackedChatMessage } from "./types";
-import { packMessageV1, packMessageV2 } from "./message";
+import { packPartMessages, packTextMessages } from "./message";
 import { createChatExecutor, createChatProviderConfig, type ChatExecutor } from "./providers";
+
+export type ChatMessageFormat = "text" | "parts";
 
 export interface ChatPromptSettings {
   prompts?: ChatPromptMessage[];
@@ -10,14 +12,14 @@ export interface ChatPromptSettings {
 export interface ChatRequestContext {
   model?: ChatModelConfig | null;
   settings?: ChatPromptSettings | null;
-  msgTypeVersion?: "v1" | "v2";
+  messageFormat?: ChatMessageFormat;
   buildParams?: (model: ChatModelConfig | null, settings: ChatPromptSettings | null) => ChatCompletionParams;
 }
 
 /**
  * Runtime bridge between normalized chat messages and provider clients.
  *
- * It packs messages for the selected protocol version, applies turn-level
+ * It packs messages for the selected message format, applies turn-level
  * capabilities, and delegates the actual network call to a provider executor.
  */
 export class ChatGateway {
@@ -72,7 +74,7 @@ export class ChatGateway {
       this.init({ ...context, model });
       abortController = new AbortController();
       this.abortController = abortController;
-      const messages = this.getChatMessages(data, context?.settings, context.msgTypeVersion);
+      const messages = this.getChatMessages(data, context?.settings, context.messageFormat);
       await this.executor.chat(messages, this.getChatParams(model, context?.settings, turnCapabilities, context.buildParams), callback, {
         signal: abortController.signal,
       });
@@ -93,15 +95,15 @@ export class ChatGateway {
   /**
    * Build provider-ready chat messages with the active system prompt.
    */
-  getChatMessages(data: ChatPromptMessage[], settings: ChatPromptSettings | null = null, msgTypeVersion: "v1" | "v2" = "v2"): PackedChatMessage[] {
+  getChatMessages(data: ChatPromptMessage[], settings: ChatPromptSettings | null = null, messageFormat: ChatMessageFormat = "parts"): PackedChatMessage[] {
     const cms = settings;
     const firstPromptContent = cms?.prompts?.[0]?.content?.[0];
     const hasSystemPrompt = firstPromptContent?.type === "text" && Boolean(firstPromptContent.text);
     const combineData = hasSystemPrompt ? [...(cms?.prompts || []), ...data] : data;
-    if (msgTypeVersion == "v1") {
-      return packMessageV1(combineData);
+    if (messageFormat == "text") {
+      return packTextMessages(combineData);
     }
-    return packMessageV2(combineData);
+    return packPartMessages(combineData);
   }
 
   /**

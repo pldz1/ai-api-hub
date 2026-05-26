@@ -42,7 +42,6 @@ export function normalizeImageModelConfig(model: LooseModelConfig | null | undef
       apiVersion: String(data.apiVersion || "").trim(),
       apiKey: String(data.apiKey || "").trim(),
       model: modelId,
-      imageOperation: "generation",
     };
   }
 
@@ -52,7 +51,6 @@ export function normalizeImageModelConfig(model: LooseModelConfig | null | undef
     baseURL: String(data.baseURL || "").trim(),
     apiKey: String(data.apiKey || "").trim(),
     model: modelId,
-    imageOperation: "generation",
   };
 }
 

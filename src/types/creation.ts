@@ -1,5 +1,5 @@
 import type { TokenUsage } from "@/ai-capability/common";
-import type { ImageModelProvider, ImageInputFile, ImageModelConfig, ImageOperation, SelectOption } from "@/ai-capability/image/types";
+import type { ImageModelProvider, ImageInputFile, ImageModelConfig, SelectOption } from "@/ai-capability/image/types";
 
 export type ImageConversationRole = "user" | "assistant";
 export type ImageConversationMode = "generation" | "edit";
@@ -20,7 +20,6 @@ export interface ImageModelEditorState {
   model: string;
   deployment: string;
   apiVersion: string;
-  imageOperation: ImageOperation;
 }
 
 export interface ImageModelSettings {

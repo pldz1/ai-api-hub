@@ -22,7 +22,7 @@ export function createChatRequestContext(chatId: string = "", model: ChatModelCo
   return {
     model: activeModel,
     settings,
-    msgTypeVersion: modelInfo?.msgTypeVersion || "v2",
+    messageFormat: modelInfo?.messageFormat || "parts",
     buildParams: buildChatCompletionParams,
   };
 }

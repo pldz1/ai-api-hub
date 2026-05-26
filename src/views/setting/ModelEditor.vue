@@ -130,7 +130,7 @@ import { computed, reactive, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import copyIcon from "@/assets/svg/copy16.svg";
 import SvgIcon from "@/components/SvgIcon.vue";
-import { chatDisplayedCapabilityKeys, defaultChatModelEditorState, defaultImageModelEditorState, imageModelProviderList, providerList } from "@/constants";
+import { chatDisplayedCapabilityKeys, defaultChatModelEditorState, imageModelProviderList, providerList } from "@/constants";
 import { dsAlert } from "@/utils";
 import { getChatModelCapabilities, imageParamDefs } from "@/models";
 import type { SelectOption } from "@/ai-capability/chat/types";
@@ -139,14 +139,12 @@ import type {
   ChatModelEditorState,
   ImageModelConfig,
   ImageModelEditorState,
-  ImageOperation,
   ModelConfig,
   ModelKind,
 } from "@/types";
 
 type ModelEditorState = Omit<ChatModelEditorState, "provider"> & {
   provider: ChatModelEditorState["provider"] | ImageModelEditorState["provider"];
-  imageOperation: ImageOperation;
 };
 type ModelEditorInput = Partial<ModelConfig> & { apiType?: ModelEditorState["provider"] };
 
@@ -167,7 +165,6 @@ const { t } = useI18n();
 
 const localModel = reactive<ModelEditorState>({
   ...structuredClone(defaultChatModelEditorState),
-  imageOperation: defaultImageModelEditorState.imageOperation,
 });
 let isSyncingFromProps = false;
 let lastModelSnapshot = "";
@@ -245,7 +242,6 @@ const providerDefaultBaseUrls: Record<string, string> = {
 function createEmptyModelEditorState(): ModelEditorState {
   return {
     ...structuredClone(defaultChatModelEditorState),
-    imageOperation: defaultImageModelEditorState.imageOperation,
   };
 }
 
@@ -271,7 +267,6 @@ function normalizeModelFields() {
   const modelId = localModel.model.trim();
   if (isImageModel.value) {
     localModel.provider = localModel.provider === "Azure OpenAI" ? "Azure OpenAI" : "OpenAI";
-    localModel.imageOperation = "generation";
     localModel.model = modelId;
     if (localModel.provider === "Azure OpenAI") {
       localModel.baseURL = "";
@@ -324,7 +319,6 @@ function buildImageModelPayload(): ImageModelConfig {
     name: localModel.name,
     apiKey: localModel.apiKey,
     model: localModel.model,
-    imageOperation: "generation" as ImageOperation,
   };
 
   if (localModel.provider === "Azure OpenAI") {

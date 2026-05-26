@@ -78,5 +78,4 @@ export const defaultImageModelEditorState: ImageModelEditorState = {
   model: "",
   deployment: "",
   apiVersion: "",
-  imageOperation: "generation",
 };

@@ -295,12 +295,12 @@ export const languages = {
         azureRequestTarget: "请求会发送到 Azure deployment={deployment}。",
         behavior: {
           chat: "普通对话",
-          v1: "v1 消息格式",
-          v2: "v2 消息格式",
+          text: "纯文本消息",
+          parts: "内容分段消息",
         },
-        capabilitiesDescription: "模型内置能力。图片表示可读取图片输入；思考和联网是按消息启用的可选动作。",
+        capabilitiesDescription: "这里展示模型原生支持的输入与工具能力。图片表示可接收图片输入；联网等动作会在发送消息时按需启用。",
         capabilitiesTitle: "能力",
-        chatModelHelp: "模型能力标识，也是发送给 Provider 的 model。建议项只用于快速填充。",
+        chatModelHelp: "这里填写发送给 Provider 的模型标识。建议项只是便捷填充，不代表平台官方分类。",
         chatSubtitle: "配置聊天模型的 Provider、请求地址和鉴权。",
         chatTitle: "对话模型",
         fields: {
@@ -683,12 +683,12 @@ export const languages = {
         azureRequestTarget: "Requests target Azure deployment={deployment}.",
         behavior: {
           chat: "Chat",
-          v1: "v1 message mode",
-          v2: "v2 message mode",
+          text: "Text-only messages",
+          parts: "Content-part messages",
         },
-        capabilitiesDescription: "Built-in model capabilities. Image means image-reading support; Thinking and Web are optional per-message actions.",
+        capabilitiesDescription: "This shows the model's native input and tool support. Image means it can accept image input, while actions like web search are enabled per message when needed.",
         capabilitiesTitle: "Capabilities",
-        chatModelHelp: "The model capability ID and the model sent to the provider. Suggestions are only shortcuts.",
+        chatModelHelp: "Enter the model ID sent to the provider. Suggestions are only convenience shortcuts and are not official platform categories.",
         chatSubtitle: "Configure the chat model provider, request URL, and authentication.",
         chatTitle: "Chat Model",
         fields: {

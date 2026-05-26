@@ -125,7 +125,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     value: "gpt-5.5",
     name: "gpt-5.5",
     isReasonModel: true,
-    msgTypeVersion: "v2",
+    messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
     capabilities: { webSearch: true, imageRead: true },
     capabilityProfile: {
@@ -139,7 +139,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     value: "gpt-5.4",
     name: "gpt-5.4",
     isReasonModel: true,
-    msgTypeVersion: "v2",
+    messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
     capabilities: { webSearch: true, imageRead: true },
     capabilityProfile: {
@@ -153,7 +153,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     value: "gpt-4.1",
     name: "gpt-4.1",
     isReasonModel: false,
-    msgTypeVersion: "v2",
+    messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
     capabilities: { webSearch: true, imageRead: true },
     capabilityProfile: {
@@ -167,7 +167,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     value: "gpt-4o",
     name: "gpt-4o",
     isReasonModel: false,
-    msgTypeVersion: "v2",
+    messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
     capabilities: { webSearch: true, imageRead: true },
     capabilityProfile: {
@@ -181,7 +181,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     value: "gpt-4o-mini",
     name: "gpt-4o-mini",
     isReasonModel: false,
-    msgTypeVersion: "v2",
+    messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
     capabilities: { webSearch: false, imageRead: true },
     capabilityProfile: {
@@ -195,7 +195,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     value: "claude-opus-4-7",
     name: "claude-opus-4-7",
     isReasonModel: false,
-    msgTypeVersion: "v2",
+    messageFormat: "parts",
     chatParamKeys: ["max_tokens", "temperature", "top_p"],
     capabilities: { webSearch: false, imageRead: true },
     capabilityProfile: {
@@ -209,7 +209,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     value: "claude-sonnet-4-6",
     name: "claude-sonnet-4-6",
     isReasonModel: false,
-    msgTypeVersion: "v2",
+    messageFormat: "parts",
     chatParamKeys: ["max_tokens", "temperature", "top_p"],
     capabilities: { webSearch: false, imageRead: true },
     capabilityProfile: {
@@ -223,7 +223,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     value: "claude-haiku-4-5",
     name: "claude-haiku-4-5",
     isReasonModel: false,
-    msgTypeVersion: "v2",
+    messageFormat: "parts",
     chatParamKeys: ["max_tokens", "temperature", "top_p"],
     capabilities: { webSearch: false, imageRead: true },
     capabilityProfile: {
