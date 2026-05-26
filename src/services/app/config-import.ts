@@ -2,7 +2,6 @@ import store from "@/store";
 import { migratePersistedModelSettings } from "@/models";
 import { dsAlert, getSettingsImportValidationError, isSettingsImportPackage, isValidSettingsImport } from "@/utils";
 import { tr } from "@/i18n";
-import { importChatSessionSettings } from "../conversation";
 import { getModels, setChatInsTemplateList, setModels } from "./settings";
 import type { PersistedModelSettingsPayload, SettingsImportPayload } from "@/types";
 
@@ -106,10 +105,6 @@ export async function importSettingsPayload(data: unknown, options: ImportConfig
 
     const modelsSaved = await setModels(models);
     const templatesSaved = Array.isArray(importedPackage.templates) ? await setChatInsTemplateList(importedPackage.templates) : true;
-
-    if (Array.isArray(importedPackage.chatSessions)) {
-      await importChatSessionSettings(importedPackage.chatSessions);
-    }
 
     if (modelsSaved === false || templatesSaved === false) return false;
   } else {

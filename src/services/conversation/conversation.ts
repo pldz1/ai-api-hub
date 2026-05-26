@@ -1,5 +1,5 @@
 import store from "@/store";
-import { buildDefaultChatSettings, createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
+import { createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
 import { dsAlert, generateRandomCname, getUuid, isValidChatInfoArray } from "@/utils";
 import { tr } from "@/i18n";
 import type { ChatListItem } from "@/services/types";
@@ -16,7 +16,9 @@ function getDefaultChatModel(): ChatModelConfig | null {
 }
 
 function createConversation(chatId: string, title: string, model: ChatModelConfig | null) {
-  const modelSnapshot = createConversationModelSnapshot(model || store.state.curConversation?.modelSnapshot?.modelConfig || store.state.curChatModel || getDefaultChatModel());
+  const modelSnapshot = createConversationModelSnapshot(
+    model || store.state.curConversation?.modelSnapshot?.modelConfig || store.state.curChatModel || getDefaultChatModel(),
+  );
   if (!modelSnapshot) return null;
 
   return {
@@ -87,7 +89,7 @@ function parseStoredMessages(records: { mid: string; message: string }[]): {
 }
 
 export async function resetCurrentChatDraft(): Promise<void> {
-  await store.dispatch("setCurChatModelSettings", buildDefaultChatSettings(store.state.curChatModel));
+  await store.dispatch("setCurChatModelSettings", mergeChatSettingsWithModel(store.state.curChatModel, {}));
   await store.dispatch("setCurChatId", "");
   await store.dispatch("setCurConversation", null);
 }
@@ -136,62 +138,6 @@ export async function setChatSettings(cid: string = store.state.curChatId): Prom
   }
 
   return true;
-}
-
-export async function exportChatSessionSettings(): Promise<ExportedChatSessionSettings[]> {
-  const chatListResponse = await chatConversationApi.getList();
-  if (!chatListResponse.flag || !isValidChatInfoArray(chatListResponse.data)) {
-    throw new Error(chatListResponse.log || tr("toast.chatListInvalid"));
-  }
-
-  const fallbackModel = getDefaultChatModel();
-  return Promise.all(
-    chatListResponse.data.map(async (chat) => {
-      const settingsResponse = await chatSettingsApi.get(chat.cid);
-      if (!settingsResponse.flag) {
-        throw new Error(settingsResponse.log || `Failed to fetch chat settings for ${chat.cid}`);
-      }
-
-      return {
-        cid: chat.cid,
-        cname: chat.cname,
-        payload: normalizeChatSettingsPayload(settingsResponse.data, fallbackModel),
-      } satisfies ExportedChatSessionSettings;
-    }),
-  );
-}
-
-export async function importChatSessionSettings(entries: ExportedChatSessionSettings[] = []): Promise<void> {
-  if (!Array.isArray(entries) || entries.length === 0) return;
-
-  const existingChatListResponse = await chatConversationApi.getList();
-  const existingChats = existingChatListResponse.flag && isValidChatInfoArray(existingChatListResponse.data) ? existingChatListResponse.data : [];
-  const existingChatMap = new Map(existingChats.map((item) => [item.cid, item]));
-  const fallbackModel = getDefaultChatModel();
-
-  for (const entry of entries) {
-    if (!entry?.cid || !entry?.cname || !entry?.payload) continue;
-
-    const existingChat = existingChatMap.get(entry.cid);
-    if (!existingChat) {
-      const addResponse = await chatConversationApi.add(entry.cid, entry.cname);
-      if (!addResponse.flag) throw new Error(addResponse.log || `Failed to create chat ${entry.cid}`);
-      existingChatMap.set(entry.cid, { cid: entry.cid, cname: entry.cname });
-    } else if (existingChat.cname !== entry.cname) {
-      const renameResponse = await chatConversationApi.rename(entry.cid, entry.cname);
-      if (!renameResponse.flag) throw new Error(renameResponse.log || `Failed to rename chat ${entry.cid}`);
-      existingChatMap.set(entry.cid, { cid: entry.cid, cname: entry.cname });
-    }
-
-    const normalizedPayload = normalizeChatSettingsPayload(entry.payload, fallbackModel);
-    const saveResponse = await chatSettingsApi.set(entry.cid, normalizedPayload);
-    if (!saveResponse.flag) throw new Error(saveResponse.log || `Failed to save chat settings for ${entry.cid}`);
-  }
-
-  await getChatList();
-  if (store.state.curChatId && existingChatMap.has(store.state.curChatId)) {
-    await getChatSettings(store.state.curChatId);
-  }
 }
 
 export async function addChat(name: string | null = null, model: ChatModelConfig | null = null): Promise<boolean> {

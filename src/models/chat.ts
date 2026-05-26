@@ -1,10 +1,11 @@
-import type { ChatCompletionParams, ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelConfig, ModelParamDef, ParamDefaultValue } from "@/ai-capability/chat/types";
-import type { ChatModelOption, ChatModelSettings, ConversationModelSnapshot } from "@/types";
+import type { ChatCompletionParams, ChatModelCapabilities, ChatModelConfig, ModelParamDef, ParamDefaultValue } from "@/ai-capability/chat/types";
+import type { ChatModelSettings, ConversationModelSnapshot, LooseModelConfig } from "@/types";
 import { tr } from "@/i18n";
 import { chatParamPresetList, defaultModelCapabilities, chatModelCatalog, type ChatModelCatalogItem, baseCapabilityProfile } from "@/constants";
-import { LooseModelConfig, parseParamValue } from "./common";
+import { parseParamValue } from "./settings";
 
 type LooseChatParamDef = Partial<ModelParamDef> & { key?: string };
+const chatParamDefMap = new Map(chatParamPresetList.map((item) => [item.key, item] as const));
 
 /** Returns whether a user model config should use Azure OpenAI routing. */
 export function isAzureChatModel(model: ChatModelConfig | null | undefined): model is ChatModelConfig & { provider: "Azure OpenAI" } {
@@ -83,19 +84,13 @@ function findChatModelCatalogItem(model = "", provider = ""): ChatModelCatalogIt
   );
 }
 
-/** Returns the full capability profile declared by the model catalog. */
-export function getChatModelCapabilityProfile(model = "", provider = ""): ChatModelCapabilityProfile {
-  const catalogItem = findChatModelCatalogItem(model, provider);
-  return catalogItem?.capabilityProfile || baseCapabilityProfile;
-}
-
 /**
  * Returns the capabilities declared by the built-in model catalog for a model id.
  *
  * These are support flags, not user toggles.
  */
 export function getChatModelCapabilities(model = "", provider = "OpenAI"): ChatModelCapabilities {
-  const profile = getChatModelCapabilityProfile(model, provider);
+  const profile = findChatModelCatalogItem(model, provider)?.capabilityProfile || baseCapabilityProfile;
   const uiCapabilities: ChatModelCapabilities = {
     imageRead: profile.modalities.imageInput,
     webSearch: profile.tools.webSearch,
@@ -188,74 +183,9 @@ export function getModelFromSnapshot(snapshot: ConversationModelSnapshot | null 
   return snapshot?.modelConfig ? normalizeChatModelConfig(snapshot.modelConfig) : null;
 }
 
-/**
- * Returns catalog-supported capabilities for the model bound to a conversation.
- *
- * This is derived on demand from the snapshot's `modelConfig`.
- */
-export function getSnapshotSupportedCapabilities(snapshot: ConversationModelSnapshot | null | undefined): ChatModelCapabilities {
-  const model = getModelFromSnapshot(snapshot);
-  if (!model) return { ...defaultModelCapabilities };
-  return getChatModelCapabilities(model.model, model.provider);
-}
-
-/**
- * Returns user-enabled capabilities for the model bound to a conversation.
- *
- * This combines the snapshot model config with catalog support flags.
- */
-export function getSnapshotEnabledCapabilities(snapshot: ConversationModelSnapshot | null | undefined): ChatModelCapabilities {
-  const model = getModelFromSnapshot(snapshot);
-  if (!model) return { ...defaultModelCapabilities };
-  return resolveConfiguredModelCapabilities(model, getSnapshotSupportedCapabilities(snapshot));
-}
-
-/**
- * Returns the request parameter definitions for the model bound to a conversation.
- *
- * This is derived from the snapshot model config and current model catalog.
- */
-export function getSnapshotChatParamDefs(snapshot: ConversationModelSnapshot | null | undefined): ModelParamDef[] {
-  const model = getModelFromSnapshot(snapshot);
-  return model ? getModelChatParamDefs(model) : [];
-}
-
-/** Returns display/protocol metadata for a chat model id from the built-in catalog. */
-export function getChatModelInfo(model = "", provider = ""): ChatModelOption {
-  const catalogItem = findChatModelCatalogItem(model, provider);
-  if (catalogItem) {
-    const { value, name, isReasonModel, msgTypeVersion, capabilityProfile, capabilities } = catalogItem;
-    return { value, name, isReasonModel, msgTypeVersion, capabilityProfile, capabilities };
-  }
-
-  return {
-    value: model,
-    name: model,
-    isReasonModel: false,
-    msgTypeVersion: "v2",
-    capabilityProfile: getChatModelCapabilityProfile(model, provider),
-    capabilities: { webSearch: false, imageRead: false },
-  };
-}
-
-function createDefaultChatPrompts(): ChatModelSettings["prompts"] {
-  return [{ role: "system", content: [{ type: "text", text: tr("chat.defaultSystemPrompt") }] }];
-}
-
-function createDefaultChatSettings(): ChatModelSettings {
-  return {
-    passedMsgLen: 10,
-    prompts: createDefaultChatPrompts(),
-  };
-}
-
-function getChatParamPreset(key = ""): LooseChatParamDef | null {
-  return chatParamPresetList.find((item) => item.key === key) || null;
-}
-
 /** Merges a raw chat parameter definition with the built-in preset defaults. */
 export function normalizeChatParamDef(def: LooseChatParamDef = {}): ModelParamDef {
-  const preset = getChatParamPreset(def.key);
+  const preset = chatParamDefMap.get(def.key || "") || null;
   const nextType = def.type || preset?.type || "string";
   const nextDefaultValue = parseParamValue<ParamDefaultValue>(nextType, def.defaultValue, structuredClone(preset?.defaultValue ?? ""));
 
@@ -273,62 +203,24 @@ export function normalizeChatParamDef(def: LooseChatParamDef = {}): ModelParamDe
   };
 }
 
-/** Returns default parameter definitions declared for a catalog model id. */
-export function getDefaultChatParamDefs(model = "", provider = ""): ModelParamDef[] {
-  return getChatParamKeysForModel(model, provider).map((key) => normalizeChatParamDef({ key }));
+const normalizedChatParamDefs = new Map(chatParamPresetList.map((item) => [item.key, normalizeChatParamDef(item)] as const));
+
+export function resolveChatParamDefs(model: LooseModelConfig | null = null): ModelParamDef[] {
+  return (findChatModelCatalogItem(model?.model || "", model?.provider || "")?.chatParamKeys || [])
+    .map((key) => normalizedChatParamDefs.get(key))
+    .filter(Boolean) as ModelParamDef[];
 }
 
-/** Returns request parameter keys declared for a catalog model id. */
-export function getChatParamKeysForModel(model = "", provider = ""): string[] {
-  return [...(findChatModelCatalogItem(model, provider)?.chatParamKeys || [])];
-}
-
-/**
- * Returns normalized parameter definitions for a configured chat model.
- *
- * If the model carries custom parameter definitions they win; otherwise the
- * built-in catalog definitions are used.
- */
-export function getModelChatParamDefs(model: LooseModelConfig = {}): ModelParamDef[] {
-  const provider = model?.provider;
-  const modelId = model?.model;
-  const hasCustomDefs = Array.isArray(model?.chatParamDefs) && model.chatParamDefs.length > 0;
-  const defs = hasCustomDefs ? model.chatParamDefs : getDefaultChatParamDefs(modelId, provider);
-  const seen = new Set();
-  const supportedKeys = new Set(hasCustomDefs ? model.chatParamDefs.map((item) => item.key).filter(Boolean) : getChatParamKeysForModel(modelId, provider));
-
-  return defs
-    .map((item) => normalizeChatParamDef(item))
-    .filter((item) => item.key && supportedKeys.has(item.key) && !seen.has(item.key) && (seen.add(item.key), true));
-}
-
-/**
- * Builds the initial settings object for a chat model.
- *
- * The result contains app-level defaults plus one entry for each resolved model
- * request parameter definition.
- */
-export function buildDefaultChatSettings(model: LooseModelConfig | null = null): ChatModelSettings {
-  const settings = structuredClone(createDefaultChatSettings());
-  const defs = getModelChatParamDefs(model || {});
+function mergeResolvedChatSettings(defs: ModelParamDef[], settings: Partial<ChatModelSettings> = {}): ChatModelSettings {
+  const defaultSettings: ChatModelSettings = {
+    passedMsgLen: 10,
+    prompts: [{ role: "system", content: [{ type: "text", text: tr("chat.defaultSystemPrompt") }] }],
+  };
+  const nextSettings = { ...settings };
 
   defs.forEach((item) => {
-    settings[item.key] = structuredClone(item.defaultValue);
+    defaultSettings[item.key] = structuredClone(item.defaultValue);
   });
-
-  return settings;
-}
-
-/**
- * Merges saved chat settings with defaults derived from the active model.
- *
- * This is the main normalization step used before rendering settings UI and
- * before building runtime request params.
- */
-export function mergeChatSettingsWithModel(model: LooseModelConfig | null = null, settings: Partial<ChatModelSettings> = {}): ChatModelSettings {
-  const defaultSettings = createDefaultChatSettings();
-  const defs = getModelChatParamDefs(model || {});
-  const nextSettings = { ...settings };
 
   const coreSettings: Partial<ChatModelSettings> = {
     prompts: Array.isArray(nextSettings.prompts) ? nextSettings.prompts : undefined,
@@ -336,7 +228,6 @@ export function mergeChatSettingsWithModel(model: LooseModelConfig | null = null
   };
   const mergedSettings = {
     ...structuredClone(defaultSettings),
-    ...buildDefaultChatSettings(model),
     ...nextSettings,
     ...coreSettings,
   };
@@ -359,14 +250,24 @@ export function mergeChatSettingsWithModel(model: LooseModelConfig | null = null
 }
 
 /**
+ * Merges saved chat settings with defaults derived from the active model.
+ *
+ * This is the main normalization step used before rendering settings UI and
+ * before building runtime request params.
+ */
+export function mergeChatSettingsWithModel(model: LooseModelConfig | null = null, settings: Partial<ChatModelSettings> = {}): ChatModelSettings {
+  return mergeResolvedChatSettings(resolveChatParamDefs(model), settings);
+}
+
+/**
  * Builds provider request params from user chat settings.
  *
  * This is the boundary where user-facing settings are transformed into the
  * runtime request body fields expected by provider clients.
  */
 export function buildChatCompletionParams(model: LooseModelConfig | null = null, settings: Partial<ChatModelSettings> = {}): ChatCompletionParams {
-  const defs = getModelChatParamDefs(model || {});
-  const mergedSettings = mergeChatSettingsWithModel(model, settings);
+  const defs = resolveChatParamDefs(model);
+  const mergedSettings = mergeResolvedChatSettings(defs, settings);
   const params: ChatCompletionParams = {};
 
   defs.forEach((item) => {

@@ -1,6 +1,5 @@
-import type { ImageModelConfig, ModelSettings, PersistedModelSettingsPayload } from "@/types";
-import type { ChatModelCapabilities, ChatModelConfig } from "@/ai-capability/chat/types";
-import { type LooseModelConfig, type LooseModelSettings } from "./common";
+import type { ImageModelConfig, ImageModelParamType, ModelSettings, PersistedModelSettingsPayload, LooseModelConfig } from "@/types";
+import type { ChatModelCapabilities, ChatModelConfig, ParamDefaultValue } from "@/ai-capability/chat/types";
 import { isAzureChatModel, normalizeChatModelConfig } from "./chat";
 import { normalizeImageModelConfig } from "./image";
 
@@ -122,11 +121,11 @@ export function sanitizeModelSettings(data: Partial<ModelSettings> | null | unde
  *
  * This is the main read-path bridge for old exports or older persisted payloads.
  */
-export function migratePersistedModelSettings(data: LooseModelSettings | null | undefined = {}): ModelSettings {
+export function migratePersistedModelSettings(data: Partial<ModelSettings> | null | undefined = {}): ModelSettings {
   const migrateModelEntries = (items: unknown[] = [], kind = "") =>
     (Array.isArray(items) ? items : []).map((item) => {
       if (kind === "chat") return normalizeChatModelConfig(item as LooseModelConfig);
-      if (kind === "image") return normalizeImageModelConfig(item as LooseModelConfig, "generation");
+      if (kind === "image") return normalizeImageModelConfig(item as LooseModelConfig);
       return item;
     });
 
@@ -173,7 +172,7 @@ function buildPersistedChatModelConfig(model: LooseModelConfig | ChatModelConfig
 
 /** Builds the persisted image payload written to storage/export for one model. */
 function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConfig): ImageModelConfig {
-  const modelConfig = normalizeImageModelConfig(model as LooseModelConfig, "generation");
+  const modelConfig = normalizeImageModelConfig(model as LooseModelConfig);
   const basePayload = {
     name: modelConfig.name,
     provider: modelConfig.provider,
@@ -206,10 +205,71 @@ function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConf
  * This is the write-side boundary between in-memory user config and serialized
  * persisted settings.
  */
-export function buildPersistedModelSettingsPayload(data: LooseModelSettings | null | undefined = {}): PersistedModelSettingsPayload {
+export function buildPersistedModelSettingsPayload(data: Partial<ModelSettings> | null | undefined = {}): PersistedModelSettingsPayload {
   const persistedSettings = migratePersistedModelSettings(data);
   return {
     chat: persistedSettings.chat.map((item) => buildPersistedChatModelConfig(item)),
     image: persistedSettings.image.map((item) => buildPersistedImageModelConfig(item)),
   };
+}
+
+/**
+ * Parses a raw settings value according to a parameter definition type.
+ *
+ * This is the common coercion layer used by both chat and image settings so the
+ * same stored value can be safely interpreted as number/boolean/object/etc.
+ */
+export function parseParamValue<T = ParamDefaultValue>(
+  type: ImageModelParamType | string = "string",
+  value: unknown = undefined,
+  fallback: T = undefined as T,
+): T {
+  if (value === undefined || value === null || value === "") {
+    return fallback;
+  }
+
+  if (type === "number") {
+    const nextValue = Number(value);
+    return (Number.isFinite(nextValue) ? nextValue : fallback) as T;
+  }
+
+  if (type === "boolean") {
+    if (typeof value === "boolean") return value as T;
+    if (value === "true") return true as T;
+    if (value === "false") return false as T;
+    return fallback;
+  }
+
+  if (type === "array") {
+    if (Array.isArray(value)) return value as T;
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        return (Array.isArray(parsed) ? parsed : fallback) as T;
+      } catch {
+        return fallback;
+      }
+    }
+    return fallback;
+  }
+
+  if (type === "object") {
+    if (value && typeof value === "object" && !Array.isArray(value)) return value as T;
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        return (parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : fallback) as T;
+      } catch {
+        return fallback;
+      }
+    }
+    return fallback;
+  }
+
+  if (type === "image") {
+    if (value && typeof value === "object" && !Array.isArray(value) && "filename" in value && "content_type" in value && "data" in value) return value as T;
+    return fallback;
+  }
+
+  return String(value) as T;
 }

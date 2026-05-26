@@ -1,12 +1,11 @@
 import { defaultModelCapabilities } from "@/constants";
 import {
-  buildDefaultChatSettings,
   createConversationModelSnapshot,
-  getSnapshotEnabledCapabilities,
+  getChatModelCapabilities,
   getModelFromSnapshot,
-  getSnapshotSupportedCapabilities,
   mergeChatSettingsWithModel,
   normalizeModelCapabilities,
+  resolveConfiguredModelCapabilities,
 } from "@/models";
 
 const emptyTokenUsage = () => ({
@@ -28,8 +27,9 @@ function normalizeTokenUsage(data: Record<string, unknown> = {}) {
 }
 
 function createInputCapabilities(conversation = null) {
-  const supported = getSnapshotSupportedCapabilities(conversation?.modelSnapshot) || defaultModelCapabilities;
-  const enabled = getSnapshotEnabledCapabilities(conversation?.modelSnapshot) || defaultModelCapabilities;
+  const model = getModelFromSnapshot(conversation?.modelSnapshot);
+  const supported = model ? getChatModelCapabilities(model.model, model.provider) : { ...defaultModelCapabilities };
+  const enabled = resolveConfiguredModelCapabilities(model, supported);
   const capabilities = normalizeModelCapabilities(enabled, supported);
   return capabilities;
 }
@@ -82,7 +82,7 @@ export const ChatState = {
   /**
    * 配置聊天模型的设置参数。
    */
-  curChatModelSettings: buildDefaultChatSettings(null),
+  curChatModelSettings: mergeChatSettingsWithModel(null, {}),
 
   /**
    * 当前激活会话的消息投影。
@@ -118,7 +118,7 @@ export const ChatState = {
     if (!this.chatConversationsById[cid]) this.chatConversationsById[cid] = null;
     if (!this.chatSettingsById[cid]) {
       const model = getModelFromSnapshot(this.chatConversationsById[cid]?.modelSnapshot) || this.curChatModel;
-      this.chatSettingsById[cid] = buildDefaultChatSettings(model);
+      this.chatSettingsById[cid] = mergeChatSettingsWithModel(model, {});
     }
     if (!this.chatInputCapabilitiesById[cid]) {
       this.chatInputCapabilitiesById[cid] = createInputCapabilities(this.chatConversationsById[cid]);

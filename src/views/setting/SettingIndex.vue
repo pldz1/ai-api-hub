@@ -56,16 +56,9 @@ import AppPanel from "./AppPanel.vue";
 import ModelPanel from "./ModelPanel.vue";
 import TemplatePanel from "./TemplatePanel.vue";
 import { buildPersistedModelSettingsPayload } from "@/models";
-import {
-  SETTINGS_IMPORTED_EVENT,
-  exportChatSessionSettings,
-  getChatInsTemplateList,
-  getModels,
-  importSettingsPayload,
-  setChatInsTemplateList,
-  setModels,
-} from "@/services";
+import { SETTINGS_IMPORTED_EVENT, getChatInsTemplateList, getModels, importSettingsPayload, setChatInsTemplateList, setModels } from "@/services";
 import { dsAlert, uploadJsonFile } from "@/utils";
+import { APP_NAME, APP_VERSION } from "@/constants";
 import type { ChatModelConfig, ImageModelConfig, ModelSettings, SettingsImportPayload } from "@/types";
 
 type SettingTabKey = "chat-templates" | "chat-models" | "image-models" | "app";
@@ -310,12 +303,11 @@ async function exportSettings() {
   // 📦 Export models, templates, and chat sessions into one portable settings package.
   const draft = getDraftPayload();
   const payload: SettingsImportPayload = {
-    schema: "ai-api-hub",
-    version: "0.0.1",
+    schema: APP_NAME,
+    version: APP_VERSION,
     exportedAt: new Date().toISOString(),
     models: buildPersistedModelSettingsPayload(draft.models),
     templates: draft.templates,
-    chatSessions: await exportChatSessionSettings(),
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);

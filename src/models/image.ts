@@ -1,6 +1,6 @@
-import type { ImageModelConfig, ImageModelSettings, ImageOperation, ImageModelParamDef, ImageModelParamType } from "@/types";
+import type { ImageModelConfig, ImageModelSettings, ImageModelParamDef, ImageModelParamType, LooseModelConfig } from "@/types";
 import { imageParamPresetList } from "@/constants/image-model";
-import { parseParamValue, type LooseModelConfig, type LooseParamDef } from "./common";
+import { parseParamValue } from "./settings";
 
 const defaultImageModelSettings = {
   model: null,
@@ -13,21 +13,8 @@ const defaultImageModelSettings = {
 } satisfies ImageModelSettings;
 
 /** Returns the built-in preset definition for one image parameter key. */
-function getImageParamPreset(key = ""): LooseParamDef | null {
+function getImageParamPreset(key = ""): Partial<ImageModelParamDef> | null {
   return imageParamPresetList.find((item) => item.key === key) || null;
-}
-
-/**
- * Returns whether a normalized parameter value is meaningful enough to include
- * in a provider request payload.
- */
-export function hasMeaningfulParamValue(type: ImageModelParamType | string = "string", value: unknown = undefined): boolean {
-  if (value === undefined || value === null) return false;
-  if (type === "string" && value === "") return false;
-  if (type === "array") return Array.isArray(value);
-  if (type === "object") return typeof value === "object" && !Array.isArray(value) && Object.keys(value).length > 0;
-  if (type === "image") return Boolean(value && typeof value === "object" && "filename" in value && "content_type" in value && "data" in value);
-  return true;
 }
 
 /** Returns whether a user image model config should use Azure OpenAI routing. */
@@ -41,7 +28,7 @@ export function isAzureImageModel(model: LooseModelConfig | null | undefined): m
  * Like `normalizeChatModelConfig`, this still returns user configuration rather
  * than low-level HTTP/runtime request args.
  */
-export function normalizeImageModelConfig(model: LooseModelConfig | null | undefined = {}, imageOperation: ImageOperation = "generation"): ImageModelConfig {
+export function normalizeImageModelConfig(model: LooseModelConfig | null | undefined = {}): ImageModelConfig {
   const data = model || {};
   const provider = model?.provider === "Azure OpenAI" ? "Azure OpenAI" : "OpenAI";
   const modelId = data.model;
@@ -55,7 +42,7 @@ export function normalizeImageModelConfig(model: LooseModelConfig | null | undef
       apiVersion: String(data.apiVersion || "").trim(),
       apiKey: String(data.apiKey || "").trim(),
       model: modelId,
-      imageOperation,
+      imageOperation: "generation",
     };
   }
 
@@ -65,12 +52,12 @@ export function normalizeImageModelConfig(model: LooseModelConfig | null | undef
     baseURL: String(data.baseURL || "").trim(),
     apiKey: String(data.apiKey || "").trim(),
     model: modelId,
-    imageOperation,
+    imageOperation: "generation",
   };
 }
 
 /** Merges a raw image parameter definition with the built-in preset defaults. */
-export function normalizeImageParamDef(def: LooseParamDef = {}): ImageModelParamDef {
+export function normalizeImageParamDef(def: Partial<ImageModelParamDef> = {}): ImageModelParamDef {
   const preset = getImageParamPreset(def.key);
   const nextType = def.type || preset?.type || "string";
   const fallbackDefaultValue = Object.prototype.hasOwnProperty.call(preset || {}, "defaultValue") ? structuredClone(preset.defaultValue) : "";
@@ -90,55 +77,11 @@ export function normalizeImageParamDef(def: LooseParamDef = {}): ImageModelParam
   };
 }
 
-/** Returns default parameter definitions for image generation models. */
-export function getDefaultImageParamDefs(): ImageModelParamDef[] {
-  return ["quality", "output_format"].map((key) => normalizeImageParamDef({ key }));
-}
+export const imageParamDefs: ImageModelParamDef[] = ["quality", "output_format", "image", "mask"].map((key) => normalizeImageParamDef({ key }));
 
-/** Returns default parameter definitions for image edit models. */
-export function getDefaultImageEditParamDefs(): ImageModelParamDef[] {
-  return ["quality", "output_format", "image", "mask"].map((key) => normalizeImageParamDef({ key }));
-}
-
-/**
- * Returns normalized parameter definitions for a configured image model.
- *
- * Edit models are guaranteed to include image-edit specific parameters such as
- * `image` and `mask`.
- */
-export function getModelImageParamDefs(model: LooseModelConfig = {}): ImageModelParamDef[] {
-  const defaultDefs = getDefaultImageEditParamDefs();
-  const supportedKeys = new Set(imageParamPresetList.map((item) => item.key).filter(Boolean));
-  const configuredDefs =
-    Array.isArray(model?.imageParamDefs) && model.imageParamDefs.length > 0
-      ? model.imageParamDefs.filter((item) => item.key && supportedKeys.has(item.key))
-      : defaultDefs;
-  const defs = [...configuredDefs, ...getDefaultImageEditParamDefs().filter((defaultDef) => !configuredDefs.some((item) => item.key === defaultDef.key))];
-  const seen = new Set();
-
-  return defs.map((item) => normalizeImageParamDef(item)).filter((item) => item.key && !seen.has(item.key) && (seen.add(item.key), true));
-}
-
-/**
- * Builds the initial settings object for an image model from its resolved
- * parameter definitions.
- */
-export function buildDefaultImageSettings(model: LooseModelConfig | null = null): ImageModelSettings {
-  const settings = structuredClone(defaultImageModelSettings);
-  const defs = getModelImageParamDefs(model || {});
-
-  defs.forEach((item) => {
-    settings[item.key] = structuredClone(item.defaultValue);
-  });
-
-  return settings;
-}
-
-/**
- * Merges saved image settings with defaults derived from the active image model.
- */
-export function mergeImageSettingsWithModel(model: LooseModelConfig | null = null, settings: Partial<ImageModelSettings> = {}): ImageModelSettings {
-  const coreSettings: Partial<ImageModelSettings> = {
+function mergeResolvedImageSettings(defs: ImageModelParamDef[], settings: Partial<ImageModelSettings> = {}): ImageModelSettings {
+  const mergedSettings: ImageModelSettings = {
+    ...structuredClone(defaultImageModelSettings),
     model: settings.model ?? null,
     prompt: typeof settings.prompt === "string" ? settings.prompt : defaultImageModelSettings.prompt,
     size: typeof settings.size === "string" && settings.size ? settings.size : defaultImageModelSettings.size,
@@ -146,12 +89,7 @@ export function mergeImageSettingsWithModel(model: LooseModelConfig | null = nul
     mask: settings.mask ?? null,
     n: settings.n ?? defaultImageModelSettings.n,
   };
-  const mergedSettings = {
-    ...buildDefaultImageSettings(model),
-    ...coreSettings,
-  };
 
-  const defs = getModelImageParamDefs(model || {});
   defs.forEach((item) => {
     mergedSettings[item.key] = parseParamValue(item.type, mergedSettings[item.key], structuredClone(item.defaultValue));
   });
@@ -166,19 +104,29 @@ export function mergeImageSettingsWithModel(model: LooseModelConfig | null = nul
 }
 
 /**
+ * Merges saved image settings with defaults derived from the active image model.
+ */
+export function mergeImageSettingsWithModel(settings: Partial<ImageModelSettings> = {}): ImageModelSettings {
+  return mergeResolvedImageSettings(imageParamDefs, settings);
+}
+
+/**
  * Builds provider request params from user image settings.
  *
  * This is the image-side boundary where user settings become runtime request
  * body fields.
  */
-export function buildImageGenerationParams(model: LooseModelConfig | null = null, settings: Partial<ImageModelSettings> = {}): Record<string, unknown> {
-  const defs = getModelImageParamDefs(model || {});
-  const mergedSettings = mergeImageSettingsWithModel(model, settings);
+export function buildImageGenerationParams(settings: Partial<ImageModelSettings> = {}): Record<string, unknown> {
+  const mergedSettings = mergeResolvedImageSettings(imageParamDefs, settings);
   const params: Record<string, unknown> = {};
 
-  defs.forEach((item) => {
+  imageParamDefs.forEach((item) => {
     const value = parseParamValue(item.type, mergedSettings[item.key], structuredClone(item.defaultValue));
-    if (!hasMeaningfulParamValue(item.type, value)) return;
+    if (value === undefined || value === null) return;
+    if (item.type === "string" && value === "") return;
+    if (item.type === "array" && !Array.isArray(value)) return;
+    if (item.type === "object" && (typeof value !== "object" || Array.isArray(value) || Object.keys(value || {}).length === 0)) return;
+    if (item.type === "image" && (!value || typeof value !== "object" || !("filename" in value) || !("content_type" in value) || !("data" in value))) return;
     params[item.key] = value;
   });
 

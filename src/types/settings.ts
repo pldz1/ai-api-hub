@@ -1,6 +1,6 @@
-import type { ChatModelConfig } from "@/ai-capability/chat/types";
-import type { ImageModelConfig } from "@/ai-capability/image/types";
-import type { ExportedChatSessionSettings } from "./conversation";
+import type { ChatModelCapabilities, ChatModelConfig } from "@/ai-capability/chat/types";
+import type { ImageModelConfig, ImageModelProvider, ImageOperation } from "@/ai-capability/image/types";
+import type { CapabilityOverrideMode, ChatFormProvider, ExportedChatSessionSettings } from "./conversation";
 
 export type ModelKind = "chat" | "image";
 
@@ -39,4 +39,25 @@ export interface SettingsImportPayload {
   models: PersistedModelSettingsPayload;
   templates?: unknown[];
   chatSessions?: ExportedChatSessionSettings[];
+}
+
+/**
+ * Loose model config accepted at compatibility boundaries.
+ *
+ * Use this type only for parsing/migration/normalization. Once normalized, code
+ * should move to provider payload types such as `ChatModelConfig`.
+ */
+export interface LooseModelConfig {
+  name?: string;
+  provider?: ChatFormProvider | ImageModelProvider | "";
+  baseURL?: string;
+  endpoint?: string;
+  apiKey?: string;
+  model?: string;
+  modelType?: string;
+  deployment?: string;
+  apiVersion?: string;
+  imageOperation?: ImageOperation | "";
+  enabledCapabilitiesMode?: CapabilityOverrideMode;
+  enabledCapabilities?: Partial<ChatModelCapabilities>;
 }

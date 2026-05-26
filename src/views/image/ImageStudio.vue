@@ -45,7 +45,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useStore } from "vuex";
 import { useI18n } from "vue-i18n";
-import { buildDefaultImageSettings, buildImageGenerationParams, getModelImageParamDefs, mergeImageSettingsWithModel } from "@/models";
+import { buildImageGenerationParams, imageParamDefs, mergeImageSettingsWithModel } from "@/models";
 import { deleteImage, generateImage, getImageList, pushImage } from "@/services";
 import { copyToClipboard, dsAlert, saveToLocal } from "@/utils";
 import ImagePreviewPanel from "@/views/image/ImagePreviewPanel.vue";
@@ -78,16 +78,8 @@ const generationStatusLabel = computed(() => {
   if (isGenerating.value) return isEditMode.value ? t("image.editing") : t("image.generating");
   return isEditMode.value ? t("image.editReady") : t("image.ready");
 });
-const promptImageParamDef = computed(() => {
-  const imageParamDefs = getModelImageParamDefs(imageModelSettings.value.model || {}).filter((item) => item.type === "image");
-  return imageParamDefs.find((item) => item.key === "image") || imageParamDefs[0] || null;
-});
-const promptImageParamKey = computed(() => promptImageParamDef.value?.key || "");
-const maskImageParamDef = computed(() => {
-  const imageParamDefs = getModelImageParamDefs(imageModelSettings.value.model || {}).filter((item) => item.type === "image");
-  return imageParamDefs.find((item) => item.key === "mask") || null;
-});
-const maskImageParamKey = computed(() => maskImageParamDef.value?.key || "");
+const promptImageParamKey = computed(() => imageParamDefs.find((item) => item.type === "image" && item.key === "image")?.key || imageParamDefs.find((item) => item.type === "image")?.key || "");
+const maskImageParamKey = computed(() => imageParamDefs.find((item) => item.type === "image" && item.key === "mask")?.key || "");
 const workspaceImageParamKey = computed(() => (isEditMode.value ? promptImageParamKey.value : ""));
 const promptInputImage = computed(() => {
   const key = workspaceImageParamKey.value;
@@ -99,7 +91,7 @@ const isSendDisabled = computed(() => {
   return !workspaceImageParamKey.value || !promptInputImage.value;
 });
 
-const imageModelSettings = ref(buildDefaultImageSettings(null));
+const imageModelSettings = ref(mergeImageSettingsWithModel({}));
 const generationUsage = ref({ input_tokens: 0, output_tokens: 0, total_tokens: 0 });
 const elapsedSeconds = ref(0);
 const isGenerating = ref(false);
@@ -114,7 +106,7 @@ const selectedImageElement = computed(() => {
 });
 
 const updateImageSettings = (nextSettings) => {
-  imageModelSettings.value = mergeImageSettingsWithModel(nextSettings.model || imageModelSettings.value.model, nextSettings);
+  imageModelSettings.value = mergeImageSettingsWithModel(nextSettings);
 };
 
 const updatePrompt = (prompt) => {
@@ -128,7 +120,7 @@ const updatePromptInputImage = (inputImage) => {
   const key = workspaceImageParamKey.value;
   if (!key) return;
 
-  imageModelSettings.value = mergeImageSettingsWithModel(imageModelSettings.value.model, {
+  imageModelSettings.value = mergeImageSettingsWithModel({
     ...imageModelSettings.value,
     [key]: inputImage,
   });
@@ -139,7 +131,7 @@ const applyBrushEdit = ({ image, mask }) => {
   const maskKey = maskImageParamKey.value;
   if (!imageKey) return;
 
-  imageModelSettings.value = mergeImageSettingsWithModel(imageModelSettings.value.model, {
+  imageModelSettings.value = mergeImageSettingsWithModel({
     ...imageModelSettings.value,
     [imageKey]: image,
     ...(maskKey ? { [maskKey]: mask } : {}),
@@ -240,9 +232,9 @@ const onSendImg = async () => {
   startGenerationTimer();
 
   try {
-    const generationParams = buildImageGenerationParams(model, imageModelSettings.value);
+    const generationParams = buildImageGenerationParams(imageModelSettings.value);
     if (!isEditMode.value) {
-      getModelImageParamDefs(model || {})
+      imageParamDefs
         .filter((item) => item.type === "image")
         .forEach((item) => {
           delete generationParams[item.key];
@@ -334,21 +326,14 @@ watch(
   (model, oldModel) => {
     if (!model || model === oldModel) return;
     const prompt = imageModelSettings.value.prompt || "";
-    imageModelSettings.value = {
-      ...buildDefaultImageSettings(model),
-      model,
-      prompt,
-    };
+    imageModelSettings.value = mergeImageSettingsWithModel({ model, prompt });
   },
 );
 
 onMounted(async () => {
   await getImageList();
   if (!imageModelSettings.value.model && imageModels.value.length > 0) {
-    imageModelSettings.value = {
-      ...buildDefaultImageSettings(imageModels.value[0]),
-      model: imageModels.value[0],
-    };
+    imageModelSettings.value = mergeImageSettingsWithModel({ model: imageModels.value[0] });
   }
   await loadInitialEditImage(props.initialEditImage);
 });
@@ -364,10 +349,7 @@ watch(
   imageModels,
   (nextModels) => {
     if (imageModelSettings.value.model || !nextModels.length) return;
-    imageModelSettings.value = {
-      ...buildDefaultImageSettings(nextModels[0]),
-      model: nextModels[0],
-    };
+    imageModelSettings.value = mergeImageSettingsWithModel({ model: nextModels[0] });
   },
   { immediate: true },
 );

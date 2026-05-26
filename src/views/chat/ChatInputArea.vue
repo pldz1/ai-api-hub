@@ -126,15 +126,17 @@ import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import paramIcon from "@/assets/svg/param24.svg";
 import pauseIcon from "@/assets/svg/pause32.svg";
 import webIcon from "@/assets/svg/web24.svg";
+import { defaultModelCapabilities } from "@/constants";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import {
-  buildDefaultChatSettings,
   createConversationModelSnapshot,
   getEffectiveCapabilities,
+  getChatModelCapabilities,
   getModelDeployment,
-  getSnapshotEnabledCapabilities,
-  getSnapshotSupportedCapabilities,
+  mergeChatSettingsWithModel,
+  getModelFromSnapshot,
+  resolveConfiguredModelCapabilities,
 } from "@/models";
 import { packUserMsg } from "@/services";
 import type { ChatPromptMessage } from "@/ai-capability/chat/types";
@@ -201,8 +203,11 @@ let timerIntervalId: number | null = null;
 const isModelSelectionReadonly = computed(() => Boolean(props.modelSelectionReadonly || curChatId.value));
 const draftSnapshot = computed(() => createConversationModelSnapshot(selectedModel.value));
 const activeSnapshot = computed(() => curConversation.value?.modelSnapshot || draftSnapshot.value);
-const activeSupportedCapabilities = computed(() => getSnapshotSupportedCapabilities(activeSnapshot.value));
-const activeEnabledCapabilities = computed(() => getSnapshotEnabledCapabilities(activeSnapshot.value));
+const activeModelConfig = computed(() => getModelFromSnapshot(activeSnapshot.value));
+const activeSupportedCapabilities = computed(() =>
+  activeModelConfig.value ? getChatModelCapabilities(activeModelConfig.value.model, activeModelConfig.value.provider) : { ...defaultModelCapabilities },
+);
+const activeEnabledCapabilities = computed(() => resolveConfiguredModelCapabilities(activeModelConfig.value, activeSupportedCapabilities.value));
 const activeCapabilities = computed(() =>
   getEffectiveCapabilities(activeSupportedCapabilities.value, activeEnabledCapabilities.value, inputCapabilities.value),
 );
@@ -259,7 +264,7 @@ watch(
     await store.dispatch("setCurChatModel", model);
 
     if (!previousModel || getModelSelectionKey(previousModel) !== getModelSelectionKey(model)) {
-      await store.dispatch("setCurChatModelSettings", buildDefaultChatSettings(model));
+      await store.dispatch("setCurChatModelSettings", mergeChatSettingsWithModel(model, {}));
     }
   },
   { immediate: true },
@@ -593,7 +598,30 @@ watch(
 
   .ccia-model-select {
     border: 2px solid #e8e8e7;
-    background: transparent;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 247, 246, 0.94)),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23111827' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+        no-repeat right 10px center / 12px 12px;
+    appearance: none;
+    padding-right: 30px;
+    box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
+    transition:
+      border-color 0.16s ease,
+      box-shadow 0.16s ease,
+      transform 0.16s ease;
+
+    &:hover:not(:disabled) {
+      border-color: rgba(17, 24, 39, 0.16);
+      transform: translateY(-1px);
+    }
+
+    &:focus {
+      border-color: rgba(37, 99, 235, 0.42);
+      box-shadow:
+        0 0 0 3px rgba(37, 99, 235, 0.12),
+        0 10px 24px rgba(17, 24, 39, 0.08);
+      outline: none;
+    }
   }
 
   .ccia-model-lock {

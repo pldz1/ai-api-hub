@@ -101,3 +101,24 @@ export interface ImageProviderModel {
   apiVersion?: string;
   imageOperation?: ImageOperation;
 }
+
+export type ImageModelParamType = "number" | "string" | "array" | "boolean" | "object" | "image";
+export type ImageParamDefaultValue = string | number | boolean | unknown[] | Record<string, unknown> | null;
+
+export interface ImageModelParamDef {
+  key: string;
+  label: string;
+  type: ImageModelParamType;
+  description: string;
+  descriptionKey: string;
+  placeholder: string;
+  defaultValue: ImageParamDefaultValue;
+  min: number;
+  max: number;
+  step: number;
+}
+
+export interface ImageSelectOption<TValue extends string = string> {
+  value: TValue;
+  name: string;
+}

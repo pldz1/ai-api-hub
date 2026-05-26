@@ -29,7 +29,7 @@
         <!-- Chat model selector with grouped suggestions -->
         <label v-if="!isImageModel" class="model-form-field model-form-field-span">
           <span>{{ t("user.modelCard.fields.model") }}</span>
-          <select v-model="localModel.model" class="select select-bordered w-full">
+          <select v-model="localModel.model" class="model-select model-select-bordered w-full">
             <optgroup v-for="group in groupedModelSuggestions" :key="group.key" :label="group.label">
               <option v-for="item in group.items" :key="item.value" :value="item.value">{{ item.name }}</option>
             </optgroup>
@@ -40,7 +40,7 @@
         <!-- Provider selector changes the required connection fields below -->
         <label class="model-form-field">
           <span>{{ t("user.modelCard.fields.provider") }}</span>
-          <select v-model="localModel.provider" class="select select-bordered w-full">
+          <select v-model="localModel.provider" class="model-select model-select-bordered w-full">
             <option v-for="ai in availableModelProviderList" :key="ai.value" :value="ai.value">{{ ai.name }}</option>
           </select>
         </label>
@@ -132,7 +132,7 @@ import copyIcon from "@/assets/svg/copy16.svg";
 import SvgIcon from "@/components/SvgIcon.vue";
 import { chatDisplayedCapabilityKeys, defaultChatModelEditorState, defaultImageModelEditorState, imageModelProviderList, providerList } from "@/constants";
 import { dsAlert } from "@/utils";
-import { getChatModelCapabilities, getChatModelInfo, getModelImageParamDefs, sanitizeModelCapabilityOverrides } from "@/models";
+import { getChatModelCapabilities, imageParamDefs, sanitizeModelCapabilityOverrides } from "@/models";
 import type { SelectOption } from "@/ai-capability/chat/types";
 import type {
   ChatModelConfig,
@@ -175,7 +175,7 @@ let lastModelSnapshot = "";
 const isImageModel = computed(() => props.kind === "image");
 const isAzure = computed(() => localModel.provider === "Azure OpenAI");
 const isOpenAIStyle = computed(() => localModel.provider === "OpenAI" || localModel.provider === "Anthropic" || localModel.provider === "Azure AI Foundry");
-const hasImageInputParam = computed(() => isImageModel.value && getModelImageParamDefs(localModel).some((item) => item.type === "image"));
+const hasImageInputParam = computed(() => isImageModel.value && imageParamDefs.some((item) => item.type === "image"));
 const resolvedModelId = computed(() => localModel?.model);
 
 // Group suggestions by model family so the selector remains readable as options grow.
@@ -506,6 +506,37 @@ watch(
     font-size: 11px;
     line-height: 1.5;
     color: #6b7280;
+  }
+}
+
+.model-select {
+  min-height: 42px;
+  padding: 0 38px 0 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 247, 246, 0.92)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23111827' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      no-repeat right 12px center / 12px 12px;
+  color: #202124;
+  appearance: none;
+  box-shadow: 0 8px 20px rgba(31, 41, 55, 0.05);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+
+  &:hover {
+    border-color: rgba(17, 24, 39, 0.18);
+    transform: translateY(-1px);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: rgba(37, 99, 235, 0.42);
+    box-shadow:
+      0 0 0 3px rgba(37, 99, 235, 0.12),
+      0 12px 26px rgba(31, 41, 55, 0.08);
   }
 }
 

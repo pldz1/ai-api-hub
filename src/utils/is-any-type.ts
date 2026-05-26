@@ -92,9 +92,6 @@ export const getModelSettingValidationError = (data) => {
     const modelError = requireAnyField(item, ["model", "modelType"], key, index);
     if (modelError) return modelError;
 
-    const chatParamDefsError = validateOptionalArrayField(item, "chatParamDefs", key, index);
-    if (chatParamDefsError) return chatParamDefsError;
-
     if (provider === "Azure OpenAI") {
       return requireFields(item, ["endpoint", "deployment", "apiVersion"], key, index);
     }
@@ -116,9 +113,6 @@ export const getModelSettingValidationError = (data) => {
 
     const modelError = requireAnyField(item, ["model", "modelType"], key, index);
     if (modelError) return modelError;
-
-    const imageParamDefsError = validateOptionalArrayField(item, "imageParamDefs", key, index);
-    if (imageParamDefsError) return imageParamDefsError;
 
     if (hasOwn(item, "imageOperation") && !["generation", "edit", ""].includes(item.imageOperation)) {
       return tr("validation.invalidField", { path: fieldPath(itemPath(key, index), "imageOperation") });

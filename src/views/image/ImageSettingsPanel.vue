@@ -6,7 +6,7 @@
 
     <div class="setting-block">
       <span class="setting-label">{{ t("image.model") }}</span>
-      <select class="select select-bordered" :value="selectedModelIndex" @change="onModelChange">
+      <select class="setting-select" :value="selectedModelIndex" @change="onModelChange">
         <option :value="-1" disabled>{{ t("image.selectModel") }}</option>
         <option v-for="(imm, index) in imageModels" :value="index" :key="`${imm.name || imm.id || imm.value}-${index}`">
           {{ imm.name || t("common.unnamedModel") }}
@@ -17,7 +17,7 @@
     <div class="setting-grid">
       <div class="setting-block">
         <span class="setting-label">{{ t("image.count") }}</span>
-        <select class="select select-bordered" :value="settings.n" @change="updateSetting('n', Number($event.target.value))">
+        <select class="setting-select" :value="settings.n" @change="updateSetting('n', Number($event.target.value))">
           <option :value="1">1</option>
           <option :value="2">2</option>
           <option :value="4">4</option>
@@ -26,7 +26,7 @@
 
       <div class="setting-block">
         <span class="setting-label">{{ t("image.size") }}</span>
-        <select class="select select-bordered" :value="settings.size" @change="updateSetting('size', $event.target.value)">
+        <select class="setting-select" :value="settings.size" @change="updateSetting('size', $event.target.value)">
           <option v-for="imsz in imageModelSize" :key="imsz.value" :value="imsz.value">
             {{ imsz.name }}
           </option>
@@ -147,15 +147,39 @@ const sizeShapeClass = (value) => {
   color: oklch(var(--bc) / 0.58);
 }
 
-:deep(.select) {
+.setting-select {
   width: 100%;
   max-width: none;
   min-height: 42px;
   height: 42px;
+  padding: 0 38px 0 14px;
   border-radius: 14px;
   border: 1px solid oklch(var(--bc) / 0.1);
-  background: oklch(var(--b1) / 0.9);
+  background:
+    linear-gradient(180deg, oklch(var(--b1) / 0.98), oklch(var(--b2) / 0.9)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23111827' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      no-repeat right 12px center / 12px 12px;
   font-size: 14px;
+  color: oklch(var(--bc) / 0.9);
+  appearance: none;
+  box-shadow: 0 8px 20px oklch(var(--bc) / 0.05);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+
+  &:hover {
+    border-color: oklch(var(--bc) / 0.18);
+    transform: translateY(-1px);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: oklch(var(--p) / 0.42);
+    box-shadow:
+      0 0 0 3px oklch(var(--p) / 0.12),
+      0 12px 26px oklch(var(--bc) / 0.08);
+  }
 }
 
 .ratio-grid {

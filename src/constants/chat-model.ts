@@ -2,9 +2,7 @@ import type { ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelProvid
 import type { ModelParamDef, SelectOption } from "@/ai-capability/chat/types";
 import type { ChatModelEditorState, ChatModelOption } from "@/types";
 
-type LooseParamDef = Partial<ModelParamDef> & { key?: string };
-
-export const chatParamPresetList: LooseParamDef[] = [
+export const chatParamPresetList: Partial<ModelParamDef>[] = [
   {
     key: "max_tokens",
     label: "max_tokens",

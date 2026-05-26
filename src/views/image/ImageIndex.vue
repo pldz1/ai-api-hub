@@ -801,14 +801,38 @@ onBeforeUnmount(() => {
   min-width: 0;
   max-width: 180px;
   border: 1px solid rgba(17, 24, 39, 0.12);
-  border-radius: 8px;
-  background: #fff;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 247, 246, 0.96)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23111827' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      no-repeat right 9px center / 12px 12px;
   color: #111827;
   font-size: 13px;
+  padding: 0 30px 0 12px;
+  appearance: none;
+  box-shadow: 0 6px 16px rgba(17, 24, 39, 0.05);
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+
+  &:hover:not(:disabled) {
+    border-color: rgba(17, 24, 39, 0.18);
+    transform: translateY(-1px);
+  }
+
+  &:focus {
+    border-color: rgba(37, 99, 235, 0.42);
+    box-shadow:
+      0 0 0 3px rgba(37, 99, 235, 0.12),
+      0 10px 20px rgba(17, 24, 39, 0.08);
+    outline: none;
+  }
 }
 
 .image-size-select {
   max-width: 122px;
+  padding-right: 28px;
 }
 
 .image-mode-pill {

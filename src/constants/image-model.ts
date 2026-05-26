@@ -1,8 +1,6 @@
 import type { ImageModelProvider, ImageModelEditorState, ImageModelParamDef, ImageSelectOption } from "@/types";
 
-type LooseParamDef = Partial<ImageModelParamDef> & { key?: string };
-
-export const imageParamPresetList: LooseParamDef[] = [
+export const imageParamPresetList: Partial<ImageModelParamDef>[] = [
   {
     key: "quality",
     label: "quality",

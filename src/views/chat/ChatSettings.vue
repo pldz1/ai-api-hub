@@ -79,7 +79,7 @@ import { useStore } from "vuex";
 import infoIcon from "@/assets/svg/info24.svg";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
-import { getModelChatParamDefs, mergeChatSettingsWithModel, parseParamValue } from "@/models";
+import { mergeChatSettingsWithModel, parseParamValue, resolveChatParamDefs } from "@/models";
 import { setChatSettings } from "@/services";
 import { dsAlert } from "@/utils";
 
@@ -101,7 +101,7 @@ const { t } = useI18n();
 const dialogRef = ref<HTMLDialogElement | null>(null);
 const curChatModel = computed(() => store.state.curChatModel);
 const curChatModelSettings = computed(() => store.state.curChatModelSettings);
-const activeParamDefs = computed<ParamDef[]>(() => getModelChatParamDefs(curChatModel.value) || []);
+const activeParamDefs = computed<ParamDef[]>(() => resolveChatParamDefs(curChatModel.value));
 const modelSettings = reactive<Record<string, any>>({});
 const instrStr = ref("");
 const arrayFieldInputs = reactive<Record<string, string>>({});
