@@ -4,8 +4,8 @@ import { apiRequest } from "../app";
 import { dsAlert, isValidChatInfoArray, getUuid, generateRandomCname } from "@/utils";
 import { tr } from "@/i18n";
 import type { ChatListItem, StoredChatMessage } from "@/services/types";
-import type { ChatPromptMessage } from "@/services/chat/types";
-import type { ChatModelConfig, ChatModelSettings, ConversationModelSnapshot, ExportedChatSessionSettings, PersistedChatSettingsPayload } from "@/types";
+import type { ChatModelConfig, ChatPromptMessage } from "@/services/chat/types";
+import type { ChatModelSettings, ConversationModelSnapshot, ExportedChatSessionSettings, PersistedChatSettingsPayload } from "@/types";
 import { removeChatSessionRunner } from "./session-runner";
 
 /**

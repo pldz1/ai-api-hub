@@ -1,5 +1,5 @@
-import type { ChatModelConfig, ChatProviderPayload, ImageModelConfig, ImageProviderPayload, ModelSettings, PersistedModelSettingsPayload } from "@/types";
-import type { ChatModelCapabilities } from "@/services/chat/types";
+import type { ImageModelConfig, ModelSettings, PersistedModelSettingsPayload } from "@/types";
+import type { ChatModelCapabilities, ChatModelConfig } from "@/services/chat/types";
 import { type LooseModelConfig, type LooseModelSettings } from "./common";
 import { isAzureChatModel, normalizeChatModelConfig } from "./chat";
 import { normalizeImageModelConfig } from "./image";
@@ -109,13 +109,7 @@ function sanitizeImageModelConfig(model: ImageModelConfig): ImageModelConfig {
  */
 export function sanitizeModelSettings(data: Partial<ModelSettings> | null | undefined = {}): ModelSettings {
   const normalized = data || {};
-  const imageModels = Array.isArray(normalized.image)
-    ? normalized.image
-    : Array.isArray(normalized.imageGeneration)
-      ? normalized.imageGeneration
-      : Array.isArray(normalized.imageEdit)
-        ? normalized.imageEdit
-        : [];
+  const imageModels = Array.isArray(normalized.image) ? normalized.image : [];
 
   return {
     chat: (Array.isArray(normalized.chat) ? normalized.chat : []).map((item) => sanitizeChatModelConfig(item as ChatModelConfig)),
@@ -136,13 +130,7 @@ export function migratePersistedModelSettings(data: LooseModelSettings | null | 
       return item;
     });
 
-  const imageModels = Array.isArray(data?.image)
-    ? data.image
-    : Array.isArray(data?.imageGeneration)
-      ? data.imageGeneration
-      : Array.isArray(data?.imageEdit)
-        ? data.imageEdit
-        : [];
+  const imageModels = Array.isArray(data?.image) ? data.image : [];
 
   return sanitizeModelSettings({
     chat: migrateModelEntries(data?.chat, "chat") as ChatModelConfig[],
@@ -156,7 +144,7 @@ export function migratePersistedModelSettings(data: LooseModelSettings | null | 
  * This function is intentionally the inverse of the loose read/normalize path:
  * it takes current user config and emits only stable persisted fields.
  */
-function buildPersistedChatModelConfig(model: LooseModelConfig | ChatModelConfig): ChatProviderPayload {
+function buildPersistedChatModelConfig(model: LooseModelConfig | ChatModelConfig): ChatModelConfig {
   const modelConfig = normalizeChatModelConfig(model as LooseModelConfig);
   const basePayload = {
     name: modelConfig.name,
@@ -180,11 +168,11 @@ function buildPersistedChatModelConfig(model: LooseModelConfig | ChatModelConfig
     ...basePayload,
     provider: modelConfig.provider,
     baseURL: "baseURL" in modelConfig ? modelConfig.baseURL : "",
-  } as ChatProviderPayload;
+  } as ChatModelConfig;
 }
 
 /** Builds the persisted image payload written to storage/export for one model. */
-function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConfig): ImageProviderPayload {
+function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConfig): ImageModelConfig {
   const modelConfig = normalizeImageModelConfig(model as LooseModelConfig, "generation");
   const basePayload = {
     name: modelConfig.name,

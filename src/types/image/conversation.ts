@@ -1,6 +1,6 @@
 import type { TokenUsage } from "@/services/chat/types";
 import type { ImageInputFile } from "@/services/image/types";
-import type { ImageModelConfig } from "./model";
+import type { ImageModelConfig } from "@/services/image/types";
 
 export type ImageConversationRole = "user" | "assistant";
 export type ImageConversationMode = "generation" | "edit";

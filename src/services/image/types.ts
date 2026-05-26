@@ -28,6 +28,31 @@ export type ImageModelProvider = "OpenAI" | "Azure OpenAI";
 export type ImageOperation = "generation" | "edit";
 
 // ============================================================================
+// User-owned model config consumed by image services
+// ============================================================================
+
+export interface ImageModelConfigBase {
+  name: string;
+  apiKey: string;
+  model: string;
+  imageOperation: ImageOperation;
+}
+
+export interface OpenAIImageModelConfig extends ImageModelConfigBase {
+  provider: "OpenAI";
+  baseURL: string;
+}
+
+export interface AzureOpenAIImageModelConfig extends ImageModelConfigBase {
+  provider: "Azure OpenAI";
+  endpoint: string;
+  deployment: string;
+  apiVersion: string;
+}
+
+export type ImageModelConfig = OpenAIImageModelConfig | AzureOpenAIImageModelConfig;
+
+// ============================================================================
 // Image file input
 // ============================================================================
 

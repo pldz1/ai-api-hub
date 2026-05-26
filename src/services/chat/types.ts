@@ -61,6 +61,46 @@ export interface ChatModelCapabilities {
 }
 
 // ============================================================================
+// User-owned model config consumed by chat services
+// ============================================================================
+
+export interface ChatModelConfigBase {
+  name: string;
+  apiKey: string;
+  model: string;
+  enabledCapabilitiesMode?: "inherit" | "custom";
+  enabledCapabilities?: Partial<ChatModelCapabilities>;
+}
+
+export interface OpenAIChatModelConfig extends ChatModelConfigBase {
+  provider: "OpenAI";
+  baseURL: string;
+}
+
+export interface AzureOpenAIChatModelConfig extends ChatModelConfigBase {
+  provider: "Azure OpenAI";
+  endpoint: string;
+  deployment: string;
+  apiVersion: string;
+}
+
+export interface AnthropicChatModelConfig extends ChatModelConfigBase {
+  provider: "Anthropic";
+  baseURL: string;
+}
+
+export interface AzureAIFoundryChatModelConfig extends ChatModelConfigBase {
+  provider: "Azure AI Foundry";
+  baseURL: string;
+}
+
+export type ChatModelConfig =
+  | OpenAIChatModelConfig
+  | AzureOpenAIChatModelConfig
+  | AnthropicChatModelConfig
+  | AzureAIFoundryChatModelConfig;
+
+// ============================================================================
 // Parameter definitions (model-level, not app-level)
 // ============================================================================
 
@@ -178,34 +218,6 @@ export interface ChatCompletionParams extends ChatParamRecord {
   stream_options?: ChatStreamOptions;
   webSearch?: boolean;
 }
-
-// ============================================================================
-// Runtime provider config (translated from user-owned app config)
-// ============================================================================
-
-export interface OpenAIChatModelProviderConfig {
-  provider: "OpenAI";
-  baseURL: string;
-  apiKey: string;
-  model: string;
-}
-
-export interface AzureOpenAIChatModelProviderConfig {
-  provider: "Azure OpenAI";
-  endpoint: string;
-  apiKey: string;
-  deploymentName: string;
-  apiVersion: string;
-}
-
-export interface AnthropicChatModelProviderConfig {
-  provider: "Anthropic" | "Azure AI Foundry";
-  baseURL: string;
-  apiKey: string;
-  model: string;
-}
-
-export type ChatModelProviderConfig = OpenAIChatModelProviderConfig | AzureOpenAIChatModelProviderConfig | AnthropicChatModelProviderConfig;
 
 // ============================================================================
 // Executor interface (provider-agnostic chat entry point)

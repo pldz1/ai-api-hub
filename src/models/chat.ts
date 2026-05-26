@@ -1,10 +1,10 @@
-import type { ChatCompletionParams, ChatModelCapabilities, ChatModelCapabilityProfile } from "@/services/chat/types";
-import type { ChatModelConfig, ChatModelOption, ChatModelSettings, ConversationModelSnapshot, ChatModelParamDef, ChatParamDefaultValue } from "@/types";
+import type { ChatCompletionParams, ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelConfig, ModelParamDef, ParamDefaultValue } from "@/services/chat/types";
+import type { ChatModelOption, ChatModelSettings, ConversationModelSnapshot } from "@/types";
 import { tr } from "@/i18n";
 import { chatParamPresetList, defaultModelCapabilities, chatModelCatalog, type ChatModelCatalogItem, baseCapabilityProfile } from "@/constants";
 import { LooseModelConfig, parseParamValue } from "./common";
 
-type LooseChatParamDef = Partial<ChatModelParamDef> & { key?: string };
+type LooseChatParamDef = Partial<ModelParamDef> & { key?: string };
 
 /** Returns whether a user model config should use Azure OpenAI routing. */
 export function isAzureChatModel(model: ChatModelConfig | null | undefined): model is ChatModelConfig & { provider: "Azure OpenAI" } {
@@ -215,7 +215,7 @@ export function getSnapshotEnabledCapabilities(snapshot: ConversationModelSnapsh
  *
  * This is derived from the snapshot model config and current model catalog.
  */
-export function getSnapshotChatParamDefs(snapshot: ConversationModelSnapshot | null | undefined): ChatModelParamDef[] {
+export function getSnapshotChatParamDefs(snapshot: ConversationModelSnapshot | null | undefined): ModelParamDef[] {
   const model = getModelFromSnapshot(snapshot);
   return model ? getModelChatParamDefs(model) : [];
 }
@@ -254,10 +254,10 @@ function getChatParamPreset(key = ""): LooseChatParamDef | null {
 }
 
 /** Merges a raw chat parameter definition with the built-in preset defaults. */
-export function normalizeChatParamDef(def: LooseChatParamDef = {}): ChatModelParamDef {
+export function normalizeChatParamDef(def: LooseChatParamDef = {}): ModelParamDef {
   const preset = getChatParamPreset(def.key);
   const nextType = def.type || preset?.type || "string";
-  const nextDefaultValue = parseParamValue<ChatParamDefaultValue>(nextType, def.defaultValue, structuredClone(preset?.defaultValue ?? ""));
+  const nextDefaultValue = parseParamValue<ParamDefaultValue>(nextType, def.defaultValue, structuredClone(preset?.defaultValue ?? ""));
 
   return {
     key: String(def.key || preset?.key || "").trim(),
@@ -274,7 +274,7 @@ export function normalizeChatParamDef(def: LooseChatParamDef = {}): ChatModelPar
 }
 
 /** Returns default parameter definitions declared for a catalog model id. */
-export function getDefaultChatParamDefs(model = "", provider = ""): ChatModelParamDef[] {
+export function getDefaultChatParamDefs(model = "", provider = ""): ModelParamDef[] {
   return getChatParamKeysForModel(model, provider).map((key) => normalizeChatParamDef({ key }));
 }
 
@@ -289,7 +289,7 @@ export function getChatParamKeysForModel(model = "", provider = ""): string[] {
  * If the model carries custom parameter definitions they win; otherwise the
  * built-in catalog definitions are used.
  */
-export function getModelChatParamDefs(model: LooseModelConfig = {}): ChatModelParamDef[] {
+export function getModelChatParamDefs(model: LooseModelConfig = {}): ModelParamDef[] {
   const provider = model?.provider;
   const modelId = model?.model;
   const hasCustomDefs = Array.isArray(model?.chatParamDefs) && model.chatParamDefs.length > 0;

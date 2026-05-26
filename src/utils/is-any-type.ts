@@ -41,7 +41,7 @@ export const getModelSettingValidationError = (data) => {
     return tr("validation.topLevelNotObject");
   }
 
-  const topLevelKeys = ["chat", "image", "imageGeneration", "imageEdit"];
+  const topLevelKeys = ["chat", "image"];
   const presentKeys = topLevelKeys.filter((key) => key in data);
 
   if (presentKeys.length === 0) {

@@ -1,14 +1,6 @@
-import type {
-  ChatMessageRole,
-  ChatModelCapabilities,
-  ChatModelCapabilityProfile,
-  ChatModelProvider,
-  ChatParamRecord,
-  ModelParamDef,
-  SelectOption,
-} from "@/services/chat/types";
+import type { ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelConfig, ChatModelProvider, ChatParamRecord, SelectOption } from "@/services/chat/types";
 import type { CapabilityOverrideMode, ChatFormProvider } from "./shared";
-import type { ChatProviderPayload } from "./provider";
+export type { ChatModelConfig } from "@/services/chat/types";
 
 /**
  * Catalog metadata for a known chat model id.
@@ -22,20 +14,6 @@ export interface ChatModelOption extends SelectOption {
   capabilityProfile: ChatModelCapabilityProfile;
   capabilities: Pick<ChatModelCapabilities, "webSearch" | "imageRead">;
 }
-
-/** Chat model plus resolved parameter definitions used by runtime/settings UI. */
-export interface ChatModelResolvedFields {
-  chatParamDefs: ModelParamDef[];
-}
-
-/**
- * Canonical chat model configuration owned by the user.
- *
- * This intentionally aliases the persisted provider payload rather than a
- * separate draft/runtime-only type.
- */
-export type ChatModelConfig = ChatProviderPayload;
-export type ResolvedChatModelConfig = ChatModelConfig & ChatModelResolvedFields;
 
 /**
  * Chat-model editor state used by the settings form.
@@ -72,18 +50,6 @@ export interface ConversationModelSnapshot {
   modelConfig: ChatModelConfig;
 }
 
-/** Text-only prompt content used in stored system prompts. */
-export interface PromptContent {
-  type: "text";
-  text: string;
-}
-
-/** Stored prompt message used by chat settings. */
-export interface PromptMessage {
-  role: ChatMessageRole;
-  content: PromptContent[];
-}
-
 /**
  * Per-conversation chat settings merged with a model's parameter definitions.
  *
@@ -92,7 +58,7 @@ export interface PromptMessage {
  */
 export interface ChatModelSettings extends ChatParamRecord {
   passedMsgLen: number;
-  prompts: PromptMessage[];
+  prompts: { role: "system" | "user" | "assistant"; content: { type: "text"; text: string }[] }[];
 }
 
 /**

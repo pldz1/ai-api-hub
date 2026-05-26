@@ -1,10 +1,20 @@
 import { getModelDeployment, isAnthropicChatModel, isAzureChatModel, isOpenAIChatModel } from "@/models";
-import type { ChatModelConfig } from "@/types";
-import type { ChatCompletionParams, ChatModelProviderConfig, ChatExecutor } from "../types";
+import type { ChatExecutor, ChatModelConfig } from "../types";
 
 import { AzureOpenAIClient } from "./azure-openai";
 import { AnthropicClient } from "./anthropic";
 import { OpenAIClient } from "./openai";
+
+type OpenAIChatProviderRuntimeConfig = Pick<Extract<ChatModelConfig, { provider: "OpenAI" }>, "provider" | "baseURL" | "apiKey" | "model">;
+type AzureOpenAIChatProviderRuntimeConfig = Pick<
+  Extract<ChatModelConfig, { provider: "Azure OpenAI" }>,
+  "provider" | "endpoint" | "apiKey" | "deployment" | "apiVersion"
+>;
+type AnthropicChatProviderRuntimeConfig = Pick<
+  Extract<ChatModelConfig, { provider: "Anthropic" | "Azure AI Foundry" }>,
+  "provider" | "baseURL" | "apiKey" | "model"
+>;
+type ChatProviderRuntimeConfig = OpenAIChatProviderRuntimeConfig | AzureOpenAIChatProviderRuntimeConfig | AnthropicChatProviderRuntimeConfig;
 
 /**
  * Converts user-owned chat model config into runtime-only provider constructor args.
@@ -12,13 +22,13 @@ import { OpenAIClient } from "./openai";
  * This is the exact boundary where persisted/user-facing configuration stops and
  * request execution configuration begins.
  */
-export function createChatProviderConfig(model: ChatModelConfig): ChatModelProviderConfig | null {
+export function createChatProviderConfig(model: ChatModelConfig): ChatProviderRuntimeConfig | null {
   if (isAzureChatModel(model)) {
     return {
       provider: "Azure OpenAI",
       endpoint: model.endpoint,
       apiKey: model.apiKey,
-      deploymentName: getModelDeployment(model),
+      deployment: getModelDeployment(model),
       apiVersion: model.apiVersion,
     };
   }
@@ -47,12 +57,12 @@ export function createChatProviderConfig(model: ChatModelConfig): ChatModelProvi
 /**
  * Instantiates the provider executor for already-derived runtime config.
  *
- * Callers should pass only `ChatModelProviderConfig` here, never raw settings
+ * Callers should pass only `ChatProviderRuntimeConfig` here, never raw settings
  * payloads from storage/UI.
  */
-export function createChatExecutor(config: ChatModelProviderConfig): ChatExecutor {
+export function createChatExecutor(config: ChatProviderRuntimeConfig): ChatExecutor {
   if (config.provider === "Azure OpenAI") {
-    return new AzureOpenAIClient(config.endpoint, config.apiKey, config.deploymentName, config.apiVersion);
+    return new AzureOpenAIClient(config.endpoint, config.apiKey, config.deployment, config.apiVersion);
   }
 
   if (config.provider === "Anthropic" || config.provider === "Azure AI Foundry") {

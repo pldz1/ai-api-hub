@@ -1,12 +1,4 @@
-import type { ImageInputFile, ImageModelProvider, ImageOperation, ModelParamDef, SelectOption } from "@/services/image/types";
-import type { ImageProviderPayload } from "./provider";
-
-export interface ImageModelResolvedFields {
-  imageParamDefs: ModelParamDef[];
-}
-
-export type ImageModelConfig = ImageProviderPayload;
-export type ResolvedImageModelConfig = ImageModelConfig & ImageModelResolvedFields;
+import type { ImageInputFile, ImageModelConfig, ImageModelProvider, ImageOperation, SelectOption } from "@/services/image/types";
 
 /**
  * Image-model editor state used by the settings form.

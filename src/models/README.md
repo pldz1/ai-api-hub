@@ -14,15 +14,15 @@ them into one wide object.
 
 1. Import/export payload
 
-- Examples: `ChatProviderPayload`, `ImageProviderPayload`
-- Defined in `src/types/chat/provider.ts` and `src/types/image/provider.ts`
+- Examples: `ChatModelConfig`, `ImageProviderPayload`
+- Defined in `src/services/chat/types.ts` and `src/types/image/provider.ts`
 - These are the fields settings pages edit and JSON import/export writes
 - Think: "the public I/O contract"
 
 2. Normalized store config
 
 - Examples: `ChatModelConfig`, `ImageModelConfig`, `ModelSettings`
-- Defined in `src/types/chat/model.ts`, `src/types/image/model.ts`, and
+- Defined in `src/services/chat/types.ts`, `src/types/image/model.ts`, and
   `src/types/settings.ts`
 - These are user-owned configs after legacy fields/defaults are normalized
 - Think: "the app's canonical copy of the user's config"
@@ -37,7 +37,7 @@ them into one wide object.
 4. Runtime config
 
 - Example: `ChatProviderRuntimeConfig`
-- Defined and consumed in `src/services/chat/providers/`
+- Derived and consumed in `src/services/chat/providers/`
 - Exists only to instantiate provider clients and send requests
 - Think: "what the provider executor needs right now"
 
@@ -104,7 +104,8 @@ inside the conversation snapshot.
 ## File Guide
 
 - `src/types/*/provider.ts`: persisted/imported/exported provider payloads only
-- `src/types/*/model.ts`: normalized user config, editor state, snapshots, and settings
+- `src/services/chat/types.ts`: chat service core types, including `ChatModelConfig`
+- `src/types/*/model.ts`: app-layer editor state, snapshots, and settings
 - `src/types/settings.ts`: top-level settings I/O and store settings types
 - `src/services/*/providers/`: runtime-only provider config and executor code
 - `src/models/common.ts`: compatibility helpers for loose/legacy model data
@@ -124,7 +125,7 @@ If you are deciding where new code should go:
 - If it locks a conversation to a chosen model, use snapshot types.
 - If it is about executing a provider request, keep it in `services/*/providers`.
 - If a field can be recomputed from user config, do not persist it.
-- If a type contains provider constructor args such as `deploymentName`, it is
+- If a type contains provider constructor args such as `deployment`, it is
   runtime-only and does not belong in `src/types/*/provider.ts`.
 
 If a value can be recomputed from user config, prefer recomputing it over

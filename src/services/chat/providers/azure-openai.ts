@@ -112,20 +112,20 @@ export class AzureOpenAIClient {
   deployment = "";
   apiVersion = "";
 
-  constructor(endpoint: string, apiKey: string, deploymentName: string, apiVersion: string) {
-    this.init(endpoint, apiKey, deploymentName, apiVersion);
+  constructor(endpoint: string, apiKey: string, deployment: string, apiVersion: string) {
+    this.init(endpoint, apiKey, deployment, apiVersion);
   }
 
-  init(endpoint: string, apiKey: string, deploymentName: string, apiVersion: string): void {
+  init(endpoint: string, apiKey: string, deployment: string, apiVersion: string): void {
     this.endpoint = endpoint;
     this.apiKey = apiKey;
-    this.deployment = deploymentName;
+    this.deployment = deployment;
     this.apiVersion = apiVersion;
   }
 
-  update(endpoint: string, apiKey: string, deploymentName: string, apiVersion: string): void {
-    if (endpoint !== this.endpoint || apiKey !== this.apiKey || deploymentName !== this.deployment || apiVersion !== this.apiVersion) {
-      this.init(endpoint, apiKey, deploymentName, apiVersion);
+  update(endpoint: string, apiKey: string, deployment: string, apiVersion: string): void {
+    if (endpoint !== this.endpoint || apiKey !== this.apiKey || deployment !== this.deployment || apiVersion !== this.apiVersion) {
+      this.init(endpoint, apiKey, deployment, apiVersion);
     }
   }
 

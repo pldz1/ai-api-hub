@@ -271,14 +271,6 @@ export const languages = {
         chat: "Chat",
         image: "Image",
       },
-      imageEditModels: {
-        description: "配置图像编辑模型和连接信息。",
-        title: "Image Edit 模型",
-      },
-      imageGenerationModels: {
-        description: "配置文生图模型和连接信息。",
-        title: "Image Generation 模型",
-      },
       imageModels: {
         add: "新增模型",
         defaultName: "图像模型",
@@ -361,14 +353,6 @@ export const languages = {
         imageModels: {
           description: "维护图像模型配置；输入区是否带图片会自动决定生成或编辑。",
           label: "图像模型",
-        },
-        imageEdit: {
-          description: "管理图像编辑模型和连接信息。",
-          label: "Image Edit",
-        },
-        imageGeneration: {
-          description: "管理文生图模型和连接信息。",
-          label: "Image Generation",
         },
         templates: {
           description: "管理对话系统提示词模板。",
@@ -674,14 +658,6 @@ export const languages = {
         chat: "Chat",
         image: "Image",
       },
-      imageEditModels: {
-        description: "Configure image editing models and connection details.",
-        title: "Image Edit Models",
-      },
-      imageGenerationModels: {
-        description: "Configure text-to-image models and connection details.",
-        title: "Image Generation Models",
-      },
       imageModels: {
         add: "Add model",
         defaultName: "Image Model",
@@ -765,14 +741,6 @@ export const languages = {
         imageModels: {
           description: "Maintain image model configuration. Input images automatically choose edit mode.",
           label: "Image Models",
-        },
-        imageEdit: {
-          description: "Manage image editing models and connection details.",
-          label: "Image Edit",
-        },
-        imageGeneration: {
-          description: "Manage text-to-image models and connection details.",
-          label: "Image Generation",
         },
         templates: {
           description: "Manage reusable system prompt templates.",

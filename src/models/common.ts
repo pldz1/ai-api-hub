@@ -1,8 +1,6 @@
 import type {
   CapabilityOverrideMode,
   ChatFormProvider,
-  ChatModelParamDef,
-  ChatParamDefaultValue,
   ModelSettings,
   ImageModelProvider,
   ImageOperation,
@@ -11,8 +9,9 @@ import type {
   ImageParamDefaultValue,
 } from "@/types";
 import type { ChatModelCapabilities } from "@/services/chat/types";
+import type { ModelParamDef, ParamDefaultValue } from "@/services/chat/types";
 
-type WorkspaceParamDefaultValue = ChatParamDefaultValue | ImageParamDefaultValue;
+type WorkspaceParamDefaultValue = ParamDefaultValue | ImageParamDefaultValue;
 
 /**
  * Loose parameter definition accepted from legacy config or partially-filled UI data.
@@ -45,7 +44,7 @@ export interface LooseModelConfig extends LegacyModelProviderConfig {
   imageOperation?: ImageOperation | "";
   enabledCapabilitiesMode?: CapabilityOverrideMode;
   enabledCapabilities?: Partial<ChatModelCapabilities>;
-  chatParamDefs?: ChatModelParamDef[];
+  chatParamDefs?: ModelParamDef[];
   imageParamDefs?: ImageModelParamDef[];
 }
 /**

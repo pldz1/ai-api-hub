@@ -1,4 +1,4 @@
-import type { ImageModelProvider, ImageModelParamDef, ImageSelectOption, ImageModelEditorState } from "@/types";
+import type { ImageModelProvider, ImageModelEditorState, ImageModelParamDef, ImageSelectOption } from "@/types";
 
 type LooseParamDef = Partial<ImageModelParamDef> & { key?: string };
 

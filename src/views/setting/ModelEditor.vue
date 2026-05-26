@@ -133,10 +133,10 @@ import SvgIcon from "@/components/SvgIcon.vue";
 import { chatDisplayedCapabilityKeys, defaultChatModelEditorState, defaultImageModelEditorState, imageModelProviderList, providerList } from "@/constants";
 import { dsAlert } from "@/utils";
 import { getChatModelCapabilities, getChatModelInfo, getModelImageParamDefs, sanitizeModelCapabilityOverrides } from "@/models";
+import type { SelectOption } from "@/services/chat/types";
 import type {
   ChatModelConfig,
   ChatModelEditorState,
-  ChatSelectOption,
   ImageModelConfig,
   ImageModelEditorState,
   ImageOperation,
@@ -153,7 +153,7 @@ type ModelEditorInput = Partial<ModelConfig> & { apiType?: ModelEditorState["pro
 const props = withDefaults(
   defineProps<{
     model?: ModelEditorInput;
-    modelSuggestions?: ChatSelectOption[];
+    modelSuggestions?: SelectOption[];
     kind?: ModelKind;
   }>(),
   {
@@ -187,9 +187,9 @@ const getModelFamily = (model = "") => {
 };
 const groupedModelSuggestions = computed(() => {
   const groups = [
-    { key: "openai", label: t("user.modelCard.suggestionGroups.openai"), items: [] as ChatSelectOption[] },
-    { key: "claude", label: t("user.modelCard.suggestionGroups.claude"), items: [] as ChatSelectOption[] },
-    { key: "custom", label: t("user.modelCard.suggestionGroups.custom"), items: [] as ChatSelectOption[] },
+    { key: "openai", label: t("user.modelCard.suggestionGroups.openai"), items: [] as SelectOption[] },
+    { key: "claude", label: t("user.modelCard.suggestionGroups.claude"), items: [] as SelectOption[] },
+    { key: "custom", label: t("user.modelCard.suggestionGroups.custom"), items: [] as SelectOption[] },
   ];
   const groupMap = new Map(groups.map((group) => [group.key, group]));
   const seen = new Set<string>();

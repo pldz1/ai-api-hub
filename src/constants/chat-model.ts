@@ -1,7 +1,8 @@
 import type { ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelProvider } from "@/services/chat/types";
-import type { ChatModelParamDef, ChatModelEditorState, ChatModelOption, ChatSelectOption } from "@/types";
+import type { ModelParamDef, SelectOption } from "@/services/chat/types";
+import type { ChatModelEditorState, ChatModelOption } from "@/types";
 
-type LooseParamDef = Partial<ChatModelParamDef> & { key?: string };
+type LooseParamDef = Partial<ModelParamDef> & { key?: string };
 
 export const chatParamPresetList: LooseParamDef[] = [
   {
@@ -238,7 +239,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
 
 export const chatModelTypeList: ChatModelOption[] = chatModelCatalog;
 
-export const providerList: ChatSelectOption<ChatModelProvider>[] = [
+export const providerList: SelectOption<ChatModelProvider>[] = [
   { value: "OpenAI", name: "OpenAI" },
   { value: "Azure OpenAI", name: "Azure OpenAI" },
   { value: "Anthropic", name: "Anthropic Direct" },

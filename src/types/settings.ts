@@ -1,10 +1,8 @@
-import type { ChatModelConfig } from "./chat";
-import type { ImageModelConfig } from "./image";
+import type { ChatModelConfig } from "@/services/chat/types";
+import type { ImageModelConfig } from "@/services/image/types";
 import type { ExportedChatSessionSettings } from "./chat";
-import type { ChatProviderPayload } from "./chat/provider";
-import type { ImageProviderPayload } from "./image/provider";
 
-export type ModelKind = "chat" | "image" | "audio" | "embedding";
+export type ModelKind = "chat" | "image";
 
 /** Union of canonical user-owned model configs used by the application. */
 export type ModelConfig = ChatModelConfig | ImageModelConfig;
@@ -18,8 +16,6 @@ export type ModelConfig = ChatModelConfig | ImageModelConfig;
 export interface ModelSettings {
   chat: ChatModelConfig[];
   image: ImageModelConfig[];
-  imageGeneration?: ImageModelConfig[];
-  imageEdit?: ImageModelConfig[];
 }
 
 /**
@@ -29,10 +25,8 @@ export interface ModelSettings {
  * belong here.
  */
 export interface PersistedModelSettingsPayload {
-  chat: ChatProviderPayload[];
-  image: ImageProviderPayload[];
-  imageGeneration?: ImageProviderPayload[];
-  imageEdit?: ImageProviderPayload[];
+  chat: ChatModelConfig[];
+  image: ImageModelConfig[];
 }
 
 /**
