@@ -8,7 +8,6 @@ import type {
 } from "@/ai-capability/chat/types";
 
 export type ChatFormProvider = ChatModelProvider | "";
-export type CapabilityOverrideMode = "inherit" | "custom";
 
 /**
  * Catalog metadata for a known chat model id.
@@ -38,8 +37,6 @@ export interface ChatModelEditorState {
   model: string;
   deployment: string;
   apiVersion: string;
-  enabledCapabilitiesMode: CapabilityOverrideMode;
-  enabledCapabilities: Partial<ChatModelCapabilities>;
 }
 
 /**

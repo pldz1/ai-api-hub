@@ -136,7 +136,6 @@ import {
   getModelDeployment,
   mergeChatSettingsWithModel,
   getModelFromSnapshot,
-  resolveConfiguredModelCapabilities,
 } from "@/models";
 import { packUserMsg } from "@/services";
 import type { ChatPromptMessage } from "@/ai-capability/chat/types";
@@ -207,9 +206,8 @@ const activeModelConfig = computed(() => getModelFromSnapshot(activeSnapshot.val
 const activeSupportedCapabilities = computed(() =>
   activeModelConfig.value ? getChatModelCapabilities(activeModelConfig.value.model, activeModelConfig.value.provider) : { ...defaultModelCapabilities },
 );
-const activeEnabledCapabilities = computed(() => resolveConfiguredModelCapabilities(activeModelConfig.value, activeSupportedCapabilities.value));
 const activeCapabilities = computed(() =>
-  getEffectiveCapabilities(activeSupportedCapabilities.value, activeEnabledCapabilities.value, inputCapabilities.value),
+  getEffectiveCapabilities(activeSupportedCapabilities.value, activeSupportedCapabilities.value, inputCapabilities.value),
 );
 const lockedModelName = computed(() => curConversation.value?.modelSnapshot?.displayName || t("input.lockedModel"));
 const elapsedSeconds = computed(() => (elapsedMs.value / 1000).toFixed(1));
@@ -230,10 +228,9 @@ const capabilityIcons: Record<string, string> = {
 
 const visibleTurnCapabilities = computed(() => {
   const supported = activeSupportedCapabilities.value;
-  const enabled = activeEnabledCapabilities.value;
 
   return Object.keys(capabilityLabelKeys)
-    .filter((key) => key !== "imageRead" && supported?.[key] && enabled?.[key])
+    .filter((key) => key !== "imageRead" && supported?.[key])
     .map((key) => {
       const translationKey = capabilityLabelKeys[key];
       const text = t(translationKey);

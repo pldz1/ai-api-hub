@@ -12,7 +12,7 @@ export interface ImageAITurnRequest {
   attachments?: ImageInputFile[];
 }
 
-export type BuildImageGenerationParams = (model: ImageProviderModel | null, settings: Record<string, unknown>) => Record<string, unknown>;
+export type BuildImageGenerationParams = (settings: Record<string, unknown>) => Record<string, unknown>;
 
 export function getImageAttachmentParams(mode: ImageAITurnRequest["mode"], attachments: ImageInputFile[] = []) {
   if (mode !== "edit" || attachments.length === 0) return {};
@@ -45,7 +45,7 @@ export function buildImageAIParams(request: ImageAITurnRequest, buildParams?: Bu
     output_format: request.outputFormat || "png",
     ...getImageAttachmentParams(request.mode, request.attachments || []),
   };
-  const baseParams = buildParams ? buildParams(request.model, settings) : settings;
+  const baseParams = buildParams ? buildParams(settings) : settings;
 
   return {
     ...baseParams,

@@ -2,8 +2,7 @@
 export type { ChatModelConfig, ParamDefaultValue, ChatModelCapabilities } from "@/ai-capability/chat";
 
 // App-level chat types (user-owned config, editor state, conversation, etc.)
-export {
-  type CapabilityOverrideMode,
+export { 
   type ChatFormProvider,
   type ChatModelEditorState,
   type ChatModelOption,

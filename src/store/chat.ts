@@ -4,8 +4,6 @@ import {
   getChatModelCapabilities,
   getModelFromSnapshot,
   mergeChatSettingsWithModel,
-  normalizeModelCapabilities,
-  resolveConfiguredModelCapabilities,
 } from "@/models";
 
 const emptyTokenUsage = () => ({
@@ -28,10 +26,7 @@ function normalizeTokenUsage(data: Record<string, unknown> = {}) {
 
 function createInputCapabilities(conversation = null) {
   const model = getModelFromSnapshot(conversation?.modelSnapshot);
-  const supported = model ? getChatModelCapabilities(model.model, model.provider) : { ...defaultModelCapabilities };
-  const enabled = resolveConfiguredModelCapabilities(model, supported);
-  const capabilities = normalizeModelCapabilities(enabled, supported);
-  return capabilities;
+  return model ? getChatModelCapabilities(model.model, model.provider) : { ...defaultModelCapabilities };
 }
 
 function createChatRuntime() {

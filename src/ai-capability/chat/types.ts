@@ -70,8 +70,6 @@ export interface ChatModelConfigBase {
   name: string;
   apiKey: string;
   model: string;
-  enabledCapabilitiesMode?: "inherit" | "custom";
-  enabledCapabilities?: Partial<ChatModelCapabilities>;
 }
 
 export interface OpenAIChatModelConfig extends ChatModelConfigBase {

@@ -1,6 +1,6 @@
-import type { ChatModelCapabilities, ChatModelConfig } from "@/ai-capability/chat/types";
+import type { ChatModelConfig } from "@/ai-capability/chat/types";
 import type { ImageModelConfig, ImageModelProvider, ImageOperation } from "@/ai-capability/image/types";
-import type { CapabilityOverrideMode, ChatFormProvider, ExportedChatSessionSettings } from "./conversation";
+import type { ChatFormProvider, ExportedChatSessionSettings } from "./conversation";
 
 export type ModelKind = "chat" | "image";
 
@@ -58,6 +58,4 @@ export interface LooseModelConfig {
   deployment?: string;
   apiVersion?: string;
   imageOperation?: ImageOperation | "";
-  enabledCapabilitiesMode?: CapabilityOverrideMode;
-  enabledCapabilities?: Partial<ChatModelCapabilities>;
 }

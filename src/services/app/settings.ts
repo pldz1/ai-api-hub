@@ -1,6 +1,6 @@
 import store from "@/store";
 import { tr } from "@/i18n";
-import { buildPersistedModelSettingsPayload, migratePersistedModelSettings } from "@/models";
+import { buildPersistedModelSettingsPayload, sanitizeModelSettings } from "@/models";
 import { dsAlert, getChatTemplateListValidationError, getModelSettingValidationError } from "@/utils";
 import { apiRequest } from "./storage";
 import type { ApiResponse } from "@/services/types";
@@ -44,7 +44,7 @@ export async function getModels(): Promise<boolean> {
       return false;
     }
 
-    await store.dispatch("setModels", migratePersistedModelSettings(parsed as ModelSettings));
+    await store.dispatch("setModels", sanitizeModelSettings(parsed as ModelSettings));
     return true;
   } catch (error) {
     await store.dispatch("setModels", emptyModelSettings());

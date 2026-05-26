@@ -1,69 +1,7 @@
 import type { ImageModelConfig, ImageModelParamType, ModelSettings, PersistedModelSettingsPayload, LooseModelConfig } from "@/types";
-import type { ChatModelCapabilities, ChatModelConfig, ParamDefaultValue } from "@/ai-capability/chat/types";
+import type { ChatModelConfig, ParamDefaultValue } from "@/ai-capability/chat/types";
 import { isAzureChatModel, normalizeChatModelConfig } from "./chat";
 import { normalizeImageModelConfig } from "./image";
-
-type ChatCapabilityConfigInput = {
-  enabledCapabilitiesMode?: "inherit" | "custom";
-  enabledCapabilities?: Partial<ChatModelCapabilities>;
-};
-
-/** Returns whether the user explicitly saved any chat capability overrides. */
-function hasCapabilityOverrides(enabledCapabilities: ChatCapabilityConfigInput["enabledCapabilities"] | null | undefined = {}): boolean {
-  return Boolean(enabledCapabilities && Object.keys(enabledCapabilities).length > 0);
-}
-
-const modelCapabilityKeys: (keyof ChatModelCapabilities)[] = ["imageRead", "webSearch"];
-
-/**
- * Filters capability override data to the stable chat capability contract.
- *
- * This helper also migrates old `imageInput` data into the current `imageRead`
- * field so user settings remain compatible after schema changes.
- */
-export function sanitizeModelCapabilityOverrides(enabledCapabilities: unknown = {}): Partial<ChatModelCapabilities> {
-  const source = (enabledCapabilities && typeof enabledCapabilities === "object" ? enabledCapabilities : {}) as Partial<ChatModelCapabilities> & {
-    imageInput?: boolean;
-  };
-  const next: Partial<ChatModelCapabilities> = {};
-
-  modelCapabilityKeys.forEach((key) => {
-    if (key === "imageRead") {
-      const imageRead = source.imageRead ?? source.imageInput;
-      if (typeof imageRead === "boolean") next.imageRead = imageRead;
-      return;
-    }
-
-    if (typeof source[key] === "boolean") next[key] = source[key];
-  });
-
-  return next;
-}
-
-/**
- * Resolves the persisted capability override mode from loose settings data.
- *
- * Older data may omit `enabledCapabilitiesMode` and only persist the flags
- * themselves, so this helper normalizes both cases.
- */
-function getCapabilityOverrideMode(model: ChatCapabilityConfigInput | null | undefined = {}): "inherit" | "custom" {
-  if (model?.enabledCapabilitiesMode === "custom") return "custom";
-  return hasCapabilityOverrides(model?.enabledCapabilities) ? "custom" : "inherit";
-}
-
-/**
- * Builds the persisted capability override fields for a chat model payload.
- *
- * These fields are user configuration and should be stored/exported, unlike
- * runtime capability resolution results.
- */
-function getPersistedCapabilityFields(model: ChatCapabilityConfigInput | null | undefined = {}) {
-  if (getCapabilityOverrideMode(model) !== "custom") return {};
-  return {
-    enabledCapabilitiesMode: "custom" as const,
-    enabledCapabilities: structuredClone(sanitizeModelCapabilityOverrides(model?.enabledCapabilities)),
-  };
-}
 
 /**
  * Sanitizes a chat model config before putting it back into store/export shape.
@@ -81,7 +19,6 @@ function sanitizeChatModelConfig(model: ChatModelConfig): ChatModelConfig {
     ...("endpoint" in model ? { endpoint: model.endpoint } : {}),
     ...("deployment" in model ? { deployment: model.deployment } : {}),
     ...("apiVersion" in model ? { apiVersion: model.apiVersion } : {}),
-    ...getPersistedCapabilityFields(model),
   } as ChatModelConfig;
 }
 
@@ -117,27 +54,6 @@ export function sanitizeModelSettings(data: Partial<ModelSettings> | null | unde
 }
 
 /**
- * Migrates legacy persisted settings JSON into the current in-memory model shape.
- *
- * This is the main read-path bridge for old exports or older persisted payloads.
- */
-export function migratePersistedModelSettings(data: Partial<ModelSettings> | null | undefined = {}): ModelSettings {
-  const migrateModelEntries = (items: unknown[] = [], kind = "") =>
-    (Array.isArray(items) ? items : []).map((item) => {
-      if (kind === "chat") return normalizeChatModelConfig(item as LooseModelConfig);
-      if (kind === "image") return normalizeImageModelConfig(item as LooseModelConfig);
-      return item;
-    });
-
-  const imageModels = Array.isArray(data?.image) ? data.image : [];
-
-  return sanitizeModelSettings({
-    chat: migrateModelEntries(data?.chat, "chat") as ChatModelConfig[],
-    image: migrateModelEntries(imageModels, "image") as ImageModelConfig[],
-  });
-}
-
-/**
  * Builds the persisted chat payload written to storage/export for one model.
  *
  * This function is intentionally the inverse of the loose read/normalize path:
@@ -150,7 +66,6 @@ function buildPersistedChatModelConfig(model: LooseModelConfig | ChatModelConfig
     provider: modelConfig.provider,
     apiKey: modelConfig.apiKey,
     model: modelConfig.model,
-    ...getPersistedCapabilityFields(modelConfig),
   };
 
   if (isAzureChatModel(modelConfig)) {
@@ -206,7 +121,7 @@ function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConf
  * persisted settings.
  */
 export function buildPersistedModelSettingsPayload(data: Partial<ModelSettings> | null | undefined = {}): PersistedModelSettingsPayload {
-  const persistedSettings = migratePersistedModelSettings(data);
+  const persistedSettings = sanitizeModelSettings(data);
   return {
     chat: persistedSettings.chat.map((item) => buildPersistedChatModelConfig(item)),
     image: persistedSettings.image.map((item) => buildPersistedImageModelConfig(item)),

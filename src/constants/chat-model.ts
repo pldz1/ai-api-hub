@@ -260,6 +260,4 @@ export const defaultChatModelEditorState: ChatModelEditorState = {
   model: "",
   deployment: "",
   apiVersion: "",
-  enabledCapabilitiesMode: "inherit",
-  enabledCapabilities: {},
 };

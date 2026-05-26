@@ -1,5 +1,5 @@
 import store from "@/store";
-import { migratePersistedModelSettings } from "@/models";
+import { sanitizeModelSettings } from "@/models";
 import { dsAlert, getSettingsImportValidationError, isSettingsImportPackage, isValidSettingsImport } from "@/utils";
 import { tr } from "@/i18n";
 import { getModels, setChatInsTemplateList, setModels } from "./settings";
@@ -96,7 +96,7 @@ export async function importSettingsPayload(data: unknown, options: ImportConfig
 
   if (isSettingsImportPackage(data)) {
     const importedPackage = clonePlainData(data) as SettingsImportPayload;
-    const models = migratePersistedModelSettings(importedPackage.models);
+    const models = sanitizeModelSettings(importedPackage.models);
 
     await store.dispatch("setModels", models);
     if (Array.isArray(importedPackage.templates)) {
@@ -108,7 +108,7 @@ export async function importSettingsPayload(data: unknown, options: ImportConfig
 
     if (modelsSaved === false || templatesSaved === false) return false;
   } else {
-    const models = migratePersistedModelSettings(clonePlainData(data) as PersistedModelSettingsPayload);
+    const models = sanitizeModelSettings(clonePlainData(data) as PersistedModelSettingsPayload);
     await store.dispatch("setModels", models);
     if ((await setModels(models)) === false) return false;
   }

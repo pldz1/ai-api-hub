@@ -132,7 +132,7 @@ import copyIcon from "@/assets/svg/copy16.svg";
 import SvgIcon from "@/components/SvgIcon.vue";
 import { chatDisplayedCapabilityKeys, defaultChatModelEditorState, defaultImageModelEditorState, imageModelProviderList, providerList } from "@/constants";
 import { dsAlert } from "@/utils";
-import { getChatModelCapabilities, imageParamDefs, sanitizeModelCapabilityOverrides } from "@/models";
+import { getChatModelCapabilities, imageParamDefs } from "@/models";
 import type { SelectOption } from "@/ai-capability/chat/types";
 import type {
   ChatModelConfig,
@@ -300,12 +300,6 @@ function buildChatModelPayload(): ChatModelConfig {
     name: localModel.name,
     apiKey: localModel.apiKey,
     model: localModel.model,
-    ...(localModel.enabledCapabilitiesMode === "custom"
-      ? {
-          enabledCapabilitiesMode: "custom" as const,
-          enabledCapabilities: sanitizeModelCapabilityOverrides(localModel.enabledCapabilities),
-        }
-      : {}),
   };
 
   if (localModel.provider === "Azure OpenAI") {
@@ -358,14 +352,10 @@ function createModelPayload(): ModelConfig {
 function syncFromProps(model?: ModelEditorInput) {
   // Sync external selection changes into local edit state without immediately re-emitting.
   const legacyModel = model || {};
-  const chatModel = props.kind === "chat" ? (model as Partial<ChatModelConfig> | undefined) : undefined;
-  const hasCustomCapabilities = Boolean(chatModel?.enabledCapabilities && Object.keys(chatModel.enabledCapabilities).length > 0);
   isSyncingFromProps = true;
   Object.assign(localModel, createEmptyModelEditorState(), model || {}, {
     provider: legacyModel.provider || legacyModel.apiType || "",
   });
-  localModel.enabledCapabilitiesMode = chatModel?.enabledCapabilitiesMode === "custom" || hasCustomCapabilities ? "custom" : "inherit";
-  localModel.enabledCapabilities = sanitizeModelCapabilityOverrides(chatModel?.enabledCapabilities);
   normalizeModelFields();
   syncProviderForModel(true);
   syncProviderBaseURL(localModel.provider, true);

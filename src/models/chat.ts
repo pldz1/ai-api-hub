@@ -43,8 +43,6 @@ export function normalizeChatModelConfig(model: LooseModelConfig | null | undefi
     name: String(model?.name || "").trim(),
     apiKey: String(model?.apiKey || "").trim(),
     model: modelId,
-    enabledCapabilitiesMode: model?.enabledCapabilitiesMode === "custom" ? ("custom" as const) : ("inherit" as const),
-    enabledCapabilities: model?.enabledCapabilities,
   };
 
   if (nextProvider === "Azure OpenAI") {
@@ -109,29 +107,6 @@ export function normalizeModelCapabilities(
   const next = { ...defaultModelCapabilities };
   (Object.keys(next) as (keyof ChatModelCapabilities)[]).forEach((key) => {
     next[key] = Boolean(supported[key] && (capabilities?.[key] ?? supported[key]));
-  });
-  return next;
-}
-
-/**
- * Resolves the user's capability override settings against the catalog support
- * flags for a model.
- *
- * In other words:
- * - `supported` answers "can this model do it?"
- * - the returned value answers "did the user leave it enabled?"
- */
-export function resolveConfiguredModelCapabilities(
-  model: Partial<Pick<LooseModelConfig, "enabledCapabilitiesMode" | "enabledCapabilities">> | null | undefined = {},
-  supported: ChatModelCapabilities = defaultModelCapabilities,
-): ChatModelCapabilities {
-  if (model?.enabledCapabilitiesMode !== "custom") {
-    return normalizeModelCapabilities(undefined, supported);
-  }
-
-  const next = { ...defaultModelCapabilities };
-  (Object.keys(next) as (keyof ChatModelCapabilities)[]).forEach((key) => {
-    next[key] = Boolean(supported[key] && model?.enabledCapabilities?.[key]);
   });
   return next;
 }
