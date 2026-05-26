@@ -267,7 +267,7 @@
 <script setup lang="ts">
 import { useStore } from "vuex";
 import { getChatList, deleteChat, renameChat, resetCurrentChatDraft } from "@/services";
-import { deleteImageConversation, getImageConversationList } from "@/services/image";
+import { deleteImageConversation, getImageConversationList } from "@/services/creation";
 import { nextTick, ref, computed, onMounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";

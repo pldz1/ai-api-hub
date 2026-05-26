@@ -128,7 +128,7 @@ import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import attachIcon from "@/assets/svg/attach24.svg";
 import navImageIcon from "@/assets/svg/navImage24.svg";
 import { imageModelSize } from "@/constants";
-import { addImageConversation, getImageConversationMessages, submitImageMessage } from "@/services/image";
+import { addImageConversation, getImageConversationMessages, submitImageMessage } from "@/services/creation";
 import { dsAlert, getUuid, saveToLocal } from "@/utils";
 import type { ImageConversationMessage, ImageInputAttachment, ImagePayload, ImageModelConfig } from "@/types";
 

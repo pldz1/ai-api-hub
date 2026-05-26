@@ -1,5 +1,5 @@
 export * from "./settings";
-export type { ChatModelConfig } from "@/services/chat/types";
+export type { ChatModelConfig } from "@/ai-capability/chat/types";
 
 // App-level chat types (user-owned config, editor state, conversation, etc.)
 export {
@@ -11,21 +11,24 @@ export {
   type ConversationModelSnapshot,
   type ExportedChatSessionSettings,
   type PersistedChatSettingsPayload,
-} from "./chat";
+} from "./conversation";
+
+export type {
+  ImageModelConfig,
+  ImageModelProvider,
+  ImageOperation,
+  ImageInputFile,
+  ModelParamDef as ImageModelParamDef,
+  ModelParamType as ImageModelParamType,
+  ParamDefaultValue as ImageParamDefaultValue,
+  SelectOption as ImageSelectOption,
+} from "@/ai-capability/image/types";
 
 // Image types.
 export {
-  type ImageModelConfig,
   type ImageModelEditorState,
   type ImageModelOption,
-  type ImageModelProvider,
   type ImageModelSettings,
-  type ImageOperation,
-  type ImageInputFile,
-  type ImageModelParamDef,
-  type ImageModelParamType,
-  type ImageParamDefaultValue,
-  type ImageSelectOption,
   type ImageConversationMessage,
   type ImageConversationInfo,
   type ImageConversationMode,
@@ -35,4 +38,4 @@ export {
   type ImagePayload,
   type ImageTurnRequest,
   type ImageTurnResponse,
-} from "./image";
+} from "./creation";

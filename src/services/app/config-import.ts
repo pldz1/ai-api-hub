@@ -2,7 +2,7 @@ import store from "@/store";
 import { migratePersistedModelSettings } from "@/models";
 import { dsAlert, getSettingsImportValidationError, isSettingsImportPackage, isValidSettingsImport } from "@/utils";
 import { tr } from "@/i18n";
-import { importChatSessionSettings } from "../chat";
+import { importChatSessionSettings } from "../conversation";
 import { getModels, setChatInsTemplateList, setModels } from "./settings";
 import type { PersistedModelSettingsPayload, SettingsImportPayload } from "@/types";
 

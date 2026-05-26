@@ -1,6 +1,6 @@
-import type { ChatModelConfig } from "@/services/chat/types";
-import type { ImageModelConfig } from "@/services/image/types";
-import type { ExportedChatSessionSettings } from "./chat";
+import type { ChatModelConfig } from "@/ai-capability/chat/types";
+import type { ImageModelConfig } from "@/ai-capability/image/types";
+import type { ExportedChatSessionSettings } from "./conversation";
 
 export type ModelKind = "chat" | "image";
 

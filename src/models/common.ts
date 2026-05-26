@@ -8,8 +8,8 @@ import type {
   ImageModelParamType,
   ImageParamDefaultValue,
 } from "@/types";
-import type { ChatModelCapabilities } from "@/services/chat/types";
-import type { ModelParamDef, ParamDefaultValue } from "@/services/chat/types";
+import type { ChatModelCapabilities } from "@/ai-capability/chat/types";
+import type { ModelParamDef, ParamDefaultValue } from "@/ai-capability/chat/types";
 
 type WorkspaceParamDefaultValue = ParamDefaultValue | ImageParamDefaultValue;
 

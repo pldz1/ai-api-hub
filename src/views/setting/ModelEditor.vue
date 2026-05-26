@@ -133,7 +133,7 @@ import SvgIcon from "@/components/SvgIcon.vue";
 import { chatDisplayedCapabilityKeys, defaultChatModelEditorState, defaultImageModelEditorState, imageModelProviderList, providerList } from "@/constants";
 import { dsAlert } from "@/utils";
 import { getChatModelCapabilities, getChatModelInfo, getModelImageParamDefs, sanitizeModelCapabilityOverrides } from "@/models";
-import type { SelectOption } from "@/services/chat/types";
+import type { SelectOption } from "@/ai-capability/chat/types";
 import type {
   ChatModelConfig,
   ChatModelEditorState,
