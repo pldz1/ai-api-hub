@@ -496,6 +496,8 @@ onBeforeUnmount(() => {
 }
 
 .image-empty-state {
+  position: relative;
+  isolation: isolate;
   min-height: 100%;
   display: flex;
   flex-direction: column;
@@ -503,6 +505,31 @@ onBeforeUnmount(() => {
   justify-content: center;
   text-align: center;
   color: oklch(var(--bc));
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 45%;
+    z-index: -1;
+    pointer-events: none;
+    border-radius: 999px;
+    transform: translate(-50%, -50%);
+  }
+
+  &::before {
+    width: min(560px, 88vw);
+    aspect-ratio: 1;
+    background: radial-gradient(circle, oklch(var(--p) / 0.16) 0%, oklch(var(--p) / 0.07) 36%, oklch(var(--p) / 0) 70%);
+    filter: blur(8px);
+  }
+
+  &::after {
+    width: min(340px, 64vw);
+    aspect-ratio: 1;
+    background: radial-gradient(circle, oklch(var(--p) / 0.12) 0%, oklch(var(--p) / 0.05) 44%, oklch(var(--p) / 0) 74%);
+  }
 
   h1 {
     margin: 18px 0 8px;
@@ -518,6 +545,7 @@ onBeforeUnmount(() => {
 }
 
 .image-empty-mark {
+  position: relative;
   width: 74px;
   height: 74px;
   display: grid;

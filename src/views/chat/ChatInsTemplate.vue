@@ -85,7 +85,34 @@ const onSelectInst = async (id: string) => {
 }
 
 .ctdc-copy {
+  position: relative;
+  isolation: isolate;
   text-align: center;
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: -1;
+    pointer-events: none;
+    border-radius: 999px;
+    transform: translate(-50%, -50%);
+  }
+
+  &::before {
+    width: min(520px, 86vw);
+    aspect-ratio: 1;
+    background: radial-gradient(circle, oklch(var(--p) / 0.18) 0%, oklch(var(--p) / 0.08) 34%, oklch(var(--p) / 0) 68%);
+    filter: blur(8px);
+  }
+
+  &::after {
+    width: min(320px, 62vw);
+    aspect-ratio: 1;
+    background: radial-gradient(circle, oklch(var(--p) / 0.14) 0%, oklch(var(--p) / 0.05) 42%, oklch(var(--p) / 0) 72%);
+  }
 }
 
 .ctdc-title {

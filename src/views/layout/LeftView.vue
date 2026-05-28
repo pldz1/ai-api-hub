@@ -17,28 +17,28 @@
 
       <!-- Main Navigation -->
       <nav class="nav-group">
-        <AppTooltip :text="isExpanded ? '' : 'New chat conversation'" placement="right">
+        <AppTooltip :text="isExpanded ? '' : t('chat.newChatConversation')" placement="right">
           <button class="nav-item" :class="{ 'is-active': isChatDraftRoute }" type="button" @click="onNewChat">
             <SvgIcon :src="newIcon" class="nav-icon" />
-            <span v-if="isExpanded" class="nav-label">New chat conversation</span>
+            <span v-if="isExpanded" class="nav-label">{{ t("chat.newChatConversation") }}</span>
           </button>
         </AppTooltip>
-        <AppTooltip :text="isExpanded ? '' : 'New image creation'" placement="right">
+        <AppTooltip :text="isExpanded ? '' : t('chat.newImageCreation')" placement="right">
           <button class="nav-item" :class="{ 'is-active': isImageDraftRoute }" type="button" @click="onNewImage">
             <SvgIcon :src="libraryIcon" class="nav-icon" />
-            <span v-if="isExpanded" class="nav-label">New image creation</span>
+            <span v-if="isExpanded" class="nav-label">{{ t("chat.newImageCreation") }}</span>
           </button>
         </AppTooltip>
         <div v-if="isExpanded" class="nav-delete-panel" :class="{ 'is-active': isDeleteMode }">
           <button class="nav-delete-btn" type="button" @click="toggleDeleteMode">
             <SvgIcon :src="deleteIcon" class="nav-icon" />
-            <span>{{ isDeleteMode ? "Cancel deletion" : "Delete conversations" }}</span>
+            <span>{{ isDeleteMode ? t("chat.cancelDeletion") : t("chat.deleteConversations") }}</span>
           </button>
           <div v-if="isDeleteMode" class="delete-mode-toolbar">
-            <button type="button" @click="selectAllConversations">All</button>
-            <button type="button" @click="clearSelectedConversations">Clear</button>
+            <button type="button" @click="selectAllConversations">{{ t("chat.all") }}</button>
+            <button type="button" @click="clearSelectedConversations">{{ t("chat.clear") }}</button>
             <button class="is-danger" type="button" :disabled="selectedConversationCount === 0" @click="onDeleteSelectedConversations">
-              Delete {{ selectedConversationCount || "" }}
+              {{ t("chat.deleteSelectedConversations", { count: selectedConversationCount }) }}
             </button>
           </div>
         </div>
@@ -55,7 +55,7 @@
               :aria-expanded="isChatSectionOpen"
               @click="isChatSectionOpen = !isChatSectionOpen"
             >
-              <span class="section-title">Chat Conversations</span>
+              <span class="section-title">{{ t("chat.chatConversations") }}</span>
               <span class="section-count">{{ chatList.length }}</span>
               <span class="section-caret"></span>
             </button>
@@ -140,13 +140,13 @@
               :aria-expanded="isImageSectionOpen"
               @click="isImageSectionOpen = !isImageSectionOpen"
             >
-              <span class="section-title">Image Conversations</span>
+              <span class="section-title">{{ t("chat.imageConversations") }}</span>
               <span class="section-count">{{ imageConversationList.length }}</span>
               <span class="section-caret"></span>
             </button>
             <Transition name="section-list">
               <div v-if="isImageSectionOpen" class="section-body">
-                <div v-if="imageConversationList.length === 0" class="empty-tip">No image conversations yet</div>
+                <div v-if="imageConversationList.length === 0" class="empty-tip">{{ t("chat.noImageConversations") }}</div>
                 <div v-else class="recents-list">
                   <div v-for="item in imageConversationList" :key="item.iid" class="chat-item-wrapper">
                     <div
@@ -179,7 +179,7 @@
 
                       <AppDropdownMenu placement="bottom-end">
                         <template #trigger="{ toggle }">
-                          <button class="chat-menu-btn" aria-label="More image actions" @click.stop="toggle">
+                          <button class="chat-menu-btn" :aria-label="t('chat.moreImageActions')" @click.stop="toggle">
                             <span class="dot"></span>
                             <span class="dot"></span>
                             <span class="dot"></span>
@@ -188,7 +188,7 @@
                         <template #default="{ close }">
                           <button class="menu-option is-danger" type="button" @click="onDeleteImageConversation(item, close)">
                             <SvgIcon class="menu-option-icon" :src="deleteIcon" />
-                            <span>Delete image conversation</span>
+                            <span>{{ t("chat.deleteImageConversation") }}</span>
                           </button>
                         </template>
                       </AppDropdownMenu>
@@ -377,10 +377,10 @@ const getChatRuntimeStatusClass = (cid: string) => getRuntimeStatusClass(getChat
 const getImageRuntimeStatusClass = (iid: string) => getRuntimeStatusClass(getImageRuntime(iid));
 
 const getRuntimeLabel = (runtime: any) => {
-  if (isRuntimeRunning(runtime)) return "Running";
-  if (runtime?.status === "error") return "Finished with error";
-  if (runtime?.status === "stopped") return "Stopped";
-  return "Completed";
+  if (isRuntimeRunning(runtime)) return t("chat.runtimeRunning");
+  if (runtime?.status === "error") return t("chat.runtimeError");
+  if (runtime?.status === "stopped") return t("chat.runtimeStopped");
+  return t("chat.runtimeCompleted");
 };
 
 const getChatRuntimeLabel = (cid: string) => getRuntimeLabel(getChatRuntime(cid));
@@ -505,8 +505,8 @@ const onDeleteSelectedConversations = async () => {
   if (!total) return;
 
   const confirmed = await requestChatActionConfirmation({
-    title: "Delete selected conversations",
-    message: `Delete ${total} selected conversation${total > 1 ? "s" : ""}? This cannot be undone.`,
+    title: t("chat.confirmDeleteSelectedConversationsTitle"),
+    message: t("chat.confirmDeleteSelectedConversations", { count: total }),
     confirmText: t("chat.confirmDeleteChatConfirm"),
     danger: true,
   });
@@ -532,8 +532,8 @@ const onDeleteImageConversation = async (item: any, closeMenu: () => void) => {
   closeMenu?.();
   const imageId = item?.iid || "";
   const confirmed = await requestChatActionConfirmation({
-    title: "Delete image conversation",
-    message: `Delete "${item?.iname || ""}"? This cannot be undone.`,
+    title: t("chat.confirmDeleteImageConversationTitle"),
+    message: t("chat.confirmDeleteImageConversation", { name: item?.iname || "" }),
     confirmText: t("chat.confirmDeleteChatConfirm"),
     danger: true,
   });
@@ -1390,8 +1390,8 @@ $radius-md: 12px;
 
   &:hover,
   &.is-active {
-    background: rgba(17, 24, 39, 0.05);
-    color: #111827;
+    background: oklch(var(--b3));
+    color: oklch(var(--bc));
   }
 
   &.is-active {
