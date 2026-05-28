@@ -2,9 +2,13 @@
   <dialog ref="dialogRef" class="image-edit-dialog" @click="onDialogClick" @cancel.prevent="close">
     <div class="ied-shell" @click.stop>
       <header class="ied-toolbar">
-        <button class="ied-icon-button" type="button" :aria-label="t('common.close')" @click="close">×</button>
+        <button class="ied-icon-button" type="button" :aria-label="t('common.close')" @click="close">
+          <SvgIcon :src="closeIcon" />
+        </button>
         <div class="ied-toolbar-actions">
-          <button class="ied-icon-button" type="button" :aria-label="t('image.clearBrush')" @click="clearMask">⌫</button>
+          <button class="ied-icon-button" type="button" :aria-label="t('image.clearBrush')" @click="clearMask">
+            <svg-icon :src="revertIcon" />
+          </button>
           <button class="ied-secondary-button" type="button" @click="downloadImage">{{ t("image.download") }}</button>
           <label class="ied-brush-control">
             <span>{{ t("image.brushSize") }}</span>
@@ -35,6 +39,9 @@
 import { computed, nextTick, onBeforeUnmount, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { dsAlert } from "@/utils";
+import SvgIcon from "@/components/SvgIcon.vue";
+import closeIcon from "@/assets/svg/delete32.svg";
+import revertIcon from "@/assets/svg/revert32.svg";
 import type { ImageInputAttachment } from "@/types";
 
 const emit = defineEmits<{
