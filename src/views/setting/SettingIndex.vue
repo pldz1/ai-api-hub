@@ -442,6 +442,7 @@ onBeforeUnmount(() => {
 
 .settings-main {
   min-width: 0;
+  min-height: 0;
   padding: 20px 22px 18px;
   display: flex;
   flex-direction: column;
@@ -512,7 +513,7 @@ onBeforeUnmount(() => {
 .settings-main-content {
   min-height: 0;
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
   border: 1px solid oklch(var(--bc) / 0.07);
   border-radius: 26px;
   background: oklch(var(--b1) / 0.9);
@@ -534,6 +535,87 @@ onBeforeUnmount(() => {
 
   .settings-main-header {
     flex-direction: column;
+  }
+}
+
+@media (max-width: 720px) {
+  .settings-page {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .settings-sidebar {
+    padding: 14px 12px 10px;
+    overflow: visible;
+  }
+
+  .settings-sidebar-header {
+    margin: 0 2px 12px;
+
+    h2 {
+      font-size: 18px;
+    }
+  }
+
+  .settings-nav-group {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+
+    & + & {
+      margin-top: 10px;
+    }
+
+    h3 {
+      display: none;
+    }
+  }
+
+  .settings-tab-button {
+    min-width: 132px;
+    border-radius: 999px;
+    padding: 10px 14px;
+    box-shadow: none;
+
+    span {
+      font-size: 13px;
+    }
+
+    small {
+      display: none;
+    }
+  }
+
+  .settings-main {
+    padding: 14px 14px 16px;
+    gap: 14px;
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+
+  .settings-main-header {
+    gap: 10px;
+
+    p {
+      max-width: none;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+  }
+
+  .settings-status {
+    align-self: flex-start;
+  }
+
+  .settings-main-content {
+    border-radius: 22px;
+    padding: 18px 18px 32px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 </style>

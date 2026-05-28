@@ -174,8 +174,14 @@ defineExpose({
   overflow: hidden;
 
   .modal-box {
-    width: 664px;
-    max-width: unset;
+    width: min(664px, calc(100vw - 24px));
+    max-width: none;
+    max-height: min(88dvh, 760px);
+    padding: 18px 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow: hidden;
   }
 
   .gcms-container {
@@ -183,7 +189,7 @@ defineExpose({
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    max-height: 450px;
+    max-height: min(64dvh, 450px);
     padding: 8px;
     overflow-y: auto;
   }
@@ -191,7 +197,8 @@ defineExpose({
   .gcms-setting-item {
     display: flex;
     flex-direction: row;
-    width: 596px;
+    width: min(596px, 100%);
+    max-width: 100%;
     align-items: center;
     gap: 16px;
   }
@@ -216,6 +223,8 @@ defineExpose({
     display: flex;
     flex-direction: row;
     align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
     width: 348px;
     gap: 8px;
 
@@ -231,6 +240,72 @@ defineExpose({
     .gcms-input-full {
       width: 100%;
       max-width: none;
+    }
+  }
+}
+
+@media (max-width: 720px) {
+  .global-chat-model-settings {
+    .modal-box {
+      width: min(100vw - 16px, 664px);
+      max-height: calc(100dvh - 16px);
+      padding: 14px 14px 12px;
+      border-radius: 12px;
+    }
+
+    h3 {
+      font-size: 1rem;
+      line-height: 1.35;
+    }
+
+    .gcms-container {
+      max-height: calc(100dvh - 132px);
+      padding: 6px 2px 2px;
+      align-items: stretch;
+    }
+
+    .gcms-setting-item {
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid oklch(var(--bc) / 0.06);
+    }
+
+    .gcms-setting-label {
+      width: 100%;
+      text-align: left;
+      justify-content: space-between;
+      font-size: 14px;
+      gap: 6px;
+    }
+
+    .gcms-info-icon {
+      width: 20px;
+      height: 20px;
+      flex: 0 0 auto;
+    }
+
+    .gcms-setting-content {
+      width: 100%;
+      flex-wrap: wrap;
+      gap: 8px;
+
+      .textarea {
+        min-height: 120px;
+      }
+
+      .input {
+        width: 100%;
+        max-width: none;
+        flex: 1 1 100%;
+      }
+
+      .range {
+        width: 100%;
+        flex: 1 1 100%;
+      }
     }
   }
 }

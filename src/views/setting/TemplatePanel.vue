@@ -169,4 +169,35 @@ watch(
   min-height: 280px;
   resize: vertical;
 }
+
+@media (max-width: 720px) {
+  .detail-toolbar-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+
+    .btn {
+      width: 100%;
+    }
+  }
+
+  .template-form-card {
+    padding: 18px;
+    gap: 18px;
+    border-radius: 20px;
+
+    label {
+      gap: 8px;
+    }
+
+    span {
+      font-size: 12px;
+    }
+  }
+
+  .template-textarea {
+    min-height: 220px;
+  }
+}
 </style>

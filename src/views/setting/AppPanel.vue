@@ -85,4 +85,33 @@ const { t } = useI18n();
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 720px) {
+  .app-settings-grid {
+    gap: 16px;
+  }
+
+  .app-settings-card {
+    border-radius: 20px;
+    padding: 18px;
+
+    h3 {
+      font-size: 18px;
+    }
+
+    p {
+      font-size: 13px;
+      line-height: 1.6;
+    }
+  }
+
+  .app-settings-actions {
+    margin-top: 18px;
+    gap: 10px;
+
+    .btn {
+      width: 100%;
+    }
+  }
+}
 </style>

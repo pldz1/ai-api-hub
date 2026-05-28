@@ -608,4 +608,83 @@ watch(
     flex-direction: column;
   }
 }
+
+@media (max-width: 720px) {
+  .model-form-card {
+    border-radius: 22px;
+  }
+
+  .model-form-section {
+    margin-top: 18px;
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .model-section-head {
+    margin-bottom: 16px;
+
+    h4 {
+      font-size: 15px;
+    }
+
+    p {
+      font-size: 12px;
+      line-height: 1.6;
+    }
+  }
+
+  .model-form-grid,
+  .model-capability-grid {
+    gap: 16px;
+  }
+
+  .model-form-field {
+    gap: 8px;
+
+    span,
+    label {
+      font-size: 12px;
+    }
+
+    small {
+      font-size: 11px;
+      line-height: 1.55;
+    }
+  }
+
+  .model-select {
+    min-height: 44px;
+    padding-left: 14px;
+  }
+
+  .model-key-input {
+    min-height: 50px;
+  }
+
+  .model-suggestion-list {
+    gap: 8px;
+
+    .btn {
+      min-height: 36px;
+      font-size: 12px;
+    }
+  }
+
+  .model-info-card {
+    font-size: 12px;
+  }
+
+  .model-capability-toggle {
+    min-height: 50px;
+    padding: 12px;
+
+    span {
+      font-size: 12px;
+    }
+
+    small {
+      font-size: 11px;
+    }
+  }
+}
 </style>

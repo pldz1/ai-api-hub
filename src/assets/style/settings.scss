@@ -238,3 +238,108 @@
     flex-direction: column;
   }
 }
+
+@media (max-width: 720px) {
+  .settings-section {
+    gap: 18px;
+    height: auto;
+    min-height: 100%;
+
+    :where(.btn) {
+      min-height: 42px;
+      padding-inline: 16px;
+      font-size: 12px;
+    }
+
+    :where(.input),
+    :where(.select),
+    :where(.textarea) {
+      border-radius: 12px;
+    }
+  }
+
+  .section-header {
+    flex-direction: column;
+    gap: 12px;
+
+    h2 {
+      font-size: 20px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    p {
+      font-size: 12px;
+      line-height: 1.65;
+    }
+  }
+
+  .section-actions {
+    width: 100%;
+
+    .btn {
+      flex: 1 1 auto;
+    }
+  }
+
+  .settings-workspace {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .settings-list-panel,
+  .settings-detail-panel {
+    width: 100%;
+    min-width: 0;
+    border-radius: 22px;
+  }
+
+  .settings-list-panel {
+    max-height: none;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .settings-list-item {
+    border-radius: 18px;
+    padding: 16px;
+  }
+
+  .settings-list-title {
+    font-size: 14px;
+  }
+
+  .settings-list-meta {
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  .settings-detail-panel {
+    padding: 16px;
+    gap: 18px;
+    overflow: visible;
+  }
+
+  .detail-toolbar {
+    gap: 12px;
+
+    h3 {
+      font-size: 18px;
+    }
+
+    p {
+      font-size: 12px;
+      line-height: 1.65;
+    }
+  }
+
+  .settings-empty-list,
+  .settings-empty-detail {
+    padding: 18px;
+    border-radius: 18px;
+    font-size: 13px;
+  }
+}
