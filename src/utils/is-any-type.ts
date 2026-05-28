@@ -1,4 +1,5 @@
 import { tr } from "@/i18n";
+import { getChatProviderConnectionFields, isChatModelProvider } from "@/ai-capability/chat/provider-registry";
 
 /**
  * Returns whether one user message contains at least one non-empty text part
@@ -79,7 +80,7 @@ export const getModelSettingValidationError = (data) => {
 
   const validateChatModel = (item, key, index) => {
     const provider = item.provider || item.apiType || "";
-    if (!["OpenAI", "Azure OpenAI", "Anthropic", "Azure AI Foundry", ""].includes(provider)) {
+    if (provider && !isChatModelProvider(provider)) {
       return tr("validation.invalidField", { path: fieldPath(itemPath(key, index), "provider") });
     }
 
@@ -92,11 +93,7 @@ export const getModelSettingValidationError = (data) => {
     const modelError = requireAnyField(item, ["model", "modelType"], key, index);
     if (modelError) return modelError;
 
-    if (provider === "Azure OpenAI") {
-      return requireFields(item, ["endpoint", "deployment", "apiVersion"], key, index);
-    }
-
-    return requireFields(item, ["baseURL"], key, index);
+    return requireFields(item, getChatProviderConnectionFields(provider), key, index);
   };
 
   const validateImageModel = (item, key, index) => {

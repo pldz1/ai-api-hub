@@ -1,12 +1,5 @@
-import type {
-  ModelParamDef,
-  SelectOption,
-  ChatModelEditorState,
-  ChatModelOption,
-  ChatModelCapabilities,
-  ChatModelCapabilityProfile,
-  ChatModelProvider,
-} from "@/types";
+import type { ModelParamDef, ChatModelEditorState, ChatModelOption, ChatModelCapabilities, ChatModelCapabilityProfile } from "@/types";
+import { chatProviderList } from "@/ai-capability/chat/provider-registry";
 
 export const chatParamPresetList: Partial<ModelParamDef>[] = [
   {
@@ -76,6 +69,14 @@ export const chatParamPresetList: Partial<ModelParamDef>[] = [
     descriptionKey: "chat.reasoningEffortTip",
     defaultValue: "medium",
     placeholder: "none / low / medium / high / xhigh",
+  },
+  {
+    key: "thinking",
+    label: "thinking",
+    type: "object",
+    description: "DeepSeek thinking configuration.",
+    defaultValue: { type: "enabled" },
+    placeholder: '{"type":"enabled"}',
   },
   {
     key: "verbosity",
@@ -238,16 +239,35 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
       tools: { ...baseCapabilityProfile.tools, functionCalling: true },
     },
   },
+  {
+    value: "deepseek-v4-flash",
+    name: "deepseek-v4-flash",
+    isReasonModel: true,
+    messageFormat: "text",
+    chatParamKeys: ["thinking", "reasoning_effort", "temperature", "top_p"],
+    capabilities: { webSearch: false, imageRead: false },
+    capabilityProfile: {
+      ...baseCapabilityProfile,
+      features: { ...baseCapabilityProfile.features, reasoning: true },
+    },
+  },
+  {
+    value: "deepseek-v4-pro",
+    name: "deepseek-v4-pro",
+    isReasonModel: true,
+    messageFormat: "text",
+    chatParamKeys: ["thinking", "reasoning_effort", "temperature", "top_p"],
+    capabilities: { webSearch: false, imageRead: false },
+    capabilityProfile: {
+      ...baseCapabilityProfile,
+      features: { ...baseCapabilityProfile.features, reasoning: true },
+    },
+  },
 ];
 
 export const chatModelTypeList: ChatModelOption[] = chatModelCatalog;
 
-export const providerList: SelectOption<ChatModelProvider>[] = [
-  { value: "OpenAI", name: "OpenAI" },
-  { value: "Azure OpenAI", name: "Azure OpenAI" },
-  { value: "Anthropic", name: "Anthropic Direct" },
-  { value: "Azure AI Foundry", name: "Azure AI Foundry" },
-];
+export const providerList = chatProviderList;
 
 export const defaultModelCapabilities: ChatModelCapabilities = {
   imageRead: false,

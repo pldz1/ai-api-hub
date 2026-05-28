@@ -261,6 +261,7 @@ export const languages = {
       modelSettings: "设置模型参数",
       sendOrStop: "发送 / 停止",
       uploadImage: "上传图片",
+      reasoning: "显示推理过程",
     },
     user: {
       app: {
@@ -668,6 +669,7 @@ export const languages = {
       modelSettings: "Set the model parameters.",
       sendOrStop: "Send / stop",
       uploadImage: "Upload image",
+      reasoning: "Show reasoning",
     },
     user: {
       app: {
@@ -726,7 +728,8 @@ export const languages = {
           text: "Text-only messages",
           parts: "Content-part messages",
         },
-        capabilitiesDescription: "This shows the model's native input and tool support. Image means it can accept image input, while actions like web search are enabled per message when needed.",
+        capabilitiesDescription:
+          "This shows the model's native input and tool support. Image means it can accept image input, while actions like web search are enabled per message when needed.",
         capabilitiesTitle: "Capabilities",
         chatModelHelp: "Enter the model ID sent to the provider. Suggestions are only convenience shortcuts and are not official platform categories.",
         chatSubtitle: "Configure the chat model provider, request URL, and authentication.",

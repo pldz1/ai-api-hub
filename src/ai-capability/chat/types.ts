@@ -1,10 +1,11 @@
 import { TokenUsage, ParamDefaultValue } from "../common";
+import type { ChatProviderKey } from "./provider-registry";
 
 // ============================================================================
 // Core identity
 // ============================================================================
 
-export type ChatModelProvider = "OpenAI" | "Azure OpenAI" | "Anthropic" | "Azure AI Foundry";
+export type ChatModelProvider = ChatProviderKey;
 export type ChatMessageRole = "system" | "user" | "assistant";
 
 // ============================================================================
@@ -64,11 +65,6 @@ export interface ChatModelConfigBase {
   model: string;
 }
 
-export interface OpenAIChatModelConfig extends ChatModelConfigBase {
-  provider: "OpenAI";
-  baseURL: string;
-}
-
 export interface AzureOpenAIChatModelConfig extends ChatModelConfigBase {
   provider: "Azure OpenAI";
   endpoint: string;
@@ -76,17 +72,12 @@ export interface AzureOpenAIChatModelConfig extends ChatModelConfigBase {
   apiVersion: string;
 }
 
-export interface AnthropicChatModelConfig extends ChatModelConfigBase {
-  provider: "Anthropic";
+export interface BaseURLChatModelConfig extends ChatModelConfigBase {
+  provider: Exclude<ChatModelProvider, "Azure OpenAI">;
   baseURL: string;
 }
 
-export interface AzureAIFoundryChatModelConfig extends ChatModelConfigBase {
-  provider: "Azure AI Foundry";
-  baseURL: string;
-}
-
-export type ChatModelConfig = OpenAIChatModelConfig | AzureOpenAIChatModelConfig | AnthropicChatModelConfig | AzureAIFoundryChatModelConfig;
+export type ChatModelConfig = BaseURLChatModelConfig | AzureOpenAIChatModelConfig;
 
 // ============================================================================
 // Parameter definitions (model-level, not app-level)

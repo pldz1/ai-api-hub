@@ -10,6 +10,7 @@ import type {
 } from "@/types";
 import { tr } from "@/i18n";
 import { chatParamPresetList, defaultModelCapabilities, chatModelCatalog, type ChatModelCatalogItem, baseCapabilityProfile } from "@/constants";
+import { isChatModelProvider } from "@/ai-capability/chat/provider-registry";
 import { parseParamValue } from "./settings";
 
 type LooseChatParamDef = Partial<ModelParamDef> & { key?: string };
@@ -45,7 +46,7 @@ export function getModelDeployment(model: { deployment?: string; model?: string;
  */
 export function normalizeChatModelConfig(model: LooseModelConfig | null | undefined = {}): ChatModelConfig {
   const provider = model?.provider;
-  const nextProvider = provider === "Azure OpenAI" || provider === "Anthropic" || provider === "Azure AI Foundry" ? provider : "OpenAI";
+  const nextProvider = isChatModelProvider(provider) ? provider : "OpenAI";
   const modelId = model?.model;
   const basePayload = {
     name: String(model?.name || "").trim(),

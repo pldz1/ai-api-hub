@@ -1,19 +1,18 @@
 import type { ChatExecutor, ChatModelConfig } from "../types";
+import { getChatProviderDefinition, type ChatProviderRoute } from "../provider-registry";
 
 import { AzureOpenAIClient } from "./azure-openai";
 import { AnthropicClient } from "./anthropic";
+import { DeepSeekClient } from "./deepseek";
 import { OpenAIClient } from "./openai";
 
-type OpenAIChatProviderRuntimeConfig = Pick<Extract<ChatModelConfig, { provider: "OpenAI" }>, "provider" | "baseURL" | "apiKey" | "model">;
-type AzureOpenAIChatProviderRuntimeConfig = Pick<
-  Extract<ChatModelConfig, { provider: "Azure OpenAI" }>,
-  "provider" | "endpoint" | "apiKey" | "deployment" | "apiVersion"
->;
-type AnthropicChatProviderRuntimeConfig = Pick<
-  Extract<ChatModelConfig, { provider: "Anthropic" | "Azure AI Foundry" }>,
-  "provider" | "baseURL" | "apiKey" | "model"
->;
-type ChatProviderRuntimeConfig = OpenAIChatProviderRuntimeConfig | AzureOpenAIChatProviderRuntimeConfig | AnthropicChatProviderRuntimeConfig;
+type BaseURLChatProviderRuntimeConfig = Pick<Extract<ChatModelConfig, { baseURL: string }>, "provider" | "baseURL" | "apiKey" | "model"> & {
+  route: Exclude<ChatProviderRoute, "azure-openai">;
+};
+type AzureOpenAIChatProviderRuntimeConfig = Pick<Extract<ChatModelConfig, { provider: "Azure OpenAI" }>, "provider" | "endpoint" | "apiKey" | "deployment" | "apiVersion"> & {
+  route: "azure-openai";
+};
+type ChatProviderRuntimeConfig = BaseURLChatProviderRuntimeConfig | AzureOpenAIChatProviderRuntimeConfig;
 
 function getModelDeployment(model: ChatModelConfig): string {
   return "deployment" in model && model.deployment ? model.deployment : model.model;
@@ -26,8 +25,12 @@ function getModelDeployment(model: ChatModelConfig): string {
  * request execution configuration begins.
  */
 export function createChatProviderConfig(model: ChatModelConfig): ChatProviderRuntimeConfig | null {
-  if (model.provider === "Azure OpenAI") {
+  const providerDefinition = getChatProviderDefinition(model.provider);
+  if (!providerDefinition) return null;
+
+  if (providerDefinition.route === "azure-openai" && "endpoint" in model) {
     return {
+      route: "azure-openai",
       provider: "Azure OpenAI",
       endpoint: model.endpoint,
       apiKey: model.apiKey,
@@ -36,17 +39,9 @@ export function createChatProviderConfig(model: ChatModelConfig): ChatProviderRu
     };
   }
 
-  if (model.provider === "OpenAI") {
+  if ("baseURL" in model) {
     return {
-      provider: "OpenAI",
-      baseURL: model.baseURL,
-      apiKey: model.apiKey,
-      model: model.model,
-    };
-  }
-
-  if (model.provider === "Anthropic" || model.provider === "Azure AI Foundry") {
-    return {
+      route: providerDefinition.route as Exclude<ChatProviderRoute, "azure-openai">,
       provider: model.provider,
       baseURL: model.baseURL,
       apiKey: model.apiKey,
@@ -64,12 +59,16 @@ export function createChatProviderConfig(model: ChatModelConfig): ChatProviderRu
  * payloads from storage/UI.
  */
 export function createChatExecutor(config: ChatProviderRuntimeConfig): ChatExecutor {
-  if (config.provider === "Azure OpenAI") {
+  if (config.route === "azure-openai") {
     return new AzureOpenAIClient(config.endpoint, config.apiKey, config.deployment, config.apiVersion);
   }
 
-  if (config.provider === "Anthropic" || config.provider === "Azure AI Foundry") {
-    return new AnthropicClient(config.baseURL, config.apiKey, config.model, config.provider);
+  if (config.route === "anthropic") {
+    return new AnthropicClient(config.baseURL, config.apiKey, config.model, config.provider as "Anthropic" | "Azure AI Foundry");
+  }
+
+  if (config.route === "deepseek") {
+    return new DeepSeekClient(config.baseURL, config.apiKey, config.model);
   }
 
   return new OpenAIClient(config.baseURL, config.apiKey, config.model);

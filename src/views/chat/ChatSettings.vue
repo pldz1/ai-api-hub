@@ -56,9 +56,13 @@
               <input v-model="modelSettings[item.key]" type="checkbox" class="toggle toggle-primary" />
             </template>
 
-            <!-- Keep array parameters editable as JSON text. -->
-            <template v-else-if="item.type === 'array'">
-              <textarea class="textarea textarea-bordered" :value="arrayFieldInputs[item.key] || '[]'" @input="onArrayFieldInput(item.key, $event)"></textarea>
+            <!-- Keep structured parameters editable as JSON text. -->
+            <template v-else-if="item.type === 'array' || item.type === 'object'">
+              <textarea
+                class="textarea textarea-bordered"
+                :value="jsonFieldInputs[item.key] || getJsonFallbackText(item)"
+                @input="onJsonFieldInput(item.key, $event)"
+              ></textarea>
             </template>
 
             <!-- Fall back to a plain text field for all other parameter types. -->
@@ -104,17 +108,21 @@ const curChatModelSettings = computed(() => store.state.curChatModelSettings);
 const activeParamDefs = computed<ParamDef[]>(() => resolveChatParamDefs(curChatModel.value));
 const modelSettings = reactive<Record<string, any>>({});
 const instrStr = ref("");
-const arrayFieldInputs = reactive<Record<string, string>>({});
+const jsonFieldInputs = reactive<Record<string, string>>({});
 
 const getParamDescription = (item: ParamDef) => {
   if (item.descriptionKey) return t(item.descriptionKey);
   return item.description || "";
 };
 
-const onArrayFieldInput = (key: string, event: Event) => {
+const getJsonFallbackText = (item: ParamDef) => JSON.stringify(item.type === "array" ? [] : {});
+
+const isJsonParam = (item: ParamDef) => item.type === "array" || item.type === "object";
+
+const onJsonFieldInput = (key: string, event: Event) => {
   const target = event.target;
   if (!(target instanceof HTMLTextAreaElement)) return;
-  arrayFieldInputs[key] = target.value;
+  jsonFieldInputs[key] = target.value;
 };
 
 watch(
@@ -126,13 +134,14 @@ watch(
     });
     Object.assign(modelSettings, mergedSettings);
 
-    Object.keys(arrayFieldInputs).forEach((key) => {
-      delete arrayFieldInputs[key];
+    Object.keys(jsonFieldInputs).forEach((key) => {
+      delete jsonFieldInputs[key];
     });
     activeParamDefs.value
-      .filter((item) => item.type === "array")
+      .filter((item) => isJsonParam(item))
       .forEach((item) => {
-        arrayFieldInputs[item.key] = JSON.stringify(Array.isArray(mergedSettings[item.key]) ? mergedSettings[item.key] : item.defaultValue || []);
+        const value = mergedSettings[item.key] ?? item.defaultValue ?? (item.type === "array" ? [] : {});
+        jsonFieldInputs[item.key] = JSON.stringify(value);
       });
 
     instrStr.value = mergedSettings.prompts?.[0]?.content?.[0]?.text || "";
@@ -145,14 +154,14 @@ const handleClose = async () => {
   nextSettings.prompts[0].content[0].text = instrStr.value;
 
   activeParamDefs.value.forEach((item) => {
-    if (item.type !== "array") return;
-    const parsedValue = parseParamValue("array", arrayFieldInputs[item.key], null);
+    if (!isJsonParam(item)) return;
+    const parsedValue = parseParamValue(item.type, jsonFieldInputs[item.key], null);
     if (parsedValue === null) {
       dsAlert({ type: "warn", message: t("chat.invalidArrayParam", { name: item.label || item.key }) });
-      nextSettings[item.key] = Array.isArray(item.defaultValue) ? item.defaultValue : [];
+      nextSettings[item.key] = (item.defaultValue ?? (item.type === "array" ? [] : {})) as any;
       return;
     }
-    nextSettings[item.key] = parsedValue;
+    nextSettings[item.key] = parsedValue as any;
   });
 
   await store.dispatch("setCurChatModelSettings", nextSettings);

@@ -19,6 +19,6 @@ export class DeepSeekClient extends OpenAIClient {
     callback: ChatCallback | null = null,
     options: ChatRequestOptions = {},
   ): Promise<void> {
-    await super.chat(flattenLegacyMessages(messages), { ...params, stream: true }, callback, options);
+    await super.chat(flattenLegacyMessages(messages), params, callback, options);
   }
 }

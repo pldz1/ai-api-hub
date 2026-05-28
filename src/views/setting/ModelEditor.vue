@@ -65,7 +65,7 @@
         </div>
 
         <!-- OpenAI-style base URL -->
-        <label v-if="isOpenAIStyle" class="model-form-field model-form-field-span">
+        <label v-if="usesBaseURL" class="model-form-field model-form-field-span">
           <span>{{ isImageModel ? t("user.modelCard.fields.imageUrl") : t("user.modelCard.fields.baseUrl") }}</span>
           <input v-model.trim="localModel.baseURL" type="text" class="input input-bordered w-full" />
           <small v-if="isImageModel">{{ t("user.modelCard.imageBaseUrlHelp") }}</small>
@@ -133,6 +133,14 @@ import SvgIcon from "@/components/SvgIcon.vue";
 import { chatDisplayedCapabilityKeys, defaultChatModelEditorState, imageModelProviderList, providerList } from "@/constants";
 import { dsAlert } from "@/utils";
 import { getChatModelCapabilities, imageParamDefs } from "@/models";
+import {
+  chatProviderUsesField,
+  getChatProviderDefaultBaseURL,
+  getChatProviderModelFamilies,
+  getChatProviderModelFamily,
+  getChatProvidersForModel,
+  getKnownChatProviderDefaultBaseURLs,
+} from "@/ai-capability/chat/provider-registry";
 import type { ChatModelConfig, ChatModelEditorState, ImageModelConfig, ImageModelEditorState, ModelConfig, ModelKind, SelectOption } from "@/types";
 
 type ModelEditorState = Omit<ChatModelEditorState, "provider"> & {
@@ -163,45 +171,35 @@ let lastModelSnapshot = "";
 
 const isImageModel = computed(() => props.kind === "image");
 const isAzure = computed(() => localModel.provider === "Azure OpenAI");
-const isOpenAIStyle = computed(() => localModel.provider === "OpenAI" || localModel.provider === "Anthropic" || localModel.provider === "Azure AI Foundry");
+const usesBaseURL = computed(() => chatProviderUsesField(localModel.provider, "baseURL"));
 const hasImageInputParam = computed(() => isImageModel.value && imageParamDefs.some((item) => item.type === "image"));
 const resolvedModelId = computed(() => localModel?.model);
 
-// Group suggestions by model family so the selector remains readable as options grow.
-const getModelFamily = (model = "") => {
-  const normalizedType = model.trim().toLowerCase();
-  if (/^claude-/.test(normalizedType)) return "claude";
-  if (/^(gpt-|o\d)/.test(normalizedType)) return "openai";
-  return "custom";
-};
 const groupedModelSuggestions = computed(() => {
-  const groups = [
-    { key: "openai", label: t("user.modelCard.suggestionGroups.openai"), items: [] as SelectOption[] },
-    { key: "claude", label: t("user.modelCard.suggestionGroups.claude"), items: [] as SelectOption[] },
-    { key: "custom", label: t("user.modelCard.suggestionGroups.custom"), items: [] as SelectOption[] },
-  ];
+  // Group suggestions by provider-declared model family so the selector remains readable as options grow.
+  const groups = getChatProviderModelFamilies()
+    .map((family) => ({
+      key: family.key,
+      label: family.labelKey ? t(family.labelKey) : family.label || family.key,
+      items: [] as SelectOption[],
+    }))
+    .concat([{ key: "custom", label: t("user.modelCard.suggestionGroups.custom"), items: [] as SelectOption[] }]);
   const groupMap = new Map(groups.map((group) => [group.key, group]));
   const seen = new Set<string>();
 
   props.modelSuggestions.forEach((item) => {
     seen.add(item.value);
-    groupMap.get(getModelFamily(item.value))?.items.push(item);
+    groupMap.get(getChatProviderModelFamily(item.value))?.items.push(item);
   });
   if (localModel.model && !seen.has(localModel.model)) {
-    groupMap.get(getModelFamily(localModel.model))?.items.push({ value: localModel.model, name: localModel.model });
+    groupMap.get(getChatProviderModelFamily(localModel.model))?.items.push({ value: localModel.model, name: localModel.model });
   }
   return groups.filter((group) => group.items.length > 0);
 });
 const availableModelProviderList = computed(() => {
   // Limit providers to combinations that the request builders can route correctly.
   if (isImageModel.value) return imageModelProviderList;
-  const modelFamily = getModelFamily(localModel.model);
-  const allowedProviders =
-    modelFamily === "claude"
-      ? new Set(["Anthropic", "Azure AI Foundry"])
-      : modelFamily === "openai"
-        ? new Set(["OpenAI", "Azure OpenAI"])
-        : new Set(providerList.map((item) => item.value));
+  const allowedProviders = new Set(getChatProvidersForModel(localModel.model));
   return providerList.filter((item) => allowedProviders.has(item.value));
 });
 
@@ -226,11 +224,6 @@ const chatCapabilityRows = computed(() => {
     supported: supported[key],
   }));
 });
-const providerDefaultBaseUrls: Record<string, string> = {
-  OpenAI: "https://api.openai.com/v1",
-  Anthropic: "https://api.anthropic.com",
-};
-
 function createEmptyModelEditorState(): ModelEditorState {
   return {
     ...structuredClone(defaultChatModelEditorState),
@@ -240,8 +233,8 @@ function createEmptyModelEditorState(): ModelEditorState {
 function syncProviderBaseURL(provider = "", force = false) {
   // Auto-fill defaults only while the user has not customized the base URL.
   if ((!force && isSyncingFromProps) || isImageModel.value) return;
-  const knownDefaults = Object.values(providerDefaultBaseUrls);
-  const nextDefault = providerDefaultBaseUrls[provider] || "";
+  const knownDefaults = getKnownChatProviderDefaultBaseURLs();
+  const nextDefault = getChatProviderDefaultBaseURL(provider);
   const shouldReplace = !localModel.baseURL || knownDefaults.includes(localModel.baseURL);
   if (shouldReplace) localModel.baseURL = nextDefault;
 }
@@ -275,7 +268,7 @@ function normalizeModelFields() {
     localModel.baseURL = "";
     return;
   }
-  if (isOpenAIStyle.value) {
+  if (usesBaseURL.value) {
     localModel.endpoint = "";
     localModel.deployment = "";
     localModel.apiVersion = "";

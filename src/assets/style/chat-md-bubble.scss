@@ -171,12 +171,50 @@
   }
 
   .cmba-reasoning-content {
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 14px;
-    padding: 10px 12px;
-    margin-bottom: 10px;
     max-width: 100%;
-    overflow-x: hidden;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    overflow: hidden;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-left: 3px solid rgba(59, 130, 246, 0.32);
+    border-radius: 14px;
+    background: rgba(148, 163, 184, 0.08);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.45),
+      0 1px 2px rgba(15, 23, 42, 0.04);
+    font-size: 13px;
+    line-height: 1.58;
+    letter-spacing: 0;
+    color: oklch(var(--bc) / 0.92);
+
+    summary {
+      cursor: pointer;
+    }
+
+    :deep(p) {
+      margin: 0;
+    }
+
+    :deep(p + p) {
+      margin-top: 8px;
+    }
+
+    :deep(ul),
+    :deep(ol) {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+
+    :deep(li + li) {
+      margin-top: 4px;
+    }
+
+    :deep(code) {
+      padding: 0.08em 0.35em;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.06);
+      color: rgba(30, 41, 59, 0.92);
+    }
   }
 }
 

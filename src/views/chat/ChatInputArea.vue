@@ -100,11 +100,11 @@
         <h3 class="ccia-confirm-title">{{ t("input.confirmStartChatTitle") }}</h3>
         <p class="ccia-confirm-message">{{ t("input.confirmStartChat", { model: draftSnapshot?.displayName || "" }) }}</p>
         <div class="modal-action ccia-confirm-actions">
-          <button class="btn btn-ghost" type="button" @click="resolveStartChatConfirmation(false)">
-            {{ t("input.confirmStartChatCancel") }}
-          </button>
           <button class="btn btn-primary" type="button" @click="resolveStartChatConfirmation(true)">
             {{ t("input.confirmStartChatConfirm") }}
+          </button>
+          <button class="btn btn-ghost" type="button" @click="resolveStartChatConfirmation(false)">
+            {{ t("input.confirmStartChatCancel") }}
           </button>
         </div>
       </div>
@@ -511,11 +511,9 @@ watch(
 
   .ccia-status-sticky {
     position: absolute;
-    left: 50%;
+    right: 5%;
     bottom: calc(100% + 10px);
     z-index: 2;
-    width: 100%;
-    transform: translateX(-50%);
     display: flex;
     justify-content: center;
     padding: 0 12px;

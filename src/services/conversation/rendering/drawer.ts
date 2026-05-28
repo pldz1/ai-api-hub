@@ -327,7 +327,7 @@ export class ChatDrawer extends ChatElemCreator {
   addAssHTMLElem(content: ChatPromptContent[], reasoning_content: string | null | undefined, mid: string): void {
     const rendered = this.createAssHTMLElem(content, reasoning_content, mid);
     if (!rendered) {
-      dsAlert({ type: "warn", message: tr("toast.drawAssistantFailed") });
+      // dsAlert({ type: "warn", message: tr("toast.drawAssistantFailed") });
     }
   }
 
