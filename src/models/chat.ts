@@ -70,20 +70,16 @@ export function normalizeChatModelConfig(model: LooseModelConfig | null | undefi
   };
 }
 
-function findChatModelCatalogItem(model = "", provider = ""): ChatModelCatalogItem | null {
+export function findChatModelCatalogItem(model = ""): ChatModelCatalogItem | null {
   const targetModel = model.trim().toLowerCase();
-  const targetProvider = provider.trim().toLowerCase();
 
   if (!targetModel) return null;
 
   return (
     chatModelCatalog.find((item) => {
       const itemModel = item.value.toLowerCase();
-      const itemProvider = item.provider?.trim().toLowerCase() ?? "";
 
       if (itemModel !== targetModel) return false;
-
-      if (targetProvider && itemProvider !== targetProvider) return false;
 
       return true;
     }) ?? null
@@ -95,8 +91,8 @@ function findChatModelCatalogItem(model = "", provider = ""): ChatModelCatalogIt
  *
  * These are support flags, not user toggles.
  */
-export function getChatModelCapabilities(model = "", provider = "OpenAI"): ChatModelCapabilities {
-  const profile = findChatModelCatalogItem(model, provider)?.capabilityProfile || baseCapabilityProfile;
+export function getChatModelCapabilities(model = ""): ChatModelCapabilities {
+  const profile = findChatModelCatalogItem(model)?.capabilityProfile || baseCapabilityProfile;
   const uiCapabilities: ChatModelCapabilities = {
     imageRead: profile.modalities.imageInput,
     webSearch: profile.tools.webSearch,
@@ -189,7 +185,7 @@ export function normalizeChatParamDef(def: LooseChatParamDef = {}): ModelParamDe
 const normalizedChatParamDefs = new Map(chatParamPresetList.map((item) => [item.key, normalizeChatParamDef(item)] as const));
 
 export function resolveChatParamDefs(model: LooseModelConfig | null = null): ModelParamDef[] {
-  return (findChatModelCatalogItem(model?.model || "", model?.provider || "")?.chatParamKeys || [])
+  return (findChatModelCatalogItem(model?.model || "")?.chatParamKeys || [])
     .map((key) => normalizedChatParamDefs.get(key))
     .filter(Boolean) as ModelParamDef[];
 }

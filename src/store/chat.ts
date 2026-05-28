@@ -26,7 +26,7 @@ function normalizeTokenUsage(data: Record<string, unknown> = {}) {
 
 function createInputCapabilities(conversation = null) {
   const model = getModelFromSnapshot(conversation?.modelSnapshot);
-  return model ? getChatModelCapabilities(model.model, model.provider) : { ...defaultModelCapabilities };
+  return model ? getChatModelCapabilities(model.model) : { ...defaultModelCapabilities };
 }
 
 function createChatRuntime() {

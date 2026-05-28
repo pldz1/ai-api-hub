@@ -203,7 +203,7 @@ const draftSnapshot = computed(() => createConversationModelSnapshot(selectedMod
 const activeSnapshot = computed(() => curConversation.value?.modelSnapshot || draftSnapshot.value);
 const activeModelConfig = computed(() => getModelFromSnapshot(activeSnapshot.value));
 const activeSupportedCapabilities = computed(() =>
-  activeModelConfig.value ? getChatModelCapabilities(activeModelConfig.value.model, activeModelConfig.value.provider) : { ...defaultModelCapabilities },
+  activeModelConfig.value ? getChatModelCapabilities(activeModelConfig.value.model) : { ...defaultModelCapabilities },
 );
 const activeCapabilities = computed(() =>
   getEffectiveCapabilities(activeSupportedCapabilities.value, activeSupportedCapabilities.value, inputCapabilities.value),

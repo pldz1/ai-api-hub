@@ -1,6 +1,5 @@
 import store from "@/store";
-import { buildChatCompletionParams, getModelFromSnapshot } from "@/models";
-import { chatModelCatalog } from "@/constants";
+import { buildChatCompletionParams, findChatModelCatalogItem, getModelFromSnapshot } from "@/models";
 import type { ChatRequestContext, ChatModelConfig } from "@/types";
 
 export function getConversationChatModel(chatId: string = ""): ChatModelConfig | null {
@@ -15,9 +14,7 @@ export function getConversationChatModel(chatId: string = ""): ChatModelConfig |
 export function createChatRequestContext(chatId: string = "", model: ChatModelConfig | null = null): ChatRequestContext {
   const activeModel = model || getConversationChatModel(chatId);
   const settings = chatId ? store.state.chatSettingsById?.[chatId] || store.state.curChatModelSettings : store.state.curChatModelSettings;
-  const modelInfo = activeModel
-    ? chatModelCatalog.find((item) => item.value === activeModel.model && (!activeModel.provider || item.provider === activeModel.provider))
-    : null;
+  const modelInfo = activeModel ? findChatModelCatalogItem(activeModel.model) : null;
 
   return {
     model: activeModel,

@@ -88,7 +88,6 @@ export const chatParamPresetList: Partial<ModelParamDef>[] = [
 ];
 
 export type ChatModelCatalogItem = ChatModelOption & {
-  provider?: ChatModelProvider;
   chatParamKeys: string[];
   capabilities: ChatModelCapabilities;
   capabilityProfile: ChatModelCapabilityProfile;

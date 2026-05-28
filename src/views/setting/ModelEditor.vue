@@ -219,7 +219,7 @@ const capabilityLabelKeys: Record<string, string> = {
   imageRead: "input.capabilities.imageRead",
 };
 const chatCapabilityRows = computed(() => {
-  const supported = getChatModelCapabilities(localModel.model, localModel.provider);
+  const supported = getChatModelCapabilities(localModel.model);
   return chatDisplayedCapabilityKeys.map((key) => ({
     key,
     label: t(capabilityLabelKeys[key] || key),
