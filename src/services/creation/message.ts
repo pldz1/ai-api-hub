@@ -1,6 +1,5 @@
 import { getUuid } from "@/utils";
-import type { TokenUsage } from "@/ai-capability/common";
-import type { ImageConversationMessage, ImagePayload } from "@/types";
+import type { TokenUsage, ImageConversationMessage, ImagePayload } from "@/types";
 
 export const emptyImageUsage = (): TokenUsage => ({
   input_tokens: 0,

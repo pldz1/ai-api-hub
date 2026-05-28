@@ -2,12 +2,10 @@ import store from "@/store";
 import { createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
 import { dsAlert, generateRandomCname, getUuid, isValidChatInfoArray } from "@/utils";
 import { tr } from "@/i18n";
-import type { ChatListItem } from "@/services/types";
-import type { ChatModelConfig, ChatPromptMessage } from "@/ai-capability/chat/types";
-import type { ExportedChatSessionSettings } from "@/types";
 import { chatConversationApi, chatMessageApi, chatSettingsApi } from "./data/conversation-api";
 import { createChatSettingsPayload, createChatSettingsPayloadForSession, normalizeChatSettingsPayload } from "./data/settings-payload";
 import { removeChatSessionRunner } from "./runtime/session-runner";
+import type { ChatModelConfig, ChatPromptMessage, ChatListItem } from "@/types";
 
 type MessageReplayCallback = (messages: ChatPromptMessage[]) => void | Promise<void>;
 

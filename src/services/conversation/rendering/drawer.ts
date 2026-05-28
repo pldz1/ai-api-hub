@@ -1,9 +1,9 @@
 // @ts-nocheck
 import store from "@/store/index";
-import { ChatGateway } from "@/ai-capability/chat";
+import { ChatGateway } from "@/ai-capability";
 import { dsAlert, getUuid } from "@/utils";
 import { tr } from "@/i18n";
-import type { ChatPromptContent, ChatPromptMessage, ChatProviderResponse } from "@/ai-capability/chat/types";
+import type { ChatPromptContent, ChatPromptMessage, ChatProviderResponse } from "@/types";
 import { addMessage, deleteMessage as deleteChatMessage } from "../conversation";
 import { createChatRequestContext } from "../runtime/chat-context";
 import { ChatElemCreator } from "./message-elements";

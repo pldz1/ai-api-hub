@@ -1,5 +1,13 @@
-import type { ChatCompletionParams, ChatModelCapabilities, ChatModelConfig, ModelParamDef, ParamDefaultValue } from "@/ai-capability/chat/types";
-import type { ChatModelSettings, ConversationModelSnapshot, LooseModelConfig } from "@/types";
+import type {
+  ChatCompletionParams,
+  ChatModelCapabilities,
+  ChatModelConfig,
+  ModelParamDef,
+  ParamDefaultValue,
+  ChatModelSettings,
+  ConversationModelSnapshot,
+  LooseModelConfig,
+} from "@/types";
 import { tr } from "@/i18n";
 import { chatParamPresetList, defaultModelCapabilities, chatModelCatalog, type ChatModelCatalogItem, baseCapabilityProfile } from "@/constants";
 import { parseParamValue } from "./settings";

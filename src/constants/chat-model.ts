@@ -1,6 +1,12 @@
-import type { ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelProvider } from "@/ai-capability/chat/types";
-import type { ModelParamDef, SelectOption } from "@/ai-capability/chat/types";
-import type { ChatModelEditorState, ChatModelOption } from "@/types";
+import type {
+  ModelParamDef,
+  SelectOption,
+  ChatModelEditorState,
+  ChatModelOption,
+  ChatModelCapabilities,
+  ChatModelCapabilityProfile,
+  ChatModelProvider,
+} from "@/types";
 
 export const chatParamPresetList: Partial<ModelParamDef>[] = [
   {

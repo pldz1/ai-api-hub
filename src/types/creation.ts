@@ -1,5 +1,4 @@
-import type { TokenUsage } from "@/ai-capability/common";
-import type { ImageModelProvider, ImageInputFile, ImageModelConfig, SelectOption } from "@/ai-capability/image/types";
+import type { TokenUsage, ImageModelProvider, ImageInputFile, ImageModelConfig, SelectOption } from "@/ai-capability";
 
 export type ImageConversationRole = "user" | "assistant";
 export type ImageConversationMode = "generation" | "edit";
@@ -87,6 +86,17 @@ export interface ImageTurnResponse {
 }
 
 export interface ImageConversationInfo {
+  iid: string;
+  iname: string;
+}
+
+export interface ImageDataItem {
+  id: string;
+  prompt: string;
+  src: string;
+}
+
+export interface ImageConversationListItem {
   iid: string;
   iname: string;
 }

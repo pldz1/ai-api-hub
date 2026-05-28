@@ -1,6 +1,5 @@
-import type { ChatModelConfig } from "@/ai-capability/chat/types";
-import type { ImageModelConfig, ImageModelProvider } from "@/ai-capability/image/types";
-import type { ChatFormProvider, ExportedChatSessionSettings } from "./conversation";
+import type { ImageModelConfig, ImageModelProvider, ChatModelConfig } from "@/ai-capability";
+import type { ChatFormProvider } from "./conversation";
 
 export type ModelKind = "chat" | "image";
 
@@ -19,26 +18,14 @@ export interface ModelSettings {
 }
 
 /**
- * Full persisted settings payload written to storage and exported to JSON.
- *
- * This is user-facing I/O configuration. Runtime-only provider args do not
- * belong here.
- */
-export interface PersistedModelSettingsPayload {
-  chat: ChatModelConfig[];
-  image: ImageModelConfig[];
-}
-
-/**
  * Top-level import/export package used by the settings page.
  */
 export interface SettingsImportPayload {
   schema?: string;
   version?: string;
   exportedAt?: string;
-  models: PersistedModelSettingsPayload;
+  models: ModelSettings;
   templates?: unknown[];
-  chatSessions?: ExportedChatSessionSettings[];
 }
 
 /**

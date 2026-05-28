@@ -1,10 +1,9 @@
 import store from "@/store";
 import { tr } from "@/i18n";
-import { buildPersistedModelSettingsPayload, sanitizeModelSettings } from "@/models";
+import { buildModelSettings, sanitizeModelSettings } from "@/models";
 import { dsAlert, getChatTemplateListValidationError, getModelSettingValidationError } from "@/utils";
 import { apiRequest } from "./storage";
-import type { ApiResponse } from "@/services/types";
-import type { ModelSettings } from "@/types";
+import type { ApiResponse, ModelSettings } from "@/types";
 
 type ChatInstructionTemplate = {
   id: string;
@@ -54,7 +53,7 @@ export async function getModels(): Promise<boolean> {
 }
 
 export async function setModels(models: ModelSettings = store.state.models): Promise<boolean> {
-  const payload = buildPersistedModelSettingsPayload(models);
+  const payload = buildModelSettings(models);
   const res = await setModelsAPI(JSON.stringify(payload));
   if (!res.flag) {
     dsAlert({ type: "error", message: tr("toast.userModelsSaveFailed", { error: res.log }) });

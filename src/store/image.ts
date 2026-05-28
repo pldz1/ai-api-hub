@@ -21,34 +21,11 @@ function getRuntimeStatusByMessages(messages = []) {
 }
 
 export const ImageState = {
-  /**
-   *  @type {T_ImageDataItem[]}
-   */
   imageList: [],
-
-  /**
-   *  @type {import("@/types").ImageConversationInfo[]}
-   */
   imageConversationList: [],
-
-  /**
-   * Current image conversation id.
-   */
   curImageConversationId: "",
-
-  /**
-   *  @type {import("@/types").ImageConversationMessage[]}
-   */
   imageMessages: [],
-
-  /**
-   *  @type {{ pending: boolean, status: string, startedAt: number, elapsedMs: number }}
-   */
   imageRuntime: createImageRuntime(),
-
-  /**
-   * Per image-conversation runtime and message caches.
-   */
   imageMessagesById: {},
   imageRuntimeById: {},
   imageLoadedById: {},

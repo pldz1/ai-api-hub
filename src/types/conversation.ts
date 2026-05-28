@@ -1,11 +1,4 @@
-import type {
-  ChatModelCapabilities,
-  ChatModelCapabilityProfile,
-  ChatModelConfig,
-  ChatModelProvider,
-  ChatParamRecord,
-  SelectOption,
-} from "@/ai-capability/chat/types";
+import type { SelectOption, ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelConfig, ChatModelProvider, ChatParamRecord } from "@/ai-capability";
 
 export type ChatFormProvider = ChatModelProvider | "";
 
@@ -72,15 +65,17 @@ export interface ChatModelSettings extends ChatParamRecord {
  * This keeps the normalized settings object and the bound model snapshot
  * together so imported/exported chat parameters round-trip without shape drift.
  */
-export interface PersistedChatSettingsPayload {
-  version?: 2;
+export interface PersistedChatSettings {
   modelSnapshot: ConversationModelSnapshot | null;
   settings: ChatModelSettings;
 }
 
-/** Workspace-level export item for one conversation's saved chat settings. */
-export interface ExportedChatSessionSettings {
+export interface StoredChatMessage {
+  mid: string;
+  message: string;
+}
+
+export interface ChatListItem {
   cid: string;
   cname: string;
-  payload: PersistedChatSettingsPayload;
 }

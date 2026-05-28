@@ -1,12 +1,6 @@
 import type { TokenUsage } from "../common";
 
 // ============================================================================
-// Shared primitives (re-exported for convenience)
-// ============================================================================
-
-export type { ModelParamDef, ModelParamType, ParamDefaultValue, SelectOption } from "@/ai-capability/chat/types";
-
-// ============================================================================
 // Provider identity
 // ============================================================================
 

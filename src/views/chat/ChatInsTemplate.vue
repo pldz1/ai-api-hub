@@ -22,7 +22,7 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { useStore } from "vuex";
-import type { ChatPromptMessage } from "@/ai-capability/chat/types";
+import type { ChatPromptMessage } from "@/types";
 import { addChat } from "@/services";
 import { append4Random, dsAlert } from "@/utils";
 import { chatInsTemplateList } from "@/constants";

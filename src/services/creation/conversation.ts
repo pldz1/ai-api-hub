@@ -2,7 +2,7 @@ import store from "@/store";
 import { tr } from "@/i18n";
 import { buildImageGenerationParams } from "@/models";
 import { dsAlert, getUuid } from "@/utils";
-import { runImageAITurn } from "@/ai-capability/image";
+import { runImageAITurn } from "@/ai-capability";
 import {
   addImageConversationAPI,
   deleteImageConversationAPI,

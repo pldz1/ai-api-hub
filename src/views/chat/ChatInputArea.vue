@@ -120,7 +120,7 @@
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useStore } from "vuex";
-import type { ChatModelConfig } from "@/types";
+import type { ChatModelConfig, ChatPromptMessage } from "@/types";
 import attachIcon from "@/assets/svg/attach24.svg";
 import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import paramIcon from "@/assets/svg/param24.svg";
@@ -138,7 +138,6 @@ import {
   getModelFromSnapshot,
 } from "@/models";
 import { packUserMsg } from "@/services";
-import type { ChatPromptMessage } from "@/ai-capability/chat/types";
 import { dsAlert, getUuid, isValidUserMsg } from "@/utils";
 import ChatSettings from "@/views/chat/ChatSettings.vue";
 

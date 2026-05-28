@@ -1,21 +1,17 @@
 import { tr } from "@/i18n";
-import type {
-  ApiMethod,
-  ApiResponse,
-  ChatListItem,
-  ImageConversationListItem,
-  ImageDataItem,
-  RequestBody,
-  RequestHeaders,
-  StoredChatMessage,
-  StoredImageConversation,
-} from "@/services/types";
+import type { ApiMethod, ApiResponse, RequestBody, RequestHeaders, StoredChatMessage, ChatListItem, ImageConversationListItem, ImageDataItem } from "@/types";
 
 const STORAGE_KEY = "chat-playground.local-storage.v2";
 const IMAGE_DB_NAME = "ai-api-hub-images";
 const IMAGE_STORE_NAME = "images";
 const DEFAULT_HEADERS: RequestHeaders = { "Content-Type": "application/json" };
 const DEFAULT_TIMEOUT = 3600000;
+
+interface StoredImageConversation {
+  iid: string;
+  iname: string;
+  messages: string;
+}
 
 interface StoredChatState extends ChatListItem {
   settings: string;

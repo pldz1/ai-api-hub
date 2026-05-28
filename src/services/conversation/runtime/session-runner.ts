@@ -1,8 +1,8 @@
 import store from "@/store";
-import { ChatGateway } from "@/ai-capability/chat";
+import { ChatGateway } from "@/ai-capability";
 import { getUuid } from "@/utils";
 import { tr } from "@/i18n";
-import type { ChatPromptMessage, ChatProviderResponse } from "@/ai-capability/chat/types";
+import type { ChatPromptMessage, ChatProviderResponse } from "@/types";
 import { addMessage } from "../conversation";
 import { AssistantStreamState } from "../rendering/assistant-stream-state";
 import { createChatRequestContext } from "./chat-context";

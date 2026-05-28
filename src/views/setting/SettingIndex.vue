@@ -55,7 +55,7 @@ import { useStore } from "vuex";
 import AppPanel from "./AppPanel.vue";
 import ModelPanel from "./ModelPanel.vue";
 import TemplatePanel from "./TemplatePanel.vue";
-import { buildPersistedModelSettingsPayload } from "@/models";
+import { buildModelSettings } from "@/models";
 import { SETTINGS_IMPORTED_EVENT, getChatInsTemplateList, getModels, importSettingsPayload, setChatInsTemplateList, setModels } from "@/services";
 import { dsAlert, uploadJsonFile } from "@/utils";
 import { APP_NAME, APP_VERSION } from "@/constants";
@@ -306,7 +306,7 @@ async function exportSettings() {
     schema: APP_NAME,
     version: APP_VERSION,
     exportedAt: new Date().toISOString(),
-    models: buildPersistedModelSettingsPayload(draft.models),
+    models: buildModelSettings(draft.models),
     templates: draft.templates,
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });

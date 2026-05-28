@@ -133,15 +133,7 @@ import SvgIcon from "@/components/SvgIcon.vue";
 import { chatDisplayedCapabilityKeys, defaultChatModelEditorState, imageModelProviderList, providerList } from "@/constants";
 import { dsAlert } from "@/utils";
 import { getChatModelCapabilities, imageParamDefs } from "@/models";
-import type { SelectOption } from "@/ai-capability/chat/types";
-import type {
-  ChatModelConfig,
-  ChatModelEditorState,
-  ImageModelConfig,
-  ImageModelEditorState,
-  ModelConfig,
-  ModelKind,
-} from "@/types";
+import type { ChatModelConfig, ChatModelEditorState, ImageModelConfig, ImageModelEditorState, ModelConfig, ModelKind, SelectOption } from "@/types";
 
 type ModelEditorState = Omit<ChatModelEditorState, "provider"> & {
   provider: ChatModelEditorState["provider"] | ImageModelEditorState["provider"];

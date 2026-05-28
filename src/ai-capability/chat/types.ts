@@ -1,12 +1,4 @@
-/**
- * AI-capability types — the pure model layer.
- *
- * These describe what AI models are, what they can do, and how the runtime
- * communicates with providers. They do NOT depend on app-level types such as
- * settings payloads, editor state, or storage shapes.
- */
-
-import { TokenUsage } from "../common";
+import { TokenUsage, ParamDefaultValue } from "../common";
 
 // ============================================================================
 // Core identity
@@ -99,27 +91,6 @@ export type ChatModelConfig = OpenAIChatModelConfig | AzureOpenAIChatModelConfig
 // ============================================================================
 // Parameter definitions (model-level, not app-level)
 // ============================================================================
-
-export type ModelParamType = "number" | "string" | "array" | "boolean" | "object" | "image";
-export type ParamDefaultValue = string | number | boolean | unknown[] | Record<string, unknown> | null;
-
-export interface ModelParamDef {
-  key: string;
-  label: string;
-  type: ModelParamType;
-  description: string;
-  descriptionKey: string;
-  placeholder: string;
-  defaultValue: ParamDefaultValue;
-  min: number;
-  max: number;
-  step: number;
-}
-
-export interface SelectOption<TValue extends string = string> {
-  value: TValue;
-  name: string;
-}
 
 export interface ChatTextContent {
   type: "text";

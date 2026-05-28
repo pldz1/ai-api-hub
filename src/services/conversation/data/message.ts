@@ -1,5 +1,5 @@
 // @ts-nocheck
-import type { ChatPromptMessage } from "@/ai-capability/chat/types";
+import type { ChatPromptMessage } from "@/types";
 
 /**
  * Pack a user message from App input state, including DOM-managed image chips.

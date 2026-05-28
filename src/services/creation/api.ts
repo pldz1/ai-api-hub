@@ -1,6 +1,5 @@
 import { apiRequest } from "@/services/app";
-import type { ApiResponse, ImageConversationListItem, ImageDataItem } from "@/services/types";
-import type { ImageConversationMessage } from "@/types";
+import type { ImageConversationMessage, ApiResponse, ImageConversationListItem, ImageDataItem } from "@/types";
 
 export const getImageListAPI = (): Promise<ApiResponse<ImageDataItem[]>> => apiRequest("post", "/_api/image/getImageList", {});
 
@@ -23,7 +22,8 @@ export const addImageConversationAPI = (iid: string, iname: string): Promise<Api
 
 export const deleteImageConversationAPI = (iid: string): Promise<ApiResponse<null>> => apiRequest("post", "/_api/image/deleteConversation", { iid });
 
-export const getImageConversationMessagesAPI = (iid: string): Promise<ApiResponse<string>> => apiRequest("post", "/_api/image/getConversationMessages", { iid });
+export const getImageConversationMessagesAPI = (iid: string): Promise<ApiResponse<string>> =>
+  apiRequest("post", "/_api/image/getConversationMessages", { iid });
 
 export const setImageConversationMessagesAPI = (iid: string, messages: ImageConversationMessage[]): Promise<ApiResponse<null>> =>
   apiRequest("post", "/_api/image/setConversationMessages", {

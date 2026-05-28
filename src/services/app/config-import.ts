@@ -3,7 +3,7 @@ import { sanitizeModelSettings } from "@/models";
 import { dsAlert, getSettingsImportValidationError, isSettingsImportPackage, isValidSettingsImport } from "@/utils";
 import { tr } from "@/i18n";
 import { getModels, setChatInsTemplateList, setModels } from "./settings";
-import type { PersistedModelSettingsPayload, SettingsImportPayload } from "@/types";
+import type { ModelSettings, SettingsImportPayload } from "@/types";
 
 type ConfigImportSource = "inline" | "url";
 export const SETTINGS_IMPORTED_EVENT = "ai-api-hub:settings-imported";
@@ -108,7 +108,7 @@ export async function importSettingsPayload(data: unknown, options: ImportConfig
 
     if (modelsSaved === false || templatesSaved === false) return false;
   } else {
-    const models = sanitizeModelSettings(clonePlainData(data) as PersistedModelSettingsPayload);
+    const models = sanitizeModelSettings(clonePlainData(data) as ModelSettings);
     await store.dispatch("setModels", models);
     if ((await setModels(models)) === false) return false;
   }

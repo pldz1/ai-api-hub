@@ -6,7 +6,7 @@ import deleteIcon from "@/assets/svg/delete16.svg";
 import { tr } from "@/i18n";
 import { textToHtml } from "@/utils";
 import { createSvgIcon } from "@/utils/svg-icon";
-import type { ChatPromptContent } from "@/ai-capability/chat/types";
+import type { ChatPromptContent } from "@/types";
 
 export type ChatMessageElementActions = {
   onCopyAssistantMessage?: (mid: string) => void | Promise<void>;

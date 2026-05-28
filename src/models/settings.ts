@@ -1,5 +1,4 @@
-import type { ImageModelConfig, ImageModelParamType, ModelSettings, PersistedModelSettingsPayload, LooseModelConfig } from "@/types";
-import type { ChatModelConfig, ParamDefaultValue } from "@/ai-capability/chat/types";
+import type { ChatModelConfig, ParamDefaultValue, ImageModelConfig, ImageModelParamType, ModelSettings, LooseModelConfig } from "@/types";
 import { isAzureChatModel, normalizeChatModelConfig } from "./chat";
 import { normalizeImageModelConfig } from "./image";
 
@@ -118,7 +117,7 @@ function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConf
  * This is the write-side boundary between in-memory user config and serialized
  * persisted settings.
  */
-export function buildPersistedModelSettingsPayload(data: Partial<ModelSettings> | null | undefined = {}): PersistedModelSettingsPayload {
+export function buildModelSettings(data: Partial<ModelSettings> | null | undefined = {}): ModelSettings {
   const persistedSettings = sanitizeModelSettings(data);
   return {
     chat: persistedSettings.chat.map((item) => buildPersistedChatModelConfig(item)),

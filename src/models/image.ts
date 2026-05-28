@@ -1,4 +1,4 @@
-import type { ImageModelConfig, ImageModelSettings, ImageModelParamDef, ImageModelParamType, LooseModelConfig } from "@/types";
+import type { ImageModelConfig, ImageModelSettings, ImageModelParamDef, LooseModelConfig } from "@/types";
 import { imageParamPresetList } from "@/constants/image-model";
 import { parseParamValue } from "./settings";
 

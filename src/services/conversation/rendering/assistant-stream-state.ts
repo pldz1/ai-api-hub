@@ -1,4 +1,4 @@
-import type { TokenUsage } from "@/ai-capability/common";
+import type { TokenUsage } from "@/types";
 
 export type AssistantDraftContent = {
   content: string;

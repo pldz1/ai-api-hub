@@ -1,6 +1,4 @@
-import type { ChatListItem, StoredChatMessage } from "@/services/types";
-import type { ChatPromptMessage } from "@/ai-capability/chat/types";
-import type { PersistedChatSettingsPayload } from "@/types";
+import type { ChatListItem, StoredChatMessage, ChatPromptMessage, PersistedChatSettings } from "@/types";
 import { apiRequest } from "../../app";
 
 export const chatConversationApi = {
@@ -12,7 +10,7 @@ export const chatConversationApi = {
 
 export const chatSettingsApi = {
   get: (cid: string) => apiRequest<string>("post", "/_api/chat/getChatSettings", { cid }),
-  set: (cid: string, payload: PersistedChatSettingsPayload) =>
+  set: (cid: string, payload: PersistedChatSettings) =>
     apiRequest<null>("post", "/_api/chat/setChatSettings", {
       cid,
       data: JSON.stringify(payload),

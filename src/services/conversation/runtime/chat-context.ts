@@ -1,7 +1,7 @@
 import store from "@/store";
 import { buildChatCompletionParams, getModelFromSnapshot } from "@/models";
 import { chatModelCatalog } from "@/constants";
-import type { ChatRequestContext, ChatModelConfig } from "@/ai-capability/chat";
+import type { ChatRequestContext, ChatModelConfig } from "@/types";
 
 export function getConversationChatModel(chatId: string = ""): ChatModelConfig | null {
   return (
