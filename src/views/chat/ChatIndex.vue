@@ -199,7 +199,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: radial-gradient(circle at 12% 0%, rgba(59, 130, 246, 0.05), transparent 30%), linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 }
 
 .chat-card-container::after {
@@ -211,7 +210,6 @@ onMounted(() => {
   height: 210px;
   z-index: 4;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0) 0%, rgba(248, 250, 252, 0.92) 46%, #f8fafc 68%, #f8fafc 100%);
 }
 
 .chat-card-container :deep(.chat-template-display-card) {

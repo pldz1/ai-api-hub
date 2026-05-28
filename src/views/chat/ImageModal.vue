@@ -35,7 +35,7 @@ function onDialogClick(event: MouseEvent) {
     max-height: 100vh;
     height: 100vh;
     width: 100vw;
-    background-color: #00000052;
+    background-color: oklch(0% 0 0 / 0.32);
     box-shadow: initial;
     overflow: hidden;
   }
@@ -43,7 +43,7 @@ function onDialogClick(event: MouseEvent) {
   .close-forum {
     z-index: 2;
     background-color: transparent;
-    color: white;
+    color: oklch(var(--nc));
     font-size: 36px;
   }
 

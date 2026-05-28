@@ -1,12 +1,35 @@
 // @ts-nocheck
 import { renderBlock } from "@/services/markdown/md-render";
-import appIcon from "@/assets/svg/app18.svg";
 import copyIcon from "@/assets/svg/copy16.svg";
 import deleteIcon from "@/assets/svg/delete16.svg";
 import { tr } from "@/i18n";
 import { textToHtml } from "@/utils";
 import { createSvgIcon } from "@/utils/svg-icon";
 import type { ChatPromptContent } from "@/types";
+
+function createWorkingIcon(): HTMLDivElement {
+  const wrapper = document.createElement("div");
+  wrapper.className = "cmba-working-icon";
+  wrapper.innerHTML = `
+    <svg viewBox="0 0 48 48" width="48" height="48" aria-hidden="true">
+      <g>
+        <line class="edge color-tl" x1="25%" y1="25%" x2="50%" y2="50%"></line>
+        <line class="edge color-tr" x1="75%" y1="25%" x2="50%" y2="50%"></line>
+        <line class="edge color-bl" x1="25%" y1="75%" x2="50%" y2="50%"></line>
+        <line class="edge color-br" x1="75%" y1="75%" x2="50%" y2="50%"></line>
+      </g>
+      <circle class="center-node" cx="50%" cy="50%" r="10%"></circle>
+      <g class="satellite-group">
+        <circle class="color-tl" cx="25%" cy="25%" r="6%"></circle>
+        <circle class="color-tr" cx="75%" cy="25%" r="5%"></circle>
+        <circle class="color-bl" cx="25%" cy="75%" r="8%"></circle>
+        <circle class="color-br" cx="75%" cy="75%" r="5.5%"></circle>
+      </g>
+    </svg>
+  `;
+
+  return wrapper;
+}
 
 export type ChatMessageElementActions = {
   onCopyAssistantMessage?: (mid: string) => void | Promise<void>;
@@ -116,25 +139,23 @@ export class ChatMessageElementFactory {
     return this.createAssistantMessageElement(content, reasoningContent, mid);
   }
 
-  createAssistantResponseElement(assistantDiv: HTMLDivElement, mid: string, thinking: boolean = false): HTMLDivElement {
-    const iconDiv = document.createElement("div");
-    iconDiv.classList.add("cmba-assistant-icon");
-    iconDiv.appendChild(createSvgIcon(appIcon, { colored: true, size: "18px" }));
-
+  createAssistantResponseElement(assistantDiv: HTMLDivElement, mid: string, working: boolean = false): HTMLDivElement {
     const contentDiv = document.createElement("div");
     contentDiv.classList.add("cmba-assistant-content");
 
+    const iconDiv = document.createElement("div");
+    iconDiv.classList.add("cmba-assistant-icon");
+    if (working) {
+      iconDiv.appendChild(createWorkingIcon());
+    }
+
     const textDiv = document.createElement("div");
     textDiv.classList.add("markdown-content");
-    if (thinking) {
-      textDiv.innerHTML = `<div class="markdown-p-text"> ${tr("common.saving")}... </div>`;
-    }
 
     contentDiv.appendChild(textDiv);
     contentDiv.appendChild(this.createMessageOptions(mid, ["copy", "delete"]));
     assistantDiv.appendChild(iconDiv);
     assistantDiv.appendChild(contentDiv);
-
     return textDiv;
   }
 

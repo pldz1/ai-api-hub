@@ -496,6 +496,19 @@ watch(
   align-items: center;
   justify-content: center;
 
+  &::before {
+    content: "";
+    position: absolute;
+    left: -24px;
+    right: -24px;
+    bottom: -20px;
+    height: 168px;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.78) 42%, oklch(var(--b1)) 78%, oklch(var(--b1)) 100%);
+    box-shadow: inset 0 -56px 72px oklch(var(--b1) / 0.32);
+  }
+
   .ccia-status-sticky {
     position: absolute;
     left: 40%;
@@ -530,14 +543,16 @@ watch(
   }
 
   .ccia-input-card {
+    position: relative;
+    z-index: 1;
     width: min(828px, 100%);
-    background: rgba(255, 255, 255, 0.96);
+    background: oklch(var(--b1) / 0.96);
     border-radius: 42px;
     padding: 14px 18px 12px;
-    border: 1px solid rgba(27, 39, 51, 0.07);
+    border: 1px solid oklch(var(--bc) / 0.07);
     box-shadow:
-      0 2px 6px rgba(17, 24, 39, 0.05),
-      0 4px 8px rgba(17, 24, 39, 0.06);
+      0 2px 6px oklch(var(--bc) / 0.05),
+      0 4px 8px oklch(var(--bc) / 0.06);
   }
 
   .ccia-input-area {
@@ -585,7 +600,7 @@ watch(
     border-radius: 8px;
     display: flex;
     align-items: center;
-    color: #111827;
+    color: oklch(var(--bc));
     font-size: 16px;
     white-space: nowrap;
     overflow: hidden;
@@ -593,35 +608,35 @@ watch(
   }
 
   .ccia-model-select {
-    border: 2px solid #e8e8e7;
+    border: 2px solid oklch(var(--bc) / 0.08);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 247, 246, 0.94)),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23111827' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      linear-gradient(180deg, oklch(var(--b1) / 0.96), oklch(var(--b2) / 0.94)),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
         no-repeat right 10px center / 12px 12px;
     appearance: none;
     padding-right: 30px;
-    box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
+    box-shadow: 0 6px 18px oklch(var(--bc) / 0.06);
     transition:
       border-color 0.16s ease,
       box-shadow 0.16s ease,
       transform 0.16s ease;
 
     &:hover:not(:disabled) {
-      border-color: rgba(17, 24, 39, 0.16);
+      border-color: oklch(var(--bc) / 0.16);
       transform: translateY(-1px);
     }
 
     &:focus {
-      border-color: rgba(37, 99, 235, 0.42);
+      border-color: oklch(var(--p) / 0.42);
       box-shadow:
-        0 0 0 3px rgba(37, 99, 235, 0.12),
-        0 10px 24px rgba(17, 24, 39, 0.08);
+        0 0 0 3px oklch(var(--p) / 0.12),
+        0 10px 24px oklch(var(--bc) / 0.08);
       outline: none;
     }
   }
 
   .ccia-model-lock {
-    background: #e8e8e7;
+    background: oklch(var(--b2));
   }
 
   .ccia-send-button {
@@ -632,15 +647,15 @@ watch(
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background-color: #111827;
-    color: #fff;
+    background-color: oklch(var(--n));
+    color: oklch(var(--nc));
     border: none;
-    box-shadow: 0 8px 20px rgba(17, 24, 39, 0.16);
+    box-shadow: 0 8px 20px oklch(var(--bc) / 0.16);
 
     &.stopping {
-      background-color: #be123c;
-      color: #fff;
-      box-shadow: 0 8px 18px rgba(190, 18, 60, 0.2);
+      background-color: oklch(var(--er));
+      color: oklch(var(--nc));
+      box-shadow: 0 8px 18px oklch(var(--er) / 0.2);
     }
   }
 
@@ -667,9 +682,9 @@ watch(
     gap: 6px;
     padding: 0 10px;
     border-radius: 999px;
-    border: 1px solid rgba(17, 24, 39, 0.08);
-    background: #f7f7f6;
-    color: rgba(17, 24, 39, 0.76);
+    border: 1px solid oklch(var(--bc) / 0.08);
+    background: oklch(var(--b2));
+    color: oklch(var(--bc) / 0.76);
     font-size: 12px;
     line-height: 1;
     cursor: pointer;
@@ -678,9 +693,9 @@ watch(
     outline: none;
 
     &.active {
-      color: #174466;
-      border-color: rgba(35, 95, 143, 0.16);
-      background: #eef6ff;
+      color: oklch(var(--p));
+      border-color: oklch(var(--p) / 0.16);
+      background: oklch(var(--p) / 0.12);
     }
   }
 
@@ -785,10 +800,10 @@ watch(
     width: 100%;
     height: 100%;
     overflow: hidden;
-    border: 1px solid rgba(17, 24, 39, 0.08);
+    border: 1px solid oklch(var(--bc) / 0.08);
     border-radius: 8px;
     padding: 0;
-    background: #fff;
+    background: oklch(var(--b1));
     cursor: pointer;
 
     .ccia-image {
@@ -807,8 +822,8 @@ watch(
     height: 20px;
     border: none;
     border-radius: 999px;
-    background: rgba(17, 24, 39, 0.72);
-    color: #fff;
+    background: oklch(var(--bc) / 0.72);
+    color: oklch(var(--nc));
     font-size: 14px;
     line-height: 18px;
     cursor: pointer;

@@ -179,6 +179,14 @@ export class ChatDrawer extends ChatElemCreator {
     this.hasThinkingPlaceholder = false;
   }
 
+  clearDraftWorkingIcon(): void {
+    const assistantEl = this.assistantDraftContentEl?.closest(".chat-md-bubble-assistant");
+    const iconEl = assistantEl?.querySelector(".cmba-assistant-icon");
+    if (iconEl) {
+      iconEl.replaceChildren();
+    }
+  }
+
   removeTempAssistantElem(): void {
     const assistantEl = this.assistantDraftContentEl?.closest(".chat-md-bubble-assistant");
     if (assistantEl) assistantEl.remove();
@@ -276,6 +284,10 @@ export class ChatDrawer extends ChatElemCreator {
   }
 
   renderAssStream(): void {
+    if (this.assistantStream.content.content) {
+      this.clearDraftWorkingIcon();
+    }
+
     this.assistantDraftReasoningEl = renderAssistantDraft(
       {
         contentEl: this.assistantDraftContentEl,

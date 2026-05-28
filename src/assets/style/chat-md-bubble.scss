@@ -23,7 +23,7 @@
       flex-direction: column;
       border-radius: 28px;
       padding: 14px 22px;
-      background: #f3f0ee;
+      background: oklch(var(--bc));
       color: #202124;
 
       .cmbu-img-area {
@@ -92,18 +92,75 @@
 
   .cmba-assistant-icon {
     background-color: transparent;
-    height: 28px;
-    width: 28px;
+    height: 48px;
+    width: 48px;
     margin-top: 8px;
+    flex: 0 0 48px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
+    overflow: hidden;
+
+    .cmba-working-icon {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    svg {
+      width: 32px;
+      height: 32px;
+      overflow: visible;
+      display: block;
+    }
+
+    .edge {
+      stroke-width: 2.5px;
+      stroke-linecap: round;
+      stroke-dasharray: 100%;
+      animation: cmba-edge 1.6s infinite cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .satellite-group {
+      transform-origin: 50% 50%;
+      animation: cmba-converge 1.6s infinite cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .center-node {
+      fill: #34495e;
+      transform-origin: 50% 50%;
+      animation: cmba-center 1.6s infinite cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .color-tl {
+      fill: #4ad3b0;
+      stroke: #4ad3b0;
+    }
+
+    .color-tr {
+      fill: #ffb84d;
+      stroke: #ffb84d;
+    }
+
+    .color-bl {
+      fill: #ff6b6b;
+      stroke: #ff6b6b;
+    }
+
+    .color-br {
+      fill: #86e3ce;
+      stroke: #86e3ce;
+    }
   }
 
   .cmba-assistant-content {
-    width: calc(100% - 44px);
-    max-width: calc(100% - 44px);
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    max-width: none;
     border-radius: 16px;
     padding: 2px 0 0 12px;
     background-color: transparent;
@@ -128,6 +185,47 @@
     margin-bottom: 10px;
     max-width: 100%;
     overflow-x: hidden;
+  }
+}
+
+@keyframes cmba-edge {
+  0%,
+  30%,
+  75%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  40%,
+  65% {
+    stroke-dashoffset: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes cmba-converge {
+  0%,
+  30%,
+  75%,
+  100% {
+    transform: scale(1);
+  }
+  40%,
+  65% {
+    transform: scale(0);
+  }
+}
+
+@keyframes cmba-center {
+  0%,
+  30%,
+  75%,
+  100% {
+    transform: scale(1);
+  }
+  40%,
+  65% {
+    transform: scale(1.25);
   }
 }
 

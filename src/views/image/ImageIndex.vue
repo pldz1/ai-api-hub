@@ -15,7 +15,7 @@
             <div v-if="message.role !== 'user'" class="image-message-meta">
               <span>{{ message.mode === "edit" ? t("image.modeEdit") : t("image.modeGeneration") }}</span>
               <span v-if="message.modelName">{{ message.modelName }}</span>
-              <span v-if="message.elapsedMs">{{ (message.elapsedMs / 1000).toFixed(1) }}s</span>
+              <span v-if="getMessageElapsedMs(message) !== null">{{ formatElapsedMs(getMessageElapsedMs(message)!) }}</span>
             </div>
 
             <p v-if="message.prompt" class="image-message-prompt">{{ message.prompt }}</p>
@@ -148,10 +148,12 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const messageScrollRef = ref<HTMLElement | null>(null);
 const imageEditDialogRef = ref<{ open: (image: ImageInputAttachment) => void } | null>(null);
+let runtimeTimer: number | null = null;
 
 const messages = computed<ImageConversationMessage[]>(() => store.state.imageMessages || []);
 const routeImageId = computed(() => (typeof route.params.iid === "string" ? route.params.iid : ""));
 const activeImageRuntime = computed(() => (routeImageId.value ? store.state.imageRuntimeById?.[routeImageId.value] || null : store.state.imageRuntime || null));
+const runtimeTick = ref(Date.now());
 const mode = computed(() => (attachments.value.length > 0 ? "edit" : "generation"));
 const availableModels = computed<ImageModelConfig[]>(() => store.state.models.image || []);
 const selectedModel = computed<ImageModelConfig | null>(() => availableModels.value[selectedModelIndex.value] || null);
@@ -292,6 +294,25 @@ function focusPromptInput() {
   nextTick(() => textareaRef.value?.focus());
 }
 
+function formatElapsedMs(elapsedMs: number) {
+  return `${(elapsedMs / 1000).toFixed(1)}s`;
+}
+
+function getMessageElapsedMs(message: ImageConversationMessage): number | null {
+  if (message.status === "loading") {
+    if (message.role !== "assistant") return null;
+    const startedAt = Number(activeImageRuntime.value?.startedAt || message.createdAt || 0);
+    if (!startedAt) return null;
+    return Math.max(0, runtimeTick.value - startedAt);
+  }
+
+  if (typeof message.elapsedMs === "number" && message.elapsedMs > 0) {
+    return message.elapsedMs;
+  }
+
+  return null;
+}
+
 async function send() {
   if (isSendDisabled.value || !selectedModel.value) return;
 
@@ -404,7 +425,33 @@ watch(
   () => scrollToBottom(),
 );
 
+watch(
+  () => activeImageRuntime.value?.pending || activeImageRuntime.value?.status === "loading",
+  (running, _oldValue, onCleanup) => {
+    if (runtimeTimer !== null) {
+      window.clearInterval(runtimeTimer);
+      runtimeTimer = null;
+    }
+
+    if (running) {
+      runtimeTick.value = Date.now();
+      runtimeTimer = window.setInterval(() => {
+        runtimeTick.value = Date.now();
+      }, 100);
+    }
+
+    onCleanup(() => {
+      if (runtimeTimer !== null) {
+        window.clearInterval(runtimeTimer);
+        runtimeTimer = null;
+      }
+    });
+  },
+  { immediate: true },
+);
+
 onBeforeUnmount(() => {
+  if (runtimeTimer !== null) window.clearInterval(runtimeTimer);
   attachments.value.forEach((item) => {
     if (item.previewUrl.startsWith("blob:")) URL.revokeObjectURL(item.previewUrl);
   });
@@ -419,19 +466,19 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: radial-gradient(circle at 12% 0%, rgba(59, 130, 246, 0.05), transparent 30%), linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-}
 
-.image-chat-page::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 210px;
-  z-index: 4;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0) 0%, rgba(248, 250, 252, 0.92) 46%, #f8fafc 68%, #f8fafc 100%);
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 280px;
+    z-index: 5;
+    pointer-events: none;
+    background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.9) 28%, oklch(var(--b1)) 72%, oklch(var(--b1)) 100%);
+    box-shadow: inset 0 -84px 96px oklch(var(--b1) / 0.34);
+  }
 }
 
 .image-message-scroll {
@@ -448,7 +495,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   text-align: center;
-  color: #111827;
+  color: oklch(var(--bc));
 
   h1 {
     margin: 18px 0 8px;
@@ -459,7 +506,6 @@ onBeforeUnmount(() => {
   p {
     width: min(520px, 100%);
     margin: 0;
-    color: #6b7280;
     line-height: 1.7;
   }
 }
@@ -471,7 +517,6 @@ onBeforeUnmount(() => {
   place-items: center;
   border-radius: 24px;
   background: #f3f4f6;
-  color: #111827;
 
   :deep(.svg-icon) {
     width: 34px;
@@ -519,7 +564,6 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  color: #6b7280;
   font-size: 12px;
 }
 
@@ -535,7 +579,7 @@ onBeforeUnmount(() => {
 
 .image-message-prompt {
   margin: 4px 0 0;
-  color: #111827;
+  color: oklch(var(--bc));
   line-height: 1.7;
   white-space: pre-wrap;
 }
@@ -612,7 +656,6 @@ onBeforeUnmount(() => {
     border: 1px solid rgba(17, 24, 39, 0.1);
     border-radius: 8px;
     background: #fff;
-    color: #111827;
     font-size: 13px;
   }
 }
@@ -620,7 +663,7 @@ onBeforeUnmount(() => {
 .image-loading-card {
   width: min(360px, 100%);
   margin-top: 14px;
-  color: #6b7280;
+  color: oklch(var(--b1));
   font-size: 13px;
 }
 
@@ -629,9 +672,7 @@ onBeforeUnmount(() => {
   aspect-ratio: 1;
   margin-bottom: 10px;
   border-radius: 8px;
-  background: linear-gradient(90deg, #f3f4f6, #e5e7eb, #f3f4f6);
-  background-size: 220% 100%;
-  animation: imageShimmer 1.35s linear infinite;
+  background: #e5e7eb;
 }
 
 .image-error-message {
@@ -659,17 +700,18 @@ onBeforeUnmount(() => {
 }
 
 .image-composer {
+  position: relative;
+  z-index: 1;
   width: min(828px, 100%);
   max-height: min(68vh, 620px);
   overflow-y: auto;
   padding: 14px 18px 12px;
-  border: 1px solid rgba(27, 39, 51, 0.07);
-  border-radius: 34px;
-  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid oklch(var(--bc) / 0.07);
+  border-radius: 42px;
+  background: oklch(var(--b1));
   box-shadow:
-    0 2px 6px rgba(17, 24, 39, 0.05),
-    0 4px 8px rgba(17, 24, 39, 0.06);
-  backdrop-filter: blur(16px);
+    0 2px 6px oklch(var(--bc) / 0.05),
+    0 4px 8px oklch(var(--bc) / 0.06);
 }
 
 .image-input-preview-row {
@@ -694,8 +736,8 @@ onBeforeUnmount(() => {
     height: 20px;
     border: none;
     border-radius: 999px;
-    background: rgba(17, 24, 39, 0.72);
-    color: #fff;
+    background: oklch(var(--bc) / 0.72);
+    color: oklch(var(--nc));
     line-height: 18px;
   }
 
@@ -709,11 +751,12 @@ onBeforeUnmount(() => {
     display: inline-flex;
     align-items: center;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.9);
-    color: #111827;
+    border: 1px solid oklch(var(--bc) / 0.08);
+    background: oklch(var(--b1) / 0.92);
+    color: oklch(var(--bc));
     font-size: 12px;
     line-height: 22px;
-    box-shadow: 0 2px 8px rgba(17, 24, 39, 0.18);
+    box-shadow: 0 1px 3px oklch(var(--bc) / 0.08);
   }
 }
 
@@ -721,10 +764,10 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  border: 1px solid oklch(var(--bc) / 0.08);
   border-radius: 8px;
   padding: 0;
-  background: #fff;
+  background: oklch(var(--b1));
   cursor: pointer;
 
   img {
@@ -743,7 +786,7 @@ onBeforeUnmount(() => {
   outline: none;
   resize: none;
   background: transparent;
-  color: #111827;
+  color: oklch(var(--bc));
   font-size: 18px;
   line-height: 1.45;
 }
@@ -776,13 +819,14 @@ onBeforeUnmount(() => {
 }
 
 .image-icon-button {
-  background: #f7f7f6;
-  color: #111827;
+  background: oklch(var(--b2));
+  color: oklch(var(--bc));
 }
 
 .image-send-button {
-  background: #111827;
-  color: #ffffff;
+  background-color: oklch(var(--n));
+  color: oklch(var(--nc));
+  box-shadow: 0 8px 20px oklch(var(--bc) / 0.16);
 
   &:disabled {
     opacity: 0.36;
@@ -800,32 +844,32 @@ onBeforeUnmount(() => {
   height: 32px;
   min-width: 0;
   max-width: 180px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
-  border-radius: 10px;
+  border: 2px solid oklch(var(--bc) / 0.08);
+  border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 247, 246, 0.96)),
+    linear-gradient(180deg, oklch(var(--b1) / 0.96), oklch(var(--b2) / 0.94)),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23111827' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
       no-repeat right 9px center / 12px 12px;
-  color: #111827;
-  font-size: 13px;
-  padding: 0 30px 0 12px;
+  color: oklch(var(--bc));
+  font-size: 16px;
+  padding: 0 30px 0 4px;
   appearance: none;
-  box-shadow: 0 6px 16px rgba(17, 24, 39, 0.05);
+  box-shadow: 0 6px 18px oklch(var(--bc) / 0.06);
   transition:
     border-color 0.16s ease,
     box-shadow 0.16s ease,
     transform 0.16s ease;
 
   &:hover:not(:disabled) {
-    border-color: rgba(17, 24, 39, 0.18);
+    border-color: oklch(var(--bc) / 0.16);
     transform: translateY(-1px);
   }
 
   &:focus {
-    border-color: rgba(37, 99, 235, 0.42);
+    border-color: oklch(var(--p) / 0.42);
     box-shadow:
-      0 0 0 3px rgba(37, 99, 235, 0.12),
-      0 10px 20px rgba(17, 24, 39, 0.08);
+      0 0 0 3px oklch(var(--p) / 0.12),
+      0 10px 24px oklch(var(--bc) / 0.08);
     outline: none;
   }
 }
@@ -841,14 +885,14 @@ onBeforeUnmount(() => {
   align-items: center;
   padding: 0 11px;
   border-radius: 999px;
-  background: #eef2ff;
-  color: #3730a3;
+  background: oklch(var(--p) / 0.12);
+  color: oklch(var(--p));
   font-size: 12px;
   font-weight: 700;
 
   &.edit {
-    background: #ecfdf5;
-    color: #047857;
+    background: oklch(var(--su) / 0.12);
+    color: oklch(var(--su));
   }
 }
 
@@ -875,7 +919,7 @@ onBeforeUnmount(() => {
   }
 
   .image-composer {
-    border-radius: 26px;
+    border-radius: 28px;
     padding: 12px;
   }
 

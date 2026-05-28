@@ -37,7 +37,7 @@ const routeName = computed(() => route.name);
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #ffffff;
+  background: oklch(var(--b1));
 }
 
 .main-view-backdrop {

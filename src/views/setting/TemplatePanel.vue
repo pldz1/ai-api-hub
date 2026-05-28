@@ -143,14 +143,14 @@ watch(
 }
 
 .template-form-card {
-  border: 1px solid rgba(17, 24, 39, 0.07);
+  border: 1px solid oklch(var(--bc) / 0.07);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.82);
+  background: oklch(var(--b1) / 0.82);
   padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 18px;
-  box-shadow: 0 10px 28px rgba(31, 41, 55, 0.04);
+  box-shadow: 0 10px 28px oklch(var(--bc) / 0.04);
 
   label {
     display: flex;
@@ -161,7 +161,7 @@ watch(
   span {
     font-size: 12px;
     font-weight: 600;
-    color: #374151;
+    color: oklch(var(--bc) / 0.82);
   }
 }
 

@@ -17,7 +17,7 @@
 <style scoped>
 .right-view-layout {
   height: 100%;
-  border-left: 1px solid #eee;
+  border-left: 1px solid oklch(var(--bc) / 0.08);
   width: 100%;
   min-width: 0;
   display: flex;

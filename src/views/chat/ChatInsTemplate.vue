@@ -82,9 +82,6 @@ const onSelectInst = async (id: string) => {
   justify-content: center;
   gap: 22px;
   padding: 0 24px;
-  background:
-    radial-gradient(circle at 52% 36%, rgba(191, 224, 255, 0.75), rgba(191, 224, 255, 0.34) 18%, rgba(255, 255, 255, 0) 42%),
-    radial-gradient(circle at 50% 50%, rgba(217, 235, 255, 0.7), rgba(255, 255, 255, 0) 52%), linear-gradient(180deg, #ffffff 0%, #fbfbfb 100%);
 }
 
 .ctdc-copy {
@@ -96,12 +93,12 @@ const onSelectInst = async (id: string) => {
   font-size: clamp(42px, 5vw, 60px);
   font-weight: 400;
   letter-spacing: -0.04em;
-  color: #202124;
+  color: oklch(var(--bc));
 }
 
 .ctdc-subtitle {
   margin: 10px 0 0;
-  color: #5f6368;
+  color: oklch(var(--bc) / 0.68);
   font-size: 16px;
 }
 
@@ -119,13 +116,13 @@ const onSelectInst = async (id: string) => {
 .ctdc-template-chip {
   height: 40px;
   padding: 0 18px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid oklch(var(--bc) / 0.06);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.84);
-  color: #202124;
+  background: oklch(var(--b1) / 0.84);
+  color: oklch(var(--bc));
   font-size: 14px;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(31, 41, 55, 0.05);
+  box-shadow: 0 8px 24px oklch(var(--bc) / 0.05);
 }
 
 @media (max-width: 900px) {

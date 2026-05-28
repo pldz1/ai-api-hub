@@ -606,10 +606,8 @@ $radius-md: 12px;
   height: 100%;
   flex: 0 0 auto;
   width: $sidebar-w-collapsed;
-  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(18px);
-  border-right: 1px solid rgba(17, 24, 39, 0.08);
-  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.72) inset;
+  border-right: 1px solid oklch(var(--p) / 0.08);
   overflow: hidden;
   transition:
     width 0.22s ease,
@@ -697,7 +695,7 @@ $radius-md: 12px;
   padding: 0 10px;
   border: none;
   background: transparent;
-  color: #111827;
+  color: oklch(var(--bc));
   font-weight: 600;
   font-size: 15px;
   cursor: pointer;
@@ -727,7 +725,7 @@ $radius-md: 12px;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #4b5563;
+  color: oklch(var(--bc) / 0.7);
   flex-shrink: 0;
   transition:
     background-color 0.16s ease,
@@ -735,8 +733,8 @@ $radius-md: 12px;
     transform 0.16s ease;
 
   &:hover {
-    background: rgba(17, 24, 39, 0.06);
-    color: #111827;
+    background: oklch(var(--bc) / 0.06);
+    color: oklch(var(--bc));
   }
 
   &:active {
@@ -763,7 +761,7 @@ $radius-md: 12px;
   background: transparent;
   display: flex;
   align-items: center;
-  color: #374151;
+  color: oklch(var(--bc) / 0.82);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -786,8 +784,8 @@ $radius-md: 12px;
   }
 
   &:hover {
-    background: rgba(17, 24, 39, 0.05);
-    color: #111827;
+    background: oklch(var(--bc) / 0.05);
+    color: oklch(var(--bc));
   }
 
   &:active {
@@ -795,8 +793,8 @@ $radius-md: 12px;
   }
 
   &.is-active {
-    background: #eef2ff;
-    color: #1d4ed8;
+    background: oklch(var(--p) / 0.12);
+    color: oklch(var(--p));
     font-weight: 600;
   }
 }
@@ -812,7 +810,7 @@ $radius-md: 12px;
   border: none;
   border-radius: $radius-md;
   background: transparent;
-  color: #6b7280;
+  color: oklch(var(--bc) / 0.62);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -821,8 +819,8 @@ $radius-md: 12px;
   cursor: pointer;
 
   &:hover {
-    background: #fef2f2;
-    color: #b91c1c;
+    background: oklch(var(--er) / 0.12);
+    color: oklch(var(--er));
   }
 
   .nav-icon {
@@ -833,8 +831,8 @@ $radius-md: 12px;
 }
 
 .nav-delete-panel.is-active .nav-delete-btn {
-  background: #fef2f2;
-  color: #b91c1c;
+  background: oklch(var(--er) / 0.12);
+  color: oklch(var(--er));
 }
 
 .delete-mode-toolbar {
@@ -844,22 +842,22 @@ $radius-md: 12px;
   margin: 6px 0 4px;
   padding: 6px;
   border-radius: 12px;
-  background: rgba(17, 24, 39, 0.04);
+  background: oklch(var(--bc) / 0.04);
 
   button {
     min-height: 30px;
     padding: 0 8px;
     border: none;
     border-radius: 8px;
-    background: #ffffff;
-    color: #4b5563;
+    background: oklch(var(--b1));
+    color: oklch(var(--bc) / 0.7);
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
 
     &:hover:not(:disabled) {
-      background: #f3f4f6;
-      color: #111827;
+      background: oklch(var(--b2));
+      color: oklch(var(--bc));
     }
 
     &:disabled {
@@ -868,12 +866,12 @@ $radius-md: 12px;
     }
 
     &.is-danger {
-      background: #dc2626;
-      color: #ffffff;
+      background: oklch(var(--er));
+      color: oklch(var(--nc));
 
       &:hover:not(:disabled) {
-        background: #b91c1c;
-        color: #ffffff;
+        background: oklch(var(--er) / 0.9);
+        color: oklch(var(--nc));
       }
     }
   }
@@ -906,7 +904,7 @@ $radius-md: 12px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(17, 24, 39, 0.12);
+    background: oklch(var(--bc) / 0.12);
     border-radius: 4px;
   }
 }
@@ -918,7 +916,7 @@ $radius-md: 12px;
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: #9ca3af;
+  color: oklch(var(--bc) / 0.45);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -929,8 +927,8 @@ $radius-md: 12px;
     color 0.16s ease;
 
   &:hover {
-    background: rgba(17, 24, 39, 0.04);
-    color: #6b7280;
+    background: oklch(var(--bc) / 0.04);
+    color: oklch(var(--bc) / 0.62);
   }
 
   .section-title {
@@ -951,8 +949,8 @@ $radius-md: 12px;
   height: 18px;
   padding: 0 6px;
   border-radius: 999px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: oklch(var(--b2));
+  color: oklch(var(--bc) / 0.62);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1021,7 +1019,7 @@ $radius-md: 12px;
 
 .empty-tip {
   padding: 12px;
-  color: #9ca3af;
+  color: oklch(var(--bc) / 0.45);
   font-size: 13px;
 }
 
@@ -1036,7 +1034,7 @@ $radius-md: 12px;
   height: 44px;
   border-radius: $radius-md;
   padding: 0 4px;
-  color: #374151;
+  color: oklch(var(--bc) / 0.82);
   transition:
     background-color 0.16s ease,
     color 0.16s ease;
@@ -1044,8 +1042,8 @@ $radius-md: 12px;
   &:hover,
   &.is-active,
   &.is-selected {
-    background: #eef2ff;
-    color: #111827;
+    background: oklch(var(--p) / 0.12);
+    color: oklch(var(--bc));
 
     .chat-menu-btn {
       opacity: 1;
@@ -1054,7 +1052,7 @@ $radius-md: 12px;
 
   &.is-active .chat-title-text {
     font-weight: 600;
-    color: #1d4ed8;
+    color: oklch(var(--p));
   }
 }
 
@@ -1063,7 +1061,7 @@ $radius-md: 12px;
   height: 15px;
   flex: 0 0 auto;
   margin: 0 0 0 4px;
-  accent-color: #2563eb;
+  accent-color: oklch(var(--p));
   cursor: pointer;
 }
 
@@ -1083,7 +1081,7 @@ $radius-md: 12px;
   flex: 1;
   font-size: 13px;
   text-align: left;
-  color: #374151;
+  color: oklch(var(--bc) / 0.82);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1112,7 +1110,7 @@ $radius-md: 12px;
     width: 3.5px;
     height: 3.5px;
     border-radius: 50%;
-    background: #6b7280;
+    background: oklch(var(--bc) / 0.62);
   }
 }
 
@@ -1122,20 +1120,20 @@ $radius-md: 12px;
   flex: 0 0 auto;
   margin-right: 4px;
   border-radius: 999px;
-  background: #2563eb;
-  box-shadow: 0 0 0 2px #ffffff;
+  background: oklch(var(--p));
+  box-shadow: 0 0 0 2px oklch(var(--b1));
 
   &.is-running {
-    background: #22c55e;
+    background: oklch(var(--su));
     animation: sessionStatusPulse 1.2s ease-in-out infinite;
   }
 
   &.is-error {
-    background: #ef4444;
+    background: oklch(var(--er));
   }
 
   &.is-stopped {
-    background: #94a3b8;
+    background: oklch(var(--bc) / 0.42);
   }
 }
 
@@ -1160,7 +1158,7 @@ $radius-md: 12px;
   border: none;
   border-radius: 9px;
   background: transparent;
-  color: #374151;
+  color: oklch(var(--bc) / 0.82);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1176,11 +1174,11 @@ $radius-md: 12px;
   &:hover,
   &:focus-visible {
     background: #f3f4f6;
-    color: #111827;
+    color: oklch(var(--bc));
     outline: none;
 
     .menu-option-icon {
-      color: #111827;
+      color: oklch(var(--bc));
     }
   }
 
@@ -1193,7 +1191,7 @@ $radius-md: 12px;
 
     &:hover,
     &:focus-visible {
-      background: #fef2f2;
+      background: oklch(var(--er) / 0.12);
       color: #b91c1c;
 
       .menu-option-icon {
@@ -1206,7 +1204,7 @@ $radius-md: 12px;
 .menu-option-icon {
   width: 16px;
   height: 16px;
-  color: #6b7280;
+  color: oklch(var(--bc) / 0.62);
   flex-shrink: 0;
   transition: color 0.16s ease;
 }
@@ -1214,7 +1212,7 @@ $radius-md: 12px;
 .sidebar-action-confirm {
   // DaisyUI animates dialog backdrops by default; disable it here to avoid a visible mask flash.
   &::backdrop {
-    background: rgba(17, 24, 39, 0.24);
+    background: oklch(var(--bc) / 0.24);
     animation: none;
   }
 
@@ -1251,14 +1249,14 @@ $radius-md: 12px;
   padding: 0 10px;
   border: 1px solid #e4e4e7;
   border-radius: 8px;
-  background: #fff;
+  background: oklch(var(--b1));
   font-size: 13px;
   outline: none;
   box-sizing: border-box;
 
   &:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+    border-color: oklch(var(--p));
+    box-shadow: 0 0 0 2px oklch(var(--p) / 0.1);
   }
 }
 
@@ -1300,7 +1298,7 @@ $radius-md: 12px;
   border: none;
   border-radius: $radius-md;
   background: transparent;
-  color: #374151;
+  color: oklch(var(--bc) / 0.82);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1311,8 +1309,8 @@ $radius-md: 12px;
     transform 0.16s ease;
 
   &:hover {
-    background: rgba(17, 24, 39, 0.05);
-    color: #111827;
+    background: oklch(var(--bc) / 0.05);
+    color: oklch(var(--bc));
   }
 
   &:active {
@@ -1391,7 +1389,7 @@ $radius-md: 12px;
   }
 
   &.is-active {
-    background: #eef2ff;
+    background: oklch(var(--p) / 0.12);
     color: #1d4ed8;
     font-weight: 600;
   }
@@ -1418,7 +1416,7 @@ $radius-md: 12px;
     position: fixed;
     inset: 0 auto 0 0;
     z-index: 100;
-    background: rgba(255, 255, 255, 0.92);
+    background: oklch(var(--b1) / 0.92);
     backdrop-filter: blur(20px);
 
     &:not(.is-expanded) {

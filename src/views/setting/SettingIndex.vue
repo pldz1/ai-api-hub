@@ -370,8 +370,8 @@ onBeforeUnmount(() => {
 
 .settings-sidebar {
   padding: 24px 16px;
-  border-right: 1px solid rgba(17, 24, 39, 0.06);
-  background: rgba(255, 255, 255, 0.5);
+  border-right: 1px solid oklch(var(--bc) / 0.06);
+  background: oklch(var(--b1) / 0.5);
   backdrop-filter: blur(22px);
   overflow-y: auto;
 }
@@ -381,7 +381,7 @@ onBeforeUnmount(() => {
 
   h2 {
     margin: 0;
-    color: #202124;
+    color: oklch(var(--bc));
     font-size: 22px;
     font-weight: 700;
     line-height: 1.2;
@@ -399,7 +399,7 @@ onBeforeUnmount(() => {
 
   h3 {
     margin: 0 4px;
-    color: #9ca3af;
+    color: oklch(var(--bc) / 0.45);
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.06em;
@@ -408,12 +408,12 @@ onBeforeUnmount(() => {
 }
 
 .settings-tab-button {
-  border: 1px solid rgba(17, 24, 39, 0.06);
+  border: 1px solid oklch(var(--bc) / 0.06);
   border-radius: 16px;
   padding: 12px 14px;
   text-align: left;
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: 0 8px 24px rgba(31, 41, 55, 0.04);
+  background: oklch(var(--b1) / 0.84);
+  box-shadow: 0 8px 24px oklch(var(--bc) / 0.04);
 
   span,
   small {
@@ -423,20 +423,20 @@ onBeforeUnmount(() => {
   span {
     font-size: 14px;
     font-weight: 600;
-    color: #202124;
+    color: oklch(var(--bc));
   }
 
   small {
     margin-top: 4px;
     font-size: 11px;
     line-height: 1.4;
-    color: #5f6368;
+    color: oklch(var(--bc) / 0.68);
   }
 
   &:hover,
   &.active {
-    border-color: rgba(35, 95, 143, 0.14);
-    background: #eef6ff;
+    border-color: oklch(var(--p) / 0.14);
+    background: oklch(var(--p) / 0.12);
   }
 }
 
@@ -459,52 +459,52 @@ onBeforeUnmount(() => {
     max-width: 36rem;
     font-size: 13px;
     line-height: 1.65;
-    color: #5f6368;
+    color: oklch(var(--bc) / 0.68);
   }
 }
 
 .settings-status {
   border-radius: 999px;
   padding: 7px 12px;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: oklch(var(--b1) / 0.9);
   font-size: 12px;
-  color: #5f6368;
+  color: oklch(var(--bc) / 0.68);
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid rgba(17, 24, 39, 0.06);
+  border: 1px solid oklch(var(--bc) / 0.06);
 
   .settings-status-dot {
     width: 7px;
     height: 7px;
     border-radius: 999px;
-    background-color: rgba(95, 99, 104, 0.65);
+    background-color: oklch(var(--bc) / 0.45);
   }
 
   &.dirty {
-    background-color: #fff7e8;
-    color: #6b4f1d;
+    background-color: oklch(var(--wa) / 0.16);
+    color: oklch(var(--wa));
 
     .settings-status-dot {
-      background-color: #d97706;
+      background-color: oklch(var(--wa));
     }
   }
 
   &.saving {
-    background-color: #eef6ff;
-    color: #174466;
+    background-color: oklch(var(--p) / 0.12);
+    color: oklch(var(--p));
 
     .settings-status-dot {
-      background-color: #2563eb;
+      background-color: oklch(var(--p));
     }
   }
 
   &.error {
-    background-color: #fff0f3;
-    color: #9f1239;
+    background-color: oklch(var(--er) / 0.12);
+    color: oklch(var(--er));
 
     .settings-status-dot {
-      background-color: #be123c;
+      background-color: oklch(var(--er));
     }
   }
 }
@@ -513,12 +513,12 @@ onBeforeUnmount(() => {
   min-height: 0;
   flex: 1;
   overflow: hidden;
-  border: 1px solid rgba(17, 24, 39, 0.07);
+  border: 1px solid oklch(var(--bc) / 0.07);
   border-radius: 26px;
-  background: rgba(255, 255, 255, 0.9);
+  background: oklch(var(--b1) / 0.9);
   box-shadow:
-    0 2px 6px rgba(17, 24, 39, 0.05),
-    0 4px 8px rgba(17, 24, 39, 0.06);
+    0 2px 6px oklch(var(--bc) / 0.05),
+    0 4px 8px oklch(var(--bc) / 0.06);
   padding: 20px;
 }
 
@@ -529,7 +529,7 @@ onBeforeUnmount(() => {
 
   .settings-sidebar {
     border-right: none;
-    border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+    border-bottom: 1px solid oklch(var(--bc) / 0.06);
   }
 
   .settings-main-header {

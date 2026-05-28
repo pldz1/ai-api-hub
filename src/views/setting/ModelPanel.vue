@@ -191,9 +191,9 @@ watch(
   flex: 0 0 auto;
   border-radius: 999px;
   padding: 3px 8px;
-  border: 1px solid rgba(17, 24, 39, 0.06);
-  background: rgba(255, 255, 255, 0.86);
-  color: #5f6368;
+  border: 1px solid oklch(var(--bc) / 0.06);
+  background: oklch(var(--b1) / 0.86);
+  color: oklch(var(--bc) / 0.68);
   font-size: 10px;
   font-weight: 700;
 }
@@ -207,16 +207,16 @@ watch(
   span {
     border-radius: 999px;
     padding: 4px 8px;
-    background: #f7f7f6;
-    color: #6b7280;
+    background: oklch(var(--b2));
+    color: oklch(var(--bc) / 0.62);
     font-size: 10px;
     font-weight: 700;
-    border: 1px solid rgba(17, 24, 39, 0.04);
+    border: 1px solid oklch(var(--bc) / 0.04);
 
     &.active {
-      background: #eef6ff;
-      color: #174466;
-      border-color: rgba(35, 95, 143, 0.12);
+      background: oklch(var(--p) / 0.12);
+      color: oklch(var(--p));
+      border-color: oklch(var(--p) / 0.14);
     }
   }
 }

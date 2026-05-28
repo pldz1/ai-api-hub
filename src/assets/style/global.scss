@@ -31,12 +31,12 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #aaa;
+  background-color: oklch(var(--bc) / 0.32);
   border-radius: 4px;
 }
 
 *::-webkit-scrollbar-track {
-  background-color: #f0f0f0;
+  background-color: oklch(var(--b2));
 }
 
 *::-webkit-scrollbar-button {
