@@ -604,15 +604,21 @@ $radius-md: 12px;
 
 .sidebar-container {
   height: 100%;
-  flex: 0 0 auto;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
   width: $sidebar-w-collapsed;
   backdrop-filter: blur(18px);
   border-right: 1px solid oklch(var(--p) / 0.08);
   overflow: hidden;
   transition:
     width 0.22s ease,
+    transform 0.22s ease,
     background-color 0.22s ease,
     border-color 0.22s ease;
+  transform: translateX(0);
 
   &.is-expanded {
     width: $sidebar-w-expanded;
@@ -1413,14 +1419,28 @@ $radius-md: 12px;
 
 @media (max-width: 768px) {
   .sidebar-container {
-    position: fixed;
-    inset: 0 auto 0 0;
-    z-index: 100;
     background: oklch(var(--b1) / 0.92);
     backdrop-filter: blur(20px);
+    width: min(86vw, $sidebar-w-expanded);
+    max-width: $sidebar-w-expanded;
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
+    box-shadow: 18px 0 44px oklch(var(--bc) / 0.16);
+    transition:
+      transform 0.24s ease,
+      opacity 0.24s ease,
+      width 0.22s ease,
+      background-color 0.22s ease,
+      border-color 0.22s ease;
+
+    &.is-expanded {
+      transform: translateX(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
 
     &:not(.is-expanded) {
-      width: 0;
       border-right: none;
     }
   }

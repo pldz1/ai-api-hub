@@ -490,7 +490,7 @@ watch(
 .component-chat-input-area {
   position: relative;
   width: 100%;
-  max-width: 980px;
+  max-width: 1040px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -511,13 +511,15 @@ watch(
 
   .ccia-status-sticky {
     position: absolute;
-    left: 40%;
+    left: 50%;
     bottom: calc(100% + 10px);
     z-index: 2;
-    width: calc(100% - 16px);
+    width: 100%;
     transform: translateX(-50%);
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
+    padding: 0 12px;
+    box-sizing: border-box;
   }
 
   .ccia-status-pill {
@@ -545,7 +547,7 @@ watch(
   .ccia-input-card {
     position: relative;
     z-index: 1;
-    width: min(828px, 100%);
+    width: min(960px, 100%);
     background: oklch(var(--b1) / 0.96);
     border-radius: 42px;
     padding: 14px 18px 12px;
@@ -741,14 +743,53 @@ watch(
   }
 
   @media (max-width: 640px) {
+    &::before {
+      left: -12px;
+      right: -12px;
+      bottom: -12px;
+      height: 92px;
+      background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.58) 54%, oklch(var(--b1)) 100%);
+      box-shadow: none;
+    }
+
+    .ccia-status-sticky {
+      bottom: calc(100% + 6px);
+      justify-content: center;
+      padding: 0 8px;
+      pointer-events: none;
+    }
+
     .ccia-status-pill {
-      flex-wrap: wrap;
-      white-space: normal;
+      width: min(100%, 320px);
+      min-height: 22px;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 8px;
+      border-color: oklch(var(--bc) / 0.08);
+      color: oklch(var(--bc) / 0.58);
+      background: oklch(var(--b1) / 0.84);
+      box-shadow: 0 6px 18px oklch(var(--bc) / 0.06);
+      font-size: 10px;
+      line-height: 1.2;
+      overflow: hidden;
+    }
+
+    .ccia-status-time,
+    .ccia-status-token {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .ccia-input-card {
-      border-radius: 28px;
-      padding: 10px 12px 12px;
+      width: 100%;
+      border-radius: 24px;
+      padding: 12px 14px;
+      border: 1px solid oklch(var(--bc) / 0.07);
+      box-shadow:
+        0 2px 8px oklch(var(--bc) / 0.05),
+        0 10px 24px oklch(var(--bc) / 0.08);
     }
 
     .ccia-shell {
@@ -760,6 +801,7 @@ watch(
       order: 2;
       width: 100%;
       font-size: 16px;
+      min-height: 32px;
     }
 
     .ccia-model-area {
@@ -768,12 +810,32 @@ watch(
 
     .ccia-model-select,
     .ccia-model-lock {
-      max-width: 130px;
-      font-size: 14px;
+      max-width: 120px;
+      font-size: 13px;
     }
 
     .ccia-capability-row {
-      padding-left: 0;
+      padding: 8px 0 0;
+      gap: 6px;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .ccia-right-actions,
+    .ccia-left-actions {
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .ccia-capability-chip {
+      height: 26px;
+      padding: 0 8px;
+      font-size: 11px;
+    }
+
+    .ccia-send-button {
+      width: 36px;
+      height: 36px;
     }
   }
 }

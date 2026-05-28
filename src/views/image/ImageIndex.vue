@@ -460,6 +460,12 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .image-chat-page {
+  --image-page-max-width: 1080px;
+  --image-side-gap: max(24px, calc((100% - var(--image-page-max-width)) / 2));
+  --image-top-gap: 28px;
+  --image-bottom-gap: 230px;
+  --image-composer-bottom: 18px;
+  --image-composer-shell-gap: 18px;
   position: relative;
   width: 100%;
   height: 100%;
@@ -485,7 +491,8 @@ onBeforeUnmount(() => {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 28px max(24px, calc((100% - 900px) / 2)) 230px;
+  padding: var(--image-top-gap) var(--image-side-gap) var(--image-bottom-gap);
+  box-sizing: border-box;
 }
 
 .image-empty-state {
@@ -692,17 +699,19 @@ onBeforeUnmount(() => {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 18px;
+  bottom: var(--image-composer-bottom);
   z-index: 6;
   display: flex;
   justify-content: center;
-  padding: 0 18px;
+  padding: 0 var(--image-composer-shell-gap);
+  pointer-events: none;
 }
 
 .image-composer {
   position: relative;
   z-index: 1;
-  width: min(828px, 100%);
+  width: min(960px, 100%);
+  pointer-events: auto;
   max-height: min(68vh, 620px);
   overflow-y: auto;
   padding: 14px 18px 12px;
@@ -911,7 +920,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 720px) {
   .image-message-scroll {
-    padding: 18px 14px 240px;
+    padding: 22px 14px 236px;
   }
 
   .image-message.is-user .image-message-body {
@@ -919,6 +928,7 @@ onBeforeUnmount(() => {
   }
 
   .image-composer {
+    width: 100%;
     border-radius: 28px;
     padding: 12px;
   }
@@ -944,6 +954,33 @@ onBeforeUnmount(() => {
 
   .image-right-actions {
     justify-content: space-between;
+  }
+}
+
+@media (max-width: 640px) {
+  .image-chat-page {
+    --image-side-gap: 12px;
+    --image-top-gap: 60px;
+    --image-bottom-gap: 232px;
+    --image-composer-bottom: max(12px, env(safe-area-inset-bottom));
+    --image-composer-shell-gap: 6px;
+  }
+
+  .image-message-scroll {
+    padding-top: var(--image-top-gap);
+    padding-bottom: var(--image-bottom-gap);
+  }
+
+  .image-message.is-user .image-message-body {
+    max-width: 78%;
+  }
+
+  .image-composer-wrap {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .image-composer {
+    max-height: none;
   }
 }
 </style>
