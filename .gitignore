@@ -25,3 +25,5 @@ pnpm-debug.log*
 # User add
 Dockerfile
 dist
+.claude
+.codex

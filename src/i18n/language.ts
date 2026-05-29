@@ -61,6 +61,7 @@ export const languages = {
     },
     common: {
       autosavePending: "正在等待自动保存",
+      back: "返回",
       duplicateSuffix: "副本",
       saveError: "保存失败",
       save: "保存",
@@ -467,6 +468,7 @@ export const languages = {
     },
     common: {
       autosavePending: "Waiting for autosave",
+      back: "Back",
       close: "Close",
       duplicateSuffix: "copy",
       save: "Save",

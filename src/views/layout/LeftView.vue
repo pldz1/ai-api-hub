@@ -1,9 +1,15 @@
 <template>
   <aside class="sidebar-container" :class="{ 'is-expanded': isExpanded }" :aria-expanded="isExpanded">
     <div class="sidebar-wrapper">
-      <!-- Header: Logo and Toggle Button -->
+      <!-- Header: Back button (settings) or logo + toggle -->
       <div class="sidebar-header">
-        <a v-if="isExpanded" class="brand-logo" href="/">
+        <AppTooltip v-if="isSettingsRoute" :text="isExpanded ? '' : t('common.back')" placement="right">
+          <button class="back-btn" type="button" @click="onBackFromSettings">
+            <SvgIcon :src="backIcon" class="back-icon" />
+            <span v-if="isExpanded" class="back-label">{{ t("common.back") }}</span>
+          </button>
+        </AppTooltip>
+        <a v-else-if="isExpanded" class="brand-logo" href="/">
           <SvgIcon class="logo-icon" :src="brandIcon" colored />
           <span class="logo-text">{{ APP_NAME }} · {{ APP_VERSION }}</span>
         </a>
@@ -15,7 +21,27 @@
         </AppTooltip>
       </div>
 
-      <!-- Main Navigation -->
+      <!-- Settings Navigation (when on settings route) -->
+      <nav v-if="isSettingsRoute && isExpanded" class="settings-nav-area">
+        <h2 class="settings-title">{{ t("user.app.title") }}</h2>
+        <section v-for="group in settingGroups" :key="group.key" class="settings-nav-group">
+          <h3>{{ group.label }}</h3>
+          <button
+            v-for="item in group.items"
+            :key="item.key"
+            class="settings-tab-btn"
+            :class="{ active: activeTab === item.key }"
+            type="button"
+            @click="$emit('update:activeTab', item.key)"
+          >
+            <span>{{ item.label }}</span>
+            <small>{{ item.description }}</small>
+          </button>
+        </section>
+      </nav>
+
+      <!-- Main Navigation (normal routes) -->
+      <template v-else>
       <nav class="nav-group">
         <AppTooltip :text="isExpanded ? '' : t('chat.newChatConversation')" placement="right">
           <button class="nav-item" :class="{ 'is-active': isChatDraftRoute }" type="button" @click="onNewChat">
@@ -200,6 +226,7 @@
           </div>
         </div>
       </Transition>
+      </template>
 
       <div class="sidebar-footer">
         <div class="settings-shell">
@@ -281,16 +308,40 @@ import collapseIcon from "@/assets/svg/collapse24.svg";
 import expandIcon from "@/assets/svg/expand24.svg";
 import editIcon from "@/assets/svg/edit24.svg";
 import deleteIcon from "@/assets/svg/delete16.svg";
+import backIcon from "@/assets/svg/collapse24.svg";
 import AppDropdownMenu from "@/components/AppDropdownMenu.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
 import { APP_NAME, APP_VERSION } from "@/constants";
+type SettingTabKey_L = "chat-templates" | "chat-models" | "image-models" | "app";
+
+const settingGroups = computed(() => [
+  {
+    key: "chat",
+    label: t("user.groups.chat"),
+    items: [
+      { key: "chat-templates" as SettingTabKey_L, label: t("user.tabs.templates.label"), description: t("user.tabs.templates.description") },
+      { key: "chat-models" as SettingTabKey_L, label: t("user.tabs.chatModels.label"), description: t("user.tabs.chatModels.description") },
+    ],
+  },
+  {
+    key: "image",
+    label: t("user.groups.image"),
+    items: [{ key: "image-models" as SettingTabKey_L, label: t("user.tabs.imageModels.label"), description: t("user.tabs.imageModels.description") }],
+  },
+  {
+    key: "app",
+    label: t("user.groups.app"),
+    items: [{ key: "app" as SettingTabKey_L, label: t("user.tabs.app.label"), description: t("user.tabs.app.description") }],
+  },
+]);
 
 const props = defineProps({
   expanded: { type: Boolean, default: true },
+  activeTab: { type: String as () => SettingTabKey_L, default: "chat-models" as SettingTabKey_L },
 });
 
-const emit = defineEmits(["toggle"]);
+const emit = defineEmits(["toggle", "update:activeTab"]);
 const store = useStore();
 const router = useRouter();
 const route = useRoute();
@@ -303,7 +354,7 @@ const activeRouteChatId = computed(() => (route.name === "chat" && typeof route.
 const activeRouteImageId = computed(() => (route.name === "image" && typeof route.params.iid === "string" ? route.params.iid : ""));
 const isChatDraftRoute = computed(() => route.name === "chat" && !activeRouteChatId.value);
 const isImageDraftRoute = computed(() => route.name === "image" && !activeRouteImageId.value);
-
+const isSettingsRoute = computed(() => route.name === "settings");
 const isShowOptionCid = ref("");
 const isEditChatName = ref(false);
 const isChatSectionOpen = ref(true);
@@ -416,6 +467,8 @@ const onNewChat = async () => {
 };
 
 const onShowModelSettings = () => router.push({ name: "settings" });
+
+const onBackFromSettings = () => router.push({ name: "chat" });
 
 const onNewImage = async () => {
   await router.push({ name: "image" });
@@ -1414,6 +1467,140 @@ $radius-md: 12px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+}
+
+/* ---- Settings nav (inside sidebar) ---- */
+.back-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 44px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  color: oklch(var(--bc) / 0.72);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: $radius-md;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+
+  &:hover {
+    background: oklch(var(--bc) / 0.06);
+    color: oklch(var(--bc));
+  }
+
+  .back-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+
+  .back-label {
+    margin-left: 8px;
+    white-space: nowrap;
+  }
+}
+
+.settings-nav-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px;
+  display: flex;
+  flex-direction: column;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: oklch(var(--bc) / 0.12);
+    border-radius: 4px;
+  }
+}
+
+.settings-title {
+  margin: 0 4px 22px;
+  color: oklch(var(--bc));
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.settings-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  & + & {
+    margin-top: 18px;
+  }
+
+  h3 {
+    margin: 0 4px;
+    color: oklch(var(--bc) / 0.45);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+}
+
+.settings-tab-btn {
+  border: 1px solid oklch(var(--bc) / 0.06);
+  border-radius: 16px;
+  padding: 12px 14px;
+  text-align: left;
+  background: oklch(var(--b1) / 0.84);
+  box-shadow: 0 8px 24px oklch(var(--bc) / 0.04);
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    background-color 0.16s ease;
+
+  span,
+  small {
+    display: block;
+  }
+
+  span {
+    font-size: 14px;
+    font-weight: 600;
+    color: oklch(var(--bc));
+  }
+
+  small {
+    margin-top: 4px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: oklch(var(--bc) / 0.68);
+  }
+
+  &:hover,
+  &.active {
+    border-color: oklch(var(--p) / 0.14);
+    background: oklch(var(--p) / 0.12);
+  }
+}
+
+/* Collapsed sidebar: back button compact */
+.sidebar-container:not(.is-expanded) {
+  .back-btn {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+    flex: 0 0 44px;
+    justify-content: center;
+  }
+
+  .settings-title,
+  .settings-nav-area {
+    display: none;
   }
 }
 

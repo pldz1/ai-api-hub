@@ -1,26 +1,5 @@
 <template>
   <div class="settings-page">
-    <!-- Settings navigation grouped by feature area -->
-    <aside class="settings-sidebar">
-      <header class="settings-sidebar-header">
-        <h2>{{ t("user.app.title") }}</h2>
-      </header>
-
-      <section v-for="group in settingGroups" :key="group.key" class="settings-nav-group">
-        <h3>{{ group.label }}</h3>
-        <button
-          v-for="item in group.items"
-          :key="item.key"
-          class="settings-tab-button"
-          :class="{ active: activeTab === item.key }"
-          @click="activeTab = item.key"
-        >
-          <span>{{ item.label }}</span>
-          <small>{{ item.description }}</small>
-        </button>
-      </section>
-    </aside>
-
     <!-- Active settings workspace and autosave status -->
     <main class="settings-main">
       <header class="settings-main-header">
@@ -59,11 +38,9 @@ import { buildModelSettings } from "@/models";
 import { SETTINGS_IMPORTED_EVENT, getChatInsTemplateList, getModels, importSettingsPayload, setChatInsTemplateList, setModels } from "@/services";
 import { dsAlert, uploadJsonFile } from "@/utils";
 import { APP_NAME, APP_VERSION } from "@/constants";
+type SettingTabKey_S = "chat-templates" | "chat-models" | "image-models" | "app";
 import type { ChatModelConfig, ImageModelConfig, ModelSettings, SettingsImportPayload } from "@/types";
 
-type SettingTabKey = "chat-templates" | "chat-models" | "image-models" | "app";
-type SettingTabItem = { key: SettingTabKey; label: string; description: string };
-type SettingTabGroup = { key: string; label: string; items: SettingTabItem[] };
 type ChatInstructionTemplate = { id: string; name: string; value: string };
 type SettingsAutosaveState = "saved" | "dirty" | "saving" | "error";
 
@@ -210,30 +187,37 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
   };
 }
 
+const props = defineProps<{
+  activeTab: SettingTabKey_S;
+}>();
+
+defineEmits<{
+  "update:activeTab": [key: SettingTabKey_S];
+}>();
+
 const store = useStore();
 const { t } = useI18n();
-const activeTab = ref<SettingTabKey>("chat-models");
-
-const settingGroups = computed<SettingTabGroup[]>(() => [
+const settingGroups = computed(() => [
   {
     key: "chat",
     label: t("user.groups.chat"),
     items: [
-      { key: "chat-templates", label: t("user.tabs.templates.label"), description: t("user.tabs.templates.description") },
-      { key: "chat-models", label: t("user.tabs.chatModels.label"), description: t("user.tabs.chatModels.description") },
+      { key: "chat-templates" as SettingTabKey_S, label: t("user.tabs.templates.label"), description: t("user.tabs.templates.description") },
+      { key: "chat-models" as SettingTabKey_S, label: t("user.tabs.chatModels.label"), description: t("user.tabs.chatModels.description") },
     ],
   },
   {
     key: "image",
     label: t("user.groups.image"),
-    items: [{ key: "image-models", label: t("user.tabs.imageModels.label"), description: t("user.tabs.imageModels.description") }],
+    items: [{ key: "image-models" as SettingTabKey_S, label: t("user.tabs.imageModels.label"), description: t("user.tabs.imageModels.description") }],
   },
   {
     key: "app",
     label: t("user.groups.app"),
-    items: [{ key: "app", label: t("user.tabs.app.label"), description: t("user.tabs.app.description") }],
+    items: [{ key: "app" as SettingTabKey_S, label: t("user.tabs.app.label"), description: t("user.tabs.app.description") }],
   },
 ]);
+const activeTab = computed(() => props.activeTab);
 
 const { autosaveState, draftModels, draftTemplates, shouldBlockUnload, getDraftPayload, syncDraftFromSource } = useSettingsDraft({
   getInitialDraft: () => ({
@@ -361,88 +345,17 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .settings-page {
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 0;
   overflow: hidden;
 }
 
-.settings-sidebar {
-  padding: 24px 16px;
-  border-right: 1px solid oklch(var(--bc) / 0.06);
-  background: oklch(var(--b1) / 0.5);
-  backdrop-filter: blur(22px);
-  overflow-y: auto;
-}
-
-.settings-sidebar-header {
-  margin: 0 4px 22px;
-
-  h2 {
-    margin: 0;
-    color: oklch(var(--bc));
-    font-size: 22px;
-    font-weight: 700;
-    line-height: 1.2;
-  }
-}
-
-.settings-nav-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  & + & {
-    margin-top: 18px;
-  }
-
-  h3 {
-    margin: 0 4px;
-    color: oklch(var(--bc) / 0.45);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-}
-
-.settings-tab-button {
-  border: 1px solid oklch(var(--bc) / 0.06);
-  border-radius: 16px;
-  padding: 12px 14px;
-  text-align: left;
-  background: oklch(var(--b1) / 0.84);
-  box-shadow: 0 8px 24px oklch(var(--bc) / 0.04);
-
-  span,
-  small {
-    display: block;
-  }
-
-  span {
-    font-size: 14px;
-    font-weight: 600;
-    color: oklch(var(--bc));
-  }
-
-  small {
-    margin-top: 4px;
-    font-size: 11px;
-    line-height: 1.4;
-    color: oklch(var(--bc) / 0.68);
-  }
-
-  &:hover,
-  &.active {
-    border-color: oklch(var(--p) / 0.14);
-    background: oklch(var(--p) / 0.12);
-  }
-}
-
 .settings-main {
   min-width: 0;
   min-height: 0;
+  flex: 1;
   padding: 20px 22px 18px;
   display: flex;
   flex-direction: column;
@@ -523,77 +436,16 @@ onBeforeUnmount(() => {
   padding: 20px;
 }
 
-@media (max-width: 1100px) {
-  .settings-page {
-    grid-template-columns: 1fr;
-  }
-
-  .settings-sidebar {
-    border-right: none;
-    border-bottom: 1px solid oklch(var(--bc) / 0.06);
-  }
-
+@media (max-width: 768px) {
   .settings-main-header {
     flex-direction: column;
   }
 }
 
 @media (max-width: 720px) {
-  .settings-page {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .settings-sidebar {
-    padding: 14px 12px 10px;
-    overflow: visible;
-  }
-
-  .settings-sidebar-header {
-    margin: 0 2px 12px;
-
-    h2 {
-      font-size: 18px;
-    }
-  }
-
-  .settings-nav-group {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: max-content;
-    gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-
-    & + & {
-      margin-top: 10px;
-    }
-
-    h3 {
-      display: none;
-    }
-  }
-
-  .settings-tab-button {
-    min-width: 132px;
-    border-radius: 999px;
-    padding: 10px 14px;
-    box-shadow: none;
-
-    span {
-      font-size: 13px;
-    }
-
-    small {
-      display: none;
-    }
-  }
-
   .settings-main {
     padding: 14px 14px 16px;
     gap: 14px;
-    min-height: 0;
     flex: 1 1 auto;
   }
 

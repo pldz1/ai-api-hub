@@ -6,12 +6,12 @@
       <SvgIcon :src="menuIcon" />
     </button>
     <div class="main-view-content">
-      <LeftView :expanded="sidebarExpanded" @toggle="sidebarExpanded = !sidebarExpanded" />
+      <LeftView :expanded="sidebarExpanded" :active-tab="settingsActiveTab" @toggle="sidebarExpanded = !sidebarExpanded" @update:active-tab="settingsActiveTab = $event" />
       <div class="main-view-stage">
         <RightView>
           <ChatIndex v-if="routeName === 'chat'" />
           <ImageIndex v-else-if="routeName === 'image'" />
-          <SettingIndex v-else-if="routeName === 'settings'" />
+          <SettingIndex v-else-if="routeName === 'settings'" :active-tab="settingsActiveTab" />
 
           <template #footer>
             <AppFooter />
@@ -32,12 +32,15 @@ import SvgIcon from "@/components/SvgIcon.vue";
 import ChatIndex from "./chat/ChatIndex.vue";
 import ImageIndex from "./image/ImageIndex.vue";
 import SettingIndex from "./setting/SettingIndex.vue";
+type SettingTabKey_M = "chat-templates" | "chat-models" | "image-models" | "app";
+
 import menuIcon from "@/assets/svg/menu32.svg";
 
 const sidebarExpanded = ref(true);
 const isMobile = ref(false);
 const route = useRoute();
 const routeName = computed(() => route.name);
+const settingsActiveTab = ref<SettingTabKey_M>("chat-models");
 
 let mobileQuery: MediaQueryList | null = null;
 const handleMobileQueryChange = (event: MediaQueryListEvent) => {
@@ -100,7 +103,8 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
-  .main-view-stage {
+  .main-view-stage,
+  .main-view-shell.is-sidebar-open .main-view-stage {
     padding-left: 0;
   }
 
