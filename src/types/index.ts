@@ -14,7 +14,6 @@ export type {
 export {
   type ChatFormProvider,
   type ChatModelEditorState,
-  type ChatModelOption,
   type ChatModelSettings,
   type ConversationModelSnapshot,
   type PersistedChatSettings,
@@ -22,12 +21,11 @@ export {
   type StoredChatMessage,
 } from "./conversation";
 
-export type { ImageModelConfig, ImageModelProvider, ImageInputFile, ImageModelParamDef, ImageModelParamType, ImageSelectOption } from "@/ai-capability/image";
+export type { ImageModelConfig, ImageModelProvider, ImageInputFile, ImageModelParamDef, ImageModelParamType } from "@/ai-capability/image";
 
 // Image types.
 export {
   type ImageModelEditorState,
-  type ImageModelOption,
   type ImageModelSettings,
   type ImageConversationMessage,
   type ImageConversationInfo,
@@ -45,4 +43,4 @@ export {
 // App setting
 export * from "./settings";
 
-export type { ModelParamDef, ParamDefaultValue, SelectOption, ApiMethod, ApiResponse, RequestBody, RequestHeaders, TokenUsage } from "@/ai-capability/common";
+export type { ModelParamDef, ParamDefaultValue, ApiMethod, ApiResponse, RequestBody, RequestHeaders, TokenUsage } from "@/ai-capability/common";

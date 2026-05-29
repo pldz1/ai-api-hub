@@ -1,19 +1,6 @@
-import type { SelectOption, ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelConfig, ChatModelProvider, ChatParamRecord } from "@/ai-capability";
+import type { ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelConfig, ChatModelProvider, ChatParamRecord } from "@/ai-capability";
 
 export type ChatFormProvider = ChatModelProvider | "";
-
-/**
- * Catalog metadata for a known chat model id.
- *
- * This is not user configuration. It describes built-in capabilities and
- * protocol behavior for model suggestions such as `gpt-5.5`.
- */
-export interface ChatModelOption extends SelectOption {
-  isReasonModel: boolean;
-  messageFormat: "text" | "parts";
-  capabilityProfile: ChatModelCapabilityProfile;
-  capabilities: Pick<ChatModelCapabilities, "webSearch" | "imageRead">;
-}
 
 /**
  * Chat-model editor state used by the settings form.

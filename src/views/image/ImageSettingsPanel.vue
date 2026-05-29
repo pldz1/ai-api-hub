@@ -27,8 +27,8 @@
       <div class="setting-block">
         <span class="setting-label">{{ t("image.size") }}</span>
         <select class="setting-select" :value="settings.size" @change="updateSetting('size', $event.target.value)">
-          <option v-for="imsz in imageModelSize" :key="imsz.value" :value="imsz.value">
-            {{ imsz.name }}
+          <option v-for="imsz in imageModelSize" :key="imsz" :value="imsz">
+            {{ imsz }}
           </option>
         </select>
       </div>
@@ -37,14 +37,14 @@
     <div class="ratio-grid">
       <button
         v-for="option in imageModelSize"
-        :key="option.value"
+        :key="option"
         type="button"
         class="ratio-card"
-        :class="{ active: settings.size === option.value }"
-        @click="updateSetting('size', option.value)"
+        :class="{ active: settings.size === option }"
+        @click="updateSetting('size', option)"
       >
-        <span class="ratio-box" :class="sizeShapeClass(option.value)"></span>
-        <strong>{{ sizeAlias(option.value) }}</strong>
+        <span class="ratio-box" :class="sizeShapeClass(option)"></span>
+        <strong>{{ sizeAlias(option) }}</strong>
       </button>
     </div>
   </aside>

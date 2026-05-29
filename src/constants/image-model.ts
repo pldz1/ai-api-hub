@@ -1,4 +1,4 @@
-import type { ImageModelProvider, ImageModelEditorState, ImageModelParamDef, ImageSelectOption } from "@/types";
+import type { ImageModelProvider, ImageModelEditorState, ImageModelParamDef } from "@/types";
 
 export const imageParamPresetList: Partial<ImageModelParamDef>[] = [
   {
@@ -51,22 +51,19 @@ export const imageParamPresetList: Partial<ImageModelParamDef>[] = [
   },
 ];
 
-export const imageModelTypeList: ImageSelectOption[] = [{ value: "gpt-image-2", name: "gpt-image-2" }];
+export const imageModelTypeList = ["gpt-image-2"];
 
-export const imageModelProviderList: ImageSelectOption<ImageModelProvider>[] = [
-  { value: "OpenAI", name: "OpenAI" },
-  { value: "Azure OpenAI", name: "Azure OpenAI" },
-];
+export const imageModelProviderList: ImageModelProvider[] = ["OpenAI", "Azure OpenAI"];
 
-export const imageModelSize: ImageSelectOption[] = [
-  { name: "1024x1024", value: "1024x1024" },
-  { name: "1536x1024", value: "1536x1024" },
-  { name: "1024x1536", value: "1024x1536" },
-  { name: "2048x2048", value: "2048x2048" },
-  { name: "2048x1152", value: "2048x1152" },
-  { name: "3840x2160", value: "3840x2160" },
-  { name: "2160x3840", value: "2160x3840" },
-  { name: "auto ", value: "auto " },
+export const imageModelSize = [
+  "1024x1024",
+  "1536x1024",
+  "1024x1536",
+  "2048x2048",
+  "2048x1152",
+  "3840x2160",
+  "2160x3840",
+  "auto ",
 ];
 
 export const defaultImageModelEditorState: ImageModelEditorState = {

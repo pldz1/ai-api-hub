@@ -1,5 +1,5 @@
 import { tr } from "@/i18n";
-import { getChatProviderConnectionFields, isChatModelProvider } from "@/ai-capability/chat/provider-registry";
+import { getChatProviderConnectionFields, isChatModelProvider } from "@/models";
 
 /**
  * Returns whether one user message contains at least one non-empty text part

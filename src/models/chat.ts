@@ -10,11 +10,22 @@ import type {
 } from "@/types";
 import { tr } from "@/i18n";
 import { chatParamPresetList, defaultModelCapabilities, chatModelCatalog, type ChatModelCatalogItem, baseCapabilityProfile } from "@/constants";
-import { isChatModelProvider } from "@/ai-capability/chat/provider-registry";
 import { parseParamValue } from "./settings";
 
 type LooseChatParamDef = Partial<ModelParamDef> & { key?: string };
 const chatParamDefMap = new Map(chatParamPresetList.map((item) => [item.key, item] as const));
+
+import {
+  chatProviderUsesField,
+  getChatProviderDefinition,
+  getChatProviderDefaultBaseURL,
+  getChatProviderModelFamilies,
+  getChatProviderModelFamily,
+  getChatProvidersForModel,
+  getKnownChatProviderDefaultBaseURLs,
+  isChatModelProvider,
+  getChatProviderConnectionFields,
+} from "@/ai-capability/chat/provider-registry";
 
 /** Returns whether a user model config should use Azure OpenAI routing. */
 export function isAzureChatModel(model: ChatModelConfig | null | undefined): model is ChatModelConfig & { provider: "Azure OpenAI" } {
@@ -78,7 +89,7 @@ export function findChatModelCatalogItem(model = ""): ChatModelCatalogItem | nul
 
   return (
     chatModelCatalog.find((item) => {
-      const itemModel = item.value.toLowerCase();
+      const itemModel = item.name.toLowerCase();
 
       if (itemModel !== targetModel) return false;
 
@@ -186,9 +197,7 @@ export function normalizeChatParamDef(def: LooseChatParamDef = {}): ModelParamDe
 const normalizedChatParamDefs = new Map(chatParamPresetList.map((item) => [item.key, normalizeChatParamDef(item)] as const));
 
 export function resolveChatParamDefs(model: LooseModelConfig | null = null): ModelParamDef[] {
-  return (findChatModelCatalogItem(model?.model || "")?.chatParamKeys || [])
-    .map((key) => normalizedChatParamDefs.get(key))
-    .filter(Boolean) as ModelParamDef[];
+  return (findChatModelCatalogItem(model?.model || "")?.chatParamKeys || []).map((key) => normalizedChatParamDefs.get(key)).filter(Boolean) as ModelParamDef[];
 }
 
 function mergeResolvedChatSettings(defs: ModelParamDef[], settings: Partial<ChatModelSettings> = {}): ChatModelSettings {
@@ -266,3 +275,16 @@ export function buildChatCompletionParams(model: LooseModelConfig | null = null,
     stream_options: { include_usage: true },
   };
 }
+
+// export functions from provider registry for convenience in other modules that consume chat models and capabilities.
+export {
+  chatProviderUsesField,
+  getChatProviderDefinition,
+  getChatProviderDefaultBaseURL,
+  getChatProviderModelFamilies,
+  getChatProviderModelFamily,
+  getChatProvidersForModel,
+  getKnownChatProviderDefaultBaseURLs,
+  isChatModelProvider,
+  getChatProviderConnectionFields,
+};

@@ -1,4 +1,4 @@
-import type { TokenUsage, ImageModelProvider, ImageInputFile, ImageModelConfig, SelectOption } from "@/ai-capability";
+import type { TokenUsage, ImageModelProvider, ImageInputFile, ImageModelConfig } from "@/ai-capability";
 
 export type ImageConversationRole = "user" | "assistant";
 export type ImageConversationMode = "generation" | "edit";
@@ -31,8 +31,6 @@ export interface ImageModelSettings {
   n: number;
   [key: string]: unknown;
 }
-
-export interface ImageModelOption extends SelectOption {}
 
 export type ImageFormProvider = ImageModelProvider | "";
 

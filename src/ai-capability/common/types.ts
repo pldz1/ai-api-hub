@@ -14,11 +14,6 @@ export interface ModelParamDef {
   step: number;
 }
 
-export interface SelectOption<TValue extends string = string> {
-  value: TValue;
-  name: string;
-}
-
 // ============================================================================
 // SSE transport types
 // ============================================================================

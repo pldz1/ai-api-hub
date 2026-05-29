@@ -108,8 +108,3 @@ export interface ImageModelParamDef {
   max: number;
   step: number;
 }
-
-export interface ImageSelectOption<TValue extends string = string> {
-  value: TValue;
-  name: string;
-}

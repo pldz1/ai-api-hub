@@ -31,7 +31,7 @@
           <span>{{ t("user.modelCard.fields.model") }}</span>
           <select v-model="localModel.model" class="model-select model-select-bordered w-full">
             <optgroup v-for="group in groupedModelSuggestions" :key="group.key" :label="group.label">
-              <option v-for="item in group.items" :key="item.value" :value="item.value">{{ item.name }}</option>
+              <option v-for="item in group.items" :key="getSuggestionValue(item)" :value="getSuggestionValue(item)">{{ getSuggestionLabel(item) }}</option>
             </optgroup>
           </select>
           <small>{{ t("user.modelCard.chatModelHelp") }}</small>
@@ -41,7 +41,7 @@
         <label class="model-form-field">
           <span>{{ t("user.modelCard.fields.provider") }}</span>
           <select v-model="localModel.provider" class="model-select model-select-bordered w-full">
-            <option v-for="ai in availableModelProviderList" :key="ai.value" :value="ai.value">{{ ai.name }}</option>
+            <option v-for="ai in availableModelProviderList" :key="getProviderValue(ai)" :value="getProviderValue(ai)">{{ getProviderLabel(ai) }}</option>
           </select>
         </label>
 
@@ -53,13 +53,13 @@
           <div class="model-suggestion-list">
             <button
               v-for="item in modelSuggestions"
-              :key="item.value"
+              :key="getSuggestionValue(item)"
               type="button"
               class="btn btn-sm"
-              :class="localModel.model === item.value ? 'btn-neutral' : 'btn-outline'"
-              @click="localModel.model = item.value"
+              :class="localModel.model === getSuggestionValue(item) ? 'btn-neutral' : 'btn-outline'"
+              @click="localModel.model = getSuggestionValue(item)"
             >
-              {{ item.name }}
+              {{ getSuggestionLabel(item) }}
             </button>
           </div>
         </div>
@@ -130,28 +130,33 @@ import { computed, reactive, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import copyIcon from "@/assets/svg/copy16.svg";
 import SvgIcon from "@/components/SvgIcon.vue";
-import { chatDisplayedCapabilityKeys, defaultChatModelEditorState, imageModelProviderList, providerList } from "@/constants";
+import { chatDisplayedCapabilityKeys, defaultChatModelEditorState, imageModelProviderList, chatProviderKeys } from "@/constants";
 import { dsAlert } from "@/utils";
-import { getChatModelCapabilities, imageParamDefs } from "@/models";
 import {
+  getChatModelCapabilities,
+  imageParamDefs,
   chatProviderUsesField,
+  getChatProviderDefinition,
   getChatProviderDefaultBaseURL,
   getChatProviderModelFamilies,
   getChatProviderModelFamily,
   getChatProvidersForModel,
   getKnownChatProviderDefaultBaseURLs,
-} from "@/ai-capability/chat/provider-registry";
-import type { ChatModelConfig, ChatModelEditorState, ImageModelConfig, ImageModelEditorState, ModelConfig, ModelKind, SelectOption } from "@/types";
+} from "@/models";
+
+import type { ChatModelConfig, ChatModelEditorState, ImageModelConfig, ImageModelEditorState, ModelConfig, ModelKind } from "@/types";
 
 type ModelEditorState = Omit<ChatModelEditorState, "provider"> & {
   provider: ChatModelEditorState["provider"] | ImageModelEditorState["provider"];
 };
 type ModelEditorInput = Partial<ModelConfig> & { apiType?: ModelEditorState["provider"] };
+type ModelSuggestion = string | { name: string };
+type ProviderSuggestion = ModelEditorState["provider"];
 
 const props = withDefaults(
   defineProps<{
     model?: ModelEditorInput;
-    modelSuggestions?: SelectOption[];
+    modelSuggestions?: ModelSuggestion[];
     kind?: ModelKind;
   }>(),
   {
@@ -181,18 +186,19 @@ const groupedModelSuggestions = computed(() => {
     .map((family) => ({
       key: family.key,
       label: family.labelKey ? t(family.labelKey) : family.label || family.key,
-      items: [] as SelectOption[],
+      items: [] as ModelSuggestion[],
     }))
-    .concat([{ key: "custom", label: t("user.modelCard.suggestionGroups.custom"), items: [] as SelectOption[] }]);
+    .concat([{ key: "custom", label: t("user.modelCard.suggestionGroups.custom"), items: [] as ModelSuggestion[] }]);
   const groupMap = new Map(groups.map((group) => [group.key, group]));
   const seen = new Set<string>();
 
   props.modelSuggestions.forEach((item) => {
-    seen.add(item.value);
-    groupMap.get(getChatProviderModelFamily(item.value))?.items.push(item);
+    const modelId = getSuggestionValue(item);
+    seen.add(modelId);
+    groupMap.get(getChatProviderModelFamily(modelId))?.items.push(item);
   });
   if (localModel.model && !seen.has(localModel.model)) {
-    groupMap.get(getChatProviderModelFamily(localModel.model))?.items.push({ value: localModel.model, name: localModel.model });
+    groupMap.get(getChatProviderModelFamily(localModel.model))?.items.push({ name: localModel.model });
   }
   return groups.filter((group) => group.items.length > 0);
 });
@@ -200,7 +206,7 @@ const availableModelProviderList = computed(() => {
   // Limit providers to combinations that the request builders can route correctly.
   if (isImageModel.value) return imageModelProviderList;
   const allowedProviders = new Set(getChatProvidersForModel(localModel.model));
-  return providerList.filter((item) => allowedProviders.has(item.value));
+  return chatProviderKeys.filter((item) => allowedProviders.has(item));
 });
 
 const requestSummary = computed(() => {
@@ -230,6 +236,22 @@ function createEmptyModelEditorState(): ModelEditorState {
   };
 }
 
+function getSuggestionValue(item: ModelSuggestion): string {
+  return typeof item === "string" ? item : item.name;
+}
+
+function getSuggestionLabel(item: ModelSuggestion): string {
+  return typeof item === "string" ? item : item.name;
+}
+
+function getProviderValue(item: ProviderSuggestion): ModelEditorState["provider"] {
+  return item;
+}
+
+function getProviderLabel(item: ProviderSuggestion): string {
+  return getChatProviderDefinition(item)?.name || item;
+}
+
 function syncProviderBaseURL(provider = "", force = false) {
   // Auto-fill defaults only while the user has not customized the base URL.
   if ((!force && isSyncingFromProps) || isImageModel.value) return;
@@ -242,8 +264,8 @@ function syncProviderBaseURL(provider = "", force = false) {
 function syncProviderForModel(force = false) {
   // Keep provider valid when switching between OpenAI and Claude model families.
   if ((!force && isSyncingFromProps) || isImageModel.value) return;
-  if (!availableModelProviderList.value.some((item) => item.value === localModel.provider)) {
-    localModel.provider = availableModelProviderList.value[0]?.value || "";
+  if (!availableModelProviderList.value.some((item) => getProviderValue(item) === localModel.provider)) {
+    localModel.provider = getProviderValue(availableModelProviderList.value[0] || "");
   }
 }
 

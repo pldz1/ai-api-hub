@@ -94,8 +94,8 @@
             </select>
 
             <select v-model="size" class="image-size-select" :disabled="isCurrentConversationSubmitting">
-              <option v-for="item in imageModelSize" :key="item.value" :value="item.value">
-                {{ item.name }}
+              <option v-for="item in imageModelSize" :key="item" :value="item">
+                {{ item }}
               </option>
             </select>
           </div>

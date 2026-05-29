@@ -1,5 +1,6 @@
-import type { ModelParamDef, ChatModelEditorState, ChatModelOption, ChatModelCapabilities, ChatModelCapabilityProfile } from "@/types";
-import { chatProviderList } from "@/ai-capability/chat/provider-registry";
+import type { ModelParamDef, ChatModelEditorState, ChatModelCapabilities, ChatModelCapabilityProfile } from "@/types";
+
+export { chatProviderKeys } from "@/ai-capability/chat";
 
 export const chatParamPresetList: Partial<ModelParamDef>[] = [
   {
@@ -88,7 +89,9 @@ export const chatParamPresetList: Partial<ModelParamDef>[] = [
   },
 ];
 
-export type ChatModelCatalogItem = ChatModelOption & {
+export type ChatModelCatalogItem = {
+  name: string;
+  messageFormat: "text" | "parts";
   chatParamKeys: string[];
   capabilities: ChatModelCapabilities;
   capabilityProfile: ChatModelCapabilityProfile;
@@ -128,9 +131,8 @@ export const baseCapabilityProfile: ChatModelCapabilityProfile = {
 
 export const chatModelCatalog: ChatModelCatalogItem[] = [
   {
-    value: "gpt-5.5",
     name: "gpt-5.5",
-    isReasonModel: true,
+
     messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
     capabilities: { webSearch: true, imageRead: true },
@@ -142,9 +144,8 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     },
   },
   {
-    value: "gpt-5.4",
     name: "gpt-5.4",
-    isReasonModel: true,
+
     messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
     capabilities: { webSearch: true, imageRead: true },
@@ -156,9 +157,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     },
   },
   {
-    value: "gpt-4.1",
     name: "gpt-4.1",
-    isReasonModel: false,
     messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
     capabilities: { webSearch: true, imageRead: true },
@@ -170,9 +169,8 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     },
   },
   {
-    value: "gpt-4o",
     name: "gpt-4o",
-    isReasonModel: false,
+
     messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
     capabilities: { webSearch: true, imageRead: true },
@@ -184,23 +182,8 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     },
   },
   {
-    value: "gpt-4o-mini",
-    name: "gpt-4o-mini",
-    isReasonModel: false,
-    messageFormat: "parts",
-    chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
-    capabilities: { webSearch: false, imageRead: true },
-    capabilityProfile: {
-      ...baseCapabilityProfile,
-      modalities: { ...baseCapabilityProfile.modalities, imageInput: true },
-      features: { ...baseCapabilityProfile.features, structuredOutputs: true },
-      tools: { ...baseCapabilityProfile.tools, functionCalling: true },
-    },
-  },
-  {
-    value: "claude-opus-4-7",
     name: "claude-opus-4-7",
-    isReasonModel: false,
+
     messageFormat: "parts",
     chatParamKeys: ["max_tokens", "temperature", "top_p"],
     capabilities: { webSearch: false, imageRead: true },
@@ -212,9 +195,8 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     },
   },
   {
-    value: "claude-sonnet-4-6",
     name: "claude-sonnet-4-6",
-    isReasonModel: false,
+
     messageFormat: "parts",
     chatParamKeys: ["max_tokens", "temperature", "top_p"],
     capabilities: { webSearch: false, imageRead: true },
@@ -226,9 +208,8 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     },
   },
   {
-    value: "claude-haiku-4-5",
     name: "claude-haiku-4-5",
-    isReasonModel: false,
+
     messageFormat: "parts",
     chatParamKeys: ["max_tokens", "temperature", "top_p"],
     capabilities: { webSearch: false, imageRead: true },
@@ -240,9 +221,8 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     },
   },
   {
-    value: "deepseek-v4-flash",
     name: "deepseek-v4-flash",
-    isReasonModel: true,
+
     messageFormat: "text",
     chatParamKeys: ["thinking", "reasoning_effort", "temperature", "top_p"],
     capabilities: { webSearch: false, imageRead: false },
@@ -252,9 +232,8 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     },
   },
   {
-    value: "deepseek-v4-pro",
     name: "deepseek-v4-pro",
-    isReasonModel: true,
+
     messageFormat: "text",
     chatParamKeys: ["thinking", "reasoning_effort", "temperature", "top_p"],
     capabilities: { webSearch: false, imageRead: false },
@@ -265,9 +244,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
   },
 ];
 
-export const chatModelTypeList: ChatModelOption[] = chatModelCatalog;
-
-export const providerList = chatProviderList;
+export const chatModelTypeList: ChatModelCatalogItem[] = chatModelCatalog;
 
 export const defaultModelCapabilities: ChatModelCapabilities = {
   imageRead: false,

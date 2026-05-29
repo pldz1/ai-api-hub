@@ -142,8 +142,11 @@ function addModel() {
 }
 
 function duplicateModel() {
-  if (!currentModel.value) return;
-  const duplicated = structuredClone(currentModel.value);
+  if (!currentModel.value) {
+    console.warn("No model selected to duplicate.");
+    return;
+  }
+  const duplicated = JSON.parse(JSON.stringify(currentModel.value));
   duplicated.name = `${duplicated.name || t(isImageKind.value ? "user.imageModels.defaultName" : "user.chatModels.defaultName")}-${t("common.duplicateSuffix")}`;
   const nextModels = [...props.models, duplicated];
   updateModels(nextModels);

@@ -1,5 +1,3 @@
-import type { SelectOption } from "../common";
-
 export type ChatProviderRoute = "openai" | "azure-openai" | "anthropic" | "deepseek";
 export type ChatProviderConnectionField = "baseURL" | "endpoint" | "deployment" | "apiVersion";
 
@@ -65,11 +63,6 @@ export type ChatProviderKey = keyof typeof chatProviderRegistryConfig;
 export const chatProviderRegistry: Record<ChatProviderKey, ChatProviderDefinition> = chatProviderRegistryConfig;
 
 export const chatProviderKeys = Object.keys(chatProviderRegistry) as ChatProviderKey[];
-
-export const chatProviderList: SelectOption<ChatProviderKey>[] = chatProviderKeys.map((value) => ({
-  value,
-  name: chatProviderRegistry[value].name,
-}));
 
 export function isChatModelProvider(value: unknown): value is ChatProviderKey {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(chatProviderRegistry, value);
