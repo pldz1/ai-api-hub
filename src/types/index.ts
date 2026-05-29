@@ -19,6 +19,7 @@ export {
   type PersistedChatSettings,
   type ChatListItem,
   type StoredChatMessage,
+  type ChatResponseDelta,
 } from "./conversation";
 
 export type { ImageModelConfig, ImageModelProvider, ImageInputFile, ImageModelParamDef, ImageModelParamType } from "@/ai-capability/image";

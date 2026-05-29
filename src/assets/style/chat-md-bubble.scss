@@ -218,6 +218,22 @@
   }
 }
 
+.chat-md-bubble-assistant.is-error {
+  .cmba-assistant-content {
+    border-left: 3px solid rgba(239, 68, 68, 0.55);
+    border-radius: 0 16px 16px 0;
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.05) 0%, transparent 50%);
+  }
+
+  .markdown-content {
+    color: oklch(var(--bc) / 0.78);
+  }
+
+  .cmba-reasoning-content {
+    border-left-color: rgba(239, 68, 68, 0.28);
+  }
+}
+
 @keyframes cmba-edge {
   0%,
   30%,

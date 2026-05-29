@@ -114,12 +114,13 @@ export class ChatMessageElementFactory {
     return this.createUserMessageElement(content, mid);
   }
 
-  createAssistantMessageElement(content: ChatPromptContent[], reasoningContent: string | null | undefined, mid: string): HTMLDivElement | null {
+  createAssistantMessageElement(content: ChatPromptContent[], reasoningContent: string | null | undefined, mid: string, isError: boolean = false): HTMLDivElement | null {
     if (!this.container) return null;
 
     const assistantDiv = document.createElement("div");
     assistantDiv.id = mid;
     assistantDiv.classList.add("chat-md-bubble-assistant");
+    if (isError) assistantDiv.classList.add("is-error");
     this.container.appendChild(assistantDiv);
 
     const textDiv = this.createAssistantResponseElement(assistantDiv, mid, false);
@@ -135,8 +136,8 @@ export class ChatMessageElementFactory {
     return assistantDiv;
   }
 
-  createAssHTMLElem(content: ChatPromptContent[], reasoningContent: string | null | undefined, mid: string): HTMLDivElement | null {
-    return this.createAssistantMessageElement(content, reasoningContent, mid);
+  createAssHTMLElem(content: ChatPromptContent[], reasoningContent: string | null | undefined, mid: string, isError: boolean = false): HTMLDivElement | null {
+    return this.createAssistantMessageElement(content, reasoningContent, mid, isError);
   }
 
   createAssistantResponseElement(assistantDiv: HTMLDivElement, mid: string, working: boolean = false): HTMLDivElement {

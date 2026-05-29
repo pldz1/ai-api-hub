@@ -101,10 +101,11 @@ export type ChatPromptContent = ChatTextContent | ChatImageContent;
 export interface ChatPromptMessage {
   role: ChatMessageRole;
   content: ChatPromptContent[];
-  mid?: string;
+  mid: string;
   reasoning_content?: string;
   token_usage?: TokenUsage | null;
   meta?: {
+    isContextBlocked?: boolean;
     usedCapabilities?: Partial<ChatModelCapabilities>;
   };
 }

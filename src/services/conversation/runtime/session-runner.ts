@@ -4,7 +4,7 @@ import { getUuid } from "@/utils";
 import { tr } from "@/i18n";
 import type { ChatPromptMessage, ChatProviderResponse } from "@/types";
 import { addMessage } from "../conversation";
-import { AssistantStreamState } from "../rendering/assistant-stream-state";
+import { adaptProviderResponse, AssistantStreamState } from "../rendering/assistant-stream-state";
 import { createChatRequestContext } from "./chat-context";
 
 type ChatRuntimeStatus = "idle" | "loading" | "streaming" | "success" | "error" | "stopped";
@@ -64,6 +64,10 @@ class ChatSessionRunner {
       role: "assistant",
       content: [{ type: "text", text: this.assistantStream.content.content }],
       reasoning_content: this.assistantStream.content.reasoning_content,
+      mid: this.assistantStream.messageId,
+      meta: {
+        isContextBlocked: this.assistantStream.hasError || undefined,
+      },
     };
     if (this.assistantStream.tokenUsage) assistantData.token_usage = this.assistantStream.tokenUsage;
 
@@ -81,22 +85,16 @@ class ChatSessionRunner {
   enqueueProviderDelta(response: ChatProviderResponse): void {
     if (this.assistantStream.forceStopped) return;
 
-    if (response?.usage) {
-      this.assistantStream.tokenUsage = response.usage;
-    }
+    const delta = adaptProviderResponse(response);
+    if (!delta) return;
 
-    if (response.flag === false) {
-      this.assistantStream.markError(String(response.content || ""));
+    this.assistantStream.applyDelta(delta);
+
+    if (delta.kind === "error") {
       this.updateDraftRuntime("error");
-      return;
+    } else {
+      this.updateDraftRuntime("streaming");
     }
-
-    this.assistantStream.append({
-      content: response?.content || "",
-      reasoning_content: response?.reasoning_content || "",
-    });
-    this.assistantStream.lastError = "";
-    this.updateDraftRuntime("streaming");
   }
 
   async chat(data: ChatPromptMessage): Promise<void> {
@@ -109,9 +107,9 @@ class ChatSessionRunner {
       cid: this.chatId,
       msg: userMessage,
     });
-    await addMessage(this.chatId, userMessage.mid, data);
+    await addMessage(this.chatId, userMessage.mid, userMessage);
 
-    const history = store.state.chatMessagesById?.[this.chatId] || [];
+    const history = (store.state.chatMessagesById?.[this.chatId] || []).filter((msg) => !msg.meta?.isContextBlocked);
     const passedMsgLen = Number(context.settings?.passedMsgLen || history.length || 1);
     const messages = history.slice(-Math.min(passedMsgLen, history.length));
 
@@ -134,6 +132,9 @@ class ChatSessionRunner {
 
     if (this.assistantStream.hasError) {
       if (this.assistantStream.hasContent()) {
+        await this.persistAssistantMessage();
+      } else {
+        this.assistantStream.content.content = this.assistantStream.lastError || tr("toast.modelRequestFailed", { error: "" });
         await this.persistAssistantMessage();
       }
       this.clearDraft("error", { lastError: this.assistantStream.lastError || tr("toast.modelRequestFailed", { error: "" }) });

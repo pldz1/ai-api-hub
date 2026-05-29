@@ -7,7 +7,7 @@ import type { ChatPromptContent, ChatPromptMessage, ChatProviderResponse } from 
 import { addMessage, deleteMessage as deleteChatMessage } from "../conversation";
 import { createChatRequestContext } from "../runtime/chat-context";
 import { ChatElemCreator } from "./message-elements";
-import { AssistantStreamState } from "./assistant-stream-state";
+import { adaptProviderResponse, AssistantStreamState } from "./assistant-stream-state";
 import { renderAssistantDraft } from "./message-renderer";
 
 /**
@@ -78,11 +78,11 @@ export class ChatDrawer extends ChatElemCreator {
     this.draw([userMessage]);
     this.drawStreamAss();
 
-    await store.dispatch("pushMessages", data);
-    if (this.sync) await addMessage(store.state.curChatId, userMessage.mid, data);
+    await store.dispatch("pushMessages", userMessage);
+    if (this.sync) await addMessage(store.state.curChatId, userMessage.mid, userMessage);
 
     const passedMsgLen = store.state.curChatModelSettings.passedMsgLen;
-    const history = store.state.messages;
+    const history = store.state.messages.filter((msg) => !msg.meta?.isContextBlocked);
     const messages = history.slice(-Math.min(passedMsgLen, history.length));
 
     await store.dispatch("setLlmRequestPending", true);
@@ -137,11 +137,10 @@ export class ChatDrawer extends ChatElemCreator {
   }
 
   async finalizeErroredAssistantDraft(): Promise<void> {
-    if (this.assistantStream.hasContent()) {
-      await this.persistAssistantDraft();
-    } else {
-      this.removeTempAssistantElem();
+    if (!this.assistantStream.hasContent()) {
+      this.assistantStream.content.content = this.assistantStream.lastError || tr("toast.modelRequestFailed", { error: "" });
     }
+    await this.persistAssistantDraft();
   }
 
   async finalizeSuccessfulAssistantDraft(): Promise<void> {
@@ -151,6 +150,7 @@ export class ChatDrawer extends ChatElemCreator {
         {
           role: "assistant",
           content: [{ type: "text", text: tr("chat.timeoutNoContent") }],
+          mid: getUuid("msg"),
         },
       ]);
       return;
@@ -164,6 +164,10 @@ export class ChatDrawer extends ChatElemCreator {
       role: "assistant",
       content: [{ type: "text", text: this.assistantStream.content.content }],
       reasoning_content: this.assistantStream.content.reasoning_content,
+      mid: this.assistantStream.messageId,
+      meta: {
+        isContextBlocked: this.assistantStream.hasError || undefined,
+      } as Record<string, unknown>,
     };
     if (this.assistantStream.tokenUsage) assistantData.token_usage = this.assistantStream.tokenUsage;
 
@@ -204,7 +208,7 @@ export class ChatDrawer extends ChatElemCreator {
       }
 
       if (message.role === "assistant") {
-        this.addAssHTMLElem(message.content, message?.reasoning_content, message.mid);
+        this.addAssHTMLElem(message.content, message?.reasoning_content, message.mid, Boolean(message.meta?.isContextBlocked));
       }
     }
   }
@@ -237,6 +241,12 @@ export class ChatDrawer extends ChatElemCreator {
 
     this.assistantStream.content = draft;
     this.renderAssStream();
+
+    const assistantEl = this.assistantDraftContentEl?.closest(".chat-md-bubble-assistant");
+    if (assistantEl) {
+      const isErrorStatus = String(runtime?.status || "") === "error";
+      assistantEl.classList.toggle("is-error", isErrorStatus);
+    }
   }
 
   enqueueRender(response: ChatProviderResponse): void {
@@ -244,26 +254,25 @@ export class ChatDrawer extends ChatElemCreator {
 
     store.dispatch("setLlmRequestPending", false);
 
-    if (response?.usage) {
-      this.assistantStream.tokenUsage = response.usage;
-    }
+    const delta = adaptProviderResponse(response);
+    if (!delta) return;
 
-    if (!response.flag) {
+    if (delta.kind === "error") {
       this.renderQueue = [];
       this.isRendering = false;
-      this.assistantStream.markError(String(response.content || ""));
+      this.assistantStream.applyDelta(delta);
+
+      const assistantEl = this.assistantDraftContentEl?.closest(".chat-md-bubble-assistant");
+      if (assistantEl) assistantEl.classList.add("is-error");
 
       if (this.assistantDraftContentEl && this.assistantStream.hasContent()) this.renderAssStream();
       else this.forceRemoveResponsingEl();
 
-      dsAlert({ type: "error", message: response.content, duration: 10000 });
+      dsAlert({ type: "error", message: delta.message, duration: 10000 });
       return;
     }
 
-    this.assistantStream.append({
-      content: response?.content || "",
-      reasoning_content: response?.reasoning_content || "",
-    });
+    this.assistantStream.applyDelta(delta);
 
     this.renderQueue.push("");
     if (!this.isRendering) {
@@ -324,8 +333,8 @@ export class ChatDrawer extends ChatElemCreator {
     this.createUserQHTMLElem(content, mid);
   }
 
-  addAssHTMLElem(content: ChatPromptContent[], reasoning_content: string | null | undefined, mid: string): void {
-    const rendered = this.createAssHTMLElem(content, reasoning_content, mid);
+  addAssHTMLElem(content: ChatPromptContent[], reasoning_content: string | null | undefined, mid: string, isError: boolean = false): void {
+    const rendered = this.createAssHTMLElem(content, reasoning_content, mid, isError);
     if (!rendered) {
       // dsAlert({ type: "warn", message: tr("toast.drawAssistantFailed") });
     }

@@ -1,4 +1,4 @@
-import type { ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelConfig, ChatModelProvider, ChatParamRecord } from "@/ai-capability";
+import type { ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelConfig, ChatModelProvider, ChatParamRecord, TokenUsage } from "@/ai-capability";
 
 export type ChatFormProvider = ChatModelProvider | "";
 
@@ -66,3 +66,8 @@ export interface ChatListItem {
   cid: string;
   cname: string;
 }
+
+export type ChatResponseDelta =
+  | { kind: "text"; content: string; reasoning_content: string }
+  | { kind: "usage"; usage: TokenUsage }
+  | { kind: "error"; message: string };
