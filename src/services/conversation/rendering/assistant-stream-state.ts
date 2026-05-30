@@ -1,23 +1,9 @@
-import type { ChatProviderResponse } from "@/ai-capability";
 import type { ChatResponseDelta, TokenUsage } from "@/types";
 
 export type AssistantDraftContent = {
   content: string;
   reasoning_content: string;
 };
-
-export function adaptProviderResponse(response: ChatProviderResponse): ChatResponseDelta | null {
-  if (response.flag === false) {
-    return { kind: "error", message: String(response.content || "") };
-  }
-  if (response.usage) {
-    return { kind: "usage", usage: response.usage };
-  }
-  if (!response.content && !response.reasoning_content) {
-    return null;
-  }
-  return { kind: "text", content: response.content, reasoning_content: response.reasoning_content };
-}
 
 export class AssistantStreamState {
   messageId = "";

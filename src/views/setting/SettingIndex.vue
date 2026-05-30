@@ -310,10 +310,12 @@ async function importSettings() {
   // Validate imports before applying them because imported data updates multiple stores.
   const jsonData = await uploadJsonFile();
   if (isUploadedJsonParseError(jsonData)) {
+    console.error("Failed to parse imported settings:", jsonData.__jsonParseError);
     dsAlert({ type: "error", duration: 6000, message: `${t("user.importReadError")} ${jsonData.__jsonParseError}` });
     return;
   }
   if (!jsonData) {
+    console.error("Failed to read imported settings file.");
     dsAlert({ type: "error", message: t("user.importReadError") });
     return;
   }

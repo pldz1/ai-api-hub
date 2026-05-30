@@ -19,6 +19,7 @@ async function persistImageMessages(iid: string): Promise<boolean> {
   const messages = store.state.imageMessagesById?.[iid] || (iid === store.state.curImageConversationId ? store.state.imageMessages || [] : []);
   const res = await setImageConversationMessagesAPI(iid, messages);
   if (!res.flag) {
+    console.error("Failed to persist image messages:", res.log);
     dsAlert({ type: "error", message: tr("toast.imagePushFailed", { error: res.log }) });
     return false;
   }

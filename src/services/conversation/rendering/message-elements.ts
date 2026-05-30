@@ -114,7 +114,12 @@ export class ChatMessageElementFactory {
     return this.createUserMessageElement(content, mid);
   }
 
-  createAssistantMessageElement(content: ChatPromptContent[], reasoningContent: string | null | undefined, mid: string, isError: boolean = false): HTMLDivElement | null {
+  createAssistantMessageElement(
+    content: ChatPromptContent[],
+    reasoningContent: string | null | undefined,
+    mid: string,
+    isError: boolean = false,
+  ): HTMLDivElement | null {
     if (!this.container) return null;
 
     const assistantDiv = document.createElement("div");
@@ -154,7 +159,7 @@ export class ChatMessageElementFactory {
     textDiv.classList.add("markdown-content");
 
     contentDiv.appendChild(textDiv);
-    contentDiv.appendChild(this.createMessageOptions(mid, ["copy", "delete"]));
+    if (!working) contentDiv.appendChild(this.createMessageOptions(mid, ["copy", "delete"]));
     assistantDiv.appendChild(iconDiv);
     assistantDiv.appendChild(contentDiv);
     return textDiv;

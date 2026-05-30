@@ -157,6 +157,7 @@ const handleClose = async () => {
     if (!isJsonParam(item)) return;
     const parsedValue = parseParamValue(item.type, jsonFieldInputs[item.key], null);
     if (parsedValue === null) {
+      console.warn("Failed to parse JSON parameter:", item.key);
       dsAlert({ type: "warn", message: t("chat.invalidArrayParam", { name: item.label || item.key }) });
       nextSettings[item.key] = (item.defaultValue ?? (item.type === "array" ? [] : {})) as any;
       return;

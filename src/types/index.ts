@@ -1,13 +1,19 @@
 // Chat types.
 export type {
   ChatCompletionParams,
+  ChatMessageFormat,
+  ChatPromptContent,
   ChatPromptMessage,
-  ChatRequestContext,
+  ChatRequest,
   ChatModelConfig,
   ChatModelCapabilities,
   ChatModelProvider,
   ChatModelCapabilityProfile,
   ChatProviderResponse,
+  ChatResponseDelta,
+  PackedPartChatMessage,
+  PackedChatMessage,
+  PackedTextChatMessage,
 } from "@/ai-capability/chat";
 
 // App-level chat types (user-owned config, editor state, conversation, etc.)
@@ -19,7 +25,6 @@ export {
   type PersistedChatSettings,
   type ChatListItem,
   type StoredChatMessage,
-  type ChatResponseDelta,
 } from "./conversation";
 
 export type { ImageModelConfig, ImageModelProvider, ImageInputFile, ImageModelParamDef, ImageModelParamType } from "@/ai-capability/image";

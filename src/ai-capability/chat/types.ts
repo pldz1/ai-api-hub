@@ -1,5 +1,57 @@
 import { TokenUsage, ParamDefaultValue } from "../common";
-import type { ChatProviderKey } from "./provider-registry";
+
+// ============================================================================
+// Provider runtime config (derived from user-owned model config, with extra fields for execution)
+// ============================================================================
+
+export type ChatProviderRoute = "openai" | "azure-openai" | "deepseek";
+export type ChatProviderConnectionField = "baseURL" | "endpoint" | "deployment" | "apiVersion";
+
+export interface ChatProviderDefinition {
+  name: string;
+  route: ChatProviderRoute;
+  connectionFields: readonly ChatProviderConnectionField[];
+  defaultBaseURL?: string;
+  modelFamily: string;
+  modelFamilyLabel?: string;
+  modelFamilyLabelKey?: string;
+  modelPatterns?: readonly RegExp[];
+}
+
+const chatProviderRegistryConfig = {
+  OpenAI: {
+    name: "OpenAI",
+    route: "openai",
+    connectionFields: ["baseURL"],
+    defaultBaseURL: "https://api.openai.com/v1",
+    modelFamily: "openai",
+    modelFamilyLabelKey: "user.modelCard.suggestionGroups.openai",
+    modelPatterns: [/^(gpt-|o\d)/],
+  },
+  "Azure OpenAI": {
+    name: "Azure OpenAI",
+    route: "azure-openai",
+    connectionFields: ["endpoint", "deployment", "apiVersion"],
+    modelFamily: "openai",
+    modelFamilyLabelKey: "user.modelCard.suggestionGroups.openai",
+    modelPatterns: [/^(gpt-|o\d)/],
+  },
+  DeepSeek: {
+    name: "DeepSeek",
+    route: "deepseek",
+    connectionFields: ["baseURL"],
+    defaultBaseURL: "https://api.deepseek.com",
+    modelFamily: "deepseek",
+    modelFamilyLabel: "DeepSeek",
+    modelPatterns: [/^deepseek-/],
+  },
+} as const satisfies Record<string, ChatProviderDefinition>;
+
+export type ChatProviderKey = keyof typeof chatProviderRegistryConfig;
+
+export const chatProviderRegistry: Record<ChatProviderKey, ChatProviderDefinition> = chatProviderRegistryConfig;
+
+export const chatProviderKeys = Object.keys(chatProviderRegistry) as ChatProviderKey[];
 
 // ============================================================================
 // Core identity
@@ -7,6 +59,7 @@ import type { ChatProviderKey } from "./provider-registry";
 
 export type ChatModelProvider = ChatProviderKey;
 export type ChatMessageRole = "system" | "user" | "assistant";
+export type ChatMessageFormat = "text" | "parts";
 
 // ============================================================================
 // Model capabilities
@@ -96,12 +149,18 @@ export interface ChatImageContent {
   };
 }
 
+export interface ChatRequest {
+  model?: ChatModelConfig | null;
+  params?: ChatCompletionParams;
+  capabilities?: Partial<ChatModelCapabilities>;
+}
+
 export type ChatPromptContent = ChatTextContent | ChatImageContent;
 
 export interface ChatPromptMessage {
   role: ChatMessageRole;
   content: ChatPromptContent[];
-  mid: string;
+  mid?: string;
   reasoning_content?: string;
   token_usage?: TokenUsage | null;
   meta?: {
@@ -138,6 +197,11 @@ export interface ChatProviderResponse {
 }
 
 export type ChatCallback = (response: ChatProviderResponse) => void | Promise<void>;
+
+export type ChatResponseDelta =
+  | { kind: "text"; content: string; reasoning_content: string }
+  | { kind: "usage"; usage: TokenUsage }
+  | { kind: "error"; message: string };
 
 export interface ChatRequestOptions {
   signal?: AbortSignal;

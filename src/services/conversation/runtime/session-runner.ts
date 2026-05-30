@@ -2,10 +2,10 @@ import store from "@/store";
 import { ChatGateway } from "@/ai-capability";
 import { getUuid } from "@/utils";
 import { tr } from "@/i18n";
-import type { ChatPromptMessage, ChatProviderResponse } from "@/types";
+import type { ChatPromptMessage, ChatResponseDelta } from "@/types";
 import { addMessage } from "../conversation";
-import { adaptProviderResponse, AssistantStreamState } from "../rendering/assistant-stream-state";
-import { createChatRequestContext } from "./chat-context";
+import { AssistantStreamState } from "../rendering/assistant-stream-state";
+import { createChatTurnMessages, createChatRequest, getConversationMessageFormat, getConversationSystemPrompts } from "./chat-context";
 
 type ChatRuntimeStatus = "idle" | "loading" | "streaming" | "success" | "error" | "stopped";
 
@@ -23,7 +23,7 @@ class ChatSessionRunner {
   }
 
   getSessionContext() {
-    return createChatRequestContext(this.chatId);
+    return createChatRequest(this.chatId);
   }
 
   updateRuntime(runtime = {}) {
@@ -82,11 +82,8 @@ class ChatSessionRunner {
     return true;
   }
 
-  enqueueProviderDelta(response: ChatProviderResponse): void {
+  enqueueProviderDelta(delta: ChatResponseDelta): void {
     if (this.assistantStream.forceStopped) return;
-
-    const delta = adaptProviderResponse(response);
-    if (!delta) return;
 
     this.assistantStream.applyDelta(delta);
 
@@ -110,8 +107,14 @@ class ChatSessionRunner {
     await addMessage(this.chatId, userMessage.mid, userMessage);
 
     const history = (store.state.chatMessagesById?.[this.chatId] || []).filter((msg) => !msg.meta?.isContextBlocked);
-    const passedMsgLen = Number(context.settings?.passedMsgLen || history.length || 1);
+    const settings = store.state.chatSettingsById?.[this.chatId] || store.state.curChatModelSettings;
+    const passedMsgLen = Number(settings?.passedMsgLen || history.length || 1);
     const messages = history.slice(-Math.min(passedMsgLen, history.length));
+    const packedMessages = createChatTurnMessages(messages, getConversationSystemPrompts(this.chatId), getConversationMessageFormat(context.model));
+    const request = {
+      ...context,
+      capabilities: messages[messages.length - 1]?.meta?.usedCapabilities || {},
+    };
 
     this.updateRuntime({
       status: "loading",
@@ -122,8 +125,14 @@ class ChatSessionRunner {
       lastError: "",
     });
 
-    this.client.init(context);
-    const completed = await this.client.chat(messages, context, this.enqueueProviderDelta);
+    this.client.init(request.model);
+    const stream = this.client.chat(packedMessages, request);
+    let next = await stream.next();
+    while (!next.done) {
+      this.enqueueProviderDelta(next.value as ChatResponseDelta);
+      next = await stream.next();
+    }
+    const completed = Boolean(next.value);
 
     if (this.assistantStream.forceStopped) {
       this.clearDraft("stopped");
@@ -147,6 +156,7 @@ class ChatSessionRunner {
     }
 
     if (!this.assistantStream.content.content) {
+      debugger;
       this.assistantStream.content.content = tr("chat.timeoutNoContent");
     }
 

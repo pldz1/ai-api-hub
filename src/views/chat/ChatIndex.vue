@@ -84,8 +84,8 @@ const scrollMessagesToBottom = () => {
   el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
 };
 
-const renderCurrentConversation = async ({ stickToBottom = false }: { stickToBottom?: boolean } = {}) => {
-  drawer.renderConversation(activeMessages.value);
+const renderCurrentConversation = async ({ stickToBottom = false, reset = false }: { stickToBottom?: boolean; reset?: boolean } = {}) => {
+  drawer.renderConversation(activeMessages.value, { reset });
   drawer.syncDraftAssistant(activeRuntime.value || {});
   await nextTick();
   updateScrollActions();
@@ -97,7 +97,7 @@ watch(
   async (nextRouteChatId) => {
     if (!nextRouteChatId) {
       await resetCurrentChatDraft();
-      await renderCurrentConversation();
+      await renderCurrentConversation({ reset: true });
       return;
     }
 
@@ -131,7 +131,7 @@ watch(
       if (!isLoaded) await getAllMessage(newVal);
     }
 
-    await renderCurrentConversation();
+    await renderCurrentConversation({ reset: true });
     dsLoading(false);
   },
   { immediate: true },
@@ -181,12 +181,12 @@ const onStopChat = async () => {
 };
 
 const onDrawTemplateIns = (messages: ChatPromptMessage[]) => {
-  drawer.renderConversation(messages);
+  drawer.renderConversation(messages, { reset: true });
 };
 
 onMounted(() => {
   drawer.init("chat-messages-container");
-  renderCurrentConversation();
+  renderCurrentConversation({ reset: true });
   updateScrollActions();
 });
 </script>

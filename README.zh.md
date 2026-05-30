@@ -4,9 +4,9 @@
 
 ## 功能特性
 
-- **多模型聊天** — 通过统一聊天界面支持 OpenAI、Azure OpenAI、Anthropic、Azure AI Foundry 和 DeepSeek，支持流式（SSE）输出。
+- **多模型聊天** — 通过统一聊天界面支持 OpenAI、Azure OpenAI 和 DeepSeek，支持流式（SSE）输出。
 - **图像生成与编辑** — 通过 OpenAI / Azure OpenAI 实现文生图和图像编辑，内置画笔蒙版编辑器，可精确标记编辑区域。
-- **模型管理** — 支持自定义模型名称、连接地址、API Key 和部署参数。模型目录包括 GPT-5.5、GPT-4.1、GPT-4o、Claude Opus/Sonnet/Haiku 及 DeepSeek V4 系列。
+- **模型管理** — 支持自定义模型名称、连接地址、API Key 和部署参数。模型目录包括 GPT-5.5、GPT-4.1、GPT-4o 及 DeepSeek V4 系列。
 - **提示词模板** — 创建、编辑并复用在对话中的系统指令模板。
 - **会话管理** — 创建、重命名、删除和批量删除聊天及图像对话记录，侧边栏实时显示各会话运行状态。
 - **Token 用量追踪** — 每次对话实时统计输入/输出 token 消耗。
@@ -20,8 +20,6 @@
 |---|---|---|
 | OpenAI | 流式 & 同步（`/chat/completions`），联网搜索（`/responses`） | 文生图 & 编辑（`/images/generations`、`/images/edits`） |
 | Azure OpenAI | 流式 & 同步（Azure 部署端点） | 文生图 & 编辑（Azure 部署） |
-| Anthropic Direct | 流式 & 同步（`/v1/messages`） | — |
-| Azure AI Foundry | 流式 & 同步（Anthropic 协议） | — |
 | DeepSeek | 流式 & 同步（`/chat/completions`，纯文本） | — |
 
 ## 技术栈
@@ -41,7 +39,7 @@
 ```
 src/
 ├── ai-capability/       # AI 提供商抽象层
-│   ├── chat/            # 对话提供商（OpenAI、Azure、Anthropic、DeepSeek）
+│   ├── chat/            # 对话提供商（OpenAI、Azure、DeepSeek）
 │   │   └── providers/   # 各提供商的客户端实现
 │   ├── image/           # 图像提供商（OpenAI、Azure）
 │   │   └── providers/

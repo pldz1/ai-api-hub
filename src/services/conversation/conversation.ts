@@ -96,12 +96,14 @@ export async function getChatList(): Promise<boolean> {
   const response = await chatConversationApi.getList();
   if (!response.flag) {
     await store.dispatch("resetChatList", []);
+    console.error("Failed to fetch chat list:", response.log);
     dsAlert({ type: "error", message: tr("toast.chatListFetchFailed", { error: response.log }) });
     return false;
   }
 
   if (!isValidChatInfoArray(response.data)) {
     await store.dispatch("resetChatList", []);
+    console.error("Invalid chat info array:", response.data);
     dsAlert({ type: "error", message: tr("toast.chatListInvalid") });
     return false;
   }
@@ -115,6 +117,7 @@ export async function getChatSettings(cid: string = store.state.curChatId): Prom
 
   const response = await chatSettingsApi.get(cid);
   if (!response.flag) {
+    console.error("Failed to fetch chat settings:", response.log);
     dsAlert({ type: "error", message: tr("toast.chatSettingsFetchFailed", { error: response.log }) });
     return false;
   }
@@ -131,6 +134,7 @@ export async function setChatSettings(cid: string = store.state.curChatId): Prom
 
   const response = await chatSettingsApi.set(cid, createChatSettingsPayloadForSession(cid));
   if (!response.flag) {
+    console.error("Failed to save chat settings:", response.log);
     dsAlert({ type: "error", message: tr("toast.chatSettingsSaveFailed", { error: response.log }) });
     return false;
   }
@@ -149,12 +153,14 @@ export async function addChat(name: string | null = null, model: ChatModelConfig
   try {
     const addResponse = await chatConversationApi.add(chatId, chatName);
     if (!addResponse.flag) {
+      console.error("Failed to add chat:", addResponse.log);
       dsAlert({ type: "error", message: tr("toast.chatAddFailed", { name: chatName, error: addResponse.log }) });
       return false;
     }
 
     const settingsResponse = await chatSettingsApi.set(chatId, settingsPayload);
     if (!settingsResponse.flag) {
+      console.error("Failed to save chat settings:", settingsResponse.log);
       await chatConversationApi.delete(chatId);
       dsAlert({ type: "error", message: tr("toast.chatSettingsSaveFailed", { error: settingsResponse.log }) });
       return false;
@@ -163,6 +169,7 @@ export async function addChat(name: string | null = null, model: ChatModelConfig
     await applyNewChatLocally(chatId, chatName, conversation, settings);
     return true;
   } catch (error) {
+    console.error("Exception occurred while adding chat:", error);
     dsAlert({ type: "error", message: tr("toast.chatAddException", { error: error instanceof Error ? error.message : String(error) }) });
     return false;
   }
@@ -171,6 +178,7 @@ export async function addChat(name: string | null = null, model: ChatModelConfig
 export async function deleteChat(cid: string): Promise<boolean> {
   const response = await chatConversationApi.delete(cid);
   if (!response.flag) {
+    console.error("Failed to delete chat:", response.log);
     dsAlert({ type: "error", message: tr("toast.chatDeleteFailed", { error: response.log }) });
     return false;
   }
@@ -193,6 +201,7 @@ export async function deleteChat(cid: string): Promise<boolean> {
 export async function renameChat(cid: string, cname: string): Promise<boolean> {
   const response = await chatConversationApi.rename(cid, cname);
   if (!response.flag) {
+    console.error("Failed to rename chat:", response.log);
     dsAlert({ type: "error", message: tr("toast.chatRenameFailed", { error: response.log }) });
     return false;
   }
@@ -221,6 +230,7 @@ export async function getAllMessage(cid: string = store.state.curChatId, callbac
 
   const response = await chatMessageApi.getAll(cid);
   if (!response.flag) {
+    console.error("Failed to fetch chat messages:", response.log);
     dsAlert({ type: "error", message: tr("toast.chatMessagesFetchFailed", { error: response.log }) });
     return [];
   }
@@ -230,6 +240,7 @@ export async function getAllMessage(cid: string = store.state.curChatId, callbac
   await store.dispatch("setChatLoaded", { cid, loaded: true });
 
   if (invalidCount > 0) {
+    console.warn("Invalid chat messages found:", invalidCount);
     dsAlert({ type: "warn", message: `${tr("toast.invalidMessage")} (${invalidCount})` });
   }
 
@@ -247,6 +258,7 @@ export async function addMessage(cid: string = store.state.curChatId, mid: strin
 
   const response = await chatMessageApi.add(cid, mid, message);
   if (!response.flag) {
+    console.error("Failed to add chat message:", response.log);
     dsAlert({ type: "error", message: tr("toast.chatMessageAddFailed", { error: response.log }) });
     return false;
   }
@@ -259,6 +271,7 @@ export async function deleteMessage(cid: string = store.state.curChatId, mid: st
 
   const response = await chatMessageApi.delete(cid, mid);
   if (!response.flag) {
+    console.error("Failed to delete chat message:", response.log);
     dsAlert({ type: "error", message: tr("toast.chatMessageDeleteFailed", { error: response.log }) });
     return false;
   }

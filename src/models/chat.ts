@@ -25,7 +25,7 @@ import {
   getKnownChatProviderDefaultBaseURLs,
   isChatModelProvider,
   getChatProviderConnectionFields,
-} from "@/ai-capability/chat/provider-registry";
+} from "@/ai-capability/chat";
 
 /** Returns whether a user model config should use Azure OpenAI routing. */
 export function isAzureChatModel(model: ChatModelConfig | null | undefined): model is ChatModelConfig & { provider: "Azure OpenAI" } {
@@ -35,12 +35,6 @@ export function isAzureChatModel(model: ChatModelConfig | null | undefined): mod
 /** Returns whether a user model config should use direct OpenAI-compatible routing. */
 export function isOpenAIChatModel(model: ChatModelConfig | null | undefined): model is ChatModelConfig & { provider: "OpenAI" } {
   return model?.provider === "OpenAI";
-}
-
-/** Returns whether a user model config should use Anthropic-compatible routing. */
-export function isAnthropicChatModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "Anthropic" | "Azure AI Foundry" } {
-  const provider = model?.provider;
-  return provider === "Anthropic" || provider === "Azure AI Foundry";
 }
 
 /** Returns the Azure deployment name used when building Azure runtime config. */
@@ -140,7 +134,7 @@ export function getEffectiveCapabilities(
   const enabledCaps = normalizeModelCapabilities(enabled, supportedCaps);
   const next = { ...defaultModelCapabilities };
   (Object.keys(next) as (keyof ChatModelCapabilities)[]).forEach((key) => {
-    next[key] = Boolean(supportedCaps[key] && enabledCaps[key]);
+    next[key] = Boolean(supportedCaps[key] && enabledCaps[key] && (turnOptions?.[key] ?? enabledCaps[key]));
   });
   return next;
 }

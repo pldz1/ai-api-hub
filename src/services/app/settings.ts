@@ -30,6 +30,7 @@ export async function getModels(): Promise<boolean> {
   const res = await getModelsAPI();
   if (!res.flag) {
     await store.dispatch("setModels", emptyModelSettings());
+    console.error("Failed to fetch model settings:", res.log);
     dsAlert({ type: "error", message: tr("toast.userModelsFetchFailed", { error: res.log }) });
     return false;
   }
@@ -39,6 +40,7 @@ export async function getModels(): Promise<boolean> {
     const validationError = getModelSettingValidationError(parsed);
     if (validationError) {
       await store.dispatch("setModels", emptyModelSettings());
+      console.error("Model settings validation error:", validationError);
       dsAlert({ type: "error", message: tr("toast.userModelsInvalid", { error: validationError }) });
       return false;
     }
@@ -47,6 +49,7 @@ export async function getModels(): Promise<boolean> {
     return true;
   } catch (error) {
     await store.dispatch("setModels", emptyModelSettings());
+    console.error("Error parsing model settings:", error);
     dsAlert({ type: "error", message: tr("toast.userModelsInvalid", { error: error instanceof Error ? error.message : String(error) }) });
     return false;
   }
@@ -56,6 +59,7 @@ export async function setModels(models: ModelSettings = store.state.models): Pro
   const payload = buildModelSettings(models);
   const res = await setModelsAPI(JSON.stringify(payload));
   if (!res.flag) {
+    console.error("Failed to save model settings:", res.log);
     dsAlert({ type: "error", message: tr("toast.userModelsSaveFailed", { error: res.log }) });
     return false;
   }
@@ -66,6 +70,7 @@ export async function setModels(models: ModelSettings = store.state.models): Pro
 export async function getChatInsTemplateList(): Promise<boolean> {
   const res = await getChatInsTemplateListAPI();
   if (!res.flag) {
+    console.error("Failed to fetch chat instruction templates:", res.log);
     await store.dispatch("setChatInsTemplateList", []);
     dsAlert({ type: "error", message: tr("toast.userTemplatesFetchFailed", { error: res.log }) });
     return false;
@@ -76,6 +81,7 @@ export async function getChatInsTemplateList(): Promise<boolean> {
     const validationError = getChatTemplateListValidationError(templates);
     if (validationError) {
       await store.dispatch("setChatInsTemplateList", []);
+      console.error("Chat instruction templates validation error:", validationError);
       dsAlert({ type: "error", message: tr("toast.userTemplatesFetchFailed", { error: validationError }) });
       return false;
     }
@@ -84,6 +90,7 @@ export async function getChatInsTemplateList(): Promise<boolean> {
     return true;
   } catch (error) {
     await store.dispatch("setChatInsTemplateList", []);
+    console.error("Error parsing chat instruction templates:", error);
     dsAlert({ type: "error", message: tr("toast.userTemplatesFetchFailed", { error: error instanceof Error ? error.message : String(error) }) });
     return false;
   }
@@ -92,12 +99,14 @@ export async function getChatInsTemplateList(): Promise<boolean> {
 export async function setChatInsTemplateList(templates: unknown[] = store.state.chatInsTemplateList): Promise<boolean> {
   const validationError = getChatTemplateListValidationError(templates);
   if (validationError) {
+    console.error("Chat instruction templates validation error:", validationError);
     dsAlert({ type: "error", message: tr("toast.userTemplatesSaveFailed", { error: validationError }) });
     return false;
   }
 
   const res = await setChatInsTemplateListAPI(JSON.stringify(templates as ChatInstructionTemplate[]));
   if (!res.flag) {
+    console.error("Failed to save chat instruction templates:", res.log);
     dsAlert({ type: "error", message: tr("toast.userTemplatesSaveFailed", { error: res.log }) });
     return false;
   }

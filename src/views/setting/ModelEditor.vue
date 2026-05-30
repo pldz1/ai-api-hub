@@ -21,20 +21,19 @@
 
       <div class="model-form-grid">
         <!-- Shared display name field -->
-        <label class="model-form-field">
+        <label class="model-form-field model-form-field-span">
           <span>{{ t("user.modelCard.fields.name") }}</span>
           <input v-model.trim="localModel.name" type="text" class="input input-bordered w-full" />
         </label>
 
         <!-- Chat model selector with grouped suggestions -->
-        <label v-if="!isImageModel" class="model-form-field model-form-field-span">
+        <label v-if="!isImageModel" class="model-form-field">
           <span>{{ t("user.modelCard.fields.model") }}</span>
           <select v-model="localModel.model" class="model-select model-select-bordered w-full">
             <optgroup v-for="group in groupedModelSuggestions" :key="group.key" :label="group.label">
               <option v-for="item in group.items" :key="getSuggestionValue(item)" :value="getSuggestionValue(item)">{{ getSuggestionLabel(item) }}</option>
             </optgroup>
           </select>
-          <small>{{ t("user.modelCard.chatModelHelp") }}</small>
         </label>
 
         <!-- Provider selector changes the required connection fields below -->
@@ -99,12 +98,6 @@
             </button>
           </label>
         </div>
-
-        <!-- Read-only request target preview -->
-        <label v-if="requestSummary" class="model-form-field model-form-field-span">
-          <span>{{ t("user.modelCard.fields.requestTarget") }}</span>
-          <div class="model-info-card">{{ requestSummary }}</div>
-        </label>
       </div>
     </section>
 
@@ -262,7 +255,7 @@ function syncProviderBaseURL(provider = "", force = false) {
 }
 
 function syncProviderForModel(force = false) {
-  // Keep provider valid when switching between OpenAI and Claude model families.
+  // Keep provider valid when switching between supported model families.
   if ((!force && isSyncingFromProps) || isImageModel.value) return;
   if (!availableModelProviderList.value.some((item) => getProviderValue(item) === localModel.provider)) {
     localModel.provider = getProviderValue(availableModelProviderList.value[0] || "");
@@ -378,7 +371,10 @@ function copyApiKey() {
   navigator.clipboard
     .writeText(localModel.apiKey)
     .then(() => dsAlert({ type: "success", message: t("toast.copyApiKeySuccess") }))
-    .catch((err) => dsAlert({ type: "error", message: t("toast.copyApiKeyFailed", { error: String(err) }) }));
+    .catch((err) => {
+      console.error("Failed to copy API key:", err);
+      dsAlert({ type: "error", message: t("toast.copyApiKeyFailed", { error: String(err) }) });
+    });
 }
 
 watch(
@@ -562,16 +558,6 @@ watch(
   }
 }
 
-.model-info-card {
-  border-radius: 14px;
-  padding: 12px 14px;
-  background-color: oklch(var(--b2));
-  font-size: 12px;
-  line-height: 1.5;
-  color: oklch(var(--bc) / 0.82);
-  border: 1px solid oklch(var(--bc) / 0.05);
-}
-
 .model-capability-toggle {
   min-height: 48px;
   display: grid;
@@ -683,10 +669,6 @@ watch(
       min-height: 36px;
       font-size: 12px;
     }
-  }
-
-  .model-info-card {
-    font-size: 12px;
   }
 
   .model-capability-toggle {

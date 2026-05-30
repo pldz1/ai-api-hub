@@ -191,6 +191,7 @@ function readFileAsAttachment(file: File): Promise<ImageInputAttachment | null> 
     }
 
     if (file.size / (1024 * 1024) > MAX_IMAGE_MB) {
+      console.error("Image file is too large:", file.size / (1024 * 1024));
       dsAlert({ type: "error", message: t("toast.imageTooLarge", { max: MAX_IMAGE_MB }) });
       resolve(null);
       return;
@@ -209,6 +210,7 @@ function readFileAsAttachment(file: File): Promise<ImageInputAttachment | null> 
       });
     };
     reader.onerror = () => {
+      console.error("Failed to read image file:", reader.error);
       dsAlert({ type: "error", message: t("image.imageReadFailed") });
       resolve(null);
     };
@@ -264,6 +266,7 @@ async function openEditDialog(image?: ImagePayload) {
       hasEditedMask.value = false;
       imageEditDialogRef.value?.open(attachment);
     } catch (error) {
+      console.error("Failed to load image for editing:", error);
       dsAlert({ type: "error", message: t("image.loadMaskEditFailed", { error: String(error) }) });
     }
     return;
@@ -343,6 +346,7 @@ async function send() {
   });
 
   if (result?.status === "error") {
+    console.error("Failed to submit image message:", result.error);
     dsAlert({ type: "error", message: result.error || t("image.imageRequestFailed") });
   }
 
@@ -354,27 +358,6 @@ function onEnter(event: KeyboardEvent) {
   if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
     send();
-  }
-}
-
-async function downloadImage(src: string) {
-  const image = new Image();
-  image.crossOrigin = "anonymous";
-  image.onload = async () => {
-    await saveToLocal(image);
-  };
-  image.src = src;
-}
-
-async function useImageForEdit(image: ImagePayload) {
-  try {
-    const response = await fetch(image.src);
-    const blob = await response.blob();
-    const file = new File([blob], image.filename || "edit-input.png", { type: blob.type || "image/png" });
-    await addFiles([file]);
-    scrollToBottom();
-  } catch (error) {
-    dsAlert({ type: "error", message: t("image.loadEditImageFailed", { error: String(error) }) });
   }
 }
 

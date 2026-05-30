@@ -78,7 +78,9 @@ const generationStatusLabel = computed(() => {
   if (isGenerating.value) return isEditMode.value ? t("image.editing") : t("image.generating");
   return isEditMode.value ? t("image.editReady") : t("image.ready");
 });
-const promptImageParamKey = computed(() => imageParamDefs.find((item) => item.type === "image" && item.key === "image")?.key || imageParamDefs.find((item) => item.type === "image")?.key || "");
+const promptImageParamKey = computed(
+  () => imageParamDefs.find((item) => item.type === "image" && item.key === "image")?.key || imageParamDefs.find((item) => item.type === "image")?.key || "",
+);
 const maskImageParamKey = computed(() => imageParamDefs.find((item) => item.type === "image" && item.key === "mask")?.key || "");
 const workspaceImageParamKey = computed(() => (isEditMode.value ? promptImageParamKey.value : ""));
 const promptInputImage = computed(() => {
@@ -193,6 +195,7 @@ const loadInitialEditImage = async (image) => {
   try {
     updatePromptInputImage(await imageUrlToPngParam(image.src, "generated-edit-input.png"));
   } catch (error) {
+    console.error("Failed to load initial edit image:", error);
     dsAlert({ type: "error", message: t("image.editImagePrepareFailed", { error: String(error) }) });
   }
 };
@@ -255,6 +258,7 @@ const onSendImg = async () => {
         await pushImage(prompt, item.data);
       } else {
         imageModelSettings.value.prompt = prompt;
+        console.error("Failed to generate image:", item.data);
         dsAlert({
           type: "error",
           message: item.data,
@@ -263,6 +267,7 @@ const onSendImg = async () => {
       }
     }
   } catch (err) {
+    console.error("Failed to generate image:", err);
     dsAlert({
       type: "error",
       message: t("image.initError", { error: String(err) }),

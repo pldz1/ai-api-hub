@@ -273,16 +273,19 @@ const onSendInputData = async () => {
   }
 
   if (!curChatId.value && !selectedModel.value) {
+    console.warn("No chat ID and no selected model found.");
     dsAlert({ type: "warn", message: t("input.selectChatModel") });
     return;
   }
 
   if (!curChatId.value && !draftSnapshot.value) {
+    console.warn("No chat ID and no draft model snapshot available.");
     dsAlert({ type: "warn", message: t("toast.modelInitCheck") });
     return;
   }
 
   if (curChatId.value && !curConversation.value?.modelSnapshot) {
+    console.warn("Existing chat without a model snapshot.");
     dsAlert({ type: "warn", message: t("toast.modelInitCheck") });
     return;
   }
@@ -311,6 +314,7 @@ const onSendInputData = async () => {
 
     if (cciaTextareaRef.value) cciaTextareaRef.value.style.height = "";
   } else {
+    console.error("Invalid user message data:", data);
     dsAlert({ type: "error", message: t("toast.invalidQuestion") });
   }
 };
@@ -403,6 +407,7 @@ function readFileAsInputImage(file: File): Promise<ChatInputImage | null> {
     }
 
     if (file.size / (1024 * 1024) > MAX_IMAGE_MB) {
+      console.error("Image file is too large:", file.size / (1024 * 1024));
       dsAlert({ type: "error", message: t("toast.imageTooLarge", { max: MAX_IMAGE_MB }) });
       resolve(null);
       return;
@@ -417,6 +422,7 @@ function readFileAsInputImage(file: File): Promise<ChatInputImage | null> {
       });
     };
     reader.onerror = () => {
+      console.error("Failed to read image file:", reader.error);
       dsAlert({ type: "error", message: t("image.imageReadFailed") });
       resolve(null);
     };

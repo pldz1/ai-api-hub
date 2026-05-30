@@ -87,8 +87,6 @@
   margin: 0 0 18px;
 
   .cmba-assistant-icon {
-    height: 48px;
-    width: 48px;
     margin-top: 8px;
     flex: 0 0 48px;
     display: flex;
@@ -98,18 +96,9 @@
     overflow: hidden;
 
     .cmba-working-icon {
-      width: 32px;
-      height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-
-    svg {
-      width: 32px;
-      height: 32px;
-      overflow: visible;
-      display: block;
     }
 
     .edge {

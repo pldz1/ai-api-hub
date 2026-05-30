@@ -1,26 +1,68 @@
-import type { ChatCallback, ChatCompletionParams, ChatModelCapabilities, ChatModelConfig, ChatPromptMessage, PackedChatMessage } from "./types";
-import { packPartMessages, packTextMessages } from "./message";
-import { createChatExecutor, createChatProviderConfig, type ChatExecutor } from "./providers";
+import type {
+  ChatCompletionParams,
+  ChatModelCapabilities,
+  ChatModelConfig,
+  ChatProviderResponse,
+  ChatResponseDelta,
+  PackedChatMessage,
+  ChatRequest,
+  ChatExecutor,
+} from "./types";
+import { createChatExecutor, createChatProviderConfig } from "./providers/executor";
 
-export type ChatMessageFormat = "text" | "parts";
+type ChatDeltaQueueItem = { delta?: ChatResponseDelta; done?: true };
 
-export interface ChatPromptSettings {
-  prompts?: ChatPromptMessage[];
-  [key: string]: unknown;
+function providerResponseToDeltas(response: ChatProviderResponse): ChatResponseDelta[] {
+  if (response.flag === false) {
+    return [{ kind: "error", message: String(response.content || "") }];
+  }
+
+  const deltas: ChatResponseDelta[] = [];
+
+  if (response.content || response.reasoning_content) {
+    deltas.push({ kind: "text", content: response.content, reasoning_content: response.reasoning_content });
+  }
+
+  if (response.usage) {
+    deltas.push({ kind: "usage", usage: response.usage });
+  }
+
+  return deltas;
 }
 
-export interface ChatRequestContext {
-  model?: ChatModelConfig | null;
-  settings?: ChatPromptSettings | null;
-  messageFormat?: ChatMessageFormat;
-  buildParams?: (model: ChatModelConfig | null, settings: ChatPromptSettings | null) => ChatCompletionParams;
+function createChatDeltaQueue() {
+  const items: ChatDeltaQueueItem[] = [];
+  const waiters: ((item: ChatDeltaQueueItem) => void)[] = [];
+
+  function emit(item: ChatDeltaQueueItem): void {
+    const waiter = waiters.shift();
+    if (waiter) waiter(item);
+    else items.push(item);
+  }
+
+  return {
+    push(delta: ChatResponseDelta | null): void {
+      if (delta) emit({ delta });
+    },
+    pushMany(deltas: ChatResponseDelta[]): void {
+      deltas.forEach((delta) => emit({ delta }));
+    },
+    close(): void {
+      emit({ done: true });
+    },
+    next(): Promise<ChatDeltaQueueItem> {
+      const item = items.shift();
+      if (item) return Promise.resolve(item);
+      return new Promise((resolve) => waiters.push(resolve));
+    },
+  };
 }
 
 /**
  * Runtime bridge between normalized chat messages and provider clients.
  *
- * It packs messages for the selected message format, applies turn-level
- * capabilities, and delegates the actual network call to a provider executor.
+ * It applies turn-level request parameters and delegates the actual network
+ * call to a provider executor.
  */
 export class ChatGateway {
   executor: ChatExecutor | null;
@@ -31,20 +73,14 @@ export class ChatGateway {
     this.abortController = null;
   }
 
-  resolveModel(context: ChatRequestContext = {}): ChatModelConfig | null {
-    return context?.model || null;
-  }
+  init(model: ChatModelConfig | null = null): void {
+    if (!model) {
+      console.warn("ChatGateway init called without a model config. Executor will not be created.");
+      return;
+    }
 
-  init(context: ChatRequestContext = {}): void {
-    const actModel = this.resolveModel(context);
-    if (!actModel) return;
-
-    const config = createChatProviderConfig(actModel);
+    const config = createChatProviderConfig(model);
     this.executor = config ? createChatExecutor(config) : null;
-  }
-
-  resolveModelId(model: Partial<ChatModelConfig>): string {
-    return model?.model;
   }
 
   abort(): void {
@@ -53,39 +89,46 @@ export class ChatGateway {
     this.abortController = null;
   }
 
-  async chat(data: ChatPromptMessage[], context: ChatRequestContext = {}, callback: ChatCallback = (response) => console.log(response)): Promise<boolean> {
-    const model = this.resolveModel(context);
-    const hasRequestTarget = model?.provider === "Azure OpenAI" ? Boolean(model.deployment || model.model) : Boolean(model?.model);
-    if (!this.executor || !model?.name || !model?.apiKey || !hasRequestTarget) {
-      callback({
-        flag: false,
-        content: "Chat model is not configured.",
-        reasoning_content: "",
-      });
+  async *chat(messages: PackedChatMessage[], request: ChatRequest = {}): AsyncGenerator<ChatResponseDelta, boolean, void> {
+    const model = request.model;
+    if (!this.executor || !model?.name || !model?.apiKey) {
+      yield { kind: "error", message: "Chat model is not configured." };
       return false;
     }
-
-    const turnCapabilities: Partial<ChatModelCapabilities> = data[data.length - 1]?.meta?.usedCapabilities || {};
 
     let abortController: AbortController | null = null;
 
     try {
       this.abort();
-      this.init({ ...context, model });
+      this.init(model);
       abortController = new AbortController();
       this.abortController = abortController;
-      const messages = this.getChatMessages(data, context?.settings, context.messageFormat);
-      await this.executor.chat(messages, this.getChatParams(model, context?.settings, turnCapabilities, context.buildParams), callback, {
-        signal: abortController.signal,
-      });
-      return true;
+      const queue = createChatDeltaQueue();
+      let completed = false;
+
+      void this.executor
+        .chat(messages, this.resolveChatParams(request.params, request.capabilities), (response) => queue.pushMany(providerResponseToDeltas(response)), {
+          signal: abortController.signal,
+        })
+        .then(() => {
+          completed = true;
+          queue.close();
+        })
+        .catch((err) => {
+          if (!abortController?.signal.aborted) queue.push({ kind: "error", message: String(err) });
+          queue.close();
+        });
+
+      while (true) {
+        const item = await queue.next();
+        if (item.done) break;
+        if (item.delta) yield item.delta;
+      }
+
+      return completed;
     } catch (err) {
       if (abortController?.signal.aborted) return false;
-      callback({
-        flag: false,
-        content: String(err),
-        reasoning_content: "",
-      });
+      yield { kind: "error", message: String(err) };
       return false;
     } finally {
       if (this.abortController === abortController) this.abortController = null;
@@ -93,30 +136,12 @@ export class ChatGateway {
   }
 
   /**
-   * Build provider-ready chat messages with the active system prompt.
+   * Resolve effective chat completion parameters for the current turn,
+   * applying any turn-level overrides.
    */
-  getChatMessages(data: ChatPromptMessage[], settings: ChatPromptSettings | null = null, messageFormat: ChatMessageFormat = "parts"): PackedChatMessage[] {
-    const cms = settings;
-    const firstPromptContent = cms?.prompts?.[0]?.content?.[0];
-    const hasSystemPrompt = firstPromptContent?.type === "text" && Boolean(firstPromptContent.text);
-    const combineData = hasSystemPrompt ? [...(cms?.prompts || []), ...data] : data;
-    if (messageFormat == "text") {
-      return packTextMessages(combineData);
-    }
-    return packPartMessages(combineData);
-  }
-
-  /**
-   * Build request parameters for the active chat model.
-   */
-  getChatParams(
-    model: ChatModelConfig | null = null,
-    settings: ChatPromptSettings | null = null,
-    turnCapabilities: Partial<ChatModelCapabilities> = {},
-    buildParams: ChatRequestContext["buildParams"] = undefined,
-  ): ChatCompletionParams {
+  resolveChatParams(params: ChatCompletionParams = {}, turnCapabilities: Partial<ChatModelCapabilities> = {}): ChatCompletionParams {
     return {
-      ...(buildParams ? buildParams(model, settings) : {}),
+      ...params,
       webSearch: Boolean(turnCapabilities.webSearch),
     };
   }

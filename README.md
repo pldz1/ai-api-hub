@@ -4,9 +4,9 @@ A unified chat & image generation interface for multiple AI providers, running e
 
 ## Features
 
-- **Multi-provider chat** — Supports OpenAI, Azure OpenAI, Anthropic, Azure AI Foundry, and DeepSeek through a unified chat interface with streaming (SSE) responses.
+- **Multi-provider chat** — Supports OpenAI, Azure OpenAI, and DeepSeek through a unified chat interface with streaming (SSE) responses.
 - **Image generation & editing** — Text-to-image and image-to-image generation via OpenAI / Azure OpenAI. Includes an in-app brush-based mask editor for precise edit regions.
-- **Model management** — Configure custom models, endpoints, API keys, and deployment settings per provider. Model catalog includes GPT-5.5, GPT-4.1, GPT-4o, Claude Opus/Sonnet/Haiku, and DeepSeek V4 variants.
+- **Model management** — Configure custom models, endpoints, API keys, and deployment settings per provider. Model catalog includes GPT-5.5, GPT-4.1, GPT-4o, and DeepSeek V4 variants.
 - **Prompt templates** — Create, edit, and reuse system instruction templates across conversations.
 - **Conversation management** — Create, rename, delete, and batch-delete chat and image conversations. Sidebar shows real-time runtime status per session.
 - **Token usage tracking** — Per-session input/output token accounting.
@@ -20,8 +20,6 @@ A unified chat & image generation interface for multiple AI providers, running e
 |---|---|---|
 | OpenAI | Streaming & sync via `/chat/completions`, web search via `/responses` | Generation & edit via `/images/generations` and `/images/edits` |
 | Azure OpenAI | Streaming & sync via Azure deployment endpoint | Generation & edit via Azure deployment |
-| Anthropic Direct | Streaming & sync via `/v1/messages` | — |
-| Azure AI Foundry | Streaming & sync (Anthropic protocol) | — |
 | DeepSeek | Streaming & sync via `/chat/completions` (text-only) | — |
 
 ## Tech Stack
@@ -41,7 +39,7 @@ A unified chat & image generation interface for multiple AI providers, running e
 ```
 src/
 ├── ai-capability/       # AI provider abstraction layer
-│   ├── chat/            # Chat providers (OpenAI, Azure, Anthropic, DeepSeek)
+│   ├── chat/            # Chat providers (OpenAI, Azure, DeepSeek)
 │   │   └── providers/   # Per-provider client implementations
 │   ├── image/           # Image providers (OpenAI, Azure)
 │   │   └── providers/

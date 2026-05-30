@@ -148,6 +148,7 @@ function downloadImage() {
 
   canvas.toBlob((blob) => {
     if (!blob) {
+      console.error("Failed to create image blob for download");
       dsAlert({ type: "error", message: t("image.downloadFailed") });
       return;
     }
@@ -201,7 +202,10 @@ async function loadImage() {
     imageCtx?.drawImage(image, 0, 0, width, height);
     clearMask();
   };
-  image.onerror = () => dsAlert({ type: "error", message: t("image.loadFailed") });
+  image.onerror = () => {
+    console.error("Failed to load image:", dataUrl);
+    dsAlert({ type: "error", message: t("image.loadFailed") });
+  };
   image.src = dataUrl;
 }
 

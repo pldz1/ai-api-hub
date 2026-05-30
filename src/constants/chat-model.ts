@@ -182,45 +182,6 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     },
   },
   {
-    name: "claude-opus-4-7",
-
-    messageFormat: "parts",
-    chatParamKeys: ["max_tokens", "temperature", "top_p"],
-    capabilities: { webSearch: false, imageRead: true },
-    capabilityProfile: {
-      ...baseCapabilityProfile,
-      modalities: { ...baseCapabilityProfile.modalities, imageInput: true },
-      features: { ...baseCapabilityProfile.features, structuredOutputs: true },
-      tools: { ...baseCapabilityProfile.tools, functionCalling: true, computerUse: true },
-    },
-  },
-  {
-    name: "claude-sonnet-4-6",
-
-    messageFormat: "parts",
-    chatParamKeys: ["max_tokens", "temperature", "top_p"],
-    capabilities: { webSearch: false, imageRead: true },
-    capabilityProfile: {
-      ...baseCapabilityProfile,
-      modalities: { ...baseCapabilityProfile.modalities, imageInput: true },
-      features: { ...baseCapabilityProfile.features, structuredOutputs: true },
-      tools: { ...baseCapabilityProfile.tools, functionCalling: true, computerUse: true },
-    },
-  },
-  {
-    name: "claude-haiku-4-5",
-
-    messageFormat: "parts",
-    chatParamKeys: ["max_tokens", "temperature", "top_p"],
-    capabilities: { webSearch: false, imageRead: true },
-    capabilityProfile: {
-      ...baseCapabilityProfile,
-      modalities: { ...baseCapabilityProfile.modalities, imageInput: true },
-      features: { ...baseCapabilityProfile.features, structuredOutputs: true },
-      tools: { ...baseCapabilityProfile.tools, functionCalling: true },
-    },
-  },
-  {
     name: "deepseek-v4-flash",
 
     messageFormat: "text",

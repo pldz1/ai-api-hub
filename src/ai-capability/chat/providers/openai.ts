@@ -103,6 +103,30 @@ function responseFromChatCompletion(data: JsonObject): ChatProviderResponse {
   };
 }
 
+function responseFromResponsesStreamEvent(event: JsonObject): ChatProviderResponse | null {
+  const type = String(event.type || "");
+
+  if (type === "response.output_text.delta" || type === "response.refusal.delta") {
+    return { flag: true, content: String(event.delta || ""), reasoning_content: "" };
+  }
+
+  if (type === "response.reasoning_text.delta" || type === "response.reasoning_summary_text.delta") {
+    return { flag: true, content: "", reasoning_content: String(event.delta || "") };
+  }
+
+  if (type === "response.completed") {
+    const response = event.response as JsonObject | undefined;
+    return { flag: true, content: "", reasoning_content: "", usage: normalizeUsage(response?.usage as JsonObject | null | undefined) };
+  }
+
+  if (type === "error" || type === "response.failed") {
+    const error = (event.error || (event.response as JsonObject | undefined)?.error || event) as JsonObject;
+    return { flag: false, content: String(error?.message || JSON.stringify(error)), reasoning_content: "" };
+  }
+
+  return null;
+}
+
 function isAbortError(err: unknown): boolean {
   return err instanceof DOMException && err.name === "AbortError";
 }
@@ -134,6 +158,10 @@ export class OpenAIClient {
     this.model = "";
   }
 
+  isConfigured(): boolean {
+    return Boolean(this.apiKey && this.model);
+  }
+
   getHeaders(): Record<string, string> {
     return {
       authorization: `Bearer ${this.apiKey}`,
@@ -146,6 +174,19 @@ export class OpenAIClient {
 
   getResponsesUrl(): string {
     return resolveOpenAIUrl(this.baseURL, "/responses");
+  }
+
+  getChatCompletionParams(params: ChatCompletionParams = {}, stream = true): JsonObject {
+    return normalizeOpenAIParams(params, stream);
+  }
+
+  getChatCompletionsBody(messages: PackedChatMessage[], params: ChatCompletionParams = {}, stream = true): JsonObject {
+    return {
+      model: this.model,
+      messages,
+      ...this.getChatCompletionParams(params, stream),
+      stream,
+    };
   }
 
   getResponsesParams(messages: PackedChatMessage[], params: ChatCompletionParams = {}): JsonObject {
@@ -163,12 +204,28 @@ export class OpenAIClient {
     callback: ChatCallback | null = null,
     options: ChatRequestOptions = {},
   ): Promise<void> {
-    if (!this.apiKey || !this.model) {
+    if (!this.isConfigured()) {
       if (callback) await callback({ flag: false, content: PROVIDER_NOT_READY_MESSAGE, reasoning_content: "" });
       return;
     }
 
     try {
+      if (params.stream !== false) {
+        await streamJsonEvents(this.getResponsesUrl(), {
+          headers: this.getHeaders(),
+          body: {
+            ...this.getResponsesParams(messages, params),
+            stream: true,
+          },
+          async onEvent(event) {
+            const next = responseFromResponsesStreamEvent(event);
+            if (next && callback) await callback(next);
+          },
+          signal: options.signal,
+        });
+        return;
+      }
+
       const response = await requestJson<JsonObject>(this.getResponsesUrl(), {
         headers: this.getHeaders(),
         body: this.getResponsesParams(messages, params),
@@ -194,7 +251,7 @@ export class OpenAIClient {
     callback: ChatCallback | null = null,
     options: ChatRequestOptions = {},
   ): Promise<void> {
-    if (!this.apiKey || !this.model) {
+    if (!this.isConfigured()) {
       if (callback) await callback({ flag: false, content: PROVIDER_NOT_READY_MESSAGE, reasoning_content: "" });
       return;
     }
@@ -202,12 +259,7 @@ export class OpenAIClient {
     try {
       await streamJsonEvents(this.getChatCompletionsUrl(), {
         headers: this.getHeaders(),
-        body: {
-          model: this.model,
-          messages,
-          ...normalizeOpenAIParams(params, true),
-          stream: true,
-        },
+        body: this.getChatCompletionsBody(messages, params, true),
         async onEvent(chunk) {
           if (callback) await callback(responseFromChatChunk(chunk));
         },
@@ -220,17 +272,12 @@ export class OpenAIClient {
   }
 
   async chatSync(messages: PackedChatMessage[], params: ChatCompletionParams, options: ChatRequestOptions = {}): Promise<ChatProviderResponse> {
-    if (!this.apiKey || !this.model) return { flag: false, content: PROVIDER_NOT_READY_MESSAGE, reasoning_content: "" };
+    if (!this.isConfigured()) return { flag: false, content: PROVIDER_NOT_READY_MESSAGE, reasoning_content: "" };
 
     try {
       const response = await requestJson<JsonObject>(this.getChatCompletionsUrl(), {
         headers: this.getHeaders(),
-        body: {
-          model: this.model,
-          messages,
-          ...normalizeOpenAIParams(params, false),
-          stream: false,
-        },
+        body: this.getChatCompletionsBody(messages, params, false),
         signal: options.signal,
       });
       return responseFromChatCompletion(response);

@@ -179,6 +179,7 @@ const onPromptPaste = async (event) => {
       data: await readFileAsBase64(file),
     });
   } catch (error) {
+    console.error("Failed to read pasted image file:", error);
     dsAlert({ type: "error", message: t("image.paramImageReadFailed", { error: String(error) }) });
   }
 };
