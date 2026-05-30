@@ -261,6 +261,7 @@ watch(
 
     if (!previousModel || getModelSelectionKey(previousModel) !== getModelSelectionKey(model)) {
       await store.dispatch("setCurChatModelSettings", mergeChatSettingsWithModel(model, {}));
+      await store.dispatch("resetInputCapabilities");
     }
   },
   { immediate: true },
