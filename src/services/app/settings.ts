@@ -16,8 +16,8 @@ const emptyModelSettings = (): ModelSettings => ({
   image: [],
 });
 
-const getModelsAPI = (): Promise<ApiResponse<string>> => apiRequest("post", "/_api/workspace/getModels", {});
-const setModelsAPI = (data: string): Promise<ApiResponse<null>> => apiRequest("post", "/_api/workspace/setModels", { data });
+const getModelsAPI = (): Promise<ApiResponse<ModelSettings>> => apiRequest("post", "/_api/workspace/getModels", {});
+const setModelsAPI = (data: ModelSettings): Promise<ApiResponse<null>> => apiRequest("post", "/_api/workspace/setModels", { data });
 const getChatInsTemplateListAPI = (): Promise<ApiResponse<string>> => apiRequest("post", "/_api/workspace/getChatInsTemplateList", {});
 const setChatInsTemplateListAPI = (data: string): Promise<ApiResponse<null>> => apiRequest("post", "/_api/workspace/setChatInsTemplateList", { data });
 
@@ -36,7 +36,7 @@ export async function getModels(): Promise<boolean> {
   }
 
   try {
-    const parsed = parseStoredJson<unknown>(res.data, emptyModelSettings());
+    const parsed = res.data;
     const validationError = getModelSettingValidationError(parsed);
     if (validationError) {
       await store.dispatch("setModels", emptyModelSettings());
@@ -57,7 +57,7 @@ export async function getModels(): Promise<boolean> {
 
 export async function setModels(models: ModelSettings = store.state.models): Promise<boolean> {
   const payload = buildModelSettings(models);
-  const res = await setModelsAPI(JSON.stringify(payload));
+  const res = await setModelsAPI(payload);
   if (!res.flag) {
     console.error("Failed to save model settings:", res.log);
     dsAlert({ type: "error", message: tr("toast.userModelsSaveFailed", { error: res.log }) });

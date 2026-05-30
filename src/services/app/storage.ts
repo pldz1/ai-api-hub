@@ -1,7 +1,17 @@
 import { tr } from "@/i18n";
-import type { ApiMethod, ApiResponse, RequestBody, RequestHeaders, StoredChatMessage, ChatListItem, ImageConversationListItem, ImageDataItem } from "@/types";
+import type {
+  ApiMethod,
+  ApiResponse,
+  RequestBody,
+  RequestHeaders,
+  StoredChatMessage,
+  ChatListItem,
+  ImageConversationListItem,
+  ImageDataItem,
+  ModelSettings,
+} from "@/types";
 
-const STORAGE_KEY = "chat-playground.local-storage.v2";
+const STORAGE_KEY = "ai-api-hub.local-storage.v2";
 const IMAGE_DB_NAME = "ai-api-hub-images";
 const IMAGE_STORE_NAME = "images";
 const DEFAULT_HEADERS: RequestHeaders = { "Content-Type": "application/json" };
@@ -25,7 +35,7 @@ interface StoredImageRecord {
 }
 
 interface LocalStorageState {
-  models: string;
+  models: ModelSettings;
   chatInsTemplateList: string;
   chats: StoredChatState[];
   images: StoredImageRecord[];
@@ -34,23 +44,28 @@ interface LocalStorageState {
 
 type LocalRouteHandler = (body: RequestBody) => Promise<ApiResponse>;
 type StoredImageSourceMap = Map<string, string>;
+type SetModelsRequestBody = RequestBody & { data: ModelSettings };
 
 function asString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
-const DEFAULT_STATE: LocalStorageState = {
-  models: "",
-  chatInsTemplateList: "",
-  chats: [],
-  images: [],
-  imageConversations: [],
-};
+function createDefaultModels(): ModelSettings {
+  return {
+    chat: [],
+    image: [],
+  };
+}
 
-const DEFAULT_MODELS = {
-  chat: [],
-  image: [],
-};
+function createDefaultState(): LocalStorageState {
+  return {
+    models: createDefaultModels(),
+    chatInsTemplateList: "",
+    chats: [],
+    images: [],
+    imageConversations: [],
+  };
+}
 
 function toErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -59,12 +74,12 @@ function toErrorMessage(error: unknown, fallback: string): string {
 function readStorageState(): LocalStorageState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_STATE };
+    if (!raw) return createDefaultState();
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? { ...DEFAULT_STATE, ...parsed } : { ...DEFAULT_STATE };
+    return parsed && typeof parsed === "object" ? { ...createDefaultState(), ...parsed } : createDefaultState();
   } catch (error) {
     console.warn("Failed to read localStorage state:", error);
-    return { ...DEFAULT_STATE };
+    return createDefaultState();
   }
 }
 
@@ -221,14 +236,14 @@ async function urlToDataUrl(url: string): Promise<string> {
   });
 }
 
-async function handleGetModels(): Promise<ApiResponse<string>> {
+async function handleGetModels(): Promise<ApiResponse<ModelSettings>> {
   const state = readStorageState();
-  return ok(state.models || "");
+  return ok(state.models);
 }
 
-async function handleSetModels(body: RequestBody): Promise<ApiResponse<null>> {
+async function handleSetModels(body: SetModelsRequestBody): Promise<ApiResponse<null>> {
   const state = readStorageState();
-  state.models = asString(body.data, JSON.stringify(DEFAULT_MODELS));
+  state.models = body.data;
   assertStorageStateWritten(state);
   return ok(null);
 }
