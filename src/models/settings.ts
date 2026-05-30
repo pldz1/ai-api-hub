@@ -22,17 +22,15 @@ function sanitizeChatModelConfig(model: ChatModelConfig): ChatModelConfig {
 }
 
 /** Same as `sanitizeChatModelConfig`, but for image model payloads. */
-function sanitizeImageModelConfig(model: ImageModelConfig): ImageModelConfig {
+function sanitizeImageModelConfig(model: LooseModelConfig | ImageModelConfig): ImageModelConfig {
+  const modelConfig = normalizeImageModelConfig(model as LooseModelConfig);
   return {
-    name: model.name,
-    provider: model.provider,
-    apiKey: model.apiKey,
-    model: model.model,
-    ...("baseURL" in model ? { baseURL: model.baseURL } : {}),
-    ...("endpoint" in model ? { endpoint: model.endpoint } : {}),
-    ...("deployment" in model ? { deployment: model.deployment } : {}),
-    ...("apiVersion" in model ? { apiVersion: model.apiVersion } : {}),
-  } as ImageModelConfig;
+    name: modelConfig.name,
+    provider: "OpenAI",
+    apiKey: modelConfig.apiKey,
+    model: modelConfig.model,
+    baseURL: modelConfig.baseURL,
+  };
 }
 
 /**
@@ -47,7 +45,7 @@ export function sanitizeModelSettings(data: Partial<ModelSettings> | null | unde
 
   return {
     chat: (Array.isArray(normalized.chat) ? normalized.chat : []).map((item) => sanitizeChatModelConfig(item as ChatModelConfig)),
-    image: imageModels.map((item) => sanitizeImageModelConfig(item as ImageModelConfig)),
+    image: imageModels.map((item) => sanitizeImageModelConfig(item as LooseModelConfig)),
   };
 }
 
@@ -86,26 +84,11 @@ function buildPersistedChatModelConfig(model: LooseModelConfig | ChatModelConfig
 /** Builds the persisted image payload written to storage/export for one model. */
 function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConfig): ImageModelConfig {
   const modelConfig = normalizeImageModelConfig(model as LooseModelConfig);
-  const basePayload = {
+  return {
     name: modelConfig.name,
-    provider: modelConfig.provider,
+    provider: "OpenAI",
     apiKey: modelConfig.apiKey,
     model: modelConfig.model,
-  };
-
-  if (modelConfig.provider === "Azure OpenAI") {
-    return {
-      ...basePayload,
-      provider: "Azure OpenAI",
-      endpoint: modelConfig.endpoint,
-      deployment: modelConfig.deployment,
-      apiVersion: modelConfig.apiVersion,
-    };
-  }
-
-  return {
-    ...basePayload,
-    provider: "OpenAI",
     baseURL: modelConfig.baseURL,
   };
 }

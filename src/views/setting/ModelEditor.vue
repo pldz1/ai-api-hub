@@ -6,7 +6,7 @@
         <h3>{{ t(isImageModel ? "user.modelCard.imageTitle" : "user.modelCard.chatTitle") }}</h3>
         <p>{{ t(isImageModel ? "user.modelCard.imageSubtitle" : "user.modelCard.chatSubtitle") }}</p>
         <div v-if="isImageModel" class="model-capability-row">
-          <span>{{ isAzure ? "Azure OpenAI" : "OpenAI" }}</span>
+          <span>OpenAI</span>
           <span>{{ hasImageInputParam ? t("user.modelCard.imageInputEnabled") : t("user.modelCard.imageInputDisabled") }}</span>
         </div>
       </div>
@@ -45,7 +45,7 @@
         </label>
 
         <!-- Image model override for OpenAI-compatible endpoints -->
-        <div v-if="isImageModel && !isAzure" class="model-form-field model-form-field-span">
+        <div v-if="isImageModel" class="model-form-field model-form-field-span">
           <label>{{ t("user.modelCard.fields.modelOverride") }}</label>
           <input v-model.trim="localModel.model" type="text" class="input input-bordered w-full" :placeholder="t('user.modelCard.placeholders.imageModelId')" />
           <small>{{ t("user.modelCard.imageModelHelp") }}</small>
@@ -74,13 +74,11 @@
         <label v-if="isAzure" class="model-form-field model-form-field-span">
           <span>{{ t("user.modelCard.fields.endpoint") }}</span>
           <input v-model.trim="localModel.endpoint" type="text" class="input input-bordered w-full" />
-          <small v-if="isImageModel">{{ t("user.modelCard.azureEndpointHelp") }}</small>
         </label>
 
         <label v-if="isAzure" class="model-form-field">
           <span>{{ t("user.modelCard.fields.apiVersion") }}</span>
           <input v-model.trim="localModel.apiVersion" type="text" class="input input-bordered w-full" />
-          <small v-if="isImageModel">{{ t("user.modelCard.azureApiVersionHelp") }}</small>
         </label>
 
         <label v-if="isAzure" class="model-form-field">
@@ -205,7 +203,6 @@ const availableModelProviderList = computed(() => {
 const requestSummary = computed(() => {
   // Show the target route that will be used after provider-specific normalization.
   if (isImageModel.value) {
-    if (isAzure.value) return localModel.deployment ? t("user.modelCard.azureRequestTarget", { deployment: localModel.deployment }) : "";
     return localModel.baseURL ? t("user.modelCard.imageRequestTarget", { url: localModel.baseURL }) : "";
   }
   if (isAzure.value) return localModel.deployment ? t("user.modelCard.azureRequestTarget", { deployment: localModel.deployment }) : "";
@@ -266,12 +263,8 @@ function normalizeModelFields() {
   // Remove incompatible fields before emitting so persisted models have one routing shape.
   const modelId = localModel.model.trim();
   if (isImageModel.value) {
-    localModel.provider = localModel.provider === "Azure OpenAI" ? "Azure OpenAI" : "OpenAI";
+    localModel.provider = "OpenAI";
     localModel.model = modelId;
-    if (localModel.provider === "Azure OpenAI") {
-      localModel.baseURL = "";
-      return;
-    }
     localModel.endpoint = "";
     localModel.deployment = "";
     localModel.apiVersion = "";
@@ -315,24 +308,10 @@ function buildChatModelPayload(): ChatModelConfig {
 }
 
 function buildImageModelPayload(): ImageModelConfig {
-  const basePayload = {
+  return {
     name: localModel.name,
     apiKey: localModel.apiKey,
     model: localModel.model,
-  };
-
-  if (localModel.provider === "Azure OpenAI") {
-    return {
-      ...basePayload,
-      provider: "Azure OpenAI",
-      endpoint: localModel.endpoint,
-      deployment: localModel.deployment,
-      apiVersion: localModel.apiVersion,
-    };
-  }
-
-  return {
-    ...basePayload,
     provider: "OpenAI",
     baseURL: localModel.baseURL,
   };

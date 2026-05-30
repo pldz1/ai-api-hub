@@ -26,7 +26,7 @@ function getImageBaseURL(model: ImageProviderModel): string {
 
 export function buildOpenAIImageRequest(model: ImageProviderModel, params: ImageGenerationParams): ImageRequest {
   const { body, hasInputImage } = buildImageRequestBody(model, params);
-  const url = buildOpenAIImageEndpointUrl(model?.provider === "Azure OpenAI" ? "" : getImageBaseURL(model), hasInputImage);
+  const url = buildOpenAIImageEndpointUrl(getImageBaseURL(model), hasInputImage);
 
   if (!url || !model?.apiKey) {
     throw new Error("OpenAI image provider is not configured.");

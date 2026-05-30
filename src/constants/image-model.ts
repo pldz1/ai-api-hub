@@ -53,7 +53,7 @@ export const imageParamPresetList: Partial<ImageModelParamDef>[] = [
 
 export const imageModelTypeList = ["gpt-image-2"];
 
-export const imageModelProviderList: ImageModelProvider[] = ["OpenAI", "Azure OpenAI"];
+export const imageModelProviderList: ImageModelProvider[] = ["OpenAI"];
 
 export const imageModelSize = [
   "1024x1024",
@@ -70,9 +70,6 @@ export const defaultImageModelEditorState: ImageModelEditorState = {
   name: "",
   provider: "",
   baseURL: "",
-  endpoint: "",
   apiKey: "",
   model: "",
-  deployment: "",
-  apiVersion: "",
 };

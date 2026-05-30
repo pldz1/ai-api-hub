@@ -14,11 +14,8 @@ export interface ImageModelEditorState {
   name: string;
   provider: ImageModelProvider | "";
   baseURL: string;
-  endpoint: string;
   apiKey: string;
   model: string;
-  deployment: string;
-  apiVersion: string;
 }
 
 export interface ImageModelSettings {

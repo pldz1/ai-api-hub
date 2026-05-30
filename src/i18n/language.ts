@@ -299,7 +299,7 @@ export const languages = {
         add: "新增模型",
         defaultName: "图像模型",
         delete: "删除当前模型",
-        description: "维护 OpenAI / Azure OpenAI 图像模型、Provider 和连接信息 ",
+        description: "维护 OpenAI 图像模型、Provider 和连接信息 ",
         duplicate: "复制当前模型",
         emptyDetail: "选择一个图像模型开始编辑，或者先新增一个 ",
         emptyList: "还没有图像模型，先新增一个 ",
@@ -314,8 +314,6 @@ export const languages = {
       importReadError: "读取 JSON 文件失败 ",
       importSuccess: "已导入配置，系统会自动保存 ",
       modelCard: {
-        azureApiVersionHelp: "Azure OpenAI 必填，生成和编辑图片请求都会带上这个 api-version ",
-        azureEndpointHelp: "填写 Azure OpenAI 资源 Endpoint，不需要包含 deployment、images 或 api-version 路径 ",
         azureRequestTarget: "请求会发送到 Azure deployment={deployment} ",
         behavior: {
           chat: "普通对话",
@@ -342,7 +340,7 @@ export const languages = {
         imageBaseUrlHelp: "填写服务根地址即可；生成时会自动使用 /images/generations，带输入图时自动使用 /images/edits ",
         imageInputDisabled: "仅文本生图",
         imageInputEnabled: "支持输入图",
-        imageModelHelp: "OpenAI 图像请求体里发送的 model Azure OpenAI 使用 Deployment ",
+        imageModelHelp: "OpenAI 图像请求体里发送的 model；留空时不会发送 model ",
         imageRequestTarget: "请求会发送到 {url} Model Override 留空时不会发送 model ",
         imageSubtitle: "配置图像模型的 Provider、请求地址和鉴权 ",
         imageTitle: "图像模型",
@@ -351,7 +349,7 @@ export const languages = {
           imageModelId: "可选，例如: gpt-image-1.5 / gpt-image-1 / gpt-image-1-mini",
         },
         sections: {
-          connectionDescription: "先选择模型能力，再配置 Provider、接口地址、deployment 和鉴权信息 ",
+          connectionDescription: "先选择模型能力，再配置 Provider、接口地址和鉴权信息 ",
           connectionTitle: "请求配置",
         },
         suggestionGroups: {
@@ -706,7 +704,7 @@ export const languages = {
         add: "Add model",
         defaultName: "Image Model",
         delete: "Delete current model",
-        description: "Maintain OpenAI / Azure OpenAI image models, providers, and connection details.",
+        description: "Maintain OpenAI image models, providers, and connection details.",
         duplicate: "Duplicate current",
         emptyDetail: "Choose an image model to edit, or add a new one first.",
         emptyList: "No image models yet. Add one to get started.",
@@ -722,8 +720,6 @@ export const languages = {
       importReadError: "Failed to read the JSON file.",
       importSuccess: "Settings imported. Autosave will persist them shortly.",
       modelCard: {
-        azureApiVersionHelp: "Required for Azure OpenAI. Both image generation and image edits include this api-version.",
-        azureEndpointHelp: "Enter the Azure OpenAI resource endpoint without deployment, images, or api-version paths.",
         azureRequestTarget: "Requests target Azure deployment={deployment}.",
         behavior: {
           chat: "Chat",
@@ -760,7 +756,7 @@ export const languages = {
           imageModelId: "Optional, for example: gpt-image-1.5 / gpt-image-1 / gpt-image-1-mini",
         },
         sections: {
-          connectionDescription: "Choose the model capability first, then configure the provider, endpoint, deployment, and authentication details.",
+          connectionDescription: "Choose the model capability first, then configure the provider, endpoint, and authentication details.",
           connectionTitle: "Request",
         },
         suggestionGroups: {

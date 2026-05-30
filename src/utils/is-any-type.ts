@@ -100,7 +100,7 @@ export const getModelSettingValidationError = (data) => {
 
   const validateImageModel = (item, key, index) => {
     const provider = item.provider || item.apiType || "";
-    if (!["OpenAI", "Azure OpenAI", ""].includes(provider)) {
+    if (!["OpenAI", ""].includes(provider)) {
       console.error(`Model settings validation error: invalid provider "${provider}":`, item);
       return tr("validation.invalidField", { path: fieldPath(itemPath(key, index), "provider") });
     }
@@ -114,10 +114,6 @@ export const getModelSettingValidationError = (data) => {
 
     const modelError = requireAnyField(item, ["model", "modelType"], key, index);
     if (modelError) return modelError;
-
-    if (provider === "Azure OpenAI") {
-      return requireFields(item, ["endpoint", "deployment", "apiVersion"], key, index);
-    }
 
     return requireFields(item, ["baseURL"], key, index);
   };

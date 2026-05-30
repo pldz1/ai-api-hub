@@ -74,7 +74,6 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import ModelEditor from "./ModelEditor.vue";
 import { chatModelTypeList, imageModelTypeList } from "@/constants";
-import { isAzureImageModel } from "@/models";
 import { append4Random } from "@/utils";
 import type { ChatModelConfig, ImageModelConfig, ModelConfig, ModelKind } from "@/types";
 
@@ -111,7 +110,7 @@ const detailSummary = computed(() => {
   if (!isImageKind.value) return currentModel.value.provider || t("user.chatModels.providerHint");
   const model = currentModel.value as ImageModelConfig;
   const modelId = model.model || t("common.unsetModelId");
-  const endpointLabel = isAzureImageModel(model) ? model.endpoint : "baseURL" in model ? model.baseURL : "";
+  const endpointLabel = model.baseURL || "";
   return `${model.provider || "OpenAI"} · ${endpointLabel || modelId}`;
 });
 
@@ -169,7 +168,7 @@ function modelListMeta(model: ChatModelConfig | ImageModelConfig) {
   // Image models are identified by endpoint/base URL, while chat models use model IDs.
   if (!isImageKind.value) return model.model || t("common.unsetModelId");
   const imageModel = model as ImageModelConfig;
-  return (isAzureImageModel(imageModel) ? imageModel.endpoint : "baseURL" in imageModel ? imageModel.baseURL : "") || t("user.modelCard.fields.imageUrl");
+  return imageModel.baseURL || t("user.modelCard.fields.imageUrl");
 }
 
 watch(

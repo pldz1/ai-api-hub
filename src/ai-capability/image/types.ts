@@ -4,7 +4,7 @@ import type { TokenUsage } from "../common";
 // Provider identity
 // ============================================================================
 
-export type ImageModelProvider = "OpenAI" | "Azure OpenAI";
+export type ImageModelProvider = "OpenAI";
 
 // ============================================================================
 // User-owned model config consumed by image services
@@ -21,14 +21,7 @@ export interface OpenAIImageModelConfig extends ImageModelConfigBase {
   baseURL: string;
 }
 
-export interface AzureOpenAIImageModelConfig extends ImageModelConfigBase {
-  provider: "Azure OpenAI";
-  endpoint: string;
-  deployment: string;
-  apiVersion: string;
-}
-
-export type ImageModelConfig = OpenAIImageModelConfig | AzureOpenAIImageModelConfig;
+export type ImageModelConfig = OpenAIImageModelConfig;
 
 // ============================================================================
 // Image file input
@@ -88,9 +81,6 @@ export interface ImageProviderModel {
   apiKey?: string;
   model?: string;
   baseURL?: string;
-  endpoint?: string;
-  deployment?: string;
-  apiVersion?: string;
 }
 
 export type ImageModelParamType = "number" | "string" | "array" | "boolean" | "object" | "image";

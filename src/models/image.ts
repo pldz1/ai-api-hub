@@ -17,11 +17,6 @@ function getImageParamPreset(key = ""): Partial<ImageModelParamDef> | null {
   return imageParamPresetList.find((item) => item.key === key) || null;
 }
 
-/** Returns whether a user image model config should use Azure OpenAI routing. */
-export function isAzureImageModel(model: LooseModelConfig | null | undefined): model is LooseModelConfig & { provider: "Azure OpenAI" } {
-  return model?.provider === "Azure OpenAI";
-}
-
 /**
  * Normalizes loose/legacy image model data into the canonical user config shape.
  *
@@ -30,24 +25,11 @@ export function isAzureImageModel(model: LooseModelConfig | null | undefined): m
  */
 export function normalizeImageModelConfig(model: LooseModelConfig | null | undefined = {}): ImageModelConfig {
   const data = model || {};
-  const provider = model?.provider === "Azure OpenAI" ? "Azure OpenAI" : "OpenAI";
   const modelId = data.model;
-
-  if (provider === "Azure OpenAI") {
-    return {
-      name: String(data.name || "").trim(),
-      provider,
-      endpoint: String(data.endpoint || "").trim(),
-      deployment: String(data.deployment || "").trim(),
-      apiVersion: String(data.apiVersion || "").trim(),
-      apiKey: String(data.apiKey || "").trim(),
-      model: modelId,
-    };
-  }
 
   return {
     name: String(data.name || "").trim(),
-    provider,
+    provider: "OpenAI",
     baseURL: String(data.baseURL || "").trim(),
     apiKey: String(data.apiKey || "").trim(),
     model: modelId,
