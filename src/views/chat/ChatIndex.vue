@@ -1,6 +1,12 @@
 <template>
   <!-- This view renders the chat message area and input composer. -->
-  <section class="chat-card-container">
+  <section ref="containerRef" class="chat-card-container">
+    <!-- Header bar with session status, question-list toggle and panel. -->
+    <ChatHeaderBar
+      :scroll-container="innerRef"
+      :container-el="containerRef"
+    />
+
     <!-- Show starter templates before a conversation has been created. -->
     <ChatInsTemplate v-show="isShowTemplate" @on-update="onDrawTemplateIns" />
 
@@ -40,6 +46,7 @@ import { useStore } from "vuex";
 import type { ChatModelConfig, ChatPromptMessage } from "@/types";
 import { dsLoading } from "@/utils";
 import { ChatDrawer, addChat, getAllMessage, getChatSettings, getChatSessionRunner, resetCurrentChatDraft, stopChatSession } from "@/services";
+import ChatHeaderBar from "@/views/chat/ChatHeaderBar.vue";
 import ChatInputArea from "@/views/chat/ChatInputArea.vue";
 import ChatInsTemplate from "@/views/chat/ChatInsTemplate.vue";
 import ChatScrollActions from "@/views/chat/ChatScrollActions.vue";
@@ -54,6 +61,7 @@ const store = useStore();
 const route = useRoute();
 const router = useRouter();
 const innerRef = ref<HTMLElement | null>(null);
+const containerRef = ref<HTMLElement | null>(null);
 const canScrollTop = ref(false);
 const canScrollBottom = ref(false);
 
@@ -184,13 +192,14 @@ onMounted(() => {
   renderCurrentConversation({ reset: true });
   updateScrollActions();
 });
+
 </script>
 
 <style lang="scss" scoped>
 .chat-card-container {
   --chat-page-max-width: 1080px;
   --chat-side-gap: max(180px, calc((100% - var(--chat-page-max-width)) / 2));
-  --chat-top-gap: 28px;
+  --chat-top-gap: 16px;
   --chat-bottom-gap: 230px;
   --chat-input-bottom: 18px;
   --chat-input-shell-gap: 18px;
@@ -300,7 +309,7 @@ onMounted(() => {
 @media (max-width: 900px) {
   .chat-card-container {
     --chat-side-gap: 16px;
-    --chat-top-gap: 22px;
+    --chat-top-gap: 14px;
     --chat-bottom-gap: 236px;
     --chat-input-bottom: 14px;
     --chat-input-shell-gap: 14px;
@@ -323,7 +332,7 @@ onMounted(() => {
 @media (max-width: 768px) {
   .chat-card-container {
     --chat-side-gap: 28px;
-    --chat-top-gap: 56px;
+    --chat-top-gap: 12px;
     --chat-bottom-gap: 224px;
     --chat-input-bottom: max(12px, env(safe-area-inset-bottom));
     --chat-input-shell-gap: 18px;
@@ -346,7 +355,7 @@ onMounted(() => {
 @media (max-width: 640px) {
   .chat-card-container {
     --chat-side-gap: 26px;
-    --chat-top-gap: 48px;
+    --chat-top-gap: 10px;
     --chat-bottom-gap: 232px;
     --chat-input-shell-gap: 18px;
   }

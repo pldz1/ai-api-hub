@@ -1,16 +1,6 @@
 <template>
   <!-- This view renders the chat input box, capabilities, and send controls. -->
   <div id="component-chat-input-area" class="component-chat-input-area" @paste="onPaste">
-    <!-- Show live request timing and token usage when a session is active. -->
-    <div v-show="isShowStatusSticky" class="ccia-status-sticky">
-      <div class="ccia-status-pill">
-        <span class="ccia-status-time">({{ t("chat.timeCost") + " : " + elapsedSeconds }}s)</span>
-        <span class="ccia-status-token">
-          {{ t("input.tokenUsage", { total: formattedTokens.total, input: formattedTokens.input, output: formattedTokens.output }) }}
-        </span>
-      </div>
-    </div>
-
     <!-- Wrap the editable prompt area and action controls in a single composer card. -->
     <div class="ccia-input-card" :class="{ 'is-home': props.isHome }">
       <div class="ccia-input-area">
@@ -192,11 +182,7 @@ const chatModels = computed<ChatModelConfig[]>(() => store.state.models.chat || 
 const curChatId = computed<string>(() => store.state.curChatId || "");
 const curConversation = computed(() => store.state.curConversation);
 const inputCapabilities = computed<Record<string, boolean>>(() => store.state.inputCapabilities || {});
-const activeRuntime = computed(() => (curChatId.value ? store.state.chatRuntimeById?.[curChatId.value] || null : null));
-const sessionTokenUsage = computed(() => store.state.sessionTokenUsage || { input_tokens: 0, output_tokens: 0, total_tokens: 0 });
 const selectedModel = ref<ChatModelConfig | null>(null);
-const elapsedMs = ref(0);
-let timerIntervalId: number | null = null;
 
 const isModelSelectionReadonly = computed(() => Boolean(props.modelSelectionReadonly || curChatId.value));
 const draftSnapshot = computed(() => createConversationModelSnapshot(selectedModel.value));
@@ -209,14 +195,6 @@ const activeCapabilities = computed(() =>
   getEffectiveCapabilities(activeSupportedCapabilities.value, activeSupportedCapabilities.value, inputCapabilities.value),
 );
 const lockedModelName = computed(() => curConversation.value?.modelSnapshot?.displayName || t("input.lockedModel"));
-const elapsedSeconds = computed(() => (elapsedMs.value / 1000).toFixed(1));
-const formattedTokens = computed(() => ({
-  input: Number(sessionTokenUsage.value.input_tokens || 0).toLocaleString(),
-  output: Number(sessionTokenUsage.value.output_tokens || 0).toLocaleString(),
-  total: Number(sessionTokenUsage.value.total_tokens || 0).toLocaleString(),
-}));
-const isChatRunning = computed(() => Boolean(activeRuntime.value?.pending || ["loading", "streaming"].includes(activeRuntime.value?.status || "")));
-const isShowStatusSticky = computed(() => isChatRunning.value || Number(sessionTokenUsage.value.total_tokens || 0) > 0);
 const capabilityLabelKeys: Record<string, string> = {
   webSearch: "input.capabilities.webSearch",
 };
@@ -346,22 +324,6 @@ const resolveStartChatConfirmation = (confirmed: boolean) => {
   if (dialog?.open) dialog.close();
 };
 
-const clearRequestIntervals = () => {
-  if (timerIntervalId !== null) {
-    clearInterval(timerIntervalId);
-    timerIntervalId = null;
-  }
-};
-
-const startRequestTimer = () => {
-  clearRequestIntervals();
-  elapsedMs.value = 0;
-  const startTime = performance.now();
-  timerIntervalId = window.setInterval(() => {
-    elapsedMs.value = performance.now() - startTime;
-  }, 100);
-};
-
 const onInputText = async () => {
   const textarea = cciaTextareaRef.value;
   if (!textarea) return;
@@ -469,7 +431,6 @@ function removeInputImage(id: string) {
 }
 
 onBeforeUnmount(() => {
-  clearRequestIntervals();
   resolveStartChatConfirmation(false);
 });
 
@@ -480,17 +441,6 @@ watch(
   },
 );
 
-watch(
-  () => isChatRunning.value,
-  (pending) => {
-    if (pending) {
-      startRequestTimer();
-      return;
-    }
-    clearRequestIntervals();
-  },
-  { immediate: true },
-);
 </script>
 
 <style lang="scss" scoped>
@@ -501,39 +451,6 @@ watch(
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
-  .ccia-status-sticky {
-    position: absolute;
-    right: 5%;
-    bottom: calc(100% + 10px);
-    z-index: 2;
-    display: flex;
-    justify-content: center;
-    padding: 0 12px;
-    box-sizing: border-box;
-  }
-
-  .ccia-status-pill {
-    max-width: 100%;
-    min-height: 28px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 5px 12px;
-    border-radius: 16px;
-    border: 1px solid oklch(var(--p) / 0.2);
-    color: oklch(var(--p));
-    background: oklch(var(--b1) / 0.86);
-    box-shadow: 0 10px 28px oklch(var(--bc) / 0.08);
-    backdrop-filter: blur(10px);
-    font-size: 12px;
-    line-height: 1.25;
-    white-space: nowrap;
-  }
-
-  .ccia-status-token {
-    color: oklch(var(--bc) / 0.64);
-  }
 
   .ccia-input-card {
     position: relative;
@@ -741,36 +658,6 @@ watch(
       height: 92px;
       background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.58) 54%, oklch(var(--b1)) 100%);
       box-shadow: none;
-    }
-
-    .ccia-status-sticky {
-      bottom: calc(100% + 6px);
-      justify-content: center;
-      padding: 0 8px;
-      pointer-events: none;
-    }
-
-    .ccia-status-pill {
-      width: min(100%, 320px);
-      min-height: 22px;
-      gap: 5px;
-      padding: 3px 8px;
-      border-radius: 8px;
-      border-color: oklch(var(--bc) / 0.08);
-      color: oklch(var(--bc) / 0.58);
-      background: oklch(var(--b1) / 0.84);
-      box-shadow: 0 6px 18px oklch(var(--bc) / 0.06);
-      font-size: 10px;
-      line-height: 1.2;
-      overflow: hidden;
-    }
-
-    .ccia-status-time,
-    .ccia-status-token {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
     }
 
     .ccia-input-card {
