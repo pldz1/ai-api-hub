@@ -200,20 +200,12 @@ const availableModelProviderList = computed(() => {
   return chatProviderKeys.filter((item) => allowedProviders.has(item));
 });
 
-const requestSummary = computed(() => {
-  // Show the target route that will be used after provider-specific normalization.
-  if (isImageModel.value) {
-    return localModel.baseURL ? t("user.modelCard.imageRequestTarget", { url: localModel.baseURL }) : "";
-  }
-  if (isAzure.value) return localModel.deployment ? t("user.modelCard.azureRequestTarget", { deployment: localModel.deployment }) : "";
-  return resolvedModelId.value ? t("user.modelCard.openAIRequestTarget", { model: resolvedModelId.value }) : "";
-});
 const capabilityLabelKeys: Record<string, string> = {
   webSearch: "input.capabilities.webSearch",
   imageRead: "input.capabilities.imageRead",
 };
 const chatCapabilityRows = computed(() => {
-  const supported = getChatModelCapabilities(localModel.model);
+  const supported = getChatModelCapabilities(localModel);
   return chatDisplayedCapabilityKeys.map((key) => ({
     key,
     label: t(capabilityLabelKeys[key] || key),
@@ -259,67 +251,77 @@ function syncProviderForModel(force = false) {
   }
 }
 
-function normalizeModelFields() {
-  // Remove incompatible fields before emitting so persisted models have one routing shape.
-  const modelId = localModel.model.trim();
+function normalizeModelDraft(source: ModelEditorState = localModel): ModelEditorState {
+  // Remove incompatible fields so persisted models have one routing shape.
+  const next = {
+    ...createEmptyModelEditorState(),
+    ...source,
+    model: source.model.trim(),
+  };
   if (isImageModel.value) {
-    localModel.provider = "OpenAI";
-    localModel.model = modelId;
-    localModel.endpoint = "";
-    localModel.deployment = "";
-    localModel.apiVersion = "";
-    return;
+    return {
+      ...next,
+      provider: "OpenAI",
+      endpoint: "",
+      deployment: "",
+      apiVersion: "",
+    };
   }
 
-  localModel.model = modelId;
-  if (isAzure.value) {
-    localModel.baseURL = "";
-    return;
+  if (next.provider === "Azure OpenAI") {
+    return {
+      ...next,
+      baseURL: "",
+    };
   }
-  if (usesBaseURL.value) {
-    localModel.endpoint = "";
-    localModel.deployment = "";
-    localModel.apiVersion = "";
+  if (chatProviderUsesField(next.provider, "baseURL")) {
+    return {
+      ...next,
+      endpoint: "",
+      deployment: "",
+      apiVersion: "",
+    };
   }
+  return next;
 }
 
-function buildChatModelPayload(): ChatModelConfig {
+function buildChatModelPayload(draft: ModelEditorState): ChatModelConfig {
   const basePayload = {
-    name: localModel.name,
-    apiKey: localModel.apiKey,
-    model: localModel.model,
+    name: draft.name,
+    apiKey: draft.apiKey,
+    model: draft.model,
   };
 
-  if (localModel.provider === "Azure OpenAI") {
+  if (draft.provider === "Azure OpenAI") {
     return {
       ...basePayload,
       provider: "Azure OpenAI",
-      endpoint: localModel.endpoint,
-      deployment: localModel.deployment,
-      apiVersion: localModel.apiVersion,
+      endpoint: draft.endpoint,
+      deployment: draft.deployment,
+      apiVersion: draft.apiVersion,
     };
   }
 
   return {
     ...basePayload,
-    provider: (localModel.provider || "OpenAI") as Exclude<ChatModelConfig["provider"], "Azure OpenAI">,
-    baseURL: localModel.baseURL,
+    provider: (draft.provider || "OpenAI") as Exclude<ChatModelConfig["provider"], "Azure OpenAI">,
+    baseURL: draft.baseURL,
   };
 }
 
-function buildImageModelPayload(): ImageModelConfig {
+function buildImageModelPayload(draft: ModelEditorState): ImageModelConfig {
   return {
-    name: localModel.name,
-    apiKey: localModel.apiKey,
-    model: localModel.model,
+    name: draft.name,
+    apiKey: draft.apiKey,
+    model: draft.model,
     provider: "OpenAI",
-    baseURL: localModel.baseURL,
+    baseURL: draft.baseURL,
   };
 }
 
 function createModelPayload(): ModelConfig {
-  normalizeModelFields();
-  return isImageModel.value ? buildImageModelPayload() : buildChatModelPayload();
+  const draft = normalizeModelDraft();
+  return isImageModel.value ? buildImageModelPayload(draft) : buildChatModelPayload(draft);
 }
 
 function syncFromProps(model?: ModelEditorInput) {
@@ -329,7 +331,7 @@ function syncFromProps(model?: ModelEditorInput) {
   Object.assign(localModel, createEmptyModelEditorState(), model || {}, {
     provider: legacyModel.provider || legacyModel.apiType || "",
   });
-  normalizeModelFields();
+  Object.assign(localModel, normalizeModelDraft(localModel));
   syncProviderForModel(true);
   syncProviderBaseURL(localModel.provider, true);
   lastModelSnapshot = JSON.stringify(createModelPayload());

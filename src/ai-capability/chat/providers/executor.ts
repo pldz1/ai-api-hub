@@ -1,7 +1,8 @@
 import { ChatProviderConnectionField, ChatProviderDefinition, ChatProviderKey, chatProviderKeys, chatProviderRegistry } from "../types";
-import type { ChatExecutor, ChatModelConfig, ChatProviderRoute } from "../types";
+import type { ChatExecutor, ChatMessageFormat, ChatModelCapabilities, ChatModelConfig, ChatProviderModelContext, ChatProviderResolver, ChatProviderRoute } from "../types";
 
 import { AzureOpenAIClient } from "./azure-openai";
+import { DashScopeClient } from "./dashscope";
 import { DeepSeekClient } from "./deepseek";
 import { OpenAIClient } from "./openai";
 
@@ -20,6 +21,10 @@ type ChatProviderRuntimeConfig = BaseURLChatProviderRuntimeConfig | AzureOpenAIC
 
 function getModelDeployment(model: ChatModelConfig): string {
   return "deployment" in model && model.deployment ? model.deployment : model.model;
+}
+
+function resolveProviderValue<T>(value: ChatProviderResolver<T>, model: ChatProviderModelContext = {}): T {
+  return typeof value === "function" ? (value as (model: ChatProviderModelContext) => T)(model) : value;
 }
 
 export function isChatModelProvider(value: unknown): value is ChatProviderKey {
@@ -46,36 +51,49 @@ export function getKnownChatProviderDefaultBaseURLs(): string[] {
   return chatProviderKeys.map((provider) => chatProviderRegistry[provider].defaultBaseURL || "").filter(Boolean);
 }
 
-export function getChatProviderModelFamily(model = ""): string {
-  const normalizedModel = model.trim().toLowerCase();
-  const matchedProvider = chatProviderKeys.find((provider) =>
-    (chatProviderRegistry[provider].modelPatterns || []).some((pattern) => pattern.test(normalizedModel)),
-  );
-  return matchedProvider ? chatProviderRegistry[matchedProvider].modelFamily : "custom";
-}
-
-export function getChatProvidersForModel(model = ""): ChatProviderKey[] {
-  const family = getChatProviderModelFamily(model);
-  if (family === "custom") return chatProviderKeys;
-  return chatProviderKeys.filter((provider) => chatProviderRegistry[provider].modelFamily === family);
-}
-
 export function getChatProviderModelFamilies(): { key: string; label?: string; labelKey?: string }[] {
   const seen = new Set<string>();
   const families: { key: string; label?: string; labelKey?: string }[] = [];
 
   chatProviderKeys.forEach((provider) => {
     const definition = chatProviderRegistry[provider];
-    if (seen.has(definition.modelFamily)) return;
-    seen.add(definition.modelFamily);
-    families.push({
-      key: definition.modelFamily,
-      label: definition.modelFamilyLabel,
-      labelKey: definition.modelFamilyLabelKey,
+    definition.modelFamilies.forEach((family) => {
+      if (seen.has(family.key)) return;
+      seen.add(family.key);
+      families.push({
+        key: family.key,
+        label: family.label,
+        labelKey: family.labelKey,
+      });
     });
   });
 
   return families;
+}
+
+export function chatProviderSupportsFamily(provider: unknown, family = "custom"): provider is ChatProviderKey {
+  const definition = getChatProviderDefinition(provider);
+  if (!definition) return false;
+  if (family === "custom") return definition.supportsCustomModels;
+  return definition.modelFamilies.some((item) => item.key === family);
+}
+
+export function getChatProviderCapabilities(provider: unknown, model: ChatProviderModelContext = {}): ChatModelCapabilities | null {
+  const definition = getChatProviderDefinition(provider);
+  if (!definition) return null;
+  return resolveProviderValue(definition.capabilities, { ...model, provider });
+}
+
+export function getChatProviderChatParamKeys(provider: unknown, model: ChatProviderModelContext = {}): readonly string[] {
+  const definition = getChatProviderDefinition(provider);
+  if (!definition) return [];
+  return resolveProviderValue(definition.chatParamKeys, { ...model, provider });
+}
+
+export function getChatProviderMessageFormat(provider: unknown, model: ChatProviderModelContext = {}): ChatMessageFormat | null {
+  const definition = getChatProviderDefinition(provider);
+  if (!definition) return null;
+  return resolveProviderValue(definition.messageFormat, { ...model, provider });
 }
 
 /**
@@ -125,6 +143,10 @@ export function createChatExecutor(config: ChatProviderRuntimeConfig): ChatExecu
 
   if (config.route === "deepseek") {
     return new DeepSeekClient(config.baseURL, config.apiKey, config.model);
+  }
+
+  if (config.route === "dashscope") {
+    return new DashScopeClient(config.baseURL, config.apiKey, config.model);
   }
 
   return new OpenAIClient(config.baseURL, config.apiKey, config.model);

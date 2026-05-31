@@ -1,4 +1,4 @@
-import type { ModelParamDef, ChatModelEditorState, ChatModelCapabilities, ChatModelCapabilityProfile } from "@/types";
+import type { ModelParamDef, ChatModelEditorState, ChatModelCapabilities } from "@/types";
 
 export { chatProviderKeys } from "@/ai-capability/chat";
 
@@ -91,117 +91,53 @@ export const chatParamPresetList: Partial<ModelParamDef>[] = [
 
 export type ChatModelCatalogItem = {
   name: string;
+  family: string;
   messageFormat: "text" | "parts";
   chatParamKeys: string[];
-  capabilities: ChatModelCapabilities;
-  capabilityProfile: ChatModelCapabilityProfile;
-};
-
-export const baseCapabilityProfile: ChatModelCapabilityProfile = {
-  modalities: {
-    textInput: true,
-    textOutput: true,
-    imageInput: false,
-    imageOutput: false,
-    audioInput: false,
-    audioOutput: false,
-    videoInput: false,
-    videoOutput: false,
-  },
-  features: {
-    streaming: true,
-    structuredOutputs: false,
-    fineTuning: false,
-    reasoning: false,
-  },
-  tools: {
-    webSearch: false,
-    imageGeneration: false,
-    fileSearch: false,
-    codeInterpreter: false,
-    hostedShell: false,
-    skills: false,
-    mcp: false,
-    applyPatch: false,
-    computerUse: false,
-    toolSearch: false,
-    functionCalling: false,
-  },
 };
 
 export const chatModelCatalog: ChatModelCatalogItem[] = [
   {
     name: "gpt-5.5",
-
+    family: "openai",
     messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
-    capabilities: { webSearch: true, imageRead: true },
-    capabilityProfile: {
-      ...baseCapabilityProfile,
-      modalities: { ...baseCapabilityProfile.modalities, imageInput: true },
-      features: { ...baseCapabilityProfile.features, reasoning: true, structuredOutputs: true },
-      tools: { ...baseCapabilityProfile.tools, webSearch: true, functionCalling: true },
-    },
   },
   {
     name: "gpt-5.4",
-
+    family: "openai",
     messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
-    capabilities: { webSearch: true, imageRead: true },
-    capabilityProfile: {
-      ...baseCapabilityProfile,
-      modalities: { ...baseCapabilityProfile.modalities, imageInput: true },
-      features: { ...baseCapabilityProfile.features, reasoning: true, structuredOutputs: true },
-      tools: { ...baseCapabilityProfile.tools, webSearch: true, functionCalling: true },
-    },
   },
   {
     name: "gpt-4.1",
+    family: "openai",
     messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
-    capabilities: { webSearch: true, imageRead: true },
-    capabilityProfile: {
-      ...baseCapabilityProfile,
-      modalities: { ...baseCapabilityProfile.modalities, imageInput: true },
-      features: { ...baseCapabilityProfile.features, structuredOutputs: true },
-      tools: { ...baseCapabilityProfile.tools, webSearch: true, functionCalling: true },
-    },
   },
   {
     name: "gpt-4o",
-
+    family: "openai",
     messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
-    capabilities: { webSearch: true, imageRead: true },
-    capabilityProfile: {
-      ...baseCapabilityProfile,
-      modalities: { ...baseCapabilityProfile.modalities, imageInput: true },
-      features: { ...baseCapabilityProfile.features, structuredOutputs: true },
-      tools: { ...baseCapabilityProfile.tools, webSearch: true, functionCalling: true },
-    },
   },
   {
     name: "deepseek-v4-flash",
-
+    family: "deepseek",
     messageFormat: "text",
     chatParamKeys: ["thinking", "reasoning_effort", "temperature", "top_p"],
-    capabilities: { webSearch: false, imageRead: false },
-    capabilityProfile: {
-      ...baseCapabilityProfile,
-      features: { ...baseCapabilityProfile.features, reasoning: true },
-    },
   },
   {
     name: "deepseek-v4-pro",
-
+    family: "deepseek",
     messageFormat: "text",
     chatParamKeys: ["thinking", "reasoning_effort", "temperature", "top_p"],
-    capabilities: { webSearch: false, imageRead: false },
-    capabilityProfile: {
-      ...baseCapabilityProfile,
-      features: { ...baseCapabilityProfile.features, reasoning: true },
-    },
+  },
+  {
+    name: "qwen3.7-max-2026-05-17",
+    family: "qwen",
+    messageFormat: "text",
+    chatParamKeys: ["max_tokens", "temperature", "top_p"],
   },
 ];
 

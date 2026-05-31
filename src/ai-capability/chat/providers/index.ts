@@ -3,9 +3,11 @@ export {
   getChatProviderDefinition,
   getChatProviderDefaultBaseURL,
   getChatProviderModelFamilies,
-  getChatProviderModelFamily,
-  getChatProvidersForModel,
   getKnownChatProviderDefaultBaseURLs,
+  chatProviderSupportsFamily,
+  getChatProviderCapabilities,
+  getChatProviderChatParamKeys,
+  getChatProviderMessageFormat,
   isChatModelProvider,
   getChatProviderConnectionFields,
 } from "./executor";

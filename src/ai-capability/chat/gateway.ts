@@ -8,7 +8,7 @@ import type {
   ChatRequest,
   ChatExecutor,
 } from "./types";
-import { createChatExecutor, createChatProviderConfig } from "./providers/executor";
+import { createChatExecutor, createChatProviderConfig, getChatProviderCapabilities } from "./providers/executor";
 
 type ChatDeltaQueueItem = { delta?: ChatResponseDelta; done?: true };
 
@@ -91,7 +91,7 @@ export class ChatGateway {
 
   async *chat(messages: PackedChatMessage[], request: ChatRequest = {}): AsyncGenerator<ChatResponseDelta, boolean, void> {
     const model = request.model;
-    if (!this.executor || !model?.name || !model?.apiKey) {
+    if (!model?.name || !model?.apiKey) {
       yield { kind: "error", message: "Chat model is not configured." };
       return false;
     }
@@ -101,13 +101,17 @@ export class ChatGateway {
     try {
       this.abort();
       this.init(model);
+      if (!this.executor) {
+        yield { kind: "error", message: "Chat provider is not configured." };
+        return false;
+      }
       abortController = new AbortController();
       this.abortController = abortController;
       const queue = createChatDeltaQueue();
       let completed = false;
 
       void this.executor
-        .chat(messages, this.resolveChatParams(request.params, request.capabilities), (response) => queue.pushMany(providerResponseToDeltas(response)), {
+        .chat(messages, this.resolveChatParams(request.params, request.capabilities, model), (response) => queue.pushMany(providerResponseToDeltas(response)), {
           signal: abortController.signal,
         })
         .then(() => {
@@ -139,10 +143,11 @@ export class ChatGateway {
    * Resolve effective chat completion parameters for the current turn,
    * applying any turn-level overrides.
    */
-  resolveChatParams(params: ChatCompletionParams = {}, turnCapabilities: Partial<ChatModelCapabilities> = {}): ChatCompletionParams {
+  resolveChatParams(params: ChatCompletionParams = {}, turnCapabilities: Partial<ChatModelCapabilities> = {}, model: ChatModelConfig | null = null): ChatCompletionParams {
+    const supportedCapabilities = getChatProviderCapabilities(model?.provider, model || {}) || { imageRead: false, webSearch: false };
     return {
       ...params,
-      webSearch: Boolean(turnCapabilities.webSearch),
+      webSearch: Boolean(supportedCapabilities.webSearch && turnCapabilities.webSearch),
     };
   }
 }

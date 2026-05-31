@@ -2,6 +2,7 @@ import type {
   ChatCompletionParams,
   ChatModelCapabilities,
   ChatModelConfig,
+  ChatModelProvider,
   ModelParamDef,
   ParamDefaultValue,
   ChatModelSettings,
@@ -9,7 +10,7 @@ import type {
   LooseModelConfig,
 } from "@/types";
 import { tr } from "@/i18n";
-import { chatParamPresetList, defaultModelCapabilities, chatModelCatalog, type ChatModelCatalogItem, baseCapabilityProfile } from "@/constants";
+import { chatParamPresetList, defaultModelCapabilities, chatModelCatalog, type ChatModelCatalogItem } from "@/constants";
 import { parseParamValue } from "./settings";
 
 type LooseChatParamDef = Partial<ModelParamDef> & { key?: string };
@@ -17,14 +18,17 @@ const chatParamDefMap = new Map(chatParamPresetList.map((item) => [item.key, ite
 
 import {
   chatProviderUsesField,
+  chatProviderSupportsFamily,
+  getChatProviderCapabilities,
+  getChatProviderChatParamKeys,
   getChatProviderDefinition,
   getChatProviderDefaultBaseURL,
+  getChatProviderMessageFormat,
   getChatProviderModelFamilies,
-  getChatProviderModelFamily,
-  getChatProvidersForModel,
   getKnownChatProviderDefaultBaseURLs,
   isChatModelProvider,
   getChatProviderConnectionFields,
+  chatProviderKeys,
 } from "@/ai-capability/chat";
 
 /** Returns whether a user model config should use Azure OpenAI routing. */
@@ -51,7 +55,8 @@ export function getModelDeployment(model: { deployment?: string; model?: string;
  */
 export function normalizeChatModelConfig(model: LooseModelConfig | null | undefined = {}): ChatModelConfig {
   const provider = model?.provider;
-  const nextProvider = isChatModelProvider(provider) ? provider : "OpenAI";
+  const normalizedProvider = String(provider || "") === "Qwen" ? "DashScope" : provider;
+  const nextProvider = isChatModelProvider(normalizedProvider) ? normalizedProvider : "OpenAI";
   const modelId = model?.model;
   const basePayload = {
     name: String(model?.name || "").trim(),
@@ -92,18 +97,56 @@ export function findChatModelCatalogItem(model = ""): ChatModelCatalogItem | nul
   );
 }
 
+export function getChatProvidersForModel(model = ""): ChatModelProvider[] {
+  const catalogItem = findChatModelCatalogItem(model);
+  const family = catalogItem?.family || "custom";
+  return chatProviderKeys.filter((provider) => chatProviderSupportsFamily(provider, family));
+}
+
+export function getChatProviderModelFamily(model = ""): string {
+  const catalogItem = findChatModelCatalogItem(model);
+  return catalogItem?.family || "custom";
+}
+
+function mergeChatCapabilities(capabilitiesList: Partial<ChatModelCapabilities>[]): ChatModelCapabilities {
+  return capabilitiesList.reduce<ChatModelCapabilities>(
+    (merged, capabilities) => ({
+      imageRead: Boolean(merged.imageRead || capabilities.imageRead),
+      webSearch: Boolean(merged.webSearch || capabilities.webSearch),
+    }),
+    { ...defaultModelCapabilities },
+  );
+}
+
 /**
- * Returns the capabilities declared by the built-in model catalog for a model id.
+ * Returns chat capabilities supplied by the selected provider/runtime bridge.
  *
- * These are support flags, not user toggles.
+ * These are support flags, not user toggles. Unknown custom model ids need a
+ * provider-bearing config to resolve capabilities; catalog-only lookups merge
+ * the providers explicitly declared for that catalog item.
  */
-export function getChatModelCapabilities(model = ""): ChatModelCapabilities {
-  const profile = findChatModelCatalogItem(model)?.capabilityProfile || baseCapabilityProfile;
-  const uiCapabilities: ChatModelCapabilities = {
-    imageRead: profile.modalities.imageInput,
-    webSearch: profile.tools.webSearch,
-  };
-  return normalizeModelCapabilities(uiCapabilities, { ...defaultModelCapabilities, ...uiCapabilities });
+export function getChatModelCapabilities(model: LooseModelConfig | string | null | undefined = null): ChatModelCapabilities {
+  if (typeof model !== "string") {
+    const providerCapabilities = getChatProviderCapabilities(model?.provider, model || {});
+    if (providerCapabilities) return normalizeModelCapabilities(providerCapabilities, { ...defaultModelCapabilities, ...providerCapabilities });
+  }
+
+  const modelId = typeof model === "string" ? model : model?.model || "";
+  const catalogProviderCapabilities = getChatProvidersForModel(modelId)
+    .map((provider) => getChatProviderCapabilities(provider, { model: modelId }))
+    .filter(Boolean) as ChatModelCapabilities[];
+  const mergedCapabilities = mergeChatCapabilities(catalogProviderCapabilities);
+  return normalizeModelCapabilities(mergedCapabilities, { ...defaultModelCapabilities, ...mergedCapabilities });
+}
+
+export function getChatMessageFormat(model: LooseModelConfig | string | null | undefined = null): "text" | "parts" {
+  if (typeof model !== "string") {
+    const providerFormat = getChatProviderMessageFormat(model?.provider, model || {});
+    if (providerFormat) return providerFormat;
+  }
+
+  const modelId = typeof model === "string" ? model : model?.model || "";
+  return findChatModelCatalogItem(modelId)?.messageFormat || "parts";
 }
 
 /**
@@ -191,7 +234,9 @@ export function normalizeChatParamDef(def: LooseChatParamDef = {}): ModelParamDe
 const normalizedChatParamDefs = new Map(chatParamPresetList.map((item) => [item.key, normalizeChatParamDef(item)] as const));
 
 export function resolveChatParamDefs(model: LooseModelConfig | null = null): ModelParamDef[] {
-  return (findChatModelCatalogItem(model?.model || "")?.chatParamKeys || []).map((key) => normalizedChatParamDefs.get(key)).filter(Boolean) as ModelParamDef[];
+  const providerParamKeys = getChatProviderChatParamKeys(model?.provider, model || {});
+  const paramKeys = providerParamKeys.length ? providerParamKeys : findChatModelCatalogItem(model?.model || "")?.chatParamKeys || [];
+  return paramKeys.map((key) => normalizedChatParamDefs.get(key)).filter(Boolean) as ModelParamDef[];
 }
 
 function mergeResolvedChatSettings(defs: ModelParamDef[], settings: Partial<ChatModelSettings> = {}): ChatModelSettings {
@@ -276,9 +321,11 @@ export {
   getChatProviderDefinition,
   getChatProviderDefaultBaseURL,
   getChatProviderModelFamilies,
-  getChatProviderModelFamily,
-  getChatProvidersForModel,
   getKnownChatProviderDefaultBaseURLs,
+  chatProviderSupportsFamily,
+  getChatProviderCapabilities,
+  getChatProviderChatParamKeys,
+  getChatProviderMessageFormat,
   isChatModelProvider,
   getChatProviderConnectionFields,
 };

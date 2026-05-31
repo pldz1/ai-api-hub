@@ -320,7 +320,7 @@ export const languages = {
           text: "纯文本消息",
           parts: "内容分段消息",
         },
-        capabilitiesDescription: "这里展示模型原生支持的输入与工具能力 图片表示可接收图片输入；联网等动作会在发送消息时按需启用 ",
+        capabilitiesDescription: "这里展示当前 Provider 运行时提供的输入与工具能力 图片表示可接收图片输入；联网等动作会在发送消息时按需启用 ",
         capabilitiesTitle: "能力",
         chatSubtitle: "配置聊天模型的 Provider、请求地址和鉴权 ",
         chatTitle: "对话模型",
@@ -355,6 +355,7 @@ export const languages = {
         suggestionGroups: {
           custom: "其他",
           openai: "OpenAI GPT",
+          qwen: "Qwen",
         },
         supportStates: {
           supported: "支持",
@@ -727,7 +728,7 @@ export const languages = {
           parts: "Content-part messages",
         },
         capabilitiesDescription:
-          "This shows the model's native input and tool support. Image means it can accept image input, while actions like web search are enabled per message when needed.",
+          "This shows the input and tool capabilities provided by the current provider runtime. Image means it can accept image input, while actions like web search are enabled per message when needed.",
         capabilitiesTitle: "Capabilities",
         chatSubtitle: "Configure the chat model provider, request URL, and authentication.",
         chatTitle: "Chat Model",
@@ -762,6 +763,7 @@ export const languages = {
         suggestionGroups: {
           custom: "Other",
           openai: "OpenAI GPT",
+          qwen: "Qwen",
         },
         supportStates: {
           supported: "Supported",

@@ -1,5 +1,5 @@
 import store from "@/store";
-import { buildChatCompletionParams, findChatModelCatalogItem, getModelFromSnapshot } from "@/models";
+import { buildChatCompletionParams, getChatMessageFormat, getModelFromSnapshot } from "@/models";
 import type { ChatRequest, ChatModelConfig, ChatMessageFormat, ChatPromptMessage, PackedChatMessage } from "@/types";
 import { packPartMessages, packTextMessages } from "./chat-message";
 
@@ -23,8 +23,7 @@ export function createChatRequest(chatId: string = "", model: ChatModelConfig | 
 }
 
 export function getConversationMessageFormat(model: ChatModelConfig | null = null): ChatMessageFormat {
-  const modelInfo = model ? findChatModelCatalogItem(model.model) : null;
-  return modelInfo?.messageFormat || "parts";
+  return getChatMessageFormat(model);
 }
 
 export function getConversationSystemPrompts(chatId: string = ""): ChatPromptMessage[] {

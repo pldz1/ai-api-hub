@@ -4,18 +4,57 @@ import { TokenUsage, ParamDefaultValue } from "../common";
 // Provider runtime config (derived from user-owned model config, with extra fields for execution)
 // ============================================================================
 
-export type ChatProviderRoute = "openai" | "azure-openai" | "deepseek";
+export type ChatProviderRoute = "openai" | "azure-openai" | "deepseek" | "dashscope";
 export type ChatProviderConnectionField = "baseURL" | "endpoint" | "deployment" | "apiVersion";
+
+export interface ChatModelFamilyDefinition {
+  key: string;
+  label?: string;
+  labelKey?: string;
+}
+
+export interface ChatProviderModelContext {
+  provider?: unknown;
+  model?: string;
+  baseURL?: string;
+  endpoint?: string;
+  deployment?: string;
+}
+
+export type ChatProviderResolver<T> = T | ((model: ChatProviderModelContext) => T);
 
 export interface ChatProviderDefinition {
   name: string;
   route: ChatProviderRoute;
   connectionFields: readonly ChatProviderConnectionField[];
   defaultBaseURL?: string;
-  modelFamily: string;
-  modelFamilyLabel?: string;
-  modelFamilyLabelKey?: string;
-  modelPatterns?: readonly RegExp[];
+  modelFamilies: readonly ChatModelFamilyDefinition[];
+  supportsCustomModels: boolean;
+  messageFormat: ChatProviderResolver<ChatMessageFormat>;
+  chatParamKeys: ChatProviderResolver<readonly string[]>;
+  capabilities: ChatProviderResolver<ChatModelCapabilities>;
+}
+
+const openAIModelFamily = { key: "openai", labelKey: "user.modelCard.suggestionGroups.openai" } as const;
+const deepSeekModelFamily = { key: "deepseek", label: "DeepSeek" } as const;
+const qwenModelFamily = { key: "qwen", labelKey: "user.modelCard.suggestionGroups.qwen" } as const;
+
+const gpt5ChatParamKeys = ["max_completion_tokens", "reasoning_effort", "verbosity"] as const;
+const openAIChatParamKeys = ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"] as const;
+const deepSeekChatParamKeys = ["thinking", "reasoning_effort", "temperature", "top_p"] as const;
+const dashScopeChatParamKeys = ["max_tokens", "temperature", "top_p"] as const;
+
+function isOfficialOpenAIBaseURL(baseURL = ""): boolean {
+  return !baseURL || /^https:\/\/api\.openai\.com(?:\/|$)/i.test(baseURL.trim());
+}
+
+function resolveOpenAIChatParamKeys(model: ChatProviderModelContext): readonly string[] {
+  return /^gpt-5\./i.test(String(model.model || "")) ? gpt5ChatParamKeys : openAIChatParamKeys;
+}
+
+function resolveOpenAICapabilities(model: ChatProviderModelContext): ChatModelCapabilities {
+  if (!isOfficialOpenAIBaseURL(model.baseURL)) return { webSearch: false, imageRead: false };
+  return { webSearch: true, imageRead: true };
 }
 
 const chatProviderRegistryConfig = {
@@ -24,26 +63,43 @@ const chatProviderRegistryConfig = {
     route: "openai",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://api.openai.com/v1",
-    modelFamily: "openai",
-    modelFamilyLabelKey: "user.modelCard.suggestionGroups.openai",
-    modelPatterns: [/^(gpt-|o\d)/],
+    modelFamilies: [openAIModelFamily],
+    supportsCustomModels: true,
+    messageFormat: "parts",
+    chatParamKeys: resolveOpenAIChatParamKeys,
+    capabilities: resolveOpenAICapabilities,
   },
   "Azure OpenAI": {
     name: "Azure OpenAI",
     route: "azure-openai",
     connectionFields: ["endpoint", "deployment", "apiVersion"],
-    modelFamily: "openai",
-    modelFamilyLabelKey: "user.modelCard.suggestionGroups.openai",
-    modelPatterns: [/^(gpt-|o\d)/],
+    modelFamilies: [openAIModelFamily],
+    supportsCustomModels: true,
+    messageFormat: "parts",
+    chatParamKeys: resolveOpenAIChatParamKeys,
+    capabilities: { webSearch: false, imageRead: true },
   },
   DeepSeek: {
     name: "DeepSeek",
     route: "deepseek",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://api.deepseek.com",
-    modelFamily: "deepseek",
-    modelFamilyLabel: "DeepSeek",
-    modelPatterns: [/^deepseek-/],
+    modelFamilies: [deepSeekModelFamily],
+    supportsCustomModels: true,
+    messageFormat: "text",
+    chatParamKeys: deepSeekChatParamKeys,
+    capabilities: { webSearch: false, imageRead: false },
+  },
+  DashScope: {
+    name: "DashScope",
+    route: "dashscope",
+    connectionFields: ["baseURL"],
+    defaultBaseURL: "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+    modelFamilies: [qwenModelFamily, deepSeekModelFamily],
+    supportsCustomModels: true,
+    messageFormat: "text",
+    chatParamKeys: dashScopeChatParamKeys,
+    capabilities: { webSearch: true, imageRead: false },
   },
 } as const satisfies Record<string, ChatProviderDefinition>;
 
