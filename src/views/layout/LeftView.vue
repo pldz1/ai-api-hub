@@ -42,190 +42,190 @@
 
       <!-- Main Navigation (normal routes) -->
       <template v-else>
-      <nav class="nav-group">
-        <AppTooltip :text="isExpanded ? '' : t('chat.newChatConversation')" placement="right">
-          <button class="nav-item" :class="{ 'is-active': isChatDraftRoute }" type="button" @click="onNewChat">
-            <SvgIcon :src="newIcon" class="nav-icon" />
-            <span v-if="isExpanded" class="nav-label">{{ t("chat.newChatConversation") }}</span>
-          </button>
-        </AppTooltip>
-        <AppTooltip :text="isExpanded ? '' : t('chat.newImageCreation')" placement="right">
-          <button class="nav-item" :class="{ 'is-active': isImageDraftRoute }" type="button" @click="onNewImage">
-            <SvgIcon :src="libraryIcon" class="nav-icon" />
-            <span v-if="isExpanded" class="nav-label">{{ t("chat.newImageCreation") }}</span>
-          </button>
-        </AppTooltip>
-        <div v-if="isExpanded" class="nav-delete-panel" :class="{ 'is-active': isDeleteMode }">
-          <button class="nav-delete-btn" type="button" @click="toggleDeleteMode">
-            <SvgIcon :src="deleteIcon" class="nav-icon" />
-            <span>{{ isDeleteMode ? t("chat.cancelDeletion") : t("chat.deleteConversations") }}</span>
-          </button>
-          <div v-if="isDeleteMode" class="delete-mode-toolbar">
-            <button type="button" @click="selectAllConversations">{{ t("chat.all") }}</button>
-            <button type="button" @click="clearSelectedConversations">{{ t("chat.clear") }}</button>
-            <button class="is-danger" type="button" :disabled="selectedConversationCount === 0" @click="onDeleteSelectedConversations">
-              {{ t("chat.deleteSelectedConversations", { count: selectedConversationCount }) }}
+        <nav class="nav-group">
+          <AppTooltip :text="isExpanded ? '' : t('chat.newChatConversation')" placement="right">
+            <button class="nav-item" :class="{ 'is-active': isChatDraftRoute }" type="button" @click="onNewChat">
+              <SvgIcon :src="newIcon" class="nav-icon" />
+              <span v-if="isExpanded" class="nav-label">{{ t("chat.newChatConversation") }}</span>
             </button>
+          </AppTooltip>
+          <AppTooltip :text="isExpanded ? '' : t('chat.newImageCreation')" placement="right">
+            <button class="nav-item" :class="{ 'is-active': isImageDraftRoute }" type="button" @click="onNewImage">
+              <SvgIcon :src="libraryIcon" class="nav-icon" />
+              <span v-if="isExpanded" class="nav-label">{{ t("chat.newImageCreation") }}</span>
+            </button>
+          </AppTooltip>
+          <div v-if="isExpanded" class="nav-delete-panel" :class="{ 'is-active': isDeleteMode }">
+            <button class="nav-delete-btn" type="button" @click="toggleDeleteMode">
+              <SvgIcon :src="deleteIcon" class="nav-icon" />
+              <span>{{ isDeleteMode ? t("chat.cancelDeletion") : t("chat.deleteConversations") }}</span>
+            </button>
+            <div v-if="isDeleteMode" class="delete-mode-toolbar">
+              <button type="button" @click="selectAllConversations">{{ t("chat.all") }}</button>
+              <button type="button" @click="clearSelectedConversations">{{ t("chat.clear") }}</button>
+              <button class="is-danger" type="button" :disabled="selectedConversationCount === 0" @click="onDeleteSelectedConversations">
+                {{ t("chat.deleteSelectedConversations", { count: selectedConversationCount }) }}
+              </button>
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
-      <!-- Recent Chats -->
-      <Transition name="sidebar-panel">
-        <div v-if="isExpanded" class="sidebar-panels">
-          <div class="sidebar-section recents-section">
-            <button
-              class="section-toggle"
-              :class="{ 'is-collapsed': !isChatSectionOpen }"
-              type="button"
-              :aria-expanded="isChatSectionOpen"
-              @click="isChatSectionOpen = !isChatSectionOpen"
-            >
-              <span class="section-title">{{ t("chat.chatConversations") }}</span>
-              <span class="section-count">{{ chatList.length }}</span>
-              <span class="section-caret"></span>
-            </button>
-            <Transition name="section-list">
-              <div v-if="isChatSectionOpen" class="section-body">
-                <div v-if="chatList.length === 0" class="empty-tip">{{ t("chat.noChats") }}</div>
-                <div v-else class="recents-list">
-                  <div v-for="item in chatList" :key="item.cid" class="chat-item-wrapper">
-                    <!-- Inline rename input replaces only the active chat row, keeping the list layout stable. -->
-                    <input
-                      v-if="isShowOptionCid === item.cid && isEditChatName"
-                      ref="editChatNameInputElRef"
-                      v-model="editChatName"
-                      type="text"
-                      class="rename-input"
-                      @blur="changeChatName"
-                      @keydown.enter.prevent="changeChatName"
-                    />
-
-                    <!-- Chat rows keep actions hidden until hover/active state so long titles remain easy to scan. -->
-                    <div
-                      v-else
-                      class="chat-item"
-                      :class="{
-                        'is-active': activeRouteChatId === item.cid,
-                        'is-selected': isDeleteMode && selectedChatIds.includes(item.cid),
-                        'has-runtime-status': hasChatRuntimeStatus(item.cid),
-                      }"
-                    >
+        <!-- Recent Chats -->
+        <Transition name="sidebar-panel">
+          <div v-if="isExpanded" class="sidebar-panels">
+            <div class="sidebar-section recents-section">
+              <button
+                class="section-toggle"
+                :class="{ 'is-collapsed': !isChatSectionOpen }"
+                type="button"
+                :aria-expanded="isChatSectionOpen"
+                @click="isChatSectionOpen = !isChatSectionOpen"
+              >
+                <span class="section-title">{{ t("chat.chatConversations") }}</span>
+                <span class="section-count">{{ chatList.length }}</span>
+                <span class="section-caret"></span>
+              </button>
+              <Transition name="section-list">
+                <div v-if="isChatSectionOpen" class="section-body">
+                  <div v-if="chatList.length === 0" class="empty-tip">{{ t("chat.noChats") }}</div>
+                  <div v-else class="recents-list">
+                    <div v-for="item in chatList" :key="item.cid" class="chat-item-wrapper">
+                      <!-- Inline rename input replaces only the active chat row, keeping the list layout stable. -->
                       <input
-                        v-if="isDeleteMode"
-                        v-model="selectedChatIds"
-                        class="row-select-checkbox"
-                        type="checkbox"
-                        :value="item.cid"
-                        :aria-label="`Select ${item.cname}`"
-                        @click.stop
+                        v-if="isShowOptionCid === item.cid && isEditChatName"
+                        ref="editChatNameInputElRef"
+                        v-model="editChatName"
+                        type="text"
+                        class="rename-input"
+                        @blur="changeChatName"
+                        @keydown.enter.prevent="changeChatName"
                       />
-                      <button class="chat-main-btn" type="button" @click="onSelectChat(item)">
-                        <span class="chat-title-text">{{ item.cname }}</span>
-                      </button>
-                      <span
-                        v-if="hasChatRuntimeStatus(item.cid)"
-                        class="session-status-dot"
-                        :class="getChatRuntimeStatusClass(item.cid)"
-                        :title="getChatRuntimeLabel(item.cid)"
-                        aria-hidden="true"
-                      ></span>
 
-                      <!-- Per-chat actions live in a dropdown; each action confirms before touching persisted chat data. -->
-                      <AppDropdownMenu placement="bottom-end">
-                        <template #trigger="{ toggle }">
-                          <button class="chat-menu-btn" :aria-label="t('chat.moreActions')" @click.stop="toggle">
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                          </button>
-                        </template>
-                        <template #default="{ close }">
-                          <button class="menu-option" type="button" @click="onEditChatName(item, close)">
-                            <SvgIcon class="menu-option-icon" :src="editIcon" />
-                            <span>{{ t("chat.renameChat") }}</span>
-                          </button>
-                          <button class="menu-option is-danger" type="button" @click="onDeleteChat(item, close)">
-                            <SvgIcon class="menu-option-icon" :src="deleteIcon" />
-                            <span>{{ t("chat.deleteChat") }}</span>
-                          </button>
-                        </template>
-                      </AppDropdownMenu>
+                      <!-- Chat rows keep actions hidden until hover/active state so long titles remain easy to scan. -->
+                      <div
+                        v-else
+                        class="chat-item"
+                        :class="{
+                          'is-active': activeRouteChatId === item.cid,
+                          'is-selected': isDeleteMode && selectedChatIds.includes(item.cid),
+                          'has-runtime-status': hasChatRuntimeStatus(item.cid),
+                        }"
+                      >
+                        <input
+                          v-if="isDeleteMode"
+                          v-model="selectedChatIds"
+                          class="row-select-checkbox"
+                          type="checkbox"
+                          :value="item.cid"
+                          :aria-label="`Select ${item.cname}`"
+                          @click.stop
+                        />
+                        <button class="chat-main-btn" type="button" @click="onSelectChat(item)">
+                          <span class="chat-title-text">{{ item.cname }}</span>
+                        </button>
+                        <span
+                          v-if="hasChatRuntimeStatus(item.cid)"
+                          class="session-status-dot"
+                          :class="getChatRuntimeStatusClass(item.cid)"
+                          :title="getChatRuntimeLabel(item.cid)"
+                          aria-hidden="true"
+                        ></span>
+
+                        <!-- Per-chat actions live in a dropdown; each action confirms before touching persisted chat data. -->
+                        <AppDropdownMenu placement="bottom-end">
+                          <template #trigger="{ toggle }">
+                            <button class="chat-menu-btn" :aria-label="t('chat.moreActions')" @click.stop="toggle">
+                              <span class="dot"></span>
+                              <span class="dot"></span>
+                              <span class="dot"></span>
+                            </button>
+                          </template>
+                          <template #default="{ close }">
+                            <button class="menu-option" type="button" @click="onEditChatName(item, close)">
+                              <SvgIcon class="menu-option-icon" :src="editIcon" />
+                              <span>{{ t("chat.renameChat") }}</span>
+                            </button>
+                            <button class="menu-option is-danger" type="button" @click="onDeleteChat(item, close)">
+                              <SvgIcon class="menu-option-icon" :src="deleteIcon" />
+                              <span>{{ t("chat.deleteChat") }}</span>
+                            </button>
+                          </template>
+                        </AppDropdownMenu>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </Transition>
-          </div>
+              </Transition>
+            </div>
 
-          <div class="sidebar-section image-recents-section">
-            <button
-              class="section-toggle"
-              :class="{ 'is-collapsed': !isImageSectionOpen }"
-              type="button"
-              :aria-expanded="isImageSectionOpen"
-              @click="isImageSectionOpen = !isImageSectionOpen"
-            >
-              <span class="section-title">{{ t("chat.imageConversations") }}</span>
-              <span class="section-count">{{ imageConversationList.length }}</span>
-              <span class="section-caret"></span>
-            </button>
-            <Transition name="section-list">
-              <div v-if="isImageSectionOpen" class="section-body">
-                <div v-if="imageConversationList.length === 0" class="empty-tip">{{ t("chat.noImageConversations") }}</div>
-                <div v-else class="recents-list">
-                  <div v-for="item in imageConversationList" :key="item.iid" class="chat-item-wrapper">
-                    <div
-                      class="chat-item"
-                      :class="{
-                        'is-active': activeRouteImageId === item.iid,
-                        'is-selected': isDeleteMode && selectedImageConversationIds.includes(item.iid),
-                        'has-runtime-status': hasImageRuntimeStatus(item.iid),
-                      }"
-                    >
-                      <input
-                        v-if="isDeleteMode"
-                        v-model="selectedImageConversationIds"
-                        class="row-select-checkbox"
-                        type="checkbox"
-                        :value="item.iid"
-                        :aria-label="`Select ${item.iname}`"
-                        @click.stop
-                      />
-                      <button class="chat-main-btn" type="button" @click="onSelectImageConversation(item)">
-                        <span class="chat-title-text">{{ item.iname }}</span>
-                      </button>
-                      <span
-                        v-if="hasImageRuntimeStatus(item.iid)"
-                        class="session-status-dot"
-                        :class="getImageRuntimeStatusClass(item.iid)"
-                        :title="getImageRuntimeLabel(item.iid)"
-                        aria-hidden="true"
-                      ></span>
+            <div class="sidebar-section image-recents-section">
+              <button
+                class="section-toggle"
+                :class="{ 'is-collapsed': !isImageSectionOpen }"
+                type="button"
+                :aria-expanded="isImageSectionOpen"
+                @click="isImageSectionOpen = !isImageSectionOpen"
+              >
+                <span class="section-title">{{ t("chat.imageConversations") }}</span>
+                <span class="section-count">{{ imageConversationList.length }}</span>
+                <span class="section-caret"></span>
+              </button>
+              <Transition name="section-list">
+                <div v-if="isImageSectionOpen" class="section-body">
+                  <div v-if="imageConversationList.length === 0" class="empty-tip">{{ t("chat.noImageConversations") }}</div>
+                  <div v-else class="recents-list">
+                    <div v-for="item in imageConversationList" :key="item.iid" class="chat-item-wrapper">
+                      <div
+                        class="chat-item"
+                        :class="{
+                          'is-active': activeRouteImageId === item.iid,
+                          'is-selected': isDeleteMode && selectedImageConversationIds.includes(item.iid),
+                          'has-runtime-status': hasImageRuntimeStatus(item.iid),
+                        }"
+                      >
+                        <input
+                          v-if="isDeleteMode"
+                          v-model="selectedImageConversationIds"
+                          class="row-select-checkbox"
+                          type="checkbox"
+                          :value="item.iid"
+                          :aria-label="`Select ${item.iname}`"
+                          @click.stop
+                        />
+                        <button class="chat-main-btn" type="button" @click="onSelectImageConversation(item)">
+                          <span class="chat-title-text">{{ item.iname }}</span>
+                        </button>
+                        <span
+                          v-if="hasImageRuntimeStatus(item.iid)"
+                          class="session-status-dot"
+                          :class="getImageRuntimeStatusClass(item.iid)"
+                          :title="getImageRuntimeLabel(item.iid)"
+                          aria-hidden="true"
+                        ></span>
 
-                      <AppDropdownMenu placement="bottom-end">
-                        <template #trigger="{ toggle }">
-                          <button class="chat-menu-btn" :aria-label="t('chat.moreImageActions')" @click.stop="toggle">
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                          </button>
-                        </template>
-                        <template #default="{ close }">
-                          <button class="menu-option is-danger" type="button" @click="onDeleteImageConversation(item, close)">
-                            <SvgIcon class="menu-option-icon" :src="deleteIcon" />
-                            <span>{{ t("chat.deleteImageConversation") }}</span>
-                          </button>
-                        </template>
-                      </AppDropdownMenu>
+                        <AppDropdownMenu placement="bottom-end">
+                          <template #trigger="{ toggle }">
+                            <button class="chat-menu-btn" :aria-label="t('chat.moreImageActions')" @click.stop="toggle">
+                              <span class="dot"></span>
+                              <span class="dot"></span>
+                              <span class="dot"></span>
+                            </button>
+                          </template>
+                          <template #default="{ close }">
+                            <button class="menu-option is-danger" type="button" @click="onDeleteImageConversation(item, close)">
+                              <SvgIcon class="menu-option-icon" :src="deleteIcon" />
+                              <span>{{ t("chat.deleteImageConversation") }}</span>
+                            </button>
+                          </template>
+                        </AppDropdownMenu>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </Transition>
+              </Transition>
+            </div>
           </div>
-        </div>
-      </Transition>
+        </Transition>
       </template>
 
       <div class="sidebar-footer">
@@ -308,7 +308,7 @@ import collapseIcon from "@/assets/svg/collapse24.svg";
 import expandIcon from "@/assets/svg/expand24.svg";
 import editIcon from "@/assets/svg/edit24.svg";
 import deleteIcon from "@/assets/svg/delete16.svg";
-import backIcon from "@/assets/svg/collapse24.svg";
+import backIcon from "@/assets/svg/revert32.svg";
 import AppDropdownMenu from "@/components/AppDropdownMenu.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
@@ -692,16 +692,16 @@ $radius-md: 12px;
 
     .nav-item,
     .settings-btn {
-      width: 44px;
-      min-width: 44px;
+      width: 36px;
+      min-width: 36px;
       padding: 0;
-      flex: 0 0 44px;
+      flex: 0 0 36px;
       justify-content: center;
     }
 
     .quick-control-btn {
-      width: 44px;
-      height: 44px;
+      width: 36px;
+      height: 36px;
     }
 
     .quick-controls {
@@ -714,7 +714,7 @@ $radius-md: 12px;
 
       :deep(.app-tooltip-host),
       :deep(.app-tooltip-trigger) {
-        width: 44px;
+        width: 36px;
       }
     }
 
@@ -740,8 +740,8 @@ $radius-md: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 44px;
-  margin-bottom: 20px;
+  height: 36px;
+  margin-bottom: 16px;
   gap: 8px;
 }
 
@@ -750,13 +750,13 @@ $radius-md: 12px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  height: 44px;
+  height: 36px;
   padding: 0 10px;
   border: none;
   background: transparent;
   color: oklch(var(--bc));
   font-weight: 600;
-  font-size: 15px;
+  font-size: 13px;
   cursor: pointer;
   border-radius: $radius-md;
 
@@ -775,8 +775,8 @@ $radius-md: 12px;
 }
 
 .collapse-btn {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border: none;
   border-radius: $radius-md;
   background: transparent;
@@ -813,7 +813,7 @@ $radius-md: 12px;
 }
 
 .nav-item {
-  height: 44px;
+  height: 36px;
   padding: 0 12px;
   border: none;
   border-radius: $radius-md;
@@ -821,7 +821,7 @@ $radius-md: 12px;
   display: flex;
   align-items: center;
   color: oklch(var(--bc) / 0.82);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   width: 100%;
@@ -864,7 +864,7 @@ $radius-md: 12px;
 
 .nav-delete-btn {
   width: 100%;
-  min-height: 36px;
+  min-height: 32px;
   padding: 0 12px;
   border: none;
   border-radius: $radius-md;
@@ -873,7 +873,7 @@ $radius-md: 12px;
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 
@@ -938,7 +938,7 @@ $radius-md: 12px;
 
 .sidebar-container:not(.is-expanded) .nav-group :deep(.app-tooltip-host),
 .sidebar-container:not(.is-expanded) .nav-group :deep(.app-tooltip-trigger) {
-  width: 44px;
+  width: 36px;
 }
 
 .sidebar-section {
@@ -1079,7 +1079,7 @@ $radius-md: 12px;
 .empty-tip {
   padding: 12px;
   color: oklch(var(--bc) / 0.45);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .chat-item-wrapper {
@@ -1090,7 +1090,7 @@ $radius-md: 12px;
   position: relative;
   display: flex;
   align-items: center;
-  height: 44px;
+  height: 36px;
   border-radius: $radius-md;
   padding: 0 4px;
   color: oklch(var(--bc) / 0.82);
@@ -1138,7 +1138,7 @@ $radius-md: 12px;
 
 .chat-title-text {
   flex: 1;
-  font-size: 13px;
+  font-size: 12px;
   text-align: left;
   color: oklch(var(--bc) / 0.82);
   white-space: nowrap;
@@ -1212,7 +1212,7 @@ $radius-md: 12px;
 .menu-option {
   width: 100%;
   min-width: 150px;
-  height: 38px;
+  height: 32px;
   padding: 0 10px;
   border: none;
   border-radius: 9px;
@@ -1221,7 +1221,7 @@ $radius-md: 12px;
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1;
   text-align: left;
@@ -1303,13 +1303,13 @@ $radius-md: 12px;
 
 .rename-input {
   width: calc(100% - 8px);
-  height: 36px;
+  height: 32px;
   margin: 0 4px;
   padding: 0 10px;
   border: 1px solid #e4e4e7;
   border-radius: 8px;
   background: oklch(var(--b1));
-  font-size: 13px;
+  font-size: 12px;
   outline: none;
   box-sizing: border-box;
 
@@ -1351,8 +1351,8 @@ $radius-md: 12px;
 }
 
 .quick-control-btn {
-  width: 36px;
-  height: 44px;
+  width: 32px;
+  height: 36px;
   padding: 0;
   border: none;
   border-radius: $radius-md;
@@ -1426,7 +1426,7 @@ $radius-md: 12px;
 .settings-btn {
   width: 100%;
   min-width: 0;
-  height: 44px;
+  height: 36px;
   padding: 0 12px;
   display: flex;
   flex-direction: row;
@@ -1476,12 +1476,12 @@ $radius-md: 12px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  height: 44px;
+  height: 36px;
   padding: 0 10px;
   border: none;
   background: transparent;
   color: oklch(var(--bc) / 0.72);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   border-radius: $radius-md;
@@ -1525,9 +1525,9 @@ $radius-md: 12px;
 }
 
 .settings-title {
-  margin: 0 4px 22px;
+  margin: 0 4px 18px;
   color: oklch(var(--bc));
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -1569,14 +1569,14 @@ $radius-md: 12px;
   }
 
   span {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: oklch(var(--bc));
   }
 
   small {
     margin-top: 4px;
-    font-size: 11px;
+    font-size: 10px;
     line-height: 1.4;
     color: oklch(var(--bc) / 0.68);
   }
@@ -1591,10 +1591,10 @@ $radius-md: 12px;
 /* Collapsed sidebar: back button compact */
 .sidebar-container:not(.is-expanded) {
   .back-btn {
-    width: 44px;
-    min-width: 44px;
+    width: 36px;
+    min-width: 36px;
     padding: 0;
-    flex: 0 0 44px;
+    flex: 0 0 36px;
     justify-content: center;
   }
 

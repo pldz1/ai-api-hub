@@ -4,7 +4,7 @@ import { getUuid } from "@/utils";
 import { tr } from "@/i18n";
 import type { ChatPromptMessage, ChatResponseDelta } from "@/types";
 import { addMessage } from "../conversation";
-import { AssistantStreamState } from "../rendering/assistant-stream-state";
+import { AssistantStreamState, AssistantDraftContent } from "../rendering/assistant-stream-state";
 import { createChatTurnMessages, createChatRequest, getConversationMessageFormat, getConversationSystemPrompts } from "./chat-context";
 
 type ChatRuntimeStatus = "idle" | "loading" | "streaming" | "success" | "error" | "stopped";
@@ -13,6 +13,8 @@ class ChatSessionRunner {
   chatId: string;
   client: ChatGateway;
   assistantStream: AssistantStreamState;
+  onDraftUpdate: ((content: AssistantDraftContent) => void) | null = null;
+  onDraftRemove: (() => void) | null = null;
 
   constructor(chatId: string) {
     this.chatId = chatId;
@@ -44,6 +46,7 @@ class ChatSessionRunner {
       draftReasoningContent: "",
       ...extra,
     });
+    this.onDraftRemove?.();
   }
 
   updateDraftRuntime(status: ChatRuntimeStatus) {
@@ -86,11 +89,10 @@ class ChatSessionRunner {
     if (this.assistantStream.forceStopped) return;
 
     this.assistantStream.applyDelta(delta);
+    this.onDraftUpdate?.(this.assistantStream.content);
 
     if (delta.kind === "error") {
       this.updateDraftRuntime("error");
-    } else {
-      this.updateDraftRuntime("streaming");
     }
   }
 

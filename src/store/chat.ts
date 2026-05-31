@@ -1,7 +1,6 @@
 import { defaultModelCapabilities } from "@/constants";
 import {
   createConversationModelSnapshot,
-  getChatModelCapabilities,
   getModelFromSnapshot,
   mergeChatSettingsWithModel,
 } from "@/models";
@@ -24,9 +23,8 @@ function normalizeTokenUsage(data: Record<string, unknown> = {}) {
   };
 }
 
-function createInputCapabilities(conversation = null) {
-  const model = getModelFromSnapshot(conversation?.modelSnapshot);
-  return model ? getChatModelCapabilities(model.model) : { ...defaultModelCapabilities };
+function createInputCapabilities(_conversation = null, _fallbackModel = null) {
+  return { ...defaultModelCapabilities };
 }
 
 function createChatRuntime() {
@@ -116,7 +114,7 @@ export const ChatState = {
       this.chatSettingsById[cid] = mergeChatSettingsWithModel(model, {});
     }
     if (!this.chatInputCapabilitiesById[cid]) {
-      this.chatInputCapabilitiesById[cid] = createInputCapabilities(this.chatConversationsById[cid]);
+      this.chatInputCapabilitiesById[cid] = createInputCapabilities(this.chatConversationsById[cid], this.curChatModel);
     }
   },
 
@@ -154,7 +152,7 @@ export const ChatState = {
     this.curChatModelSettings = mergeChatSettingsWithModel(model || this.curChatModel, this.chatSettingsById[cid] || {});
     this.chatSettingsById[cid] = this.curChatModelSettings;
     this.inputCapabilities = {
-      ...(this.chatInputCapabilitiesById[cid] || createInputCapabilities(conversation)),
+      ...(this.chatInputCapabilitiesById[cid] || createInputCapabilities(conversation, this.curChatModel)),
     };
     this.chatInputCapabilitiesById[cid] = { ...this.inputCapabilities };
     this.messages = this.chatMessagesById[cid] || [];
@@ -197,7 +195,7 @@ export const ChatState = {
       this._ensureChatEntry(this.curChatId);
       this.chatConversationsById[this.curChatId] = data || null;
       if (!this.chatInputCapabilitiesById[this.curChatId]) {
-        this.chatInputCapabilitiesById[this.curChatId] = createInputCapabilities(data);
+        this.chatInputCapabilitiesById[this.curChatId] = createInputCapabilities(data, this.curChatModel);
       }
     }
     const model = getModelFromSnapshot(this.curConversation?.modelSnapshot);
@@ -241,9 +239,9 @@ export const ChatState = {
     }
 
     if ("inputCapabilities" in (data || {})) {
-      this.chatInputCapabilitiesById[cid] = { ...(data.inputCapabilities || createInputCapabilities(this.chatConversationsById[cid])) };
+      this.chatInputCapabilitiesById[cid] = { ...(data.inputCapabilities || createInputCapabilities(this.chatConversationsById[cid], this.curChatModel)) };
     } else if (!this.chatInputCapabilitiesById[cid]) {
-      this.chatInputCapabilitiesById[cid] = createInputCapabilities(this.chatConversationsById[cid]);
+      this.chatInputCapabilitiesById[cid] = createInputCapabilities(this.chatConversationsById[cid], this.curChatModel);
     }
 
     if ("messages" in (data || {})) {
@@ -311,7 +309,7 @@ export const ChatState = {
   },
 
   resetInputCapabilities() {
-    const nextCapabilities = createInputCapabilities(this.curConversation);
+    const nextCapabilities = createInputCapabilities(this.curConversation, this.curChatModel);
     this.inputCapabilities = nextCapabilities;
     if (this.curChatId) {
       this._ensureChatEntry(this.curChatId);

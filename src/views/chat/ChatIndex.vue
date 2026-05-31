@@ -1,6 +1,12 @@
 <template>
   <!-- This view renders the chat message area and input composer. -->
-  <section class="chat-card-container">
+  <section ref="containerRef" class="chat-card-container">
+    <!-- Header bar with session status, question-list toggle and panel. -->
+    <ChatHeaderBar
+      :scroll-container="innerRef"
+      :container-el="containerRef"
+    />
+
     <!-- Show starter templates before a conversation has been created. -->
     <ChatInsTemplate v-show="isShowTemplate" @on-update="onDrawTemplateIns" />
 
@@ -40,6 +46,7 @@ import { useStore } from "vuex";
 import type { ChatModelConfig, ChatPromptMessage } from "@/types";
 import { dsLoading } from "@/utils";
 import { ChatDrawer, addChat, getAllMessage, getChatSettings, getChatSessionRunner, resetCurrentChatDraft, stopChatSession } from "@/services";
+import ChatHeaderBar from "@/views/chat/ChatHeaderBar.vue";
 import ChatInputArea from "@/views/chat/ChatInputArea.vue";
 import ChatInsTemplate from "@/views/chat/ChatInsTemplate.vue";
 import ChatScrollActions from "@/views/chat/ChatScrollActions.vue";
@@ -54,10 +61,11 @@ const store = useStore();
 const route = useRoute();
 const router = useRouter();
 const innerRef = ref<HTMLElement | null>(null);
+const containerRef = ref<HTMLElement | null>(null);
 const canScrollTop = ref(false);
 const canScrollBottom = ref(false);
 
-const drawer = new ChatDrawer(true);
+const drawer = new ChatDrawer();
 const curChatId = computed<string>(() => store.state.curChatId || "");
 const curConversation = computed(() => (curChatId.value ? store.state.chatConversationsById?.[curChatId.value] || null : null));
 const activeMessages = computed<ChatPromptMessage[]>(() => (curChatId.value ? store.state.chatMessagesById?.[curChatId.value] || [] : []));
@@ -144,22 +152,6 @@ watch(
   },
 );
 
-watch(
-  () => [
-    activeRuntime.value?.draftMessageId || "",
-    activeRuntime.value?.draftAssistantContent || "",
-    activeRuntime.value?.draftReasoningContent || "",
-    activeRuntime.value?.pending || false,
-    activeRuntime.value?.status || "",
-  ],
-  async () => {
-    drawer.syncDraftAssistant(activeRuntime.value || {});
-    await nextTick();
-    updateScrollActions();
-    if (isChatting.value) scrollMessagesToBottom();
-  },
-);
-
 const onStartChat = async (payload: ChatStartPayload) => {
   const { message, model: selectedModel } = payload;
 
@@ -172,6 +164,16 @@ const onStartChat = async (payload: ChatStartPayload) => {
   const nextChatId = store.state.curChatId;
   const runner = getChatSessionRunner(nextChatId);
   if (!runner) return;
+
+  runner.onDraftUpdate = (content) => {
+    if (!innerRef.value) return;
+    drawer.updateDraftContent(content, runner.assistantStream.messageId, activeRuntime.value?.status === "error");
+  };
+
+  runner.onDraftRemove = () => {
+    drawer.removeTempAssistantElem();
+  };
+
   await runner.chat(message);
 };
 
@@ -186,16 +188,18 @@ const onDrawTemplateIns = (messages: ChatPromptMessage[]) => {
 
 onMounted(() => {
   drawer.init("chat-messages-container");
+  drawer.onAfterRender = updateScrollActions;
   renderCurrentConversation({ reset: true });
   updateScrollActions();
 });
+
 </script>
 
 <style lang="scss" scoped>
 .chat-card-container {
   --chat-page-max-width: 1080px;
-  --chat-side-gap: max(24px, calc((100% - var(--chat-page-max-width)) / 2));
-  --chat-top-gap: 28px;
+  --chat-side-gap: max(180px, calc((100% - var(--chat-page-max-width)) / 2));
+  --chat-top-gap: 16px;
   --chat-bottom-gap: 230px;
   --chat-input-bottom: 18px;
   --chat-input-shell-gap: 18px;
@@ -281,6 +285,19 @@ onMounted(() => {
   justify-content: center;
   max-width: calc(var(--chat-page-max-width) + var(--chat-input-shell-gap) * 2);
   pointer-events: auto;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: -24px;
+    right: -24px;
+    bottom: -20px;
+    height: 268px;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.78) 42%, oklch(var(--b1)) 78%, oklch(var(--b1)) 100%);
+    box-shadow: inset 0 -56px 72px oklch(var(--b1) / 0.32);
+  }
 }
 
 @media (max-width: 1100px) {
@@ -292,7 +309,7 @@ onMounted(() => {
 @media (max-width: 900px) {
   .chat-card-container {
     --chat-side-gap: 16px;
-    --chat-top-gap: 22px;
+    --chat-top-gap: 14px;
     --chat-bottom-gap: 236px;
     --chat-input-bottom: 14px;
     --chat-input-shell-gap: 14px;
@@ -315,7 +332,7 @@ onMounted(() => {
 @media (max-width: 768px) {
   .chat-card-container {
     --chat-side-gap: 28px;
-    --chat-top-gap: 56px;
+    --chat-top-gap: 12px;
     --chat-bottom-gap: 224px;
     --chat-input-bottom: max(12px, env(safe-area-inset-bottom));
     --chat-input-shell-gap: 18px;
@@ -338,7 +355,7 @@ onMounted(() => {
 @media (max-width: 640px) {
   .chat-card-container {
     --chat-side-gap: 26px;
-    --chat-top-gap: 48px;
+    --chat-top-gap: 10px;
     --chat-bottom-gap: 232px;
     --chat-input-shell-gap: 18px;
   }
