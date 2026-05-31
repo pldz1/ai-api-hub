@@ -692,16 +692,16 @@ $radius-md: 12px;
 
     .nav-item,
     .settings-btn {
-      width: 44px;
-      min-width: 44px;
+      width: 36px;
+      min-width: 36px;
       padding: 0;
-      flex: 0 0 44px;
+      flex: 0 0 36px;
       justify-content: center;
     }
 
     .quick-control-btn {
-      width: 44px;
-      height: 44px;
+      width: 36px;
+      height: 36px;
     }
 
     .quick-controls {
@@ -714,7 +714,7 @@ $radius-md: 12px;
 
       :deep(.app-tooltip-host),
       :deep(.app-tooltip-trigger) {
-        width: 44px;
+        width: 36px;
       }
     }
 
@@ -740,8 +740,8 @@ $radius-md: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 44px;
-  margin-bottom: 20px;
+  height: 36px;
+  margin-bottom: 16px;
   gap: 8px;
 }
 
@@ -750,13 +750,13 @@ $radius-md: 12px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  height: 44px;
+  height: 36px;
   padding: 0 10px;
   border: none;
   background: transparent;
   color: oklch(var(--bc));
   font-weight: 600;
-  font-size: 15px;
+  font-size: 13px;
   cursor: pointer;
   border-radius: $radius-md;
 
@@ -775,8 +775,8 @@ $radius-md: 12px;
 }
 
 .collapse-btn {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border: none;
   border-radius: $radius-md;
   background: transparent;
@@ -813,7 +813,7 @@ $radius-md: 12px;
 }
 
 .nav-item {
-  height: 44px;
+  height: 36px;
   padding: 0 12px;
   border: none;
   border-radius: $radius-md;
@@ -821,7 +821,7 @@ $radius-md: 12px;
   display: flex;
   align-items: center;
   color: oklch(var(--bc) / 0.82);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   width: 100%;
@@ -864,7 +864,7 @@ $radius-md: 12px;
 
 .nav-delete-btn {
   width: 100%;
-  min-height: 36px;
+  min-height: 32px;
   padding: 0 12px;
   border: none;
   border-radius: $radius-md;
@@ -873,7 +873,7 @@ $radius-md: 12px;
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 
@@ -938,7 +938,7 @@ $radius-md: 12px;
 
 .sidebar-container:not(.is-expanded) .nav-group :deep(.app-tooltip-host),
 .sidebar-container:not(.is-expanded) .nav-group :deep(.app-tooltip-trigger) {
-  width: 44px;
+  width: 36px;
 }
 
 .sidebar-section {
@@ -1079,7 +1079,7 @@ $radius-md: 12px;
 .empty-tip {
   padding: 12px;
   color: oklch(var(--bc) / 0.45);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .chat-item-wrapper {
@@ -1090,7 +1090,7 @@ $radius-md: 12px;
   position: relative;
   display: flex;
   align-items: center;
-  height: 44px;
+  height: 36px;
   border-radius: $radius-md;
   padding: 0 4px;
   color: oklch(var(--bc) / 0.82);
@@ -1138,7 +1138,7 @@ $radius-md: 12px;
 
 .chat-title-text {
   flex: 1;
-  font-size: 13px;
+  font-size: 12px;
   text-align: left;
   color: oklch(var(--bc) / 0.82);
   white-space: nowrap;
@@ -1212,7 +1212,7 @@ $radius-md: 12px;
 .menu-option {
   width: 100%;
   min-width: 150px;
-  height: 38px;
+  height: 32px;
   padding: 0 10px;
   border: none;
   border-radius: 9px;
@@ -1221,7 +1221,7 @@ $radius-md: 12px;
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1;
   text-align: left;
@@ -1303,13 +1303,13 @@ $radius-md: 12px;
 
 .rename-input {
   width: calc(100% - 8px);
-  height: 36px;
+  height: 32px;
   margin: 0 4px;
   padding: 0 10px;
   border: 1px solid #e4e4e7;
   border-radius: 8px;
   background: oklch(var(--b1));
-  font-size: 13px;
+  font-size: 12px;
   outline: none;
   box-sizing: border-box;
 
@@ -1351,8 +1351,8 @@ $radius-md: 12px;
 }
 
 .quick-control-btn {
-  width: 36px;
-  height: 44px;
+  width: 32px;
+  height: 36px;
   padding: 0;
   border: none;
   border-radius: $radius-md;
@@ -1426,7 +1426,7 @@ $radius-md: 12px;
 .settings-btn {
   width: 100%;
   min-width: 0;
-  height: 44px;
+  height: 36px;
   padding: 0 12px;
   display: flex;
   flex-direction: row;
@@ -1476,12 +1476,12 @@ $radius-md: 12px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  height: 44px;
+  height: 36px;
   padding: 0 10px;
   border: none;
   background: transparent;
   color: oklch(var(--bc) / 0.72);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   border-radius: $radius-md;
@@ -1525,9 +1525,9 @@ $radius-md: 12px;
 }
 
 .settings-title {
-  margin: 0 4px 22px;
+  margin: 0 4px 18px;
   color: oklch(var(--bc));
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -1569,14 +1569,14 @@ $radius-md: 12px;
   }
 
   span {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: oklch(var(--bc));
   }
 
   small {
     margin-top: 4px;
-    font-size: 11px;
+    font-size: 10px;
     line-height: 1.4;
     color: oklch(var(--bc) / 0.68);
   }
@@ -1591,10 +1591,10 @@ $radius-md: 12px;
 /* Collapsed sidebar: back button compact */
 .sidebar-container:not(.is-expanded) {
   .back-btn {
-    width: 44px;
-    min-width: 44px;
+    width: 36px;
+    min-width: 36px;
     padding: 0;
-    flex: 0 0 44px;
+    flex: 0 0 36px;
     justify-content: center;
   }
 

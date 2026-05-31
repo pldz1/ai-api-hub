@@ -44,10 +44,9 @@ export type ChatMessageElementActions = {
  * preview behavior are supplied through callbacks by the caller.
  */
 export class ChatMessageElementFactory {
-  constructor(sync: boolean = false, actions: ChatMessageElementActions = {}) {
+  constructor(actions: ChatMessageElementActions = {}) {
     this.id = "";
     this.container = null;
-    this.sync = sync;
     this.actions = actions;
 
     this.createUserMessageElement = this.createUserMessageElement.bind(this);
@@ -110,10 +109,6 @@ export class ChatMessageElementFactory {
     return userDiv;
   }
 
-  createUserQHTMLElem(content: ChatPromptContent[], mid: string): HTMLDivElement | null {
-    return this.createUserMessageElement(content, mid);
-  }
-
   createAssistantMessageElement(
     content: ChatPromptContent[],
     reasoningContent: string | null | undefined,
@@ -141,10 +136,6 @@ export class ChatMessageElementFactory {
     return assistantDiv;
   }
 
-  createAssHTMLElem(content: ChatPromptContent[], reasoningContent: string | null | undefined, mid: string, isError: boolean = false): HTMLDivElement | null {
-    return this.createAssistantMessageElement(content, reasoningContent, mid, isError);
-  }
-
   createAssistantResponseElement(assistantDiv: HTMLDivElement, mid: string, working: boolean = false): HTMLDivElement {
     const contentDiv = document.createElement("div");
     contentDiv.classList.add("cmba-assistant-content");
@@ -163,10 +154,6 @@ export class ChatMessageElementFactory {
     assistantDiv.appendChild(iconDiv);
     assistantDiv.appendChild(contentDiv);
     return textDiv;
-  }
-
-  createAssResponseElem(assistantDiv: HTMLDivElement, mid: string, thinking: boolean = false): HTMLDivElement {
-    return this.createAssistantResponseElement(assistantDiv, mid, thinking);
   }
 
   createMessageOptions(mid: string, actions: ("copy" | "delete")[]): HTMLDivElement {
@@ -230,18 +217,11 @@ export class ChatMessageElementFactory {
     return this.createAssistantResponseElement(assistantDiv, mid, true);
   }
 
-  createAssTempElem(mid: string): HTMLDivElement | null {
-    return this.createAssistantDraftElement(mid);
-  }
-
   findMessageIndex(id: string): number {
     if (!this.container) return -1;
     return Array.from(this.container.children).findIndex((child) => child.id === id);
   }
 
-  findMsgIndex(id: string): number {
-    return this.findMessageIndex(id);
-  }
 }
 
 export { ChatMessageElementFactory as ChatElemCreator };

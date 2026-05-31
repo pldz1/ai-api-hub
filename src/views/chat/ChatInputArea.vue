@@ -496,25 +496,11 @@ watch(
 <style lang="scss" scoped>
 .component-chat-input-area {
   position: relative;
-  width: 100%;
-  max-width: 1040px;
+  width: min(100%, 798px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: -24px;
-    right: -24px;
-    bottom: -20px;
-    height: 168px;
-    z-index: 0;
-    pointer-events: none;
-    background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.78) 42%, oklch(var(--b1)) 78%, oklch(var(--b1)) 100%);
-    box-shadow: inset 0 -56px 72px oklch(var(--b1) / 0.32);
-  }
 
   .ccia-status-sticky {
     position: absolute;

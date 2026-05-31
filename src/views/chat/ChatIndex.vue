@@ -57,7 +57,7 @@ const innerRef = ref<HTMLElement | null>(null);
 const canScrollTop = ref(false);
 const canScrollBottom = ref(false);
 
-const drawer = new ChatDrawer(true);
+const drawer = new ChatDrawer();
 const curChatId = computed<string>(() => store.state.curChatId || "");
 const curConversation = computed(() => (curChatId.value ? store.state.chatConversationsById?.[curChatId.value] || null : null));
 const activeMessages = computed<ChatPromptMessage[]>(() => (curChatId.value ? store.state.chatMessagesById?.[curChatId.value] || [] : []));
@@ -144,22 +144,6 @@ watch(
   },
 );
 
-watch(
-  () => [
-    activeRuntime.value?.draftMessageId || "",
-    activeRuntime.value?.draftAssistantContent || "",
-    activeRuntime.value?.draftReasoningContent || "",
-    activeRuntime.value?.pending || false,
-    activeRuntime.value?.status || "",
-  ],
-  async () => {
-    drawer.syncDraftAssistant(activeRuntime.value || {});
-    await nextTick();
-    updateScrollActions();
-    if (isChatting.value) scrollMessagesToBottom();
-  },
-);
-
 const onStartChat = async (payload: ChatStartPayload) => {
   const { message, model: selectedModel } = payload;
 
@@ -172,6 +156,16 @@ const onStartChat = async (payload: ChatStartPayload) => {
   const nextChatId = store.state.curChatId;
   const runner = getChatSessionRunner(nextChatId);
   if (!runner) return;
+
+  runner.onDraftUpdate = (content) => {
+    if (!innerRef.value) return;
+    drawer.updateDraftContent(content, runner.assistantStream.messageId, activeRuntime.value?.status === "error");
+  };
+
+  runner.onDraftRemove = () => {
+    drawer.removeTempAssistantElem();
+  };
+
   await runner.chat(message);
 };
 
@@ -186,6 +180,7 @@ const onDrawTemplateIns = (messages: ChatPromptMessage[]) => {
 
 onMounted(() => {
   drawer.init("chat-messages-container");
+  drawer.onAfterRender = updateScrollActions;
   renderCurrentConversation({ reset: true });
   updateScrollActions();
 });
@@ -194,7 +189,7 @@ onMounted(() => {
 <style lang="scss" scoped>
 .chat-card-container {
   --chat-page-max-width: 1080px;
-  --chat-side-gap: max(24px, calc((100% - var(--chat-page-max-width)) / 2));
+  --chat-side-gap: max(180px, calc((100% - var(--chat-page-max-width)) / 2));
   --chat-top-gap: 28px;
   --chat-bottom-gap: 230px;
   --chat-input-bottom: 18px;
@@ -281,6 +276,19 @@ onMounted(() => {
   justify-content: center;
   max-width: calc(var(--chat-page-max-width) + var(--chat-input-shell-gap) * 2);
   pointer-events: auto;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: -24px;
+    right: -24px;
+    bottom: -20px;
+    height: 268px;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.78) 42%, oklch(var(--b1)) 78%, oklch(var(--b1)) 100%);
+    box-shadow: inset 0 -56px 72px oklch(var(--b1) / 0.32);
+  }
 }
 
 @media (max-width: 1100px) {

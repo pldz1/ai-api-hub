@@ -1,36 +1,32 @@
 // @ts-nocheck
 import store from "@/store/index";
-import { ChatGateway } from "@/ai-capability";
 import { dsAlert, getUuid } from "@/utils";
 import { tr } from "@/i18n";
-import type { ChatPromptContent, ChatPromptMessage, ChatResponseDelta } from "@/types";
-import { addMessage, deleteMessage as deleteChatMessage } from "../conversation";
-import { createChatTurnMessages, createChatRequest, getConversationMessageFormat, getConversationSystemPrompts } from "../runtime/chat-context";
+import type { ChatPromptContent, ChatPromptMessage } from "@/types";
+import { deleteMessage as deleteChatMessage } from "../conversation";
 import { ChatElemCreator } from "./message-elements";
 import { AssistantStreamState } from "./assistant-stream-state";
 import { renderAssistantDraft } from "./message-renderer";
 
 /**
- * DOM renderer and legacy foreground chat runner for the chat message area.
+ * DOM renderer for the chat message area.
  *
- * New conversation requests are normally driven by `ChatSessionRunner`; this
- * class remains responsible for rendering stored messages and live draft state.
+ * Conversation requests are driven by `ChatSessionRunner`; this class is
+ * responsible for rendering stored messages and live draft state.
  */
 export class ChatDrawer extends ChatElemCreator {
-  constructor(sync: boolean = false) {
-    super(sync);
+  onAfterRender: (() => void) | null = null;
+
+  constructor() {
+    super();
 
     this._isListenerActive = false;
-    this.client = new ChatGateway();
     this.assistantStream = new AssistantStreamState();
     this.assistantDraftContentEl = null;
     this.assistantDraftReasoningEl = null;
     this.hasThinkingPlaceholder = false;
-    this.renderQueue = [];
-    this.isRendering = false;
+    this._renderPending = false;
 
-    this.enqueueRender = this.enqueueRender.bind(this);
-    this.processRenderQueue = this.processRenderQueue.bind(this);
     this.renderAssStream = this.renderAssStream.bind(this);
     this.draw = this.draw.bind(this);
 
@@ -40,7 +36,7 @@ export class ChatDrawer extends ChatElemCreator {
         global_image_preview_modal.showModal();
       },
       onCopyAssistantMessage: async (mid: string) => {
-        const index = this.findMsgIndex(mid);
+        const index = this.findMessageIndex(mid);
         if (index < 0) {
           console.error("Failed to find message:", mid);
           dsAlert({ type: "error", message: tr("toast.invalidMessage") });
@@ -68,78 +64,8 @@ export class ChatDrawer extends ChatElemCreator {
     this.addListener();
   }
 
-  chatClientInit(): void {
-    this.client.init(createChatRequest().model);
-  }
-
-  async chat(data: ChatPromptMessage): Promise<void> {
-    this.removeListener();
-    const context = createChatRequest();
-    this.client.init(context.model);
-    this.assistantStream.reset();
-
-    const userMessage = { ...data, mid: getUuid("msg") };
-    this.draw([userMessage]);
-    this.drawStreamAss();
-
-    await store.dispatch("pushMessages", userMessage);
-    if (this.sync) await addMessage(store.state.curChatId, userMessage.mid, userMessage);
-
-    const passedMsgLen = store.state.curChatModelSettings.passedMsgLen;
-    const history = store.state.messages.filter((msg) => !msg.meta?.isContextBlocked);
-    const messages = history.slice(-Math.min(passedMsgLen, history.length));
-    const packedMessages = createChatTurnMessages(messages, getConversationSystemPrompts(), getConversationMessageFormat(context.model));
-    const request = {
-      ...context,
-      capabilities: messages[messages.length - 1]?.meta?.usedCapabilities || {},
-    };
-
-    await store.dispatch("setLlmRequestPending", true);
-    const stream = this.client.chat(packedMessages, request);
-    let next = await stream.next();
-    while (!next.done) {
-      this.enqueueRender(next.value);
-      next = await stream.next();
-    }
-    const completed = Boolean(next.value);
-
-    if (this.assistantStream.forceStopped) {
-      await store.dispatch("setLlmRequestPending", false);
-      return;
-    }
-
-    if (this.assistantStream.hasError) {
-      await this.finalizeErroredAssistantDraft();
-      this.addListener();
-      await store.dispatch("setLlmRequestPending", false);
-      return;
-    }
-
-    if (!completed) {
-      this.removeTempAssistantElem();
-      this.addListener();
-      await store.dispatch("setLlmRequestPending", false);
-      return;
-    }
-
-    await this.finalizeSuccessfulAssistantDraft();
-    this.addListener();
-    await store.dispatch("setLlmRequestPending", false);
-  }
-
-  stop(): void {
-    this.assistantStream.stop();
-    this.client.abort();
-    this.assistantDraftContentEl = null;
-    this.assistantDraftReasoningEl = null;
-    this.renderQueue = [];
-    this.isRendering = false;
-    store.dispatch("setLlmRequestPending", false);
-    this.addListener();
-  }
-
   async deleteMessage(mid: string): Promise<void> {
-    const index = this.findMsgIndex(mid);
+    const index = this.findMessageIndex(mid);
     if (index < 0) {
       console.error("Failed to find message:", mid);
       dsAlert({ type: "error", message: tr("toast.invalidMessage") });
@@ -150,46 +76,6 @@ export class ChatDrawer extends ChatElemCreator {
     const target = this.container?.querySelector(`#${CSS.escape(mid)}`);
     if (target) target.remove();
     await deleteChatMessage(store.state.curChatId, mid);
-  }
-
-  async finalizeErroredAssistantDraft(): Promise<void> {
-    if (!this.assistantStream.hasContent()) {
-      this.assistantStream.content.content = this.assistantStream.lastError || tr("toast.modelRequestFailed", { error: "" });
-    }
-    await this.persistAssistantDraft();
-  }
-
-  async finalizeSuccessfulAssistantDraft(): Promise<void> {
-    if (!this.assistantStream.content.content) {
-      this.forceRemoveResponsingEl();
-      this.draw([
-        {
-          role: "assistant",
-          content: [{ type: "text", text: tr("chat.timeoutNoContent") }],
-          mid: getUuid("msg"),
-        },
-      ]);
-      debugger;
-      return;
-    }
-
-    await this.persistAssistantDraft();
-  }
-
-  async persistAssistantDraft(): Promise<void> {
-    const assistantData = {
-      role: "assistant",
-      content: [{ type: "text", text: this.assistantStream.content.content }],
-      reasoning_content: this.assistantStream.content.reasoning_content,
-      mid: this.assistantStream.messageId,
-      meta: {
-        isContextBlocked: this.assistantStream.hasError || undefined,
-      } as Record<string, unknown>,
-    };
-    if (this.assistantStream.tokenUsage) assistantData.token_usage = this.assistantStream.tokenUsage;
-
-    await store.dispatch("pushMessages", assistantData);
-    if (this.sync) await addMessage(store.state.curChatId, this.assistantStream.messageId, assistantData);
   }
 
   forceRemoveResponsingEl(): void {
@@ -315,6 +201,34 @@ export class ChatDrawer extends ChatElemCreator {
     });
   }
 
+  updateDraftContent(draft: { content: string; reasoning_content: string }, messageId: string, isError?: boolean): void {
+    if (!this.assistantDraftContentEl || this.assistantStream.messageId !== messageId) {
+      this.removeTempAssistantElem();
+      this.assistantStream.reset(messageId);
+      this.assistantDraftContentEl = this.createAssistantDraftElement(messageId);
+      this.markDraftAssistantElement();
+      this.assistantDraftReasoningEl = null;
+      this.hasThinkingPlaceholder = true;
+    }
+
+    this.assistantStream.content = draft;
+    if (isError !== undefined) this._pendingIsError = isError;
+
+    if (!this._renderPending) {
+      this._renderPending = true;
+      requestAnimationFrame(() => {
+        this.renderAssStream();
+        if (this._pendingIsError !== undefined) {
+          const assistantEl = this.assistantDraftContentEl?.closest(".chat-md-bubble-assistant");
+          if (assistantEl) assistantEl.classList.toggle("is-error", this._pendingIsError);
+          this._pendingIsError = undefined;
+        }
+        this.onAfterRender?.();
+        this._renderPending = false;
+      });
+    }
+  }
+
   syncDraftAssistant(runtime: Record<string, unknown> = {}): void {
     const draft = {
       content: String(runtime?.draftAssistantContent || ""),
@@ -336,64 +250,25 @@ export class ChatDrawer extends ChatElemCreator {
       return;
     }
 
-    if (!this.assistantDraftContentEl || this.assistantStream.messageId !== draftMessageId) {
+    const isNewElement = !this.assistantDraftContentEl || this.assistantStream.messageId !== draftMessageId;
+
+    if (isNewElement) {
       this.removeTempAssistantElem();
       this.assistantStream.reset(draftMessageId);
-      this.assistantDraftContentEl = this.createAssTempElem(this.assistantStream.messageId);
+      this.assistantDraftContentEl = this.createAssistantDraftElement(this.assistantStream.messageId);
       this.markDraftAssistantElement();
       this.assistantDraftReasoningEl = null;
       this.hasThinkingPlaceholder = true;
-    }
 
-    this.assistantStream.content = draft;
-    this.renderAssStream();
+      this.assistantStream.content = draft;
+      this.renderAssStream();
+    }
 
     const assistantEl = this.assistantDraftContentEl?.closest(".chat-md-bubble-assistant");
     if (assistantEl) {
       const isErrorStatus = String(runtime?.status || "") === "error";
       assistantEl.classList.toggle("is-error", isErrorStatus);
     }
-  }
-
-  enqueueRender(delta: ChatResponseDelta): void {
-    if (this.assistantStream.forceStopped) return;
-
-    store.dispatch("setLlmRequestPending", false);
-
-    if (delta.kind === "error") {
-      this.renderQueue = [];
-      this.isRendering = false;
-      this.assistantStream.applyDelta(delta);
-
-      const assistantEl = this.assistantDraftContentEl?.closest(".chat-md-bubble-assistant");
-      if (assistantEl) assistantEl.classList.add("is-error");
-
-      if (this.assistantDraftContentEl && this.assistantStream.hasContent()) this.renderAssStream();
-      else this.forceRemoveResponsingEl();
-
-      console.error("Failed to render assistant stream:", delta.message);
-      dsAlert({ type: "error", message: delta.message, duration: 10000 });
-      return;
-    }
-
-    this.assistantStream.applyDelta(delta);
-
-    this.renderQueue.push("");
-    if (!this.isRendering) {
-      this.isRendering = true;
-      this.processRenderQueue();
-    }
-  }
-
-  processRenderQueue(): void {
-    if (this.renderQueue.length === 0) {
-      this.isRendering = false;
-      return;
-    }
-
-    this.renderQueue = [];
-    this.renderAssStream();
-    setTimeout(this.processRenderQueue, 0);
   }
 
   renderAssStream(): void {
@@ -412,15 +287,6 @@ export class ChatDrawer extends ChatElemCreator {
     );
   }
 
-  drawStreamAss(): void {
-    this.assistantStream.reset(getUuid("msg"));
-    this.assistantDraftContentEl = this.createAssTempElem(this.assistantStream.messageId);
-    this.markDraftAssistantElement();
-    this.assistantDraftReasoningEl = null;
-    this.hasThinkingPlaceholder = true;
-    this.scrollToBottom();
-  }
-
   removeAllElem(): void {
     this.assistantDraftContentEl = null;
     this.assistantDraftReasoningEl = null;
@@ -431,18 +297,6 @@ export class ChatDrawer extends ChatElemCreator {
     const divs = this.container.getElementsByTagName("div");
     while (divs.length > 0) {
       divs[0].remove();
-    }
-  }
-
-  addUserQHTMLElem(content: ChatPromptContent[], mid: string): void {
-    this.createUserQHTMLElem(content, mid);
-  }
-
-  addAssHTMLElem(content: ChatPromptContent[], reasoning_content: string | null | undefined, mid: string, isError: boolean = false): void {
-    const rendered = this.createAssHTMLElem(content, reasoning_content, mid, isError);
-    if (!rendered) {
-      console.warn("Failed to render assistant message:", mid);
-      // dsAlert({ type: "warn", message: tr("toast.drawAssistantFailed") });
     }
   }
 

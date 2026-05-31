@@ -6,6 +6,9 @@ export type AssistantDraftElements = {
   reasoningEl: HTMLDivElement | null;
 };
 
+const _lastReasoning = new WeakMap<HTMLElement, string>();
+const _lastContent = new WeakMap<HTMLElement, string>();
+
 export function renderAssistantDraft(
   elements: AssistantDraftElements,
   draft: AssistantDraftContent,
@@ -19,12 +22,18 @@ export function renderAssistantDraft(
     reasoningEl = reasoningEl || ensureReasoningElement();
     if (reasoningEl) {
       removeThinkingPlaceholder();
-      renderBlock("markdown-content", reasoningEl, draft.reasoning_content);
+      if (_lastReasoning.get(reasoningEl) !== draft.reasoning_content) {
+        renderBlock("markdown-content", reasoningEl, draft.reasoning_content);
+        _lastReasoning.set(reasoningEl, draft.reasoning_content);
+      }
     }
   }
 
   if (draft.content) {
-    renderBlock("markdown-content", elements.contentEl, draft.content);
+    if (_lastContent.get(elements.contentEl) !== draft.content) {
+      renderBlock("markdown-content", elements.contentEl, draft.content);
+      _lastContent.set(elements.contentEl, draft.content);
+    }
   }
 
   return reasoningEl;
