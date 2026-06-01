@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import type { ChatModelConfig, ChatPromptMessage } from "@/types";
@@ -73,7 +73,7 @@ const activeRuntime = computed(() => (curChatId.value ? store.state.chatRuntimeB
 const routeChatId = computed(() => (typeof route.params.cid === "string" ? route.params.cid : ""));
 const isChatting = computed(() => Boolean(activeRuntime.value?.pending || ["loading", "streaming"].includes(activeRuntime.value?.status)));
 const isModelSelectionReadonly = computed(() => Boolean(curConversation.value?.modelSnapshot && (curChatId.value || activeMessages.value.length > 0)));
-const isShowTemplate = computed(() => !curChatId.value && activeMessages.value.length === 0);
+const isShowTemplate = computed(() => !routeChatId.value && activeMessages.value.length === 0);
 
 const updateScrollActions = () => {
   const el = innerRef.value;
@@ -100,56 +100,46 @@ const renderCurrentConversation = async ({ stickToBottom = false, reset = false 
   if (stickToBottom) scrollMessagesToBottom();
 };
 
+const syncConversationFromRoute = async (nextRouteChatId: string) => {
+  dsLoading(true);
+
+  if (!nextRouteChatId) {
+    await resetCurrentChatDraft();
+    await renderCurrentConversation({ reset: true });
+    dsLoading(false);
+    return;
+  }
+
+  if (nextRouteChatId !== curChatId.value) {
+    await store.dispatch("setCurChatId", nextRouteChatId);
+  }
+
+  const isLoaded = Boolean(store.state.chatLoadedById?.[nextRouteChatId]);
+  const hasConversation = Boolean(store.state.chatConversationsById?.[nextRouteChatId]);
+  let hasValidConversation = hasConversation;
+
+  if (!hasConversation) {
+    hasValidConversation = await getChatSettings(nextRouteChatId);
+  }
+
+  if (!hasValidConversation) {
+    dsLoading(false);
+    await router.replace({ name: "chat" });
+    return;
+  }
+
+  if (!isLoaded) await getAllMessage(nextRouteChatId);
+
+  await renderCurrentConversation({ reset: true });
+  dsLoading(false);
+};
+
 watch(
   () => routeChatId.value,
   async (nextRouteChatId) => {
-    if (!nextRouteChatId) {
-      await resetCurrentChatDraft();
-      await renderCurrentConversation({ reset: true });
-      return;
-    }
-
-    if (nextRouteChatId !== curChatId.value) {
-      await store.dispatch("setCurChatId", nextRouteChatId);
-    }
+    await syncConversationFromRoute(nextRouteChatId);
   },
   { immediate: true },
-);
-
-watch(
-  () => curChatId.value,
-  async (newVal) => {
-    dsLoading(true);
-
-    if (newVal) {
-      const isLoaded = Boolean(store.state.chatLoadedById?.[newVal]);
-      const hasConversation = Boolean(store.state.chatConversationsById?.[newVal]);
-      let hasValidConversation = hasConversation;
-
-      if (!hasConversation) {
-        hasValidConversation = await getChatSettings(newVal);
-      }
-
-      if (!hasValidConversation) {
-        dsLoading(false);
-        await router.replace({ name: "chat" });
-        return;
-      }
-
-      if (!isLoaded) await getAllMessage(newVal);
-    }
-
-    await renderCurrentConversation({ reset: true });
-    dsLoading(false);
-  },
-  { immediate: true },
-);
-
-watch(
-  () => activeMessages.value.map((item) => item.mid || "").join("|"),
-  async () => {
-    await renderCurrentConversation({ stickToBottom: true });
-  },
 );
 
 const onStartChat = async (payload: ChatStartPayload) => {
@@ -182,6 +172,10 @@ const onStartChat = async (payload: ChatStartPayload) => {
     drawer.removeTempAssistantElem();
   };
 
+  runner.onMessagePersisted = async () => {
+    await renderCurrentConversation({ stickToBottom: true });
+  };
+
   await runner.chat(message);
 };
 
@@ -197,8 +191,22 @@ const onDrawTemplateIns = (messages: ChatPromptMessage[]) => {
 onMounted(() => {
   drawer.init("chat-messages-container");
   drawer.onAfterRender = updateScrollActions;
+  drawer.onMessageDeleted = async () => {
+    await renderCurrentConversation();
+  };
   renderCurrentConversation({ reset: true });
   updateScrollActions();
+});
+
+onBeforeUnmount(() => {
+  drawer.onMessageDeleted = null;
+  const runner = getChatSessionRunner(curChatId.value);
+  if (runner) {
+    runner.onDraftUpdate = null;
+    runner.onDraftRemove = null;
+    runner.onMessagePersisted = null;
+    runner.onRuntimeUpdate = null;
+  }
 });
 
 </script>

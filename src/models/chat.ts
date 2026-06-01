@@ -28,53 +28,28 @@ import {
   chatProviderKeys,
 } from "@/ai-capability/chat";
 
-/** Returns whether a user model config should use Azure OpenAI routing. */
-export function isAzureChatModel(model: ChatModelConfig | null | undefined): model is ChatModelConfig & { provider: "Azure OpenAI" } {
-  return model?.provider === "Azure OpenAI";
-}
-
 /** Returns whether a user model config should use direct OpenAI-compatible routing. */
 export function isOpenAIChatModel(model: ChatModelConfig | null | undefined): model is ChatModelConfig & { provider: "OpenAI" } {
   return model?.provider === "OpenAI";
 }
 
-/** Returns the Azure deployment name used when building Azure runtime config. */
-export function getModelDeployment(model: { deployment?: string; model?: string; provider?: string } | null | undefined): string {
-  return String(model?.deployment || "").trim();
-}
-
 /**
- * Normalizes loose/legacy chat model data into the canonical user config shape.
+ * Normalizes loose chat model data into the canonical user config shape.
  *
  * This is still user configuration. It does not build provider runtime args.
- * It mainly fills defaults, migrates legacy field names, and narrows the
- * provider-specific fields to the stable `ChatModelConfig` union.
+ * It mainly fills defaults and narrows the provider to the stable
+ * `ChatModelConfig` shape.
  */
 export function normalizeChatModelConfig(model: LooseModelConfig | null | undefined = {}): ChatModelConfig {
   const provider = model?.provider;
   const normalizedProvider = String(provider || "") === "Qwen" ? "DashScope" : provider;
   const nextProvider = isChatModelProvider(normalizedProvider) ? normalizedProvider : "OpenAI";
-  const modelId = model?.model;
-  const basePayload = {
-    name: String(model?.name || "").trim(),
-    apiKey: String(model?.apiKey || "").trim(),
-    model: modelId,
-  };
-
-  if (nextProvider === "Azure OpenAI") {
-    return {
-      ...basePayload,
-      provider: "Azure OpenAI",
-      endpoint: String(model?.endpoint || "").trim(),
-      deployment: String(model?.deployment || "").trim(),
-      apiVersion: String(model?.apiVersion || "").trim(),
-    };
-  }
-
   return {
-    ...basePayload,
+    name: String(model?.name || "").trim(),
     provider: nextProvider,
     baseURL: String(model?.baseURL || "").trim(),
+    apiKey: String(model?.apiKey || "").trim(),
+    model: String(model?.model || "").trim(),
   };
 }
 
@@ -154,7 +129,7 @@ export function createConversationModelSnapshot(model: LooseModelConfig | null |
   if (!modelConfig?.name || !modelConfig?.apiKey) return null;
 
   const modelId = modelConfig.model;
-  const modelConfigId = `${modelConfig.provider}:${modelConfig.name}:${modelId}:${getModelDeployment(modelConfig) || modelId}`;
+  const modelConfigId = `${modelConfig.provider}:${modelConfig.name}:${modelId}:${modelConfig.baseURL || modelId}`;
 
   return {
     modelConfigId,

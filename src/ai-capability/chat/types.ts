@@ -5,7 +5,7 @@ import { TokenUsage, ParamDefaultValue } from "../common";
 // ============================================================================
 
 export type ChatProviderRoute = "openai" | "azure-openai" | "deepseek" | "dashscope";
-export type ChatProviderConnectionField = "baseURL" | "endpoint" | "deployment" | "apiVersion";
+export type ChatProviderConnectionField = "baseURL";
 
 export interface ChatProviderDefinition {
   name: string;
@@ -19,18 +19,19 @@ const chatProviderRegistryConfig = {
     name: "OpenAI",
     route: "openai",
     connectionFields: ["baseURL"],
-    defaultBaseURL: "https://api.openai.com/v1",
+    defaultBaseURL: "https://api.openai.com/v1/chat/completions",
   },
   "Azure OpenAI": {
     name: "Azure OpenAI",
     route: "azure-openai",
-    connectionFields: ["endpoint", "deployment", "apiVersion"],
+    connectionFields: ["baseURL"],
+    defaultBaseURL: "https://<YOUR-AZURE-PROJECT>.openai.azure.com/openai/v1/chat/completions",
   },
   DeepSeek: {
     name: "DeepSeek",
     route: "deepseek",
     connectionFields: ["baseURL"],
-    defaultBaseURL: "https://api.deepseek.com",
+    defaultBaseURL: "https://api.deepseek.com/chat/completions",
   },
   DashScope: {
     name: "DashScope",
@@ -63,36 +64,24 @@ export interface ChatModelCapabilities {
 // User-owned model config consumed by chat services
 // ============================================================================
 
-export interface ChatModelConfigBase {
+export interface ChatModelConfig {
   name: string;
+  provider: ChatModelProvider;
+  baseURL: string;
   apiKey: string;
   model: string;
 }
-
-export interface AzureOpenAIChatModelConfig extends ChatModelConfigBase {
-  provider: "Azure OpenAI";
-  endpoint: string;
-  deployment: string;
-  apiVersion: string;
-}
-
-export interface BaseURLChatModelConfig extends ChatModelConfigBase {
-  provider: Exclude<ChatModelProvider, "Azure OpenAI">;
-  baseURL: string;
-}
-
-export type ChatModelConfig = BaseURLChatModelConfig | AzureOpenAIChatModelConfig;
 
 // ============================================================================
 // Parameter definitions (model-level, not app-level)
 // ============================================================================
 
-export interface ChatTextContent {
+interface ChatTextContent {
   type: "text";
   text: string;
 }
 
-export interface ChatImageContent {
+interface ChatPartsContent {
   type: "image_url";
   image_url: {
     url: string;
@@ -106,7 +95,7 @@ export interface ChatRequest {
   capabilities?: Partial<ChatModelCapabilities>;
 }
 
-export type ChatPromptContent = ChatTextContent | ChatImageContent;
+export type ChatPromptContent = ChatTextContent | ChatPartsContent;
 
 export interface ChatPromptMessage {
   role: ChatMessageRole;

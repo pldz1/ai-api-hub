@@ -68,22 +68,6 @@
           <small v-if="isImageModel">{{ t("user.modelCard.imageBaseUrlHelp") }}</small>
         </label>
 
-        <!-- Azure-specific connection fields -->
-        <label v-if="isAzure" class="model-form-field model-form-field-span">
-          <span>{{ t("user.modelCard.fields.endpoint") }}</span>
-          <input v-model.trim="localModel.endpoint" type="text" class="input input-bordered w-full" />
-        </label>
-
-        <label v-if="isAzure" class="model-form-field">
-          <span>{{ t("user.modelCard.fields.apiVersion") }}</span>
-          <input v-model.trim="localModel.apiVersion" type="text" class="input input-bordered w-full" />
-        </label>
-
-        <label v-if="isAzure" class="model-form-field">
-          <span>{{ t("user.modelCard.fields.deployment") }}</span>
-          <input v-model.trim="localModel.deployment" type="text" class="input input-bordered w-full" />
-        </label>
-
         <!-- Secret entry with a copy helper -->
         <div class="model-form-field model-form-field-span">
           <label>{{ t("user.modelCard.fields.apiKey") }}</label>
@@ -162,7 +146,6 @@ let isSyncingFromProps = false;
 let lastModelSnapshot = "";
 
 const isImageModel = computed(() => props.kind === "image");
-const isAzure = computed(() => localModel.provider === "Azure OpenAI");
 const usesBaseURL = computed(() => chatProviderUsesField(localModel.provider, "baseURL"));
 const hasImageInputParam = computed(() => isImageModel.value && imageParamDefs.some((item) => item.type === "image"));
 const resolvedModelId = computed(() => localModel?.model);
@@ -236,60 +219,30 @@ function syncProviderForModel(force = false) {
 }
 
 function normalizeModelDraft(source: ModelEditorState = localModel): ModelEditorState {
-  // Remove incompatible fields so persisted models have one routing shape.
-  const next = {
-    ...createEmptyModelEditorState(),
-    ...source,
-    model: source.model.trim(),
+  // Keep the persisted shape provider-agnostic for all chat providers.
+  const next: ModelEditorState = {
+    name: String(source.name || "").trim(),
+    provider: source.provider,
+    baseURL: String(source.baseURL || "").trim(),
+    apiKey: String(source.apiKey || "").trim(),
+    model: String(source.model || "").trim(),
   };
   if (isImageModel.value) {
     return {
       ...next,
       provider: "OpenAI",
-      endpoint: "",
-      deployment: "",
-      apiVersion: "",
-    };
-  }
-
-  if (next.provider === "Azure OpenAI") {
-    return {
-      ...next,
-      baseURL: "",
-    };
-  }
-  if (chatProviderUsesField(next.provider, "baseURL")) {
-    return {
-      ...next,
-      endpoint: "",
-      deployment: "",
-      apiVersion: "",
     };
   }
   return next;
 }
 
 function buildChatModelPayload(draft: ModelEditorState): ChatModelConfig {
-  const basePayload = {
+  return {
     name: draft.name,
+    provider: (draft.provider || "OpenAI") as ChatModelConfig["provider"],
+    baseURL: draft.baseURL,
     apiKey: draft.apiKey,
     model: draft.model,
-  };
-
-  if (draft.provider === "Azure OpenAI") {
-    return {
-      ...basePayload,
-      provider: "Azure OpenAI",
-      endpoint: draft.endpoint,
-      deployment: draft.deployment,
-      apiVersion: draft.apiVersion,
-    };
-  }
-
-  return {
-    ...basePayload,
-    provider: (draft.provider || "OpenAI") as Exclude<ChatModelConfig["provider"], "Azure OpenAI">,
-    baseURL: draft.baseURL,
   };
 }
 
@@ -312,10 +265,14 @@ function syncFromProps(model?: ModelEditorInput) {
   // Sync external selection changes into local edit state without immediately re-emitting.
   const legacyModel = model || {};
   isSyncingFromProps = true;
-  Object.assign(localModel, createEmptyModelEditorState(), model || {}, {
-    provider: legacyModel.provider || legacyModel.apiType || "",
-  });
-  Object.assign(localModel, normalizeModelDraft(localModel));
+  Object.assign(
+    localModel,
+    normalizeModelDraft({
+      ...createEmptyModelEditorState(),
+      ...legacyModel,
+      provider: legacyModel.provider || legacyModel.apiType || "",
+    }),
+  );
   syncProviderForModel(true);
   syncProviderBaseURL(localModel.provider, true);
   lastModelSnapshot = JSON.stringify(createModelPayload());

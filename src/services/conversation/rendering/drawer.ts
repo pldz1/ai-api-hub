@@ -16,6 +16,7 @@ import { renderAssistantDraft } from "./message-renderer";
  */
 export class ChatDrawer extends ChatElemCreator {
   onAfterRender: (() => void) | null = null;
+  onMessageDeleted: (() => void | Promise<void>) | null = null;
 
   constructor() {
     super();
@@ -76,6 +77,7 @@ export class ChatDrawer extends ChatElemCreator {
     const target = this.container?.querySelector(`#${CSS.escape(mid)}`);
     if (target) target.remove();
     await deleteChatMessage(store.state.curChatId, mid);
+    await this.onMessageDeleted?.();
   }
 
   forceRemoveResponsingEl(): void {

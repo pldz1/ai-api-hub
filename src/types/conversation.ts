@@ -12,11 +12,8 @@ export interface ChatModelEditorState {
   name: string;
   provider: ChatFormProvider;
   baseURL: string;
-  endpoint: string;
   apiKey: string;
   model: string;
-  deployment: string;
-  apiVersion: string;
 }
 
 /**

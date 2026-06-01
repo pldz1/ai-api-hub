@@ -1,5 +1,5 @@
 import type { ChatModelConfig, ParamDefaultValue, ImageModelConfig, ImageModelParamType, ModelSettings, LooseModelConfig } from "@/types";
-import { isAzureChatModel, normalizeChatModelConfig } from "./chat";
+import { normalizeChatModelConfig } from "./chat";
 import { normalizeImageModelConfig } from "./image";
 
 /**
@@ -12,13 +12,10 @@ function sanitizeChatModelConfig(model: ChatModelConfig): ChatModelConfig {
   return {
     name: model.name,
     provider: model.provider,
+    baseURL: model.baseURL,
     apiKey: model.apiKey,
     model: model.model,
-    ...("baseURL" in model ? { baseURL: model.baseURL } : {}),
-    ...("endpoint" in model ? { endpoint: model.endpoint } : {}),
-    ...("deployment" in model ? { deployment: model.deployment } : {}),
-    ...("apiVersion" in model ? { apiVersion: model.apiVersion } : {}),
-  } as ChatModelConfig;
+  };
 }
 
 /** Same as `sanitizeChatModelConfig`, but for image model payloads. */
@@ -60,25 +57,11 @@ function buildPersistedChatModelConfig(model: LooseModelConfig | ChatModelConfig
   const basePayload = {
     name: modelConfig.name,
     provider: modelConfig.provider,
+    baseURL: modelConfig.baseURL,
     apiKey: modelConfig.apiKey,
     model: modelConfig.model,
   };
-
-  if (isAzureChatModel(modelConfig)) {
-    return {
-      ...basePayload,
-      provider: "Azure OpenAI",
-      endpoint: modelConfig.endpoint,
-      deployment: modelConfig.deployment,
-      apiVersion: modelConfig.apiVersion,
-    };
-  }
-
-  return {
-    ...basePayload,
-    provider: modelConfig.provider,
-    baseURL: "baseURL" in modelConfig ? modelConfig.baseURL : "",
-  } as ChatModelConfig;
+  return basePayload;
 }
 
 /** Builds the persisted image payload written to storage/export for one model. */

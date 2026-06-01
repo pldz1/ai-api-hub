@@ -30,11 +30,8 @@ export const defaultChatModelEditorState: ChatModelEditorState = {
   name: "",
   provider: "",
   baseURL: "",
-  endpoint: "",
   apiKey: "",
   model: "",
-  deployment: "",
-  apiVersion: "",
 };
 
 export { chatProviderKeys, chatModelCatalog, chatModelTypeList, defaultModelCapabilities, chatDisplayedCapabilityKeys } from "@/ai-capability/chat";

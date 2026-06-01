@@ -314,7 +314,6 @@ export const languages = {
       importReadError: "读取 JSON 文件失败 ",
       importSuccess: "已导入配置，系统会自动保存 ",
       modelCard: {
-        azureRequestTarget: "请求会发送到 Azure deployment={deployment} ",
         behavior: {
           chat: "普通对话",
           text: "纯文本消息",
@@ -326,10 +325,7 @@ export const languages = {
         chatTitle: "对话模型",
         fields: {
           apiKey: "API Key",
-          apiVersion: "API Version",
           baseUrl: "Base URL",
-          deployment: "Deployment",
-          endpoint: "Endpoint",
           imageUrl: "URL",
           model: "Model",
           modelOverride: "Model Override",
@@ -349,7 +345,7 @@ export const languages = {
           imageModelId: "可选，例如: gpt-image-1.5 / gpt-image-1 / gpt-image-1-mini",
         },
         sections: {
-          connectionDescription: "先选择模型能力，再配置 Provider、接口地址和鉴权信息 ",
+          connectionDescription: "先选择模型能力，再配置 Provider、Base URL 和鉴权信息 ",
           connectionTitle: "请求配置",
         },
         suggestionGroups: {
@@ -721,7 +717,6 @@ export const languages = {
       importReadError: "Failed to read the JSON file.",
       importSuccess: "Settings imported. Autosave will persist them shortly.",
       modelCard: {
-        azureRequestTarget: "Requests target Azure deployment={deployment}.",
         behavior: {
           chat: "Chat",
           text: "Text-only messages",
@@ -734,10 +729,7 @@ export const languages = {
         chatTitle: "Chat Model",
         fields: {
           apiKey: "API Key",
-          apiVersion: "API Version",
           baseUrl: "Base URL",
-          deployment: "Deployment",
-          endpoint: "Endpoint",
           imageUrl: "URL",
           model: "Model",
           modelOverride: "Model Override",
@@ -757,7 +749,7 @@ export const languages = {
           imageModelId: "Optional, for example: gpt-image-1.5 / gpt-image-1 / gpt-image-1-mini",
         },
         sections: {
-          connectionDescription: "Choose the model capability first, then configure the provider, endpoint, and authentication details.",
+          connectionDescription: "Choose the model capability first, then configure the provider, base URL, and authentication details.",
           connectionTitle: "Request",
         },
         suggestionGroups: {

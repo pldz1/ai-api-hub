@@ -52,21 +52,21 @@
 
           <!-- Surface per-turn capabilities and the send or stop trigger. -->
           <div class="ccia-left-actions">
-            <AppTooltip v-if="activeCapabilities.imageRead" :text="t('tooltip.uploadImage')" placement="top">
+            <AppTooltip v-if="supportedCapabilities.imageRead" :text="t('tooltip.uploadImage')" placement="top">
               <button class="ccia-capability-chip" type="button" @click="openImageFilePicker">
                 <SvgIcon class="ccia-capability-icon" :src="attachIcon" />
                 <span>{{ t("input.capabilities.imageRead") }}</span>
               </button>
             </AppTooltip>
-            <AppTooltip v-for="item in visibleTurnCapabilities" :key="item.key" :text="item.tooltip" placement="top">
+            <AppTooltip v-if="supportedCapabilities.webSearch" :text="t('input.capabilities.webSearch')" placement="top">
               <button
                 class="ccia-capability-chip"
-                :class="{ active: inputCapabilities[item.key] }"
+                :class="{ active: inputCapabilities.webSearch }"
                 type="button"
-                @click="onToggleCapability(item.key, !inputCapabilities[item.key])"
+                @click="onToggleCapability('webSearch', !inputCapabilities.webSearch)"
               >
-                <SvgIcon class="ccia-capability-icon" :src="item.icon" />
-                <span>{{ item.label }}</span>
+                <SvgIcon class="ccia-capability-icon" :src="webIcon" />
+                <span>{{ t("input.capabilities.webSearch") }}</span>
               </button>
             </AppTooltip>
             <AppTooltip :text="t('tooltip.sendOrStop')" placement="top">
@@ -121,9 +121,7 @@ import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import {
   createConversationModelSnapshot,
-  getEffectiveCapabilities,
   getChatModelCapabilities,
-  getModelDeployment,
   mergeChatSettingsWithModel,
   getModelFromSnapshot,
 } from "@/models";
@@ -187,40 +185,17 @@ const selectedModel = ref<ChatModelConfig | null>(null);
 const isModelSelectionReadonly = computed(() => Boolean(props.modelSelectionReadonly || curChatId.value));
 const draftSnapshot = computed(() => createConversationModelSnapshot(selectedModel.value));
 const activeSnapshot = computed(() => curConversation.value?.modelSnapshot || draftSnapshot.value);
-const activeModelConfig = computed(() => getModelFromSnapshot(activeSnapshot.value));
-const activeSupportedCapabilities = computed(() =>
-  activeModelConfig.value ? getChatModelCapabilities(activeModelConfig.value) : { ...defaultModelCapabilities },
-);
-const activeCapabilities = computed(() =>
-  getEffectiveCapabilities(activeSupportedCapabilities.value, activeSupportedCapabilities.value, inputCapabilities.value),
-);
-const lockedModelName = computed(() => curConversation.value?.modelSnapshot?.displayName || t("input.lockedModel"));
-const capabilityLabelKeys: Record<string, string> = {
-  webSearch: "input.capabilities.webSearch",
-};
-
-const capabilityIcons: Record<string, string> = {
-  webSearch: webIcon,
-};
-
-const visibleTurnCapabilities = computed(() => {
-  const supported = activeSupportedCapabilities.value;
-
-  return Object.keys(capabilityLabelKeys)
-    .filter((key) => key !== "imageRead" && supported?.[key])
-    .map((key) => {
-      const translationKey = capabilityLabelKeys[key];
-      const text = t(translationKey);
-      return {
-        key,
-        label: text,
-        tooltip: text,
-        icon: capabilityIcons[key] || undefined,
-      };
-    });
+const supportedCapabilities = computed(() => {
+  const model = getModelFromSnapshot(activeSnapshot.value);
+  return model ? getChatModelCapabilities(model) : { ...defaultModelCapabilities };
 });
+const activeCapabilities = computed(() => ({
+  imageRead: supportedCapabilities.value.imageRead,
+  webSearch: Boolean(supportedCapabilities.value.webSearch && inputCapabilities.value.webSearch),
+}));
+const lockedModelName = computed(() => curConversation.value?.modelSnapshot?.displayName || t("input.lockedModel"));
 
-const getModelSelectionKey = (model: ChatModelConfig | null) => [model?.provider, model?.name, model?.model, getModelDeployment(model)].join("|");
+const getModelSelectionKey = (model: ChatModelConfig | null) => [model?.provider, model?.name, model?.model, model?.baseURL].join("|");
 
 watch(
   () => chatModels.value,
@@ -394,22 +369,28 @@ function readFileAsInputImage(file: File): Promise<ChatInputImage | null> {
 }
 
 async function addImageFiles(files: FileList | File[]) {
+  if (!supportedCapabilities.value.imageRead) return;
   const nextImages = await Promise.all(Array.from(files).map((file) => readFileAsInputImage(file)));
   inputImages.value = [...inputImages.value, ...(nextImages.filter(Boolean) as ChatInputImage[])];
 }
 
 function openImageFilePicker() {
+  if (!supportedCapabilities.value.imageRead) return;
   imageFileInputRef.value?.click();
 }
 
 async function onImageFileChange(event: Event) {
   const target = event.target as HTMLInputElement;
+  if (!supportedCapabilities.value.imageRead) {
+    target.value = "";
+    return;
+  }
   if (target.files?.length) await addImageFiles(target.files);
   target.value = "";
 }
 
 async function onPaste(event: ClipboardEvent) {
-  if (!activeCapabilities.value.imageRead) return;
+  if (!supportedCapabilities.value.imageRead) return;
   const files = Array.from(event.clipboardData?.items || [])
     .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
     .map((item) => item.getAsFile())
@@ -435,7 +416,7 @@ onBeforeUnmount(() => {
 });
 
 watch(
-  () => activeCapabilities.value.imageRead,
+  () => supportedCapabilities.value.imageRead,
   (enabled) => {
     if (!enabled) inputImages.value = [];
   },

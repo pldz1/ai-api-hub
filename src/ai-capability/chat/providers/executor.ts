@@ -6,22 +6,9 @@ import { DashScopeClient } from "./dashscope";
 import { DeepSeekClient } from "./deepseek";
 import { OpenAIClient } from "./openai";
 
-type BaseURLChatProviderRuntimeConfig = Pick<Extract<ChatModelConfig, { baseURL: string }>, "provider" | "baseURL" | "apiKey" | "model"> & {
-  route: Exclude<ChatProviderRoute, "azure-openai">;
+type ChatProviderRuntimeConfig = Pick<ChatModelConfig, "provider" | "baseURL" | "apiKey" | "model"> & {
+  route: ChatProviderRoute;
 };
-
-type AzureOpenAIChatProviderRuntimeConfig = Pick<
-  Extract<ChatModelConfig, { provider: "Azure OpenAI" }>,
-  "provider" | "endpoint" | "apiKey" | "deployment" | "apiVersion"
-> & {
-  route: "azure-openai";
-};
-
-type ChatProviderRuntimeConfig = BaseURLChatProviderRuntimeConfig | AzureOpenAIChatProviderRuntimeConfig;
-
-function getModelDeployment(model: ChatModelConfig): string {
-  return "deployment" in model && model.deployment ? model.deployment : model.model;
-}
 
 export function isChatModelProvider(value: unknown): value is ChatProviderKey {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(chatProviderRegistry, value);
@@ -57,28 +44,13 @@ export function createChatProviderConfig(model: ChatModelConfig): ChatProviderRu
   const providerDefinition = getChatProviderDefinition(model.provider);
   if (!providerDefinition) return null;
 
-  if (providerDefinition.route === "azure-openai" && "endpoint" in model) {
-    return {
-      route: "azure-openai",
-      provider: "Azure OpenAI",
-      endpoint: model.endpoint,
-      apiKey: model.apiKey,
-      deployment: getModelDeployment(model),
-      apiVersion: model.apiVersion,
-    };
-  }
-
-  if ("baseURL" in model) {
-    return {
-      route: providerDefinition.route as Exclude<ChatProviderRoute, "azure-openai">,
-      provider: model.provider,
-      baseURL: model.baseURL,
-      apiKey: model.apiKey,
-      model: model.model,
-    };
-  }
-
-  return null;
+  return {
+    route: providerDefinition.route,
+    provider: model.provider,
+    baseURL: model.baseURL,
+    apiKey: model.apiKey,
+    model: model.model,
+  };
 }
 
 /**
@@ -89,7 +61,7 @@ export function createChatProviderConfig(model: ChatModelConfig): ChatProviderRu
  */
 export function createChatExecutor(config: ChatProviderRuntimeConfig): ChatExecutor {
   if (config.route === "azure-openai") {
-    return new AzureOpenAIClient(config.endpoint, config.apiKey, config.deployment, config.apiVersion);
+    return new AzureOpenAIClient(config.baseURL, config.apiKey, config.model);
   }
 
   if (config.route === "deepseek") {

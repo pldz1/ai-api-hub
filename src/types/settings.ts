@@ -29,19 +29,16 @@ export interface SettingsImportPayload {
 }
 
 /**
- * Loose model config accepted at compatibility boundaries.
+ * Loose model config accepted at import and form boundaries.
  *
- * Use this type only for parsing/migration/normalization. Once normalized, code
- * should move to provider payload types such as `ChatModelConfig`.
+ * Use this type only for parsing/normalization. Once normalized, code should
+ * move to provider payload types such as `ChatModelConfig`.
  */
 export interface LooseModelConfig {
   name?: string;
   provider?: ChatFormProvider | ImageModelProvider | "";
   baseURL?: string;
-  endpoint?: string;
   apiKey?: string;
   model?: string;
   modelType?: string;
-  deployment?: string;
-  apiVersion?: string;
 }

@@ -15,6 +15,7 @@ class ChatSessionRunner {
   assistantStream: AssistantStreamState;
   onDraftUpdate: ((content: AssistantDraftContent) => void) | null = null;
   onDraftRemove: (() => void) | null = null;
+  onMessagePersisted: (() => void | Promise<void>) | null = null;
   onRuntimeUpdate: ((runtime: Record<string, unknown>) => void) | null = null;
 
   constructor(chatId: string) {
@@ -84,6 +85,7 @@ class ChatSessionRunner {
       },
     });
     await addMessage(this.chatId, this.assistantStream.messageId, assistantData);
+    await this.onMessagePersisted?.();
     return true;
   }
 
@@ -109,6 +111,7 @@ class ChatSessionRunner {
       msg: userMessage,
     });
     await addMessage(this.chatId, userMessage.mid, userMessage);
+    await this.onMessagePersisted?.();
 
     const history = (store.state.chatMessagesById?.[this.chatId] || []).filter((msg) => !msg.meta?.isContextBlocked);
     const settings = store.state.chatSettingsById?.[this.chatId] || store.state.curChatModelSettings;
