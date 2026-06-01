@@ -3,7 +3,6 @@ import type {
   ApiMethod,
   ApiResponse,
   RequestBody,
-  RequestHeaders,
   StoredChatMessage,
   ChatListItem,
   ImageConversationListItem,
@@ -14,8 +13,6 @@ import type {
 const STORAGE_KEY = "ai-api-hub.local-storage.v2";
 const IMAGE_DB_NAME = "ai-api-hub-images";
 const IMAGE_STORE_NAME = "images";
-const DEFAULT_HEADERS: RequestHeaders = { "Content-Type": "application/json" };
-const DEFAULT_TIMEOUT = 3600000;
 
 interface StoredImageConversation {
   iid: string;
@@ -67,8 +64,49 @@ function createDefaultState(): LocalStorageState {
   };
 }
 
-function toErrorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
+function normalizeStoredChatMessages(items: unknown): StoredChatMessage[] {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => {
+      const record = item && typeof item === "object" ? (item as StoredChatMessage) : null;
+      const mid = asString(record?.mid);
+      if (!mid) return null;
+      return {
+        mid,
+        message: asString(record?.message),
+      };
+    })
+    .filter((item): item is StoredChatMessage => Boolean(item));
+}
+
+function normalizeStoredChats(items: unknown): StoredChatState[] {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => {
+      const record = item && typeof item === "object" ? (item as StoredChatState) : null;
+      const cid = asString(record?.cid);
+      if (!cid) return null;
+      return {
+        cid,
+        cname: asString(record?.cname),
+        settings: asString(record?.settings),
+        messages: normalizeStoredChatMessages(record?.messages),
+      };
+    })
+    .filter((item): item is StoredChatState => Boolean(item));
+}
+
+function normalizeStoredImageConversations(items: unknown): StoredImageConversation[] {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => {
+      const record = item && typeof item === "object" ? (item as StoredImageConversation) : null;
+      const iid = asString(record?.iid);
+      if (!iid) return null;
+      return {
+        iid,
+        iname: asString(record?.iname),
+        messages: asString(record?.messages, "[]"),
+      };
+    })
+    .filter((item): item is StoredImageConversation => Boolean(item));
 }
 
 function readStorageState(): LocalStorageState {
@@ -76,26 +114,30 @@ function readStorageState(): LocalStorageState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return createDefaultState();
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? { ...createDefaultState(), ...parsed } : createDefaultState();
+    if (!parsed || typeof parsed !== "object") return createDefaultState();
+
+    const state = { ...createDefaultState(), ...parsed };
+    return {
+      ...state,
+      models: state.models && typeof state.models === "object" ? { ...createDefaultModels(), ...state.models } : createDefaultModels(),
+      chatInsTemplateList: asString(state.chatInsTemplateList),
+      chats: normalizeStoredChats(state.chats),
+      images: normalizeStoredImageRecords(state.images),
+      imageConversations: normalizeStoredImageConversations(state.imageConversations),
+    };
   } catch (error) {
     console.warn("Failed to read localStorage state:", error);
     return createDefaultState();
   }
 }
 
-function persistStorageState(state: LocalStorageState): ApiResponse<null> {
+function writeStorageState(state: LocalStorageState): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    return ok(null);
   } catch (error) {
     console.error("Failed to write localStorage state:", error);
-    return fail(toErrorMessage(error, tr("storage.requestFailed")));
+    throw new Error(error instanceof Error ? error.message : tr("storage.requestFailed"));
   }
-}
-
-function assertStorageStateWritten(state: LocalStorageState): void {
-  const result = persistStorageState(state);
-  if (!result.flag) throw new Error(result.log);
 }
 
 function findChat(state: LocalStorageState, cid: string): StoredChatState | null {
@@ -110,8 +152,8 @@ function ok<TData = null>(data: TData = null as TData, log = "Successfully."): A
   return { flag: true, log, data };
 }
 
-function fail(log: string): ApiResponse<null> {
-  return { flag: false, log, data: null };
+function fail<TData = null>(log: string): ApiResponse<TData> {
+  return { flag: false, log, data: null as TData };
 }
 
 function openImageDatabase(): Promise<IDBDatabase> {
@@ -201,7 +243,7 @@ async function migrateLegacyInlineImages(state: LocalStorageState): Promise<Stor
   if (inlineImages.length > 0) {
     await Promise.all(inlineImages.map((item) => setImageSource(item.id, item.src || "")));
     state.images = normalizedImages.map(({ id, prompt }) => ({ id, prompt }));
-    assertStorageStateWritten(state);
+    writeStorageState(state);
     return state.images;
   }
 
@@ -244,7 +286,7 @@ async function handleGetModels(): Promise<ApiResponse<ModelSettings>> {
 async function handleSetModels(body: SetModelsRequestBody): Promise<ApiResponse<null>> {
   const state = readStorageState();
   state.models = body.data;
-  assertStorageStateWritten(state);
+  writeStorageState(state);
   return ok(null);
 }
 
@@ -256,7 +298,7 @@ async function handleGetChatInsTemplateList(): Promise<ApiResponse<string>> {
 async function handleSetChatInsTemplateList(body: RequestBody): Promise<ApiResponse<null>> {
   const state = readStorageState();
   state.chatInsTemplateList = asString(body.data, "[]");
-  assertStorageStateWritten(state);
+  writeStorageState(state);
   return ok(null);
 }
 
@@ -269,6 +311,7 @@ async function handleAddChat(body: RequestBody): Promise<ApiResponse<null>> {
   const state = readStorageState();
   const cid = asString(body.cid);
   const cname = asString(body.cname);
+  if (!cid) return fail("Chat id is required.");
 
   if (!findChat(state, cid)) {
     state.chats.push({
@@ -277,7 +320,7 @@ async function handleAddChat(body: RequestBody): Promise<ApiResponse<null>> {
       settings: "",
       messages: [],
     });
-    assertStorageStateWritten(state);
+    writeStorageState(state);
   }
 
   return ok(null);
@@ -286,8 +329,9 @@ async function handleAddChat(body: RequestBody): Promise<ApiResponse<null>> {
 async function handleDeleteChat(body: RequestBody): Promise<ApiResponse<null>> {
   const state = readStorageState();
   const cid = asString(body.cid);
+  if (!cid) return fail("Chat id is required.");
   state.chats = state.chats.filter((item) => item.cid !== cid);
-  assertStorageStateWritten(state);
+  writeStorageState(state);
   return ok(null);
 }
 
@@ -296,45 +340,57 @@ async function handleRenameChat(body: RequestBody): Promise<ApiResponse<null>> {
   const chat = findChat(state, asString(body.cid));
   if (!chat) return fail("Chat not found.");
   chat.cname = asString(body.cname);
-  assertStorageStateWritten(state);
+  writeStorageState(state);
   return ok(null);
 }
 
 async function handleGetAllMessage(body: RequestBody): Promise<ApiResponse<StoredChatMessage[]>> {
   const state = readStorageState();
-  const chat = findChat(state, asString(body.cid));
+  const cid = asString(body.cid);
+  if (!cid) return fail("Chat id is required.");
+  const chat = findChat(state, cid);
   return ok(chat?.messages || []);
 }
 
 async function handleAddMessage(body: RequestBody): Promise<ApiResponse<null>> {
   const state = readStorageState();
-  const chat = findChat(state, asString(body.cid));
+  const cid = asString(body.cid);
+  const mid = asString(body.mid);
+  if (!cid) return fail("Chat id is required.");
+  if (!mid) return fail("Message id is required.");
+
+  const chat = findChat(state, cid);
   if (!chat) return fail("Chat not found.");
 
-  const mid = asString(body.mid);
   const nextItem: StoredChatMessage = { mid, message: asString(body.message) };
   const index = chat.messages.findIndex((item) => item.mid === mid);
   if (index >= 0) chat.messages[index] = nextItem;
   else chat.messages.push(nextItem);
 
-  assertStorageStateWritten(state);
+  writeStorageState(state);
   return ok(null);
 }
 
 async function handleDeleteMessage(body: RequestBody): Promise<ApiResponse<null>> {
   const state = readStorageState();
-  const chat = findChat(state, asString(body.cid));
+  const cid = asString(body.cid);
+  const mid = asString(body.mid);
+  if (!cid) return fail("Chat id is required.");
+  if (!mid) return fail("Message id is required.");
+
+  const chat = findChat(state, cid);
   if (!chat) return fail("Chat not found.");
 
-  const mid = asString(body.mid);
   chat.messages = chat.messages.filter((item) => item.mid !== mid);
-  assertStorageStateWritten(state);
+  writeStorageState(state);
   return ok(null);
 }
 
 async function handleGetChatSettings(body: RequestBody): Promise<ApiResponse<string>> {
   const state = readStorageState();
-  const chat = findChat(state, asString(body.cid));
+  const cid = asString(body.cid);
+  if (!cid) return fail("Chat id is required.");
+  const chat = findChat(state, cid);
   return ok(chat?.settings || "");
 }
 
@@ -343,7 +399,7 @@ async function handleSetChatSettings(body: RequestBody): Promise<ApiResponse<nul
   const chat = findChat(state, asString(body.cid));
   if (!chat) return fail("Chat not found.");
   chat.settings = asString(body.data);
-  assertStorageStateWritten(state);
+  writeStorageState(state);
   return ok(null);
 }
 
@@ -366,6 +422,7 @@ async function handlePushImage(body: RequestBody): Promise<ApiResponse<ImageData
   const imageRecords = await migrateLegacyInlineImages(state);
   const imageId = asString(body.image_id);
   const prompt = asString(body.image_prompt);
+  if (!imageId) return fail("Image id is required.");
   const src = await urlToDataUrl(asString(body.image_url));
 
   await setImageSource(imageId, src);
@@ -382,17 +439,18 @@ async function handlePushImage(body: RequestBody): Promise<ApiResponse<ImageData
   else imageRecords.push(nextRecord);
 
   state.images = imageRecords;
-  assertStorageStateWritten(state);
+  writeStorageState(state);
   return ok(image);
 }
 
 async function handleDeleteImage(body: RequestBody): Promise<ApiResponse<null>> {
   const state = readStorageState();
   const imageId = asString(body.image_id);
+  if (!imageId) return fail("Image id is required.");
   await migrateLegacyInlineImages(state);
   await deleteImageSource(imageId);
   state.images = state.images.filter((item) => item.id !== imageId);
-  assertStorageStateWritten(state);
+  writeStorageState(state);
   return ok(null);
 }
 
@@ -413,7 +471,7 @@ async function handleAddImageConversation(body: RequestBody): Promise<ApiRespons
       iname,
       messages: "[]",
     });
-    assertStorageStateWritten(state);
+    writeStorageState(state);
   }
 
   return ok(null);
@@ -422,14 +480,17 @@ async function handleAddImageConversation(body: RequestBody): Promise<ApiRespons
 async function handleDeleteImageConversation(body: RequestBody): Promise<ApiResponse<null>> {
   const state = readStorageState();
   const iid = asString(body.iid);
+  if (!iid) return fail("Image conversation id is required.");
   state.imageConversations = state.imageConversations.filter((item) => item.iid !== iid);
-  assertStorageStateWritten(state);
+  writeStorageState(state);
   return ok(null);
 }
 
 async function handleGetImageConversationMessages(body: RequestBody): Promise<ApiResponse<string>> {
   const state = readStorageState();
-  return ok(findImageConversation(state, asString(body.iid))?.messages || "[]");
+  const iid = asString(body.iid);
+  if (!iid) return fail("Image conversation id is required.");
+  return ok(findImageConversation(state, iid)?.messages || "[]");
 }
 
 async function handleSetImageConversationMessages(body: RequestBody): Promise<ApiResponse<null>> {
@@ -438,7 +499,7 @@ async function handleSetImageConversationMessages(body: RequestBody): Promise<Ap
   const conversation = findImageConversation(state, iid);
   if (!conversation) return fail("Image conversation not found.");
   conversation.messages = asString(body.messages, "[]");
-  assertStorageStateWritten(state);
+  writeStorageState(state);
   return ok(null);
 }
 
@@ -483,11 +544,7 @@ export async function apiRequest<TData = unknown>(
   method: ApiMethod,
   endpoint: string,
   body: RequestBody = {},
-  headers: RequestHeaders = DEFAULT_HEADERS,
-  timeout = DEFAULT_TIMEOUT,
 ): Promise<ApiResponse<TData>> {
   void method;
-  void headers;
-  void timeout;
   return requestStorage<TData>(endpoint, body);
 }

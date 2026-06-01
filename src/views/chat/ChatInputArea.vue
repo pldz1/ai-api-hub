@@ -119,12 +119,7 @@ import webIcon from "@/assets/svg/web24.svg";
 import { defaultModelCapabilities } from "@/constants";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
-import {
-  createConversationModelSnapshot,
-  getChatModelCapabilities,
-  mergeChatSettingsWithModel,
-  getModelFromSnapshot,
-} from "@/models";
+import { createConversationModelSnapshot, getChatModelCapabilities, mergeChatSettingsWithModel, getModelFromSnapshot } from "@/models";
 import { packUserMsg } from "@/services";
 import { dsAlert, getUuid, isValidUserMsg } from "@/utils";
 import ChatSettings from "@/views/chat/ChatSettings.vue";
@@ -421,13 +416,12 @@ watch(
     if (!enabled) inputImages.value = [];
   },
 );
-
 </script>
 
 <style lang="scss" scoped>
 .component-chat-input-area {
   position: relative;
-  width: min(100%, 798px);
+  width: min(100%, 742px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -436,14 +430,11 @@ watch(
   .ccia-input-card {
     position: relative;
     z-index: 1;
-    width: min(960px, 100%);
+    width: 100%;
     background: oklch(var(--b1) / 0.96);
     border-radius: 42px;
     padding: 14px 18px 12px;
-    border: 1px solid oklch(var(--bc) / 0.07);
-    box-shadow:
-      0 2px 6px oklch(var(--bc) / 0.05),
-      0 4px 8px oklch(var(--bc) / 0.06);
+    border: 1px solid oklch(var(--bc) / 0.27);
   }
 
   .ccia-input-area {
@@ -500,28 +491,15 @@ watch(
 
   .ccia-model-select {
     border: 2px solid oklch(var(--bc) / 0.08);
-    background:
-      linear-gradient(180deg, oklch(var(--b1) / 0.96), oklch(var(--b2) / 0.94)),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
-        no-repeat right 10px center / 12px 12px;
     appearance: none;
     padding-right: 30px;
-    box-shadow: 0 6px 18px oklch(var(--bc) / 0.06);
-    transition:
-      border-color 0.16s ease,
-      box-shadow 0.16s ease,
-      transform 0.16s ease;
 
     &:hover:not(:disabled) {
       border-color: oklch(var(--bc) / 0.16);
-      transform: translateY(-1px);
     }
 
     &:focus {
       border-color: oklch(var(--p) / 0.42);
-      box-shadow:
-        0 0 0 3px oklch(var(--p) / 0.12),
-        0 10px 24px oklch(var(--bc) / 0.08);
       outline: none;
     }
   }
@@ -541,12 +519,10 @@ watch(
     background-color: oklch(var(--n));
     color: oklch(var(--nc));
     border: none;
-    box-shadow: 0 8px 20px oklch(var(--bc) / 0.16);
 
     &.stopping {
       background-color: oklch(var(--er));
       color: oklch(var(--nc));
-      box-shadow: 0 8px 18px oklch(var(--er) / 0.2);
     }
   }
 
@@ -606,7 +582,6 @@ watch(
       border: 1px solid oklch(var(--bc) / 0.12);
       background: oklch(var(--b1));
       border-radius: 8px;
-      box-shadow: 0 18px 48px oklch(var(--bc) / 0.16);
     }
 
     .ccia-confirm-title {
@@ -637,7 +612,6 @@ watch(
       right: -12px;
       bottom: -12px;
       height: 92px;
-      background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.58) 54%, oklch(var(--b1)) 100%);
       box-shadow: none;
     }
 
@@ -645,10 +619,7 @@ watch(
       width: 100%;
       border-radius: 24px;
       padding: 12px 14px;
-      border: 1px solid oklch(var(--bc) / 0.07);
-      box-shadow:
-        0 2px 8px oklch(var(--bc) / 0.05),
-        0 10px 24px oklch(var(--bc) / 0.08);
+      border: 1px solid oklch(var(--bc) / 0.27);
     }
 
     .ccia-shell {

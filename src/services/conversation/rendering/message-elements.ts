@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { renderBlock } from "@/services/markdown/md-render";
 import copyIcon from "@/assets/svg/copy16.svg";
 import deleteIcon from "@/assets/svg/delete16.svg";
@@ -31,7 +30,7 @@ function createWorkingIcon(): HTMLDivElement {
   return wrapper;
 }
 
-export type ChatMessageElementActions = {
+type ChatMessageElementActions = {
   onCopyAssistantMessage?: (mid: string) => void | Promise<void>;
   onDeleteMessage?: (mid: string) => void | Promise<void>;
   onPreviewImage?: (url: string) => void | Promise<void>;
@@ -44,16 +43,12 @@ export type ChatMessageElementActions = {
  * preview behavior are supplied through callbacks by the caller.
  */
 export class ChatMessageElementFactory {
+  container: HTMLElement | null;
+  actions: ChatMessageElementActions;
+
   constructor(actions: ChatMessageElementActions = {}) {
-    this.id = "";
     this.container = null;
     this.actions = actions;
-
-    this.createUserMessageElement = this.createUserMessageElement.bind(this);
-    this.createAssistantMessageElement = this.createAssistantMessageElement.bind(this);
-    this.createAssistantResponseElement = this.createAssistantResponseElement.bind(this);
-    this.createAssistantDraftElement = this.createAssistantDraftElement.bind(this);
-    this.findMessageIndex = this.findMessageIndex.bind(this);
   }
 
   setMessageActions(actions: ChatMessageElementActions = {}): void {
@@ -223,5 +218,3 @@ export class ChatMessageElementFactory {
   }
 
 }
-
-export { ChatMessageElementFactory as ChatElemCreator };

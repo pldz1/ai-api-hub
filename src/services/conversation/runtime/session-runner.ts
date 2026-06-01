@@ -1,13 +1,36 @@
 import store from "@/store";
 import { ChatGateway } from "@/ai-capability";
+import { buildChatCompletionParams, getChatMessageFormat, getModelFromSnapshot } from "@/models";
 import { getUuid } from "@/utils";
 import { tr } from "@/i18n";
-import type { ChatPromptMessage, ChatResponseDelta } from "@/types";
+import type { ChatModelConfig, ChatPromptContent, ChatPromptMessage, ChatResponseDelta, PackedChatMessage } from "@/types";
 import { addMessage } from "../conversation";
 import { AssistantStreamState, AssistantDraftContent } from "../rendering/assistant-stream-state";
-import { createChatTurnMessages, createChatRequest, getConversationMessageFormat, getConversationSystemPrompts } from "./chat-context";
 
 type ChatRuntimeStatus = "idle" | "loading" | "streaming" | "success" | "error" | "stopped";
+
+function getSessionModel(chatId: string): ChatModelConfig | null {
+  return getModelFromSnapshot(store.state.chatConversationsById?.[chatId]?.modelSnapshot) || store.state.curChatModel || store.state.models.chat?.[0] || null;
+}
+
+function packChatMessages(messages: ChatPromptMessage[], chatId: string, model: ChatModelConfig | null): PackedChatMessage[] {
+  const settings = store.state.chatSettingsById?.[chatId] || store.state.curChatModelSettings;
+  const firstPromptContent = settings?.prompts?.[0]?.content?.[0];
+  const hasSystemPrompt = firstPromptContent?.type === "text" && Boolean(firstPromptContent.text);
+  const combinedMessages = hasSystemPrompt ? [...settings.prompts, ...messages] : messages;
+
+  if (getChatMessageFormat(model) === "text") {
+    return combinedMessages.map((entry) => ({
+      role: entry.role,
+      content: entry.content[0]?.type === "text" ? entry.content[0].text : "",
+    }));
+  }
+
+  return combinedMessages.map((entry) => ({
+    role: entry.role,
+    content: entry.content as ChatPromptContent[],
+  }));
+}
 
 class ChatSessionRunner {
   chatId: string;
@@ -15,19 +38,13 @@ class ChatSessionRunner {
   assistantStream: AssistantStreamState;
   onDraftUpdate: ((content: AssistantDraftContent) => void) | null = null;
   onDraftRemove: (() => void) | null = null;
-  onMessagePersisted: (() => void | Promise<void>) | null = null;
+  onMessagePersisted: ((message: ChatPromptMessage) => void | Promise<void>) | null = null;
   onRuntimeUpdate: ((runtime: Record<string, unknown>) => void) | null = null;
 
   constructor(chatId: string) {
     this.chatId = chatId;
     this.client = new ChatGateway();
     this.assistantStream = new AssistantStreamState();
-
-    this.enqueueProviderDelta = this.enqueueProviderDelta.bind(this);
-  }
-
-  getSessionContext() {
-    return createChatRequest(this.chatId);
   }
 
   updateRuntime(runtime = {}) {
@@ -52,17 +69,6 @@ class ChatSessionRunner {
     this.onDraftRemove?.();
   }
 
-  updateDraftRuntime(status: ChatRuntimeStatus) {
-    this.updateRuntime({
-      status,
-      pending: false,
-      draftMessageId: this.assistantStream.messageId,
-      draftAssistantContent: this.assistantStream.content.content,
-      draftReasoningContent: this.assistantStream.content.reasoning_content,
-      lastError: this.assistantStream.lastError,
-    });
-  }
-
   async persistAssistantMessage() {
     if (!this.assistantStream.hasContent()) return false;
 
@@ -79,13 +85,10 @@ class ChatSessionRunner {
 
     await store.dispatch("pushChatMessage", {
       cid: this.chatId,
-      msg: {
-        ...assistantData,
-        mid: this.assistantStream.messageId,
-      },
+      msg: assistantData,
     });
     await addMessage(this.chatId, this.assistantStream.messageId, assistantData);
-    await this.onMessagePersisted?.();
+    await this.onMessagePersisted?.(assistantData);
     return true;
   }
 
@@ -96,14 +99,22 @@ class ChatSessionRunner {
     this.onDraftUpdate?.(this.assistantStream.content);
 
     if (delta.kind === "error") {
-      this.updateDraftRuntime("error");
+      this.updateRuntime({
+        status: "error",
+        pending: false,
+        draftMessageId: this.assistantStream.messageId,
+        draftAssistantContent: this.assistantStream.content.content,
+        draftReasoningContent: this.assistantStream.content.reasoning_content,
+        lastError: this.assistantStream.lastError,
+      });
     }
   }
 
   async chat(data: ChatPromptMessage): Promise<void> {
     this.assistantStream.reset(getUuid("msg"));
 
-    const context = this.getSessionContext();
+    const model = getSessionModel(this.chatId);
+    const settings = store.state.chatSettingsById?.[this.chatId] || store.state.curChatModelSettings;
     const userMessage = { ...data, mid: getUuid("msg") };
 
     await store.dispatch("pushChatMessage", {
@@ -111,15 +122,15 @@ class ChatSessionRunner {
       msg: userMessage,
     });
     await addMessage(this.chatId, userMessage.mid, userMessage);
-    await this.onMessagePersisted?.();
+    await this.onMessagePersisted?.(userMessage);
 
     const history = (store.state.chatMessagesById?.[this.chatId] || []).filter((msg) => !msg.meta?.isContextBlocked);
-    const settings = store.state.chatSettingsById?.[this.chatId] || store.state.curChatModelSettings;
     const passedMsgLen = Number(settings?.passedMsgLen || history.length || 1);
     const messages = history.slice(-Math.min(passedMsgLen, history.length));
-    const packedMessages = createChatTurnMessages(messages, getConversationSystemPrompts(this.chatId), getConversationMessageFormat(context.model));
+    const packedMessages = packChatMessages(messages, this.chatId, model);
     const request = {
-      ...context,
+      model,
+      params: buildChatCompletionParams(model, settings),
       capabilities: messages[messages.length - 1]?.meta?.usedCapabilities || {},
     };
 
@@ -147,12 +158,10 @@ class ChatSessionRunner {
     }
 
     if (this.assistantStream.hasError) {
-      if (this.assistantStream.hasContent()) {
-        await this.persistAssistantMessage();
-      } else {
+      if (!this.assistantStream.hasContent()) {
         this.assistantStream.content.content = this.assistantStream.lastError || tr("toast.modelRequestFailed", { error: "" });
-        await this.persistAssistantMessage();
       }
+      await this.persistAssistantMessage();
       this.clearDraft("error", { lastError: this.assistantStream.lastError || tr("toast.modelRequestFailed", { error: "" }) });
       return;
     }
@@ -163,7 +172,6 @@ class ChatSessionRunner {
     }
 
     if (!this.assistantStream.content.content) {
-      debugger;
       this.assistantStream.content.content = tr("chat.timeoutNoContent");
     }
 

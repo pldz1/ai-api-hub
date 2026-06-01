@@ -2,17 +2,16 @@
   <!-- This view renders the chat message area and input composer. -->
   <section ref="containerRef" class="chat-card-container">
     <!-- Header bar with session status, question-list toggle and panel. -->
-    <ChatHeaderBar
-      :scroll-container="innerRef"
-      :container-el="containerRef"
-    />
+    <ChatHeaderBar :scroll-container="innerRef" :container-el="containerRef" />
 
-    <!-- Show starter templates before a conversation has been created. -->
-    <ChatInsTemplate v-show="isShowTemplate" @on-update="onDrawTemplateIns" />
+    <!-- Show starter templates as an empty-state layer above the message surface. -->
+    <div v-show="isShowTemplate" class="ccdc-template-layer">
+      <ChatInsTemplate @on-update="onDrawTemplateIns" />
+    </div>
 
     <!-- Render the live message list and its floating scroll shortcuts. -->
     <div class="ccdc-messages-container" :class="{ active: !isShowTemplate }">
-      <div id="chat-messages-container" ref="innerRef" class="cccd-scroll-window" @scroll="updateScrollActions"></div>
+      <div ref="innerRef" class="cccd-scroll-window" @scroll="updateScrollActions"></div>
       <ChatScrollActions
         v-show="!isShowTemplate"
         :can-scroll-top="canScrollTop"
@@ -65,7 +64,6 @@ const containerRef = ref<HTMLElement | null>(null);
 const inputAreaRef = ref<HTMLElement | null>(null);
 const canScrollTop = ref(false);
 const canScrollBottom = ref(false);
-const AUTO_FOLLOW_THRESHOLD = 120;
 let scrollActionsFrame = 0;
 let composerResizeObserver: ResizeObserver | null = null;
 
@@ -98,12 +96,6 @@ const scrollMessagesToTop = () => {
   innerRef.value?.scrollTo({ top: 0, behavior: "smooth" });
 };
 
-const isNearScrollBottom = (threshold = AUTO_FOLLOW_THRESHOLD) => {
-  const el = innerRef.value;
-  if (!el) return true;
-  return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
-};
-
 const scrollMessagesToBottom = (behavior: ScrollBehavior = "smooth") => {
   const el = innerRef.value;
   if (!el) return;
@@ -120,7 +112,7 @@ const updateComposerHeight = () => {
 
 const renderCurrentConversation = async ({ stickToBottom = false, reset = false }: { stickToBottom?: boolean; reset?: boolean } = {}) => {
   drawer.renderConversation(activeMessages.value, { reset });
-  drawer.syncDraftAssistant(activeRuntime.value || {});
+  drawer.syncDraftAssistant(activeRuntime.value);
   await nextTick();
   updateScrollActions();
   if (stickToBottom) scrollMessagesToBottom("auto");
@@ -182,32 +174,20 @@ const onStartChat = async (payload: ChatStartPayload) => {
   if (!runner) return;
 
   runner.onRuntimeUpdate = (runtime) => {
-    const shouldFollow = isNearScrollBottom();
-    drawer.syncDraftAssistant(runtime || {});
-    nextTick(() => {
-      updateScrollActions();
-      if (shouldFollow) scrollMessagesToBottom("auto");
-    });
+    drawer.syncDraftAssistant(runtime);
+    nextTick(updateScrollActions);
   };
 
   runner.onDraftUpdate = (content) => {
-    if (!innerRef.value) return;
-    const shouldFollow = isNearScrollBottom();
     drawer.updateDraftContent(content, runner.assistantStream.messageId, activeRuntime.value?.status === "error");
-    if (shouldFollow) {
-      requestAnimationFrame(() => {
-        updateScrollActions();
-        scrollMessagesToBottom("auto");
-      });
-    }
   };
 
   runner.onDraftRemove = () => {
     drawer.removeTempAssistantElem();
   };
 
-  runner.onMessagePersisted = async () => {
-    await renderCurrentConversation({ stickToBottom: true });
+  runner.onMessagePersisted = async (message) => {
+    await renderCurrentConversation({ stickToBottom: message.role === "user" });
   };
 
   await runner.chat(message);
@@ -223,7 +203,7 @@ const onDrawTemplateIns = (messages: ChatPromptMessage[]) => {
 };
 
 onMounted(() => {
-  drawer.init("chat-messages-container");
+  drawer.init(innerRef.value);
   drawer.onAfterRender = updateScrollActions;
   drawer.onMessageDeleted = async () => {
     await renderCurrentConversation();
@@ -253,7 +233,6 @@ onBeforeUnmount(() => {
     runner.onRuntimeUpdate = null;
   }
 });
-
 </script>
 
 <style lang="scss" scoped>
@@ -278,15 +257,6 @@ onBeforeUnmount(() => {
     linear-gradient(180deg, oklch(var(--b1)) 0%, oklch(var(--b2) / 0.42) 100%);
 }
 
-.chat-card-container :deep(.chat-template-display-card) {
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  padding: var(--chat-top-gap) var(--chat-side-gap) var(--chat-bottom-gap);
-  background: transparent;
-  box-sizing: border-box;
-}
-
 .ccdc-messages-container {
   position: relative;
   flex: 1 1 auto;
@@ -295,6 +265,25 @@ onBeforeUnmount(() => {
   pointer-events: none;
   z-index: 1;
   overflow: hidden;
+}
+
+.ccdc-template-layer {
+  position: absolute;
+  inset: 44px 0 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--chat-top-gap) var(--chat-side-gap) var(--chat-bottom-gap);
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.ccdc-template-layer > * {
+  pointer-events: auto;
 }
 
 .ccdc-messages-container.active {
@@ -385,10 +374,6 @@ onBeforeUnmount(() => {
     scroll-padding-bottom: calc(var(--chat-bottom-gap) - 20px);
   }
 
-  .chat-card-container :deep(.chat-template-display-card) {
-    inset: 0;
-  }
-
   .chat-card-container :deep(.chat-md-bubble-assistant),
   .chat-card-container :deep(.chat-md-bubble-user) {
     max-width: 100%;
@@ -408,9 +393,9 @@ onBeforeUnmount(() => {
     padding-bottom: env(safe-area-inset-bottom);
   }
 
-  .chat-card-container :deep(.chat-template-display-card) {
-    justify-content: flex-start;
-    padding: calc(var(--chat-top-gap) + 8px) var(--chat-side-gap) var(--chat-bottom-gap);
+  .ccdc-template-layer {
+    align-items: center;
+    padding-top: calc(var(--chat-top-gap) + 6px);
   }
 }
 

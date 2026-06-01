@@ -3,93 +3,27 @@ import { createConversationModelSnapshot, getModelFromSnapshot, mergeChatSetting
 import { dsAlert, generateRandomCname, getUuid, isValidChatInfoArray } from "@/utils";
 import { tr } from "@/i18n";
 import { chatConversationApi, chatMessageApi, chatSettingsApi } from "./data/conversation-api";
-import { createChatSettingsPayload, createChatSettingsPayloadForSession, normalizeChatSettingsPayload } from "./data/settings-payload";
 import { removeChatSessionRunner } from "./runtime/session-runner";
-import type { ChatModelConfig, ChatPromptMessage, ChatListItem } from "@/types";
+import type { ChatModelConfig, ChatModelSettings, ChatPromptMessage, ConversationModelSnapshot } from "@/types";
 
-type MessageReplayCallback = (messages: ChatPromptMessage[]) => void | Promise<void>;
-
-function getDefaultChatModel(): ChatModelConfig | null {
-  return store.state.models.chat?.[0] || store.state.curChatModel || null;
-}
-
-function createConversation(chatId: string, title: string, model: ChatModelConfig | null) {
-  const modelSnapshot = createConversationModelSnapshot(
-    model || store.state.curConversation?.modelSnapshot?.modelConfig || store.state.curChatModel || getDefaultChatModel(),
-  );
-  if (!modelSnapshot) return null;
+function createChatSettingsPayload(
+  modelSnapshot: ConversationModelSnapshot | null,
+  settings: Partial<ChatModelSettings> | null | undefined,
+  fallbackModel: ChatModelConfig | null = null,
+) {
+  const fallback = fallbackModel || store.state.curChatModel || store.state.models.chat?.[0] || null;
+  const activeSnapshot = modelSnapshot || createConversationModelSnapshot(fallback);
+  const model = getModelFromSnapshot(activeSnapshot) || fallback;
 
   return {
-    id: chatId,
-    title,
-    modelSnapshot,
+    modelSnapshot: activeSnapshot,
+    settings: mergeChatSettingsWithModel(model, settings || {}),
   };
-}
-
-function createConversationFromSettings(chatId: string, title: string, payload: ReturnType<typeof normalizeChatSettingsPayload>) {
-  if (!payload.modelSnapshot) return null;
-
-  return {
-    id: chatId,
-    title,
-    modelSnapshot: payload.modelSnapshot,
-  };
-}
-
-function getChatTitle(chatList: ChatListItem[], chatId: string): string {
-  return chatList.find((item) => item.cid === chatId)?.cname || "";
-}
-
-async function hydrateActiveSession(chatId: string, conversation: ReturnType<typeof createConversation>, settings: unknown): Promise<void> {
-  await store.dispatch("hydrateChatSession", {
-    cid: chatId,
-    conversation,
-    settings,
-  });
-
-  if (chatId === store.state.curChatId) {
-    await store.dispatch("setCurConversation", conversation);
-    await store.dispatch("setCurChatModelSettings", settings);
-  }
-}
-
-async function applyNewChatLocally(chatId: string, chatName: string, conversation: ReturnType<typeof createConversation>, settings: unknown): Promise<void> {
-  await store.dispatch("resetChatList", [...store.state.chatList, { cid: chatId, cname: chatName }]);
-  await store.dispatch("hydrateChatSession", {
-    cid: chatId,
-    conversation,
-    settings,
-    messages: [],
-    loaded: true,
-  });
-  await store.dispatch("setCurChatId", chatId);
-  await store.dispatch("setCurConversation", conversation);
-  await store.dispatch("setCurChatModelSettings", settings);
-}
-
-function parseStoredMessages(records: { mid: string; message: string }[]): {
-  messages: ChatPromptMessage[];
-  invalidCount: number;
-} {
-  let invalidCount = 0;
-  const messages = records.reduce<ChatPromptMessage[]>((list, record) => {
-    try {
-      const message = JSON.parse(record.message) as ChatPromptMessage;
-      list.push({ ...message, mid: record.mid });
-    } catch (error) {
-      invalidCount += 1;
-      console.warn(`Skipping invalid stored message ${record.mid}:`, error);
-    }
-    return list;
-  }, []);
-
-  return { messages, invalidCount };
 }
 
 export async function resetCurrentChatDraft(): Promise<void> {
   await store.dispatch("setCurChatModelSettings", mergeChatSettingsWithModel(store.state.curChatModel, {}));
   await store.dispatch("setCurChatId", "");
-  await store.dispatch("setCurConversation", null);
 }
 
 export async function getChatList(): Promise<boolean> {
@@ -122,17 +56,40 @@ export async function getChatSettings(cid: string = store.state.curChatId): Prom
     return false;
   }
 
-  const payload = normalizeChatSettingsPayload(response.data, getDefaultChatModel());
-  const conversation = createConversationFromSettings(cid, getChatTitle(store.state.chatList, cid), payload);
+  const fallbackModel = store.state.curChatModel || store.state.models.chat?.[0] || null;
+  const rawData = response.data;
+  const parsed = typeof rawData === "string" ? JSON.parse(rawData) : rawData;
+  const parsedSnapshot =
+    parsed && typeof parsed === "object" && "settings" in parsed ? ((parsed as { modelSnapshot?: ConversationModelSnapshot | null }).modelSnapshot || null) : null;
+  const parsedSettings = parsed && typeof parsed === "object" && "settings" in parsed ? ((parsed as { settings?: Partial<ChatModelSettings> }).settings || {}) : ((parsed as Partial<ChatModelSettings>) || {});
+  const modelSnapshot = parsedSnapshot || createConversationModelSnapshot(fallbackModel);
+  const model = getModelFromSnapshot(modelSnapshot) || fallbackModel;
 
-  await hydrateActiveSession(cid, conversation, payload.settings);
+  await store.dispatch("hydrateChatSession", {
+    cid,
+    conversation: modelSnapshot
+      ? {
+          id: cid,
+          title: store.state.chatList.find((item) => item.cid === cid)?.cname || "",
+          modelSnapshot,
+        }
+      : null,
+    settings: mergeChatSettingsWithModel(model, parsedSettings),
+  });
   return true;
 }
 
 export async function setChatSettings(cid: string = store.state.curChatId): Promise<boolean> {
   if (!cid) return false;
 
-  const response = await chatSettingsApi.set(cid, createChatSettingsPayloadForSession(cid));
+  const response = await chatSettingsApi.set(
+    cid,
+    createChatSettingsPayload(
+      store.state.chatConversationsById?.[cid]?.modelSnapshot || store.state.curConversation?.modelSnapshot || null,
+      store.state.chatSettingsById?.[cid] || store.state.curChatModelSettings,
+      store.state.curChatModel,
+    ),
+  );
   if (!response.flag) {
     console.error("Failed to save chat settings:", response.log);
     dsAlert({ type: "error", message: tr("toast.chatSettingsSaveFailed", { error: response.log }) });
@@ -145,10 +102,19 @@ export async function setChatSettings(cid: string = store.state.curChatId): Prom
 export async function addChat(name: string | null = null, model: ChatModelConfig | null = null): Promise<boolean> {
   const chatId = getUuid("chat");
   const chatName = name || generateRandomCname();
-  const conversation = createConversation(chatId, chatName, model);
-  const modelForSettings = getModelFromSnapshot(conversation?.modelSnapshot) || store.state.curChatModel;
+  const modelSnapshot = createConversationModelSnapshot(
+    model || store.state.curConversation?.modelSnapshot?.modelConfig || store.state.curChatModel || store.state.models.chat?.[0] || null,
+  );
+  if (!modelSnapshot) return false;
+
+  const conversation = {
+    id: chatId,
+    title: chatName,
+    modelSnapshot,
+  };
+  const modelForSettings = getModelFromSnapshot(modelSnapshot) || store.state.curChatModel;
   const settings = store.state.curChatId ? mergeChatSettingsWithModel(modelForSettings, store.state.curChatModelSettings) : store.state.curChatModelSettings;
-  const settingsPayload = createChatSettingsPayload(conversation, settings, model);
+  const settingsPayload = createChatSettingsPayload(modelSnapshot, settings, model);
 
   try {
     const addResponse = await chatConversationApi.add(chatId, chatName);
@@ -166,7 +132,15 @@ export async function addChat(name: string | null = null, model: ChatModelConfig
       return false;
     }
 
-    await applyNewChatLocally(chatId, chatName, conversation, settings);
+    await store.dispatch("resetChatList", [...store.state.chatList, { cid: chatId, cname: chatName }]);
+    await store.dispatch("hydrateChatSession", {
+      cid: chatId,
+      conversation,
+      settings,
+      messages: [],
+      loaded: true,
+    });
+    await store.dispatch("setCurChatId", chatId);
     return true;
   } catch (error) {
     console.error("Exception occurred while adding chat:", error);
@@ -191,7 +165,6 @@ export async function deleteChat(cid: string): Promise<boolean> {
 
   if (cid === store.state.curChatId) {
     await store.dispatch("setCurChatId", "");
-    await store.dispatch("setCurConversation", null);
   }
 
   removeChatSessionRunner(cid);
@@ -225,7 +198,7 @@ export async function renameChat(cid: string, cname: string): Promise<boolean> {
   return true;
 }
 
-export async function getAllMessage(cid: string = store.state.curChatId, callback: MessageReplayCallback | null = null): Promise<ChatPromptMessage[]> {
+export async function getAllMessage(cid: string = store.state.curChatId): Promise<ChatPromptMessage[]> {
   if (!cid) return [];
 
   const response = await chatMessageApi.getAll(cid);
@@ -235,19 +208,22 @@ export async function getAllMessage(cid: string = store.state.curChatId, callbac
     return [];
   }
 
-  const { messages, invalidCount } = parseStoredMessages(response.data);
+  let invalidCount = 0;
+  const messages = response.data.reduce<ChatPromptMessage[]>((list, record) => {
+    try {
+      const message = JSON.parse(record.message) as ChatPromptMessage;
+      list.push({ ...message, mid: record.mid });
+    } catch (error) {
+      invalidCount += 1;
+      console.warn(`Skipping invalid stored message ${record.mid}:`, error);
+    }
+    return list;
+  }, []);
   await store.dispatch("replaceChatMessages", { cid, messages });
-  await store.dispatch("setChatLoaded", { cid, loaded: true });
 
   if (invalidCount > 0) {
     console.warn("Invalid chat messages found:", invalidCount);
     dsAlert({ type: "warn", message: `${tr("toast.invalidMessage")} (${invalidCount})` });
-  }
-
-  if (callback) {
-    for (const message of messages) {
-      await callback([message]);
-    }
   }
 
   return messages;

@@ -1,34 +1,18 @@
-// @ts-nocheck
 import type { ChatPromptMessage } from "@/types";
 
 /**
- * Pack a user message from App input state, including DOM-managed image chips.
+ * Pack a user message from the input state.
  */
-export function packUserMsg(id: string | string[], texts: string, allowImages: boolean = true): ChatPromptMessage {
-  const res: ChatPromptMessage = { role: "user", content: [{ type: "text", text: texts }] };
-  if (Array.isArray(id)) {
-    if (allowImages) {
-      id.forEach((url) => {
-        res.content.push({
-          type: "image_url",
-          image_url: { url, detail: "low" },
-        });
-      });
-    }
-    return res;
-  }
+export function packUserMsg(imageUrls: string[], text: string, allowImages: boolean = true): ChatPromptMessage {
+  const res: ChatPromptMessage = { role: "user", content: [{ type: "text", text }] };
+  if (!allowImages) return res;
 
-  const imgContainer = document.getElementById(id);
-  if (imgContainer && allowImages) {
-    const imgs = imgContainer.getElementsByTagName("img");
-    for (let i = 0; i < imgs.length; i++) {
-      res.content.push({
-        type: "image_url",
-        image_url: { url: imgs[i].getAttribute("src") || "", detail: "low" },
-      });
-    }
-    imgContainer.innerHTML = "";
-  }
-  if (imgContainer && !allowImages) imgContainer.innerHTML = "";
+  imageUrls.forEach((url) => {
+    res.content.push({
+      type: "image_url",
+      image_url: { url, detail: "low" },
+    });
+  });
+
   return res;
 }

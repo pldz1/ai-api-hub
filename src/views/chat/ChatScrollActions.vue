@@ -54,7 +54,6 @@ defineEmits<{
   border: none;
   border-radius: 999px;
   background: oklch(var(--b1) / 0.95);
-  box-shadow: 0 6px 16px oklch(var(--bc) / 0.12);
   color: oklch(var(--bc) / 0.78);
   display: inline-flex;
   align-items: center;

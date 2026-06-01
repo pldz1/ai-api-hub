@@ -73,15 +73,14 @@ const onSelectInst = async (id: string) => {
 
 <style lang="scss" scoped>
 .chat-template-display-card {
-  position: absolute;
-  width: calc(100% - 48px);
-  height: calc(100% - 152px);
+  width: min(100%, 920px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 22px;
-  padding: 0 24px;
+  padding: 24px 0;
+  box-sizing: border-box;
 }
 
 .ctdc-copy {
@@ -154,7 +153,9 @@ const onSelectInst = async (id: string) => {
 
 @media (max-width: 900px) {
   .chat-template-display-card {
-    inset: 92px 0 168px;
+    width: min(100%, 560px);
+    gap: 18px;
+    padding: 18px 0;
   }
 
   .ctdc-title {
@@ -163,6 +164,34 @@ const onSelectInst = async (id: string) => {
 
   .ctdc-subtitle {
     font-size: 14px;
+  }
+}
+
+@media (max-width: 640px) {
+  .chat-template-display-card {
+    gap: 16px;
+    padding: 12px 0;
+  }
+
+  .ctdc-title {
+    font-size: clamp(30px, 9vw, 36px);
+    letter-spacing: 0;
+  }
+
+  .ctdc-subtitle {
+    max-width: 280px;
+    margin-top: 8px;
+    line-height: 1.45;
+  }
+
+  .ctdc-templates-container {
+    gap: 8px;
+  }
+
+  .ctdc-template-chip {
+    height: 34px;
+    padding: 0 14px;
+    font-size: 13px;
   }
 }
 </style>

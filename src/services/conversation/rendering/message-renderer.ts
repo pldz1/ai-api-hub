@@ -13,7 +13,6 @@ export function renderAssistantDraft(
   elements: AssistantDraftElements,
   draft: AssistantDraftContent,
   ensureReasoningElement: () => HTMLDivElement | null,
-  removeThinkingPlaceholder: () => void,
 ): HTMLDivElement | null {
   if (!elements.contentEl) return elements.reasoningEl;
 
@@ -21,7 +20,6 @@ export function renderAssistantDraft(
   if (draft.reasoning_content) {
     reasoningEl = reasoningEl || ensureReasoningElement();
     if (reasoningEl) {
-      removeThinkingPlaceholder();
       if (_lastReasoning.get(reasoningEl) !== draft.reasoning_content) {
         renderBlock("markdown-content", reasoningEl, draft.reasoning_content);
         _lastReasoning.set(reasoningEl, draft.reasoning_content);

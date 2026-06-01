@@ -1,5 +1,5 @@
 import MarkdownIt from "markdown-it";
-import type Token from "markdown-it/lib/token";
+import type Token from "markdown-it/lib/token.mjs";
 import emoji from "markdown-it-emoji";
 import deflist from "markdown-it-deflist";
 import footnote from "markdown-it-footnote";

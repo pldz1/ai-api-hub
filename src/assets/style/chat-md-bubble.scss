@@ -50,16 +50,11 @@
     }
 
     .cmbu-options {
-      position: absolute;
-      top: 100%;
-      right: 6px;
-      z-index: 2;
-      padding: 2px 0 0;
+      margin-top: 8px;
       display: flex;
       flex-direction: row;
       justify-content: flex-end;
       gap: 8px;
-      pointer-events: none;
     }
   }
 }
@@ -72,20 +67,17 @@
   height: 28px;
   border: none;
   border-radius: 999px;
-  opacity: 0;
-  pointer-events: none;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
   cursor: pointer;
   background-color: oklch(var(--b1) / 0.94);
   box-shadow: 0 6px 14px oklch(var(--bc) / 0.08);
+  transition: background-color 0.14s ease;
 
-  &.active {
-    opacity: 1;
-    pointer-events: auto;
-
-    &:hover,
-    &:active {
-      background-color: oklch(var(--b2));
-    }
+  &:hover,
+  &:active {
+    background-color: oklch(var(--b2));
   }
 }
 
@@ -160,16 +152,11 @@
     padding: 2px 0 0 12px;
 
     .cmba-options {
-      position: absolute;
-      top: 100%;
-      left: 12px;
-      z-index: 2;
+      margin-top: 8px;
       display: flex;
       flex-direction: row;
       justify-content: flex-start;
       gap: 8px;
-      padding-top: 2px;
-      pointer-events: none;
     }
   }
 
