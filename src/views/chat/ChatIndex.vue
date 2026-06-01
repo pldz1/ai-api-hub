@@ -165,6 +165,14 @@ const onStartChat = async (payload: ChatStartPayload) => {
   const runner = getChatSessionRunner(nextChatId);
   if (!runner) return;
 
+  runner.onRuntimeUpdate = (runtime) => {
+    drawer.syncDraftAssistant(runtime || {});
+    nextTick(() => {
+      updateScrollActions();
+      scrollMessagesToBottom();
+    });
+  };
+
   runner.onDraftUpdate = (content) => {
     if (!innerRef.value) return;
     drawer.updateDraftContent(content, runner.assistantStream.messageId, activeRuntime.value?.status === "error");

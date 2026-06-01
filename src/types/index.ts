@@ -8,7 +8,6 @@ export type {
   ChatModelConfig,
   ChatModelCapabilities,
   ChatModelProvider,
-  ChatModelCapabilityProfile,
   ChatProviderResponse,
   ChatResponseDelta,
   PackedPartChatMessage,

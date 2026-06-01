@@ -1,5 +1,5 @@
 import { ChatProviderConnectionField, ChatProviderDefinition, ChatProviderKey, chatProviderKeys, chatProviderRegistry } from "../types";
-import type { ChatExecutor, ChatMessageFormat, ChatModelCapabilities, ChatModelConfig, ChatProviderModelContext, ChatProviderResolver, ChatProviderRoute } from "../types";
+import type { ChatExecutor, ChatModelConfig, ChatProviderRoute } from "../types";
 
 import { AzureOpenAIClient } from "./azure-openai";
 import { DashScopeClient } from "./dashscope";
@@ -21,10 +21,6 @@ type ChatProviderRuntimeConfig = BaseURLChatProviderRuntimeConfig | AzureOpenAIC
 
 function getModelDeployment(model: ChatModelConfig): string {
   return "deployment" in model && model.deployment ? model.deployment : model.model;
-}
-
-function resolveProviderValue<T>(value: ChatProviderResolver<T>, model: ChatProviderModelContext = {}): T {
-  return typeof value === "function" ? (value as (model: ChatProviderModelContext) => T)(model) : value;
 }
 
 export function isChatModelProvider(value: unknown): value is ChatProviderKey {
@@ -49,24 +45,6 @@ export function getChatProviderDefaultBaseURL(provider: unknown): string {
 
 export function getKnownChatProviderDefaultBaseURLs(): string[] {
   return chatProviderKeys.map((provider) => chatProviderRegistry[provider].defaultBaseURL || "").filter(Boolean);
-}
-
-export function getChatProviderCapabilities(provider: unknown, model: ChatProviderModelContext = {}): ChatModelCapabilities | null {
-  const definition = getChatProviderDefinition(provider);
-  if (!definition) return null;
-  return resolveProviderValue(definition.capabilities, { ...model, provider });
-}
-
-export function getChatProviderChatParamKeys(provider: unknown, model: ChatProviderModelContext = {}): readonly string[] {
-  const definition = getChatProviderDefinition(provider);
-  if (!definition) return [];
-  return resolveProviderValue(definition.chatParamKeys, { ...model, provider });
-}
-
-export function getChatProviderMessageFormat(provider: unknown, model: ChatProviderModelContext = {}): ChatMessageFormat | null {
-  const definition = getChatProviderDefinition(provider);
-  if (!definition) return null;
-  return resolveProviderValue(definition.messageFormat, { ...model, provider });
 }
 
 /**

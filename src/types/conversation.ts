@@ -1,4 +1,4 @@
-import type { ChatModelCapabilities, ChatModelCapabilityProfile, ChatModelConfig, ChatModelProvider, ChatParamRecord } from "@/ai-capability";
+import type { ChatModelConfig, ChatModelProvider, ChatParamRecord } from "@/ai-capability";
 
 export type ChatFormProvider = ChatModelProvider | "";
 

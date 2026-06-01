@@ -7,43 +7,11 @@ import { TokenUsage, ParamDefaultValue } from "../common";
 export type ChatProviderRoute = "openai" | "azure-openai" | "deepseek" | "dashscope";
 export type ChatProviderConnectionField = "baseURL" | "endpoint" | "deployment" | "apiVersion";
 
-export interface ChatProviderModelContext {
-  provider?: unknown;
-  model?: string;
-  baseURL?: string;
-  endpoint?: string;
-  deployment?: string;
-}
-
-export type ChatProviderResolver<T> = T | ((model: ChatProviderModelContext) => T);
-
 export interface ChatProviderDefinition {
   name: string;
   route: ChatProviderRoute;
   connectionFields: readonly ChatProviderConnectionField[];
   defaultBaseURL?: string;
-  supportsCustomModels: boolean;
-  messageFormat: ChatProviderResolver<ChatMessageFormat>;
-  chatParamKeys: ChatProviderResolver<readonly string[]>;
-  capabilities: ChatProviderResolver<ChatModelCapabilities>;
-}
-
-const gpt5ChatParamKeys = ["max_completion_tokens", "reasoning_effort", "verbosity"] as const;
-const openAIChatParamKeys = ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"] as const;
-const deepSeekChatParamKeys = ["thinking", "reasoning_effort", "temperature", "top_p"] as const;
-const dashScopeChatParamKeys = ["max_tokens", "temperature", "top_p"] as const;
-
-function isOfficialOpenAIBaseURL(baseURL = ""): boolean {
-  return !baseURL || /^https:\/\/api\.openai\.com(?:\/|$)/i.test(baseURL.trim());
-}
-
-function resolveOpenAIChatParamKeys(model: ChatProviderModelContext): readonly string[] {
-  return /^gpt-5\./i.test(String(model.model || "")) ? gpt5ChatParamKeys : openAIChatParamKeys;
-}
-
-function resolveOpenAICapabilities(model: ChatProviderModelContext): ChatModelCapabilities {
-  if (!isOfficialOpenAIBaseURL(model.baseURL)) return { webSearch: false, imageRead: false };
-  return { webSearch: true, imageRead: true };
 }
 
 const chatProviderRegistryConfig = {
@@ -52,39 +20,23 @@ const chatProviderRegistryConfig = {
     route: "openai",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://api.openai.com/v1",
-    supportsCustomModels: true,
-    messageFormat: "parts",
-    chatParamKeys: resolveOpenAIChatParamKeys,
-    capabilities: resolveOpenAICapabilities,
   },
   "Azure OpenAI": {
     name: "Azure OpenAI",
     route: "azure-openai",
     connectionFields: ["endpoint", "deployment", "apiVersion"],
-    supportsCustomModels: true,
-    messageFormat: "parts",
-    chatParamKeys: resolveOpenAIChatParamKeys,
-    capabilities: { webSearch: false, imageRead: true },
   },
   DeepSeek: {
     name: "DeepSeek",
     route: "deepseek",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://api.deepseek.com",
-    supportsCustomModels: true,
-    messageFormat: "text",
-    chatParamKeys: deepSeekChatParamKeys,
-    capabilities: { webSearch: false, imageRead: false },
   },
   DashScope: {
     name: "DashScope",
     route: "dashscope",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
-    supportsCustomModels: true,
-    messageFormat: "text",
-    chatParamKeys: dashScopeChatParamKeys,
-    capabilities: { webSearch: true, imageRead: false },
   },
 } as const satisfies Record<string, ChatProviderDefinition>;
 
@@ -101,48 +53,6 @@ export const chatProviderKeys = Object.keys(chatProviderRegistry) as ChatProvide
 export type ChatModelProvider = ChatProviderKey;
 export type ChatMessageRole = "system" | "user" | "assistant";
 export type ChatMessageFormat = "text" | "parts";
-
-// ============================================================================
-// Model capabilities
-// ============================================================================
-
-export interface ChatModelModalities {
-  textInput: boolean;
-  textOutput: boolean;
-  imageInput: boolean;
-  imageOutput: boolean;
-  audioInput: boolean;
-  audioOutput: boolean;
-  videoInput: boolean;
-  videoOutput: boolean;
-}
-
-export interface ChatModelFeatures {
-  streaming: boolean;
-  structuredOutputs: boolean;
-  fineTuning: boolean;
-  reasoning: boolean;
-}
-
-export interface ChatModelTools {
-  webSearch: boolean;
-  imageGeneration: boolean;
-  fileSearch: boolean;
-  codeInterpreter: boolean;
-  hostedShell: boolean;
-  skills: boolean;
-  mcp: boolean;
-  applyPatch: boolean;
-  computerUse: boolean;
-  toolSearch: boolean;
-  functionCalling: boolean;
-}
-
-export interface ChatModelCapabilityProfile {
-  modalities: ChatModelModalities;
-  features: ChatModelFeatures;
-  tools: ChatModelTools;
-}
 
 export interface ChatModelCapabilities {
   imageRead: boolean;

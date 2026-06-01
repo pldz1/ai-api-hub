@@ -15,6 +15,7 @@ class ChatSessionRunner {
   assistantStream: AssistantStreamState;
   onDraftUpdate: ((content: AssistantDraftContent) => void) | null = null;
   onDraftRemove: (() => void) | null = null;
+  onRuntimeUpdate: ((runtime: Record<string, unknown>) => void) | null = null;
 
   constructor(chatId: string) {
     this.chatId = chatId;
@@ -33,6 +34,7 @@ class ChatSessionRunner {
       cid: this.chatId,
       runtime,
     });
+    this.onRuntimeUpdate?.(runtime);
   }
 
   clearDraft(status: ChatRuntimeStatus = "idle", extra = {}) {
