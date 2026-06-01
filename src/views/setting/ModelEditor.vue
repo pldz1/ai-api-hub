@@ -30,9 +30,7 @@
         <label v-if="!isImageModel" class="model-form-field">
           <span>{{ t("user.modelCard.fields.model") }}</span>
           <select v-model="localModel.model" class="model-select model-select-bordered w-full">
-            <optgroup v-for="group in groupedModelSuggestions" :key="group.key" :label="group.label">
-              <option v-for="item in group.items" :key="getSuggestionValue(item)" :value="getSuggestionValue(item)">{{ getSuggestionLabel(item) }}</option>
-            </optgroup>
+            <option v-for="item in modelSuggestionItems" :key="getSuggestionValue(item)" :value="getSuggestionValue(item)">{{ getSuggestionLabel(item) }}</option>
           </select>
         </label>
 
@@ -129,8 +127,6 @@ import {
   chatProviderUsesField,
   getChatProviderDefinition,
   getChatProviderDefaultBaseURL,
-  getChatProviderModelFamilies,
-  getChatProviderModelFamily,
   getChatProvidersForModel,
   getKnownChatProviderDefaultBaseURLs,
 } from "@/models";
@@ -171,27 +167,15 @@ const usesBaseURL = computed(() => chatProviderUsesField(localModel.provider, "b
 const hasImageInputParam = computed(() => isImageModel.value && imageParamDefs.some((item) => item.type === "image"));
 const resolvedModelId = computed(() => localModel?.model);
 
-const groupedModelSuggestions = computed(() => {
-  // Group suggestions by provider-declared model family so the selector remains readable as options grow.
-  const groups = getChatProviderModelFamilies()
-    .map((family) => ({
-      key: family.key,
-      label: family.labelKey ? t(family.labelKey) : family.label || family.key,
-      items: [] as ModelSuggestion[],
-    }))
-    .concat([{ key: "custom", label: t("user.modelCard.suggestionGroups.custom"), items: [] as ModelSuggestion[] }]);
-  const groupMap = new Map(groups.map((group) => [group.key, group]));
+const modelSuggestionItems = computed(() => {
   const seen = new Set<string>();
+  const items = [...props.modelSuggestions];
 
-  props.modelSuggestions.forEach((item) => {
-    const modelId = getSuggestionValue(item);
-    seen.add(modelId);
-    groupMap.get(getChatProviderModelFamily(modelId))?.items.push(item);
-  });
+  items.forEach((item) => seen.add(getSuggestionValue(item)));
   if (localModel.model && !seen.has(localModel.model)) {
-    groupMap.get(getChatProviderModelFamily(localModel.model))?.items.push({ name: localModel.model });
+    items.push({ name: localModel.model });
   }
-  return groups.filter((group) => group.items.length > 0);
+  return items;
 });
 const availableModelProviderList = computed(() => {
   // Limit providers to combinations that the request builders can route correctly.
@@ -230,7 +214,7 @@ function getProviderValue(item: ProviderSuggestion): ModelEditorState["provider"
   return item;
 }
 
-function getProviderLabel(item: ProviderSuggestion): string {
+function getProviderLabel(item: string): string {
   return getChatProviderDefinition(item)?.name || item;
 }
 
@@ -244,7 +228,7 @@ function syncProviderBaseURL(provider = "", force = false) {
 }
 
 function syncProviderForModel(force = false) {
-  // Keep provider valid when switching between supported model families.
+  // Keep provider valid for the selected catalog model.
   if ((!force && isSyncingFromProps) || isImageModel.value) return;
   if (!availableModelProviderList.value.some((item) => getProviderValue(item) === localModel.provider)) {
     localModel.provider = getProviderValue(availableModelProviderList.value[0] || "");

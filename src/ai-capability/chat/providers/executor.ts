@@ -51,33 +51,6 @@ export function getKnownChatProviderDefaultBaseURLs(): string[] {
   return chatProviderKeys.map((provider) => chatProviderRegistry[provider].defaultBaseURL || "").filter(Boolean);
 }
 
-export function getChatProviderModelFamilies(): { key: string; label?: string; labelKey?: string }[] {
-  const seen = new Set<string>();
-  const families: { key: string; label?: string; labelKey?: string }[] = [];
-
-  chatProviderKeys.forEach((provider) => {
-    const definition = chatProviderRegistry[provider];
-    definition.modelFamilies.forEach((family) => {
-      if (seen.has(family.key)) return;
-      seen.add(family.key);
-      families.push({
-        key: family.key,
-        label: family.label,
-        labelKey: family.labelKey,
-      });
-    });
-  });
-
-  return families;
-}
-
-export function chatProviderSupportsFamily(provider: unknown, family = "custom"): provider is ChatProviderKey {
-  const definition = getChatProviderDefinition(provider);
-  if (!definition) return false;
-  if (family === "custom") return definition.supportsCustomModels;
-  return definition.modelFamilies.some((item) => item.key === family);
-}
-
 export function getChatProviderCapabilities(provider: unknown, model: ChatProviderModelContext = {}): ChatModelCapabilities | null {
   const definition = getChatProviderDefinition(provider);
   if (!definition) return null;

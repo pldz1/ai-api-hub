@@ -8,7 +8,7 @@ import type {
   ChatRequest,
   ChatExecutor,
 } from "./types";
-import { createChatExecutor, createChatProviderConfig, getChatProviderCapabilities } from "./providers/executor";
+import { createChatExecutor, createChatProviderConfig } from "./providers/executor";
 
 type ChatDeltaQueueItem = { delta?: ChatResponseDelta; done?: true };
 
@@ -144,10 +144,9 @@ export class ChatGateway {
    * applying any turn-level overrides.
    */
   resolveChatParams(params: ChatCompletionParams = {}, turnCapabilities: Partial<ChatModelCapabilities> = {}, model: ChatModelConfig | null = null): ChatCompletionParams {
-    const supportedCapabilities = getChatProviderCapabilities(model?.provider, model || {}) || { imageRead: false, webSearch: false };
     return {
       ...params,
-      webSearch: Boolean(supportedCapabilities.webSearch && turnCapabilities.webSearch),
+      webSearch: Boolean(turnCapabilities.webSearch),
     };
   }
 }

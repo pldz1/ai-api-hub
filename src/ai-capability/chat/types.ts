@@ -7,12 +7,6 @@ import { TokenUsage, ParamDefaultValue } from "../common";
 export type ChatProviderRoute = "openai" | "azure-openai" | "deepseek" | "dashscope";
 export type ChatProviderConnectionField = "baseURL" | "endpoint" | "deployment" | "apiVersion";
 
-export interface ChatModelFamilyDefinition {
-  key: string;
-  label?: string;
-  labelKey?: string;
-}
-
 export interface ChatProviderModelContext {
   provider?: unknown;
   model?: string;
@@ -28,16 +22,11 @@ export interface ChatProviderDefinition {
   route: ChatProviderRoute;
   connectionFields: readonly ChatProviderConnectionField[];
   defaultBaseURL?: string;
-  modelFamilies: readonly ChatModelFamilyDefinition[];
   supportsCustomModels: boolean;
   messageFormat: ChatProviderResolver<ChatMessageFormat>;
   chatParamKeys: ChatProviderResolver<readonly string[]>;
   capabilities: ChatProviderResolver<ChatModelCapabilities>;
 }
-
-const openAIModelFamily = { key: "openai", labelKey: "user.modelCard.suggestionGroups.openai" } as const;
-const deepSeekModelFamily = { key: "deepseek", label: "DeepSeek" } as const;
-const qwenModelFamily = { key: "qwen", labelKey: "user.modelCard.suggestionGroups.qwen" } as const;
 
 const gpt5ChatParamKeys = ["max_completion_tokens", "reasoning_effort", "verbosity"] as const;
 const openAIChatParamKeys = ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"] as const;
@@ -63,7 +52,6 @@ const chatProviderRegistryConfig = {
     route: "openai",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://api.openai.com/v1",
-    modelFamilies: [openAIModelFamily],
     supportsCustomModels: true,
     messageFormat: "parts",
     chatParamKeys: resolveOpenAIChatParamKeys,
@@ -73,7 +61,6 @@ const chatProviderRegistryConfig = {
     name: "Azure OpenAI",
     route: "azure-openai",
     connectionFields: ["endpoint", "deployment", "apiVersion"],
-    modelFamilies: [openAIModelFamily],
     supportsCustomModels: true,
     messageFormat: "parts",
     chatParamKeys: resolveOpenAIChatParamKeys,
@@ -84,7 +71,6 @@ const chatProviderRegistryConfig = {
     route: "deepseek",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://api.deepseek.com",
-    modelFamilies: [deepSeekModelFamily],
     supportsCustomModels: true,
     messageFormat: "text",
     chatParamKeys: deepSeekChatParamKeys,
@@ -95,7 +81,6 @@ const chatProviderRegistryConfig = {
     route: "dashscope",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
-    modelFamilies: [qwenModelFamily, deepSeekModelFamily],
     supportsCustomModels: true,
     messageFormat: "text",
     chatParamKeys: dashScopeChatParamKeys,

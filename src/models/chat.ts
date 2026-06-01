@@ -14,17 +14,16 @@ import { chatParamPresetList, defaultModelCapabilities, chatModelCatalog, type C
 import { parseParamValue } from "./settings";
 
 type LooseChatParamDef = Partial<ModelParamDef> & { key?: string };
+type ChatModelCatalogProvider = ChatModelCatalogItem["providers"][number];
 const chatParamDefMap = new Map(chatParamPresetList.map((item) => [item.key, item] as const));
 
 import {
   chatProviderUsesField,
-  chatProviderSupportsFamily,
   getChatProviderCapabilities,
   getChatProviderChatParamKeys,
   getChatProviderDefinition,
   getChatProviderDefaultBaseURL,
   getChatProviderMessageFormat,
-  getChatProviderModelFamilies,
   getKnownChatProviderDefaultBaseURLs,
   isChatModelProvider,
   getChatProviderConnectionFields,
@@ -81,31 +80,32 @@ export function normalizeChatModelConfig(model: LooseModelConfig | null | undefi
   };
 }
 
-export function findChatModelCatalogItem(model = ""): ChatModelCatalogItem | null {
+export function findChatModelCatalogItems(model = ""): ChatModelCatalogItem[] {
   const targetModel = model.trim().toLowerCase();
 
-  if (!targetModel) return null;
+  if (!targetModel) return [];
 
-  return (
-    chatModelCatalog.find((item) => {
-      const itemModel = item.name.toLowerCase();
+  return chatModelCatalog.filter((item) => item.name.toLowerCase() === targetModel);
+}
 
-      if (itemModel !== targetModel) return false;
+export function findChatModelCatalogItem(model = "", provider?: ChatModelProvider | null): ChatModelCatalogItem | null {
+  const catalogItems = findChatModelCatalogItems(model);
+  if (!catalogItems.length) return null;
+  if (!provider) return catalogItems[0] || null;
+  return catalogItems.find((item) => item.providers.some((itemProvider) => itemProvider.provider === provider)) || catalogItems[0] || null;
+}
 
-      return true;
-    }) ?? null
-  );
+export function findChatModelCatalogProvider(model = "", provider?: ChatModelProvider | null): ChatModelCatalogProvider | null {
+  const catalogItem = findChatModelCatalogItem(model, provider);
+  if (!catalogItem) return null;
+  if (!provider) return catalogItem.providers[0] || null;
+  return catalogItem.providers.find((itemProvider) => itemProvider.provider === provider) || catalogItem.providers[0] || null;
 }
 
 export function getChatProvidersForModel(model = ""): ChatModelProvider[] {
   const catalogItem = findChatModelCatalogItem(model);
-  const family = catalogItem?.family || "custom";
-  return chatProviderKeys.filter((provider) => chatProviderSupportsFamily(provider, family));
-}
-
-export function getChatProviderModelFamily(model = ""): string {
-  const catalogItem = findChatModelCatalogItem(model);
-  return catalogItem?.family || "custom";
+  if (!catalogItem) return chatProviderKeys.filter((provider) => getChatProviderDefinition(provider)?.supportsCustomModels);
+  return catalogItem.providers.map((itemProvider) => itemProvider.provider);
 }
 
 function mergeChatCapabilities(capabilitiesList: Partial<ChatModelCapabilities>[]): ChatModelCapabilities {
@@ -121,32 +121,42 @@ function mergeChatCapabilities(capabilitiesList: Partial<ChatModelCapabilities>[
 /**
  * Returns chat capabilities supplied by the selected provider/runtime bridge.
  *
- * These are support flags, not user toggles. Unknown custom model ids need a
- * provider-bearing config to resolve capabilities; catalog-only lookups merge
- * the providers explicitly declared for that catalog item.
+ * These are app support flags, not model parameters or user toggles. Catalog
+ * models resolve capability from the selected model/provider pair; unknown
+ * custom models fall back to provider defaults.
  */
 export function getChatModelCapabilities(model: LooseModelConfig | string | null | undefined = null): ChatModelCapabilities {
   if (typeof model !== "string") {
+    const modelProvider = isChatModelProvider(model?.provider) ? model.provider : null;
+    const catalogCapabilities = findChatModelCatalogProvider(model?.model || "", modelProvider)?.capabilities;
+    if (catalogCapabilities) return normalizeModelCapabilities(catalogCapabilities, { ...defaultModelCapabilities, ...catalogCapabilities });
+
     const providerCapabilities = getChatProviderCapabilities(model?.provider, model || {});
     if (providerCapabilities) return normalizeModelCapabilities(providerCapabilities, { ...defaultModelCapabilities, ...providerCapabilities });
   }
 
   const modelId = typeof model === "string" ? model : model?.model || "";
-  const catalogProviderCapabilities = getChatProvidersForModel(modelId)
-    .map((provider) => getChatProviderCapabilities(provider, { model: modelId }))
-    .filter(Boolean) as ChatModelCapabilities[];
+  const modelProvider = typeof model === "string" ? getChatProvidersForModel(modelId)[0] : isChatModelProvider(model?.provider) ? model.provider : null;
+  const catalogCapabilities = findChatModelCatalogProvider(modelId, modelProvider)?.capabilities;
+  const fallbackCapabilities = modelProvider ? getChatProviderCapabilities(modelProvider, { model: modelId }) : null;
+  const catalogProviderCapabilities = [catalogCapabilities || fallbackCapabilities].filter(Boolean) as ChatModelCapabilities[];
   const mergedCapabilities = mergeChatCapabilities(catalogProviderCapabilities);
   return normalizeModelCapabilities(mergedCapabilities, { ...defaultModelCapabilities, ...mergedCapabilities });
 }
 
 export function getChatMessageFormat(model: LooseModelConfig | string | null | undefined = null): "text" | "parts" {
   if (typeof model !== "string") {
+    const catalogFormat = findChatModelCatalogItem(model?.model || "")?.messageFormat;
+    if (catalogFormat) return catalogFormat;
     const providerFormat = getChatProviderMessageFormat(model?.provider, model || {});
     if (providerFormat) return providerFormat;
   }
 
   const modelId = typeof model === "string" ? model : model?.model || "";
-  return findChatModelCatalogItem(modelId)?.messageFormat || "parts";
+  const provider = typeof model === "string" ? getChatProvidersForModel(modelId)[0] : isChatModelProvider(model?.provider) ? model.provider : null;
+  const catalogFormat = findChatModelCatalogItem(modelId, provider)?.messageFormat;
+  if (catalogFormat) return catalogFormat;
+  return provider ? getChatProviderMessageFormat(provider, { model: modelId }) || "parts" : "parts";
 }
 
 /**
@@ -234,8 +244,17 @@ export function normalizeChatParamDef(def: LooseChatParamDef = {}): ModelParamDe
 const normalizedChatParamDefs = new Map(chatParamPresetList.map((item) => [item.key, normalizeChatParamDef(item)] as const));
 
 export function resolveChatParamDefs(model: LooseModelConfig | null = null): ModelParamDef[] {
+  const catalogParamKeys = findChatModelCatalogItem(model?.model || "")?.chatParamKeys || [];
   const providerParamKeys = getChatProviderChatParamKeys(model?.provider, model || {});
-  const paramKeys = providerParamKeys.length ? providerParamKeys : findChatModelCatalogItem(model?.model || "")?.chatParamKeys || [];
+  const modelProvider = isChatModelProvider(model?.provider) ? model.provider : null;
+  const fallbackProvider = modelProvider || getChatProvidersForModel(model?.model || "")[0];
+  const paramKeys = catalogParamKeys.length
+    ? catalogParamKeys
+    : providerParamKeys.length
+      ? providerParamKeys
+      : fallbackProvider
+        ? getChatProviderChatParamKeys(fallbackProvider, { model: model?.model || "" })
+        : [];
   return paramKeys.map((key) => normalizedChatParamDefs.get(key)).filter(Boolean) as ModelParamDef[];
 }
 
@@ -320,9 +339,7 @@ export {
   chatProviderUsesField,
   getChatProviderDefinition,
   getChatProviderDefaultBaseURL,
-  getChatProviderModelFamilies,
   getKnownChatProviderDefaultBaseURLs,
-  chatProviderSupportsFamily,
   getChatProviderCapabilities,
   getChatProviderChatParamKeys,
   getChatProviderMessageFormat,

@@ -1,4 +1,4 @@
-import type { ModelParamDef, ChatModelEditorState, ChatModelCapabilities } from "@/types";
+import type { ModelParamDef, ChatModelEditorState, ChatModelCapabilities, ChatModelProvider } from "@/types";
 
 export { chatProviderKeys } from "@/ai-capability/chat";
 
@@ -91,53 +91,115 @@ export const chatParamPresetList: Partial<ModelParamDef>[] = [
 
 export type ChatModelCatalogItem = {
   name: string;
-  family: string;
-  messageFormat: "text" | "parts";
   chatParamKeys: string[];
+  messageFormat: "text" | "parts";
+  providers: {
+    provider: ChatModelProvider;
+    capabilities: ChatModelCapabilities;
+  }[];
 };
 
 export const chatModelCatalog: ChatModelCatalogItem[] = [
   {
     name: "gpt-5.5",
-    family: "openai",
-    messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
+    messageFormat: "parts",
+    providers: [
+      {
+        provider: "OpenAI",
+        capabilities: { webSearch: true, imageRead: true },
+      },
+      {
+        provider: "Azure OpenAI",
+        capabilities: { webSearch: false, imageRead: true },
+      },
+    ],
   },
   {
     name: "gpt-5.4",
-    family: "openai",
-    messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
+    messageFormat: "parts",
+    providers: [
+      {
+        provider: "OpenAI",
+        capabilities: { webSearch: true, imageRead: true },
+      },
+      {
+        provider: "Azure OpenAI",
+        capabilities: { webSearch: false, imageRead: true },
+      },
+    ],
   },
   {
     name: "gpt-4.1",
-    family: "openai",
-    messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
+    messageFormat: "parts",
+    providers: [
+      {
+        provider: "OpenAI",
+        capabilities: { webSearch: true, imageRead: true },
+      },
+      {
+        provider: "Azure OpenAI",
+        capabilities: { webSearch: false, imageRead: true },
+      },
+    ],
   },
   {
     name: "gpt-4o",
-    family: "openai",
-    messageFormat: "parts",
     chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
+    messageFormat: "parts",
+    providers: [
+      {
+        provider: "OpenAI",
+        capabilities: { webSearch: true, imageRead: true },
+      },
+      {
+        provider: "Azure OpenAI",
+        capabilities: { webSearch: false, imageRead: true },
+      },
+    ],
   },
   {
     name: "deepseek-v4-flash",
-    family: "deepseek",
-    messageFormat: "text",
     chatParamKeys: ["thinking", "reasoning_effort", "temperature", "top_p"],
+    messageFormat: "text",
+    providers: [
+      {
+        provider: "DeepSeek",
+        capabilities: { webSearch: false, imageRead: false },
+      },
+      {
+        provider: "DashScope",
+        capabilities: { webSearch: true, imageRead: false },
+      },
+    ],
   },
   {
     name: "deepseek-v4-pro",
-    family: "deepseek",
-    messageFormat: "text",
     chatParamKeys: ["thinking", "reasoning_effort", "temperature", "top_p"],
+    messageFormat: "text",
+    providers: [
+      {
+        provider: "DeepSeek",
+        capabilities: { webSearch: false, imageRead: false },
+      },
+      {
+        provider: "DashScope",
+        capabilities: { webSearch: true, imageRead: false },
+      },
+    ],
   },
   {
     name: "qwen3.7-max-2026-05-17",
-    family: "qwen",
-    messageFormat: "text",
     chatParamKeys: ["max_tokens", "temperature", "top_p"],
+    messageFormat: "text",
+    providers: [
+      {
+        provider: "DashScope",
+        capabilities: { webSearch: true, imageRead: false },
+      },
+    ],
   },
 ];
 
