@@ -205,9 +205,8 @@ const onEnterKeydown = async (event) => {
 
 .workspace-side > * {
   border: 1px solid oklch(var(--bc) / 0.08);
-  background: linear-gradient(180deg, oklch(var(--b1) / 0.94), oklch(var(--b2) / 0.9));
-  box-shadow: 0 20px 48px oklch(var(--bc) / 0.06);
-  backdrop-filter: blur(18px);
+  background: linear-gradient(180deg, oklch(var(--b1) / 0.98), oklch(var(--b2) / 0.94));
+  box-shadow: 0 12px 28px oklch(var(--bc) / 0.05);
 }
 
 .prompt-card,

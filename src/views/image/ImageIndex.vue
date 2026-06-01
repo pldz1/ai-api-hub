@@ -1,5 +1,5 @@
 <template>
-  <section class="image-chat-page">
+  <section ref="pageRef" class="image-chat-page">
     <div ref="messageScrollRef" class="image-message-scroll">
       <div v-if="messages.length === 0" class="image-empty-state">
         <div class="image-empty-mark">
@@ -50,7 +50,7 @@
     </div>
 
     <div class="image-composer-wrap">
-      <div class="image-composer" :class="{ 'has-images': attachments.length > 0 }" @paste="onPaste">
+      <div ref="composerRef" class="image-composer" :class="{ 'has-images': attachments.length > 0 }" @paste="onPaste">
         <div v-if="attachments.length" class="image-input-preview-row">
           <div v-for="attachment in attachments" :key="attachment.id" class="image-input-preview">
             <button
@@ -117,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
@@ -147,8 +147,11 @@ const hasEditedMask = ref(false);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const messageScrollRef = ref<HTMLElement | null>(null);
+const pageRef = ref<HTMLElement | null>(null);
+const composerRef = ref<HTMLElement | null>(null);
 const imageEditDialogRef = ref<{ open: (image: ImageInputAttachment) => void } | null>(null);
 let runtimeTimer: number | null = null;
+let composerResizeObserver: ResizeObserver | null = null;
 
 const messages = computed<ImageConversationMessage[]>(() => store.state.imageMessages || []);
 const routeImageId = computed(() => (typeof route.params.iid === "string" ? route.params.iid : ""));
@@ -167,11 +170,25 @@ function resizeTextarea() {
   textarea.style.height = `${Math.min(textarea.scrollHeight, 180)}px`;
 }
 
-function scrollToBottom() {
+function updateComposerHeight() {
+  const page = pageRef.value;
+  const composer = composerRef.value;
+  if (!page || !composer) return;
+  const height = Math.ceil(composer.getBoundingClientRect().height);
+  if (height > 0) page.style.setProperty("--image-composer-height", `${height}px`);
+}
+
+function isNearScrollBottom(threshold = 120) {
+  const el = messageScrollRef.value;
+  if (!el) return true;
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+}
+
+function scrollToBottom(behavior: ScrollBehavior = "auto") {
   nextTick(() => {
     const el = messageScrollRef.value;
     if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    el.scrollTo({ top: el.scrollHeight, behavior });
   });
 }
 
@@ -405,7 +422,9 @@ watch(
 
 watch(
   () => messages.value.length,
-  () => scrollToBottom(),
+  () => {
+    if (isNearScrollBottom()) scrollToBottom();
+  },
 );
 
 watch(
@@ -433,7 +452,17 @@ watch(
   { immediate: true },
 );
 
+onMounted(() => {
+  nextTick(updateComposerHeight);
+  if (window.ResizeObserver && composerRef.value) {
+    composerResizeObserver = new ResizeObserver(updateComposerHeight);
+    composerResizeObserver.observe(composerRef.value);
+  }
+});
+
 onBeforeUnmount(() => {
+  composerResizeObserver?.disconnect();
+  composerResizeObserver = null;
   if (runtimeTimer !== null) window.clearInterval(runtimeTimer);
   attachments.value.forEach((item) => {
     if (item.previewUrl.startsWith("blob:")) URL.revokeObjectURL(item.previewUrl);
@@ -446,7 +475,9 @@ onBeforeUnmount(() => {
   --image-page-max-width: 1080px;
   --image-side-gap: max(24px, calc((100% - var(--image-page-max-width)) / 2));
   --image-top-gap: 28px;
-  --image-bottom-gap: 230px;
+  --image-composer-height: 126px;
+  --image-scroll-tail-gap: 32px;
+  --image-bottom-gap: calc(var(--image-composer-height) + var(--image-composer-bottom) + var(--image-scroll-tail-gap));
   --image-composer-bottom: 18px;
   --image-composer-shell-gap: 18px;
   position: relative;
@@ -455,27 +486,19 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 280px;
-    z-index: 5;
-    pointer-events: none;
-    background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.9) 28%, oklch(var(--b1)) 72%, oklch(var(--b1)) 100%);
-    box-shadow: inset 0 -84px 96px oklch(var(--b1) / 0.34);
-  }
+  isolation: isolate;
 }
 
 .image-message-scroll {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
   padding: var(--image-top-gap) var(--image-side-gap) var(--image-bottom-gap);
   box-sizing: border-box;
+  contain: layout paint style;
 }
 
 .image-empty-state {
@@ -718,6 +741,18 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
+.image-composer-wrap::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--image-composer-bottom) * -1);
+  height: clamp(170px, 30vh, 260px);
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.8) 46%, oklch(var(--b1)) 82%, oklch(var(--b1)) 100%);
+}
+
 .image-composer {
   position: relative;
   z-index: 1;
@@ -732,6 +767,7 @@ onBeforeUnmount(() => {
   box-shadow:
     0 2px 6px oklch(var(--bc) / 0.05),
     0 4px 8px oklch(var(--bc) / 0.06);
+  contain: layout paint;
 }
 
 .image-input-preview-row {
@@ -931,7 +967,10 @@ onBeforeUnmount(() => {
 
 @media (max-width: 720px) {
   .image-message-scroll {
-    padding: 22px 14px 236px;
+    padding-top: 22px;
+    padding-right: 14px;
+    padding-bottom: var(--image-bottom-gap);
+    padding-left: 14px;
   }
 
   .image-message.is-user .image-message-body {
@@ -972,9 +1011,9 @@ onBeforeUnmount(() => {
   .image-chat-page {
     --image-side-gap: 12px;
     --image-top-gap: 60px;
-    --image-bottom-gap: 232px;
     --image-composer-bottom: max(12px, env(safe-area-inset-bottom));
     --image-composer-shell-gap: 6px;
+    --image-scroll-tail-gap: 26px;
   }
 
   .image-message-scroll {

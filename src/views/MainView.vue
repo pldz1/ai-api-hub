@@ -1,6 +1,5 @@
 <template>
-  <div class="main-view-shell" :class="{ 'is-sidebar-open': sidebarExpanded }">
-    <div class="main-view-backdrop"></div>
+  <div class="main-view-shell">
     <button v-if="isMobile && sidebarExpanded" class="main-view-mask" type="button" aria-label="Close sidebar" @click="sidebarExpanded = false"></button>
     <button v-if="isMobile && !sidebarExpanded" class="sidebar-fab" type="button" aria-label="Open sidebar" @click="sidebarExpanded = true">
       <SvgIcon :src="menuIcon" />
@@ -69,13 +68,6 @@ onBeforeUnmount(() => {
   background: oklch(var(--b1));
 }
 
-.main-view-backdrop {
-  position: absolute;
-  inset: 0;
-  transform: scale(1.08);
-  pointer-events: none;
-}
-
 .main-view-mask {
   display: none;
 }
@@ -83,19 +75,20 @@ onBeforeUnmount(() => {
 .main-view-content {
   position: relative;
   height: 100%;
+  min-height: 0;
   min-width: 0;
+  display: flex;
+  overflow: hidden;
 }
 
 .main-view-stage {
+  flex: 1 1 auto;
   height: 100%;
+  min-height: 0;
   min-width: 0;
-  padding-left: 68px;
   box-sizing: border-box;
-  transition: padding-left 0.22s ease;
-}
-
-.main-view-shell.is-sidebar-open .main-view-stage {
-  padding-left: 280px;
+  overflow: hidden;
+  contain: layout paint style;
 }
 
 .sidebar-fab {
@@ -103,11 +96,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
-  .main-view-stage,
-  .main-view-shell.is-sidebar-open .main-view-stage {
-    padding-left: 0;
-  }
-
   .main-view-mask {
     display: block;
     position: fixed;
@@ -115,7 +103,6 @@ onBeforeUnmount(() => {
     z-index: 90;
     border: 0;
     background: oklch(var(--bc) / 0.28);
-    backdrop-filter: blur(2px);
   }
 
   .sidebar-fab {

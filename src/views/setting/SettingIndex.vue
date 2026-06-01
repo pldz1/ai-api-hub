@@ -92,6 +92,7 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
   const draftTemplates = ref<unknown[]>([]);
   const autosaveState = ref<SettingsAutosaveState>("saved");
   const lastSavedSnapshot = ref("");
+  const currentDraftSnapshot = ref("");
   let autosaveTimer: number | null = null;
   let isHydrating = false;
   let isPersisting = false;
@@ -107,7 +108,7 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
     return serializeDraftPayload(getDraftPayload());
   }
 
-  const hasUnsavedChanges = computed(() => getDraftSnapshot() !== lastSavedSnapshot.value);
+  const hasUnsavedChanges = computed(() => currentDraftSnapshot.value !== lastSavedSnapshot.value);
   const shouldBlockUnload = computed(() => autosaveState.value === "saving" || hasUnsavedChanges.value);
 
   function syncDraftFromSource(payload: Partial<SettingsDraftPayload> | null | undefined = options.getInitialDraft()) {
@@ -116,7 +117,8 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
     const normalizedPayload = normalizeDraftPayload(payload);
     draftModels.value = normalizedPayload.models;
     draftTemplates.value = normalizedPayload.templates;
-    lastSavedSnapshot.value = serializeDraftPayload(normalizedPayload);
+    currentDraftSnapshot.value = serializeDraftPayload(normalizedPayload);
+    lastSavedSnapshot.value = currentDraftSnapshot.value;
     autosaveState.value = "saved";
     isHydrating = false;
   }
@@ -145,12 +147,15 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
       return true;
     } finally {
       isPersisting = false;
+      currentDraftSnapshot.value = getDraftSnapshot();
+      if (!isHydrating && currentDraftSnapshot.value !== lastSavedSnapshot.value) scheduleAutosave();
     }
   }
 
   function scheduleAutosave() {
     // Debounce draft changes so rapid field edits produce a single persistence write.
     if (isHydrating || isPersisting) return;
+    currentDraftSnapshot.value = getDraftSnapshot();
     if (!hasUnsavedChanges.value) {
       autosaveState.value = "saved";
       return;
@@ -168,7 +173,6 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
     () => {
       scheduleAutosave();
     },
-    { deep: true },
   );
 
   onBeforeUnmount(() => {
@@ -429,6 +433,9 @@ onBeforeUnmount(() => {
   min-height: 0;
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
   border: 1px solid oklch(var(--bc) / 0.07);
   border-radius: 26px;
   background: oklch(var(--b1) / 0.9);
@@ -436,6 +443,7 @@ onBeforeUnmount(() => {
     0 2px 6px oklch(var(--bc) / 0.05),
     0 4px 8px oklch(var(--bc) / 0.06);
   padding: 20px;
+  contain: layout paint style;
 }
 
 @media (max-width: 768px) {

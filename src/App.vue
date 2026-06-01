@@ -67,6 +67,8 @@ watch(
 
 .app-main {
   flex: 1 1 auto;
+  height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 </style>

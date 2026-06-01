@@ -22,6 +22,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .right-view-header,
@@ -32,5 +33,7 @@
 .right-view-main {
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 </style>

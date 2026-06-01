@@ -6,14 +6,15 @@ const PROVIDER_NOT_READY_MESSAGE = "Chat provider is not configured.";
 /**
  * Keeps only fields accepted by OpenAI-compatible chat completions endpoints.
  *
- * UI/runtime capability flags such as `webSearch` are app-level controls, not
- * provider request body fields. `stream_options` is sent only for streaming
+ * UI/runtime capability flags such as `webSearch` are mapped to the provider
+ * specific request fields here. `stream_options` is sent only for streaming
  * requests because some compatible providers reject it for sync calls.
  */
 function normalizeOpenAIParams(params: ChatCompletionParams = {}, stream = true): JsonObject {
   const { stream: _stream, stream_options, webSearch, reasoningBoost, ...requestParams } = params || {};
   if (reasoningBoost && "reasoning_effort" in requestParams) requestParams.reasoning_effort = "high";
   if (stream && stream_options) requestParams.stream_options = stream_options;
+  if (webSearch) requestParams.web_search_options = {};
   return requestParams;
 }
 
@@ -155,15 +156,12 @@ export class OpenAIClient {
     callback: ChatCallback | null = null,
     options: ChatRequestOptions = {},
   ): Promise<void> {
-    // Capability flags are consumed before provider dispatch; do not leak them into the request body.
-    const { webSearch: _webSearch, ...nextParams } = params || {};
-
-    if (nextParams.stream !== false) {
-      await this.chatStream(messages, nextParams, callback, options);
+    if (params.stream !== false) {
+      await this.chatStream(messages, params, callback, options);
       return;
     }
 
-    const response = await this.chatSync(messages, nextParams, options);
+    const response = await this.chatSync(messages, params, options);
     if (callback) await callback(response);
   }
 }

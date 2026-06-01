@@ -60,8 +60,9 @@ const onStart = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
-  width: 100vw;
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
   padding: 32px;
   position: relative;
   overflow: hidden;
@@ -87,9 +88,8 @@ const onStart = async () => {
     border: 1px solid oklch(var(--bc) / 0.12);
     border-radius: 32px;
     overflow: hidden;
-    background: oklch(var(--b1) / 0.82);
-    box-shadow: 0 30px 90px oklch(var(--bc) / 0.12);
-    backdrop-filter: blur(20px);
+    background: oklch(var(--b1) / 0.94);
+    box-shadow: 0 18px 54px oklch(var(--bc) / 0.1);
   }
 
   .hlcc-toolbar {

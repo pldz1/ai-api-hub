@@ -14,14 +14,12 @@
     color: oklch(var(--bc));
     box-shadow: 0 8px 20px oklch(var(--bc) / 0.04);
     transition:
-      transform 0.16s ease,
       box-shadow 0.16s ease,
       border-color 0.16s ease,
       background-color 0.16s ease;
   }
 
   :where(.btn:hover) {
-    transform: translateY(-1px);
     border-color: oklch(var(--bc) / 0.12);
     box-shadow: 0 12px 24px oklch(var(--bc) / 0.06);
   }
@@ -123,7 +121,6 @@
   box-shadow:
     0 10px 28px oklch(var(--bc) / 0.04),
     inset 0 1px 0 oklch(var(--b1) / 0.92);
-  backdrop-filter: blur(18px);
 }
 
 .settings-list-panel {
@@ -143,13 +140,11 @@
   transition:
     border-color 0.2s ease,
     background-color 0.2s ease,
-    transform 0.2s ease,
     box-shadow 0.2s ease;
 
   &:hover {
     border-color: oklch(var(--bc) / 0.12);
     background: oklch(var(--b1) / 0.98);
-    transform: translateY(-1px);
     box-shadow: 0 12px 24px oklch(var(--bc) / 0.06);
   }
 

@@ -432,12 +432,10 @@ watch(
   box-shadow: 0 8px 20px oklch(var(--bc) / 0.05);
   transition:
     border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
+    box-shadow 0.18s ease;
 
   &:hover {
     border-color: oklch(var(--bc) / 0.18);
-    transform: translateY(-1px);
   }
 
   &:focus {

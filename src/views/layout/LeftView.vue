@@ -657,17 +657,17 @@ $radius-md: 12px;
 
 .sidebar-container {
   height: 100%;
-  position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
+  position: relative;
   z-index: 100;
   width: $sidebar-w-collapsed;
-  backdrop-filter: blur(18px);
+  flex: 0 0 $sidebar-w-collapsed;
+  background: oklch(var(--b1) / 0.96);
   border-right: 1px solid oklch(var(--p) / 0.08);
   overflow: hidden;
+  contain: layout paint style;
   transition:
     width 0.22s ease,
+    flex-basis 0.22s ease,
     transform 0.22s ease,
     background-color 0.22s ease,
     border-color 0.22s ease;
@@ -675,6 +675,7 @@ $radius-md: 12px;
 
   &.is-expanded {
     width: $sidebar-w-expanded;
+    flex-basis: $sidebar-w-expanded;
   }
 
   &:not(.is-expanded) {
@@ -956,6 +957,8 @@ $radius-md: 12px;
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding-right: 2px;
 
   &::-webkit-scrollbar {
@@ -1510,6 +1513,8 @@ $radius-md: 12px;
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding-right: 2px;
   display: flex;
   flex-direction: column;
@@ -1606,9 +1611,13 @@ $radius-md: 12px;
 
 @media (max-width: 768px) {
   .sidebar-container {
-    background: oklch(var(--b1) / 0.92);
-    backdrop-filter: blur(20px);
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: oklch(var(--b1) / 0.98);
     width: min(86vw, $sidebar-w-expanded);
+    flex-basis: auto;
     max-width: $sidebar-w-expanded;
     transform: translateX(-100%);
     opacity: 0;

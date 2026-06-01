@@ -24,7 +24,7 @@
 
     <!-- Keep the chat composer fixed at the bottom of the view. -->
     <div class="cccd-bottom">
-      <div class="cccd-input-area">
+      <div ref="inputAreaRef" class="cccd-input-area">
         <ChatInputArea
           :is-chatting="isChatting"
           :model-selection-readonly="isModelSelectionReadonly"
@@ -62,8 +62,12 @@ const route = useRoute();
 const router = useRouter();
 const innerRef = ref<HTMLElement | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
+const inputAreaRef = ref<HTMLElement | null>(null);
 const canScrollTop = ref(false);
 const canScrollBottom = ref(false);
+const AUTO_FOLLOW_THRESHOLD = 120;
+let scrollActionsFrame = 0;
+let composerResizeObserver: ResizeObserver | null = null;
 
 const drawer = new ChatDrawer();
 const curChatId = computed<string>(() => store.state.curChatId || "");
@@ -75,21 +79,43 @@ const isChatting = computed(() => Boolean(activeRuntime.value?.pending || ["load
 const isModelSelectionReadonly = computed(() => Boolean(curConversation.value?.modelSnapshot && (curChatId.value || activeMessages.value.length > 0)));
 const isShowTemplate = computed(() => !routeChatId.value && activeMessages.value.length === 0);
 
-const updateScrollActions = () => {
+const readScrollActions = () => {
   const el = innerRef.value;
   if (!el) return;
   canScrollTop.value = el.scrollTop > 4;
   canScrollBottom.value = el.scrollTop + el.clientHeight < el.scrollHeight - 4;
 };
 
+const updateScrollActions = () => {
+  if (scrollActionsFrame) return;
+  scrollActionsFrame = requestAnimationFrame(() => {
+    scrollActionsFrame = 0;
+    readScrollActions();
+  });
+};
+
 const scrollMessagesToTop = () => {
   innerRef.value?.scrollTo({ top: 0, behavior: "smooth" });
 };
 
-const scrollMessagesToBottom = () => {
+const isNearScrollBottom = (threshold = AUTO_FOLLOW_THRESHOLD) => {
+  const el = innerRef.value;
+  if (!el) return true;
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+};
+
+const scrollMessagesToBottom = (behavior: ScrollBehavior = "smooth") => {
   const el = innerRef.value;
   if (!el) return;
-  el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  el.scrollTo({ top: el.scrollHeight, behavior });
+};
+
+const updateComposerHeight = () => {
+  const container = containerRef.value;
+  const composer = inputAreaRef.value;
+  if (!container || !composer) return;
+  const height = Math.ceil(composer.getBoundingClientRect().height);
+  if (height > 0) container.style.setProperty("--chat-composer-height", `${height}px`);
 };
 
 const renderCurrentConversation = async ({ stickToBottom = false, reset = false }: { stickToBottom?: boolean; reset?: boolean } = {}) => {
@@ -97,7 +123,7 @@ const renderCurrentConversation = async ({ stickToBottom = false, reset = false 
   drawer.syncDraftAssistant(activeRuntime.value || {});
   await nextTick();
   updateScrollActions();
-  if (stickToBottom) scrollMessagesToBottom();
+  if (stickToBottom) scrollMessagesToBottom("auto");
 };
 
 const syncConversationFromRoute = async (nextRouteChatId: string) => {
@@ -156,16 +182,24 @@ const onStartChat = async (payload: ChatStartPayload) => {
   if (!runner) return;
 
   runner.onRuntimeUpdate = (runtime) => {
+    const shouldFollow = isNearScrollBottom();
     drawer.syncDraftAssistant(runtime || {});
     nextTick(() => {
       updateScrollActions();
-      scrollMessagesToBottom();
+      if (shouldFollow) scrollMessagesToBottom("auto");
     });
   };
 
   runner.onDraftUpdate = (content) => {
     if (!innerRef.value) return;
+    const shouldFollow = isNearScrollBottom();
     drawer.updateDraftContent(content, runner.assistantStream.messageId, activeRuntime.value?.status === "error");
+    if (shouldFollow) {
+      requestAnimationFrame(() => {
+        updateScrollActions();
+        scrollMessagesToBottom("auto");
+      });
+    }
   };
 
   runner.onDraftRemove = () => {
@@ -196,9 +230,20 @@ onMounted(() => {
   };
   renderCurrentConversation({ reset: true });
   updateScrollActions();
+  nextTick(updateComposerHeight);
+  if (window.ResizeObserver && inputAreaRef.value) {
+    composerResizeObserver = new ResizeObserver(updateComposerHeight);
+    composerResizeObserver.observe(inputAreaRef.value);
+  }
 });
 
 onBeforeUnmount(() => {
+  composerResizeObserver?.disconnect();
+  composerResizeObserver = null;
+  if (scrollActionsFrame) {
+    cancelAnimationFrame(scrollActionsFrame);
+    scrollActionsFrame = 0;
+  }
   drawer.onMessageDeleted = null;
   const runner = getChatSessionRunner(curChatId.value);
   if (runner) {
@@ -216,7 +261,9 @@ onBeforeUnmount(() => {
   --chat-page-max-width: 1080px;
   --chat-side-gap: max(180px, calc((100% - var(--chat-page-max-width)) / 2));
   --chat-top-gap: 16px;
-  --chat-bottom-gap: 230px;
+  --chat-composer-height: 126px;
+  --chat-scroll-tail-gap: 32px;
+  --chat-bottom-gap: calc(var(--chat-composer-height) + var(--chat-input-bottom) + var(--chat-scroll-tail-gap));
   --chat-input-bottom: 18px;
   --chat-input-shell-gap: 18px;
   position: relative;
@@ -225,20 +272,10 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  isolation: isolate;
   background:
     radial-gradient(circle at 50% 0%, oklch(var(--in) / 0.12), oklch(var(--b1) / 0) 48%),
     linear-gradient(180deg, oklch(var(--b1)) 0%, oklch(var(--b2) / 0.42) 100%);
-}
-
-.chat-card-container::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 210px;
-  z-index: 4;
-  pointer-events: none;
 }
 
 .chat-card-container :deep(.chat-template-display-card) {
@@ -257,6 +294,7 @@ onBeforeUnmount(() => {
   opacity: 0;
   pointer-events: none;
   z-index: 1;
+  overflow: hidden;
 }
 
 .ccdc-messages-container.active {
@@ -269,9 +307,14 @@ onBeforeUnmount(() => {
   height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-gutter: stable;
   padding: var(--chat-top-gap) var(--chat-side-gap) var(--chat-bottom-gap);
   scroll-padding-bottom: calc(var(--chat-bottom-gap) - 24px);
   box-sizing: border-box;
+  contain: layout paint style;
 
   &::-webkit-scrollbar {
     width: 8px;
@@ -295,25 +338,32 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
+.cccd-bottom::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--chat-input-bottom) * -1);
+  height: clamp(170px, 30vh, 252px);
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.76) 46%, oklch(var(--b1)) 82%, oklch(var(--b1)) 100%);
+}
+
 .cccd-input-area {
+  position: relative;
+  z-index: 1;
   width: 100%;
   display: flex;
   justify-content: center;
   max-width: calc(var(--chat-page-max-width) + var(--chat-input-shell-gap) * 2);
   pointer-events: auto;
+  contain: layout paint;
+}
 
-  &::before {
-    content: "";
-    position: absolute;
-    left: -24px;
-    right: -24px;
-    bottom: -20px;
-    height: 268px;
-    z-index: 0;
-    pointer-events: none;
-    background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.78) 42%, oklch(var(--b1)) 78%, oklch(var(--b1)) 100%);
-    box-shadow: inset 0 -56px 72px oklch(var(--b1) / 0.32);
-  }
+.chat-card-container :deep(.chat-md-bubble-assistant),
+.chat-card-container :deep(.chat-md-bubble-user) {
+  contain: layout style;
 }
 
 @media (max-width: 1100px) {
@@ -326,9 +376,9 @@ onBeforeUnmount(() => {
   .chat-card-container {
     --chat-side-gap: 16px;
     --chat-top-gap: 14px;
-    --chat-bottom-gap: 236px;
     --chat-input-bottom: 14px;
     --chat-input-shell-gap: 14px;
+    --chat-scroll-tail-gap: 30px;
   }
 
   .cccd-scroll-window {
@@ -349,13 +399,9 @@ onBeforeUnmount(() => {
   .chat-card-container {
     --chat-side-gap: 28px;
     --chat-top-gap: 12px;
-    --chat-bottom-gap: 224px;
     --chat-input-bottom: max(12px, env(safe-area-inset-bottom));
     --chat-input-shell-gap: 18px;
-  }
-
-  .chat-card-container::after {
-    height: 240px;
+    --chat-scroll-tail-gap: 28px;
   }
 
   .cccd-bottom {
@@ -372,8 +418,8 @@ onBeforeUnmount(() => {
   .chat-card-container {
     --chat-side-gap: 26px;
     --chat-top-gap: 10px;
-    --chat-bottom-gap: 232px;
     --chat-input-shell-gap: 18px;
+    --chat-scroll-tail-gap: 26px;
   }
 
   .ccdc-messages-container {
