@@ -68,6 +68,7 @@ let scrollActionsFrame = 0;
 let composerResizeObserver: ResizeObserver | null = null;
 
 const drawer = new ChatDrawer();
+let activeRunnerChatId: string | null = null;
 const curChatId = computed<string>(() => store.state.curChatId || "");
 const curConversation = computed(() => (curChatId.value ? store.state.chatConversationsById?.[curChatId.value] || null : null));
 const activeMessages = computed<ChatPromptMessage[]>(() => (curChatId.value ? store.state.chatMessagesById?.[curChatId.value] || [] : []));
@@ -129,6 +130,17 @@ const syncConversationFromRoute = async (nextRouteChatId: string) => {
   }
 
   if (nextRouteChatId !== curChatId.value) {
+    // Clear old runner callbacks so background streams don't leak into the new session
+    if (activeRunnerChatId) {
+      const prevRunner = getChatSessionRunner(activeRunnerChatId);
+      if (prevRunner) {
+        prevRunner.onDraftUpdate = null;
+        prevRunner.onDraftRemove = null;
+        prevRunner.onMessagePersisted = null;
+        prevRunner.onRuntimeUpdate = null;
+      }
+      activeRunnerChatId = null;
+    }
     await store.dispatch("setCurChatId", nextRouteChatId);
   }
 
@@ -173,23 +185,32 @@ const onStartChat = async (payload: ChatStartPayload) => {
   const runner = getChatSessionRunner(nextChatId);
   if (!runner) return;
 
+  const isActiveRunner = () => runner.chatId === curChatId.value;
+
   runner.onRuntimeUpdate = (runtime) => {
+    if (!isActiveRunner()) return;
     drawer.syncDraftAssistant(runtime);
+    if (runtime?.pending) nextTick(() => scrollMessagesToBottom("auto"));
     nextTick(updateScrollActions);
   };
 
   runner.onDraftUpdate = (content) => {
+    if (!isActiveRunner()) return;
     drawer.updateDraftContent(content, runner.assistantStream.messageId, activeRuntime.value?.status === "error");
+    scrollMessagesToBottom("auto");
   };
 
   runner.onDraftRemove = () => {
+    if (!isActiveRunner()) return;
     drawer.removeTempAssistantElem();
   };
 
-  runner.onMessagePersisted = async (message) => {
-    await renderCurrentConversation({ stickToBottom: message.role === "user" });
+  runner.onMessagePersisted = async () => {
+    if (!isActiveRunner()) return;
+    await renderCurrentConversation();
   };
 
+  activeRunnerChatId = nextChatId;
   await runner.chat(message);
 };
 
@@ -225,12 +246,15 @@ onBeforeUnmount(() => {
     scrollActionsFrame = 0;
   }
   drawer.onMessageDeleted = null;
-  const runner = getChatSessionRunner(curChatId.value);
-  if (runner) {
-    runner.onDraftUpdate = null;
-    runner.onDraftRemove = null;
-    runner.onMessagePersisted = null;
-    runner.onRuntimeUpdate = null;
+  if (activeRunnerChatId) {
+    const runner = getChatSessionRunner(activeRunnerChatId);
+    if (runner) {
+      runner.onDraftUpdate = null;
+      runner.onDraftRemove = null;
+      runner.onMessagePersisted = null;
+      runner.onRuntimeUpdate = null;
+    }
+    activeRunnerChatId = null;
   }
 });
 </script>
