@@ -1,129 +1,136 @@
-# AI API HUB
+# 🚀 AI API HUB
 
-A unified chat & image generation interface for multiple AI providers, running entirely in the browser.
+> One interface, every model. Your API keys, your data, your rules.
 
-## Features
+**AI API HUB** is a unified chat & image generation frontend for multiple AI providers, running entirely in your browser—no backend, no telemetry, just you and the models having a conversation.
 
-- **Multi-provider chat** — Supports OpenAI, Azure OpenAI, and DeepSeek through a unified chat interface with streaming (SSE) responses.
-- **Image generation & editing** — Text-to-image and image-to-image generation via OpenAI / Azure OpenAI. Includes an in-app brush-based mask editor for precise edit regions.
-- **Model management** — Configure custom models, endpoints, API keys, and deployment settings per provider. Model catalog includes GPT-5.5, GPT-4.1, GPT-4o, and DeepSeek V4 variants.
-- **Prompt templates** — Create, edit, and reuse system instruction templates across conversations.
-- **Conversation management** — Create, rename, delete, and batch-delete chat and image conversations. Sidebar shows real-time runtime status per session.
-- **Token usage tracking** — Per-session input/output token accounting.
-- **Theme & language** — 5 DaisyUI themes (Light, Dark, Cupcake, Acid, Lemonade). UI in English and Simplified Chinese.
-- **Settings import/export** — Import config via URL query parameters, file upload, or inline JSON. Export as a portable JSON package.
-- **Fully local** — Runs entirely in the browser with localStorage persistence. No account, no backend server required.
+---
 
-## Supported Providers
+## 🤖 What Models Are We Talking About?
 
-| Provider | Chat | Image |
+This is why you're here, right? Here's the current lineup:
+
+### 💬 Chat Models
+
+| Model | Providers | Multimodal | Web Search | Vibe Check |
+|---|---|---|---|---|
+| **GPT-5.5** 🧠 | OpenAI · Azure | ✅ Vision | ✅ | The latest and greatest. Expensive, but worth every token |
+| **GPT-5.4** ⚡ | OpenAI · Azure | ✅ Vision | ✅ | The sweet spot between brains and speed |
+| **GPT-4.1** 🎯 | OpenAI · Azure | ✅ Vision | ✅ | Battle-tested veteran, still shipping |
+| **GPT-4o** 🏃 | OpenAI · Azure | ✅ Vision | ✅ | Lightweight & fast—your daily driver |
+| **DeepSeek V4 Pro** 🔮 | DeepSeek · DashScope | ❌ Text only | ✅ (DashScope) | 1M token context window. Absolute unit for Chinese |
+| **DeepSeek V4 Flash** ⚡ | DeepSeek · DashScope | ❌ Text only | ✅ (DashScope) | Pro's speedy sibling—cheap and cheerful |
+| **Qwen 3.7 Max** 🐉 | DashScope | ✅ Vision | ✅ | Alibaba's flagship. Chinese comprehension on another level |
+
+### 🎨 Image Generation
+
+| Model | Provider | Capabilities |
 |---|---|---|
-| OpenAI | Streaming & sync via `/chat/completions`, web search via `/responses` | Generation & edit via `/images/generations` and `/images/edits` |
-| Azure OpenAI | Streaming & sync via Azure deployment endpoint | Generation & edit via Azure deployment |
-| DeepSeek | Streaming & sync via `/chat/completions` (text-only) | — |
+| **GPT-Image-2** 🖼️ | OpenAI | Text-to-image + image-to-image + inpainting |
 
-## Tech Stack
+> 💡 **But wait, there's more** — you can add any custom model that speaks OpenAI / DeepSeek / DashScope compatible APIs. Running Ollama locally? Go for it. Third-party proxy? You do you.
 
-- **Vue 3** (Composition API, SFC)
-- **TypeScript** (strict mode off)
-- **Vite 6** (dev server, bundler)
-- **Vuex 4** (state management, 4 modules)
-- **Vue Router 4** (hash-based routing)
-- **vue-i18n 9** (internationalization)
-- **DaisyUI 4 + Tailwind CSS 3** (UI components & theming)
-- **markdown-it + highlight.js** (message rendering with syntax highlighting)
-- **axios** (HTTP client)
+---
 
-## Project Structure
+## ✨ Features
 
-```
-src/
-├── ai-capability/       # AI provider abstraction layer
-│   ├── chat/            # Chat providers (OpenAI, Azure, DeepSeek)
-│   │   └── providers/   # Per-provider client implementations
-│   ├── image/           # Image providers (OpenAI, Azure)
-│   │   └── providers/
-│   └── common/          # Shared types, SSE client, usage normalization
-├── assets/              # SCSS stylesheets, SVG icons
-├── components/          # Reusable Vue components
-├── constants/           # App metadata, model catalog, parameter presets
-├── i18n/                # Locale dictionaries (zh-CN, en-US)
-├── models/              # Data normalization & API parameter builders
-├── router/              # Hash-based route definitions
-├── services/            # Business logic
-│   ├── app/             # Settings CRUD, config import, storage
-│   ├── conversation/    # Chat conversation CRUD, runtime, rendering
-│   ├── creation/        # Image generation & gallery management
-│   └── markdown/        # Markdown parsing & code highlighting
-├── store/               # Vuex store (user, chat, image, modal modules)
-├── types/               # TypeScript type definitions
-├── utils/               # Utility functions
-└── views/               # Page components
-    ├── chat/            # Chat UI (input, settings, templates)
-    ├── image/           # Image studio (workspace, preview, brush editor)
-    ├── layout/          # Sidebar & main view layout
-    └── setting/         # Settings pages (models, templates, app)
-```
+- 🔌 **Multi-Provider Aggregation** — One UI for OpenAI, Azure, DeepSeek, and DashScope. Close those 12 browser tabs
+- 🌊 **Streaming (SSE)** — Real-time typewriter responses with abort support. Impatient? Hit stop anytime
+- 🎨 **Image Generation & Editing** — Text-to-image, image-to-image, plus a built-in brush mask editor for surgical edits
+- 🌐 **Web Search** — Supported models can search the web mid-conversation. Yes, just like that other chatbot
+- 📋 **Prompt Templates** — Write once, reuse forever. Stop copy-pasting system instructions like a caveman
+- 💬 **Conversation Management** — Create, rename, delete, batch operations. Sidebar shows live runtime status per session
+- 📊 **Token Tracking** — Input/output tokens per turn, normalized across providers. Know where your credits are going
+- 🎨 **11 Themes** — Light · Dark · Cupcake · Acid · Lemonade · Night · Coffee · Winter · Dim · Nord · Sunset
+- 🌍 **i18n** — English & Simplified Chinese, auto-detected from your browser. Switch anytime
+- 📦 **Config Import/Export** — URL query params, file upload, or paste JSON. One-click export to back everything up
+- 🔒 **100% Local** — All data lives in `localStorage` + `IndexedDB`. No server, no accounts, your keys stay yours
 
-## Getting Started
+---
+
+## 🏗️ Tech Stack
+
+| Category | Stack |
+|---|---|
+| Framework | Vue 3 (Composition API + SFC) |
+| Language | TypeScript |
+| Build | Vite 6 |
+| State | Vuex 4 |
+| Routing | Vue Router 4 (Hash mode) |
+| i18n | vue-i18n 9 |
+| UI | DaisyUI 4 + Tailwind CSS 3 |
+| Markdown | markdown-it 14 + highlight.js 11 |
+| Streaming | Native Fetch API + ReadableStream (custom SSE parser) |
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
 - Node.js ≥ 18
 - npm ≥ 9
 
-### Setup
+### Quick Start
 
 ```bash
-npm install
+npm install        # Install dependencies
+npm run dev        # Start dev server → http://127.0.0.1:20090
 ```
 
-### Development
+### Other Commands
 
 ```bash
-npm run dev
+npm run build      # Production build → dist/
+npm run preview    # Preview production build
+npm run typecheck  # TypeScript type check
 ```
 
-Dev server starts at `http://127.0.0.1:20090`.
+---
 
-### Build
+## 🎮 How to Use
 
-```bash
-npm run build
-```
+1. Open the app, click **"Enter Workspace"**
+2. Go to **Settings → Chat Models**, plug in your API key and endpoint
+3. Create a new conversation, start chatting!
+4. Want images? Add an image model in **Settings → Image Models**, then switch to the **Image** tab
 
-Output goes to `dist/`. Serve it with any static file server.
+### 🔗 URL-Based Config Import
 
-### Type Check
-
-```bash
-npm run typecheck
-```
-
-### Preview Build
-
-```bash
-npm run preview
-```
-
-## Usage
-
-1. Open the app, click **"Enter Workspace"** on the home screen.
-2. Go to **Settings** → **Chat Models** and add a model with your provider's API key and endpoint.
-3. Create a new chat conversation and start sending messages.
-4. For image generation, add an image model in **Settings** → **Image Models**, then switch to the **Image** tab.
-
-### URL-based Config Import
-
-Pass config via the `config` query parameter in the URL hash:
+Encode your config as Base64 JSON or host it somewhere, then pass it as a URL param—perfect for incognito mode:
 
 ```
 http://127.0.0.1:20090/#/?config=BASE64_ENCODED_JSON
 http://127.0.0.1:20090/#/?config=https://example.com/my-config.json
 ```
 
-This is useful for sharing configuration without manually importing files, especially in private or incognito browsing modes.
+---
 
-## License
+## 📁 Project Structure
+
+```
+src/
+├── ai-capability/        # AI provider abstraction layer
+│   ├── chat/providers/   # Chat clients (OpenAI, Azure, DeepSeek, DashScope)
+│   ├── image/providers/  # Image clients (OpenAI)
+│   └── common/           # Shared types, SSE client, token normalization
+├── components/           # Reusable Vue components
+├── constants/            # App metadata, model catalog, parameter presets
+├── i18n/                 # EN & ZH dictionaries
+├── models/               # Data normalization & API param builders
+├── router/               # Hash-based routes
+├── services/             # Business logic (settings, conversations, images, markdown)
+├── store/                # Vuex state management
+├── types/                # TypeScript type definitions
+└── views/                # Page components (chat, image, settings, layout)
+```
+
+---
+
+## 📄 License
 
 [MIT](LICENSE)
+
+---
+
+<p align="center">Made with ❤️ and probably too much ☕</p>
