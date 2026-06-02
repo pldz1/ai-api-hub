@@ -187,7 +187,6 @@ export class ChatMessageElementFactory {
     reasoningEl.className = "cmba-reasoning-content";
 
     const detailsEl = document.createElement("details");
-    detailsEl.open = true;
     reasoningEl.appendChild(detailsEl);
 
     const summaryEl = document.createElement("summary");
@@ -216,5 +215,4 @@ export class ChatMessageElementFactory {
     if (!this.container) return -1;
     return Array.from(this.container.children).findIndex((child) => child.id === id);
   }
-
 }

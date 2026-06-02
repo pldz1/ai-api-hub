@@ -139,6 +139,7 @@ export async function addChat(name: string | null = null, model: ChatModelConfig
       settings,
       messages: [],
       loaded: true,
+      inputCapabilities: { ...store.state.inputCapabilities },
     });
     await store.dispatch("setCurChatId", chatId);
     return true;

@@ -4,7 +4,9 @@
     <div class="modal-box">
       <!-- Close and persist the edited settings when leaving the dialog. -->
       <form method="dialog">
-        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" type="button" @click="handleClose">x</button>
+        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" type="button" @click="handleClose">
+          <SvgIcon :src="closeIcon" style="width: 24px; height: 24px"></SvgIcon>
+        </button>
       </form>
       <h3 class="text-lg font-bold">{{ t("chat.settingsTitle") }}</h3>
       <div class="gcms-container">
@@ -83,6 +85,7 @@ import { useStore } from "vuex";
 import infoIcon from "@/assets/svg/info24.svg";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
+import closeIcon from "@/assets/svg/error24.svg";
 import { mergeChatSettingsWithModel, parseParamValue, resolveChatParamDefs } from "@/models";
 import { setChatSettings } from "@/services";
 import { dsAlert } from "@/utils";
@@ -240,6 +243,7 @@ defineExpose({
 
     .textarea {
       width: 100%;
+      height: 48px;
     }
 
     .input {
