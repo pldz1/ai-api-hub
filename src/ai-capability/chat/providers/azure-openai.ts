@@ -1,12 +1,19 @@
 import { OpenAIClient } from "./openai";
 
-/**
- * Azure OpenAI uses the same chat completions request shape as OpenAI here.
- * The distinct class keeps provider routing explicit while reusing the shared
- * endpoint/body/header behavior.
- */
 export class AzureOpenAIClient extends OpenAIClient {
-  constructor(baseURL: string, apiKey: string, model: string) {
-    super(baseURL, apiKey, model);
+  getHeaders(): Record<string, string> {
+    if (this.apiKey.startsWith("Bearer ")) {
+      return {
+        authorization: this.apiKey,
+      };
+    }
+
+    return {
+      "api-key": this.apiKey,
+    };
+  }
+
+  getResponsesUrl(): string {
+    return this.baseURL || "https://<YOUR-AZURE-PROJECT>.openai.azure.com/openai/v1/responses";
   }
 }

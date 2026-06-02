@@ -19,13 +19,13 @@ const chatProviderRegistryConfig = {
     name: "OpenAI",
     route: "openai",
     connectionFields: ["baseURL"],
-    defaultBaseURL: "https://api.openai.com/v1/chat/completions",
+    defaultBaseURL: "https://api.openai.com/v1/responses",
   },
   "Azure OpenAI": {
     name: "Azure OpenAI",
     route: "azure-openai",
     connectionFields: ["baseURL"],
-    defaultBaseURL: "https://<YOUR-AZURE-PROJECT>.openai.azure.com/openai/v1/chat/completions",
+    defaultBaseURL: "https://<YOUR-AZURE-PROJECT>.openai.azure.com/openai/v1/responses",
   },
   DeepSeek: {
     name: "DeepSeek",
@@ -169,6 +169,7 @@ export interface ChatCompletionParams extends ChatParamRecord {
   stream?: boolean;
   stream_options?: ChatStreamOptions;
   webSearch?: boolean;
+  reasoningBoost?: boolean;
 }
 
 // ============================================================================

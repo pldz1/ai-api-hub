@@ -1,51 +1,167 @@
-import type { ChatCallback, ChatCompletionParams, ChatProviderResponse, ChatRequestOptions, PackedChatMessage } from "../types";
+import type { ChatCallback, ChatCompletionParams, ChatProviderResponse, ChatRequestOptions, PackedChatMessage, ChatPromptContent } from "../types";
 import { normalizeUsage, requestJson, streamJsonEvents, type JsonObject } from "../../common";
 
 const PROVIDER_NOT_READY_MESSAGE = "Chat provider is not configured.";
 
-/**
- * Keeps only fields accepted by OpenAI-compatible chat completions endpoints.
- *
- * UI/runtime capability flags such as `webSearch` are mapped to the provider
- * specific request fields here. `stream_options` is sent only for streaming
- * requests because some compatible providers reject it for sync calls.
- */
-function normalizeOpenAIParams(params: ChatCompletionParams = {}, stream = true): JsonObject {
-  const { stream: _stream, stream_options, webSearch, reasoningBoost, ...requestParams } = params || {};
-  if (reasoningBoost && "reasoning_effort" in requestParams) requestParams.reasoning_effort = "high";
-  if (stream && stream_options) requestParams.stream_options = stream_options;
-  if (webSearch) requestParams.web_search_options = {};
-  return requestParams;
+function isAbortError(err: unknown): boolean {
+  return err instanceof DOMException && err.name === "AbortError";
 }
 
-/** Converts one Server-Sent Events chat completion chunk into the app delta shape. */
-function responseFromChatChunk(chunk: JsonObject): ChatProviderResponse {
-  const choice = Array.isArray(chunk.choices) ? (chunk.choices[0] as JsonObject | undefined) : undefined;
-  const delta = (choice?.delta || {}) as JsonObject;
+function toResponsesContentPart(part: ChatPromptContent, role: PackedChatMessage["role"]): JsonObject | null {
+  if (part.type === "text") {
+    return {
+      type: role === "assistant" ? "output_text" : "input_text",
+      text: part.text,
+    };
+  }
 
-  return {
-    flag: true,
-    content: String(delta.content || ""),
-    reasoning_content: String(delta.reasoning_content || ""),
-    usage: normalizeUsage(chunk.usage as JsonObject | null | undefined),
-  };
+  if (part.type === "image_url") {
+    if (role === "assistant") return null;
+    return {
+      type: "input_image",
+      image_url: part.image_url.url,
+      detail: part.image_url.detail,
+    };
+  }
+
+  return null;
 }
 
-/** Converts a non-streaming chat completion response into the app response shape. */
-function responseFromChatCompletion(data: JsonObject): ChatProviderResponse {
-  const choice = Array.isArray(data.choices) ? (data.choices[0] as JsonObject | undefined) : undefined;
-  const message = (choice?.message || {}) as JsonObject;
+function toResponsesInput(messages: PackedChatMessage[]): JsonObject[] {
+  return messages.map((item) => {
+    const content =
+      typeof item.content === "string"
+        ? [{ type: item.role === "assistant" ? "output_text" : "input_text", text: item.content }]
+        : item.content.reduce<JsonObject[]>((parts, part) => {
+            const nextPart = toResponsesContentPart(part, item.role);
+            if (nextPart) parts.push(nextPart);
+            return parts;
+          }, []);
+    return {
+      role: item.role,
+      content,
+    };
+  });
+}
 
+function collectOutputText(output: unknown): string {
+  if (!Array.isArray(output)) return "";
+
+  return output
+    .flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const content = (item as Record<string, unknown>).content;
+      if (!Array.isArray(content)) return [];
+      return content
+        .map((contentItem) => {
+          if (!contentItem || typeof contentItem !== "object") return "";
+          const record = contentItem as Record<string, unknown>;
+          return String(record.text || record.output_text || "");
+        })
+        .filter(Boolean);
+    })
+    .join("");
+}
+
+function collectReasoningSummary(output: unknown): string {
+  if (!Array.isArray(output)) return "";
+
+  return output
+    .flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const summary = (item as Record<string, unknown>).summary;
+      if (!Array.isArray(summary)) return [];
+      return summary
+        .map((summaryItem) => {
+          if (!summaryItem || typeof summaryItem !== "object") return "";
+          return String((summaryItem as Record<string, unknown>).text || "");
+        })
+        .filter(Boolean);
+    })
+    .join("");
+}
+
+function responseFromResponsesChunk(chunk: JsonObject): ChatProviderResponse | null {
+  const chunkType = String(chunk.type || "");
+
+  if (chunkType === "response.output_text.delta") {
+    return {
+      flag: true,
+      content: String(chunk.delta || ""),
+      reasoning_content: "",
+    };
+  }
+
+  if (chunkType === "response.reasoning_summary_text.delta") {
+    return {
+      flag: true,
+      content: "",
+      reasoning_content: String(chunk.delta || ""),
+    };
+  }
+
+  if (chunkType === "response.completed") {
+    const response = (chunk.response || {}) as JsonObject;
+    return {
+      flag: true,
+      content: "",
+      reasoning_content: "",
+      usage: normalizeUsage((response.usage || chunk.usage) as JsonObject | null | undefined),
+    };
+  }
+
+  return null;
+}
+
+function responseFromResponsesCompletion(data: JsonObject): ChatProviderResponse {
   return {
     flag: true,
-    content: String(message.content || ""),
-    reasoning_content: String(message.reasoning_content || ""),
+    content: String(data.output_text || collectOutputText(data.output)),
+    reasoning_content: collectReasoningSummary(data.output),
     usage: normalizeUsage(data.usage as JsonObject | null | undefined),
   };
 }
 
-function isAbortError(err: unknown): boolean {
-  return err instanceof DOMException && err.name === "AbortError";
+function normalizeOpenAIResponsesParams(params: ChatCompletionParams = {}): JsonObject {
+  const {
+    stream: _stream,
+    stream_options: _streamOptions,
+    webSearch,
+    reasoningBoost,
+    reasoning_effort,
+    verbosity,
+    max_tokens,
+    max_output_tokens,
+    thinking: _thinking,
+    ...restParams
+  } = params || {};
+
+  const requestParams: JsonObject = { ...restParams };
+  const nextReasoningEffort = reasoningBoost ? "high" : reasoning_effort;
+  const nextMaxOutputTokens = max_output_tokens ?? max_tokens;
+
+  if (nextMaxOutputTokens !== undefined) {
+    requestParams.max_output_tokens = nextMaxOutputTokens;
+  }
+
+  if (nextReasoningEffort) {
+    requestParams.reasoning = {
+      effort: nextReasoningEffort,
+      summary: "auto",
+    };
+  }
+
+  if (verbosity) {
+    requestParams.text = {
+      verbosity,
+    };
+  }
+
+  if (webSearch) {
+    requestParams.tools = [{ type: "web_search_preview" }];
+  }
+
+  return requestParams;
 }
 
 export class OpenAIClient {
@@ -85,25 +201,15 @@ export class OpenAIClient {
     };
   }
 
-  /**
-   * `baseURL` is stored as the full chat completions endpoint.
-   *
-   * Provider defaults live in `chatProviderRegistryConfig`; do not append paths
-   * here or Azure/OpenAI-compatible custom endpoints will drift.
-   */
-  getChatCompletionsUrl(): string {
-    return this.baseURL || "https://api.openai.com/v1/chat/completions";
+  getResponsesUrl(): string {
+    return this.baseURL || "https://api.openai.com/v1/responses";
   }
 
-  getChatCompletionParams(params: ChatCompletionParams = {}, stream = true): JsonObject {
-    return normalizeOpenAIParams(params, stream);
-  }
-
-  getChatCompletionsBody(messages: PackedChatMessage[], params: ChatCompletionParams = {}, stream = true): JsonObject {
+  getResponsesBody(messages: PackedChatMessage[], params: ChatCompletionParams = {}, stream = true): JsonObject {
     return {
       model: this.model,
-      messages,
-      ...this.getChatCompletionParams(params, stream),
+      input: toResponsesInput(messages),
+      ...normalizeOpenAIResponsesParams(params),
       stream,
     };
   }
@@ -120,11 +226,14 @@ export class OpenAIClient {
     }
 
     try {
-      await streamJsonEvents(this.getChatCompletionsUrl(), {
+      await streamJsonEvents(this.getResponsesUrl(), {
         headers: this.getHeaders(),
-        body: this.getChatCompletionsBody(messages, params, true),
+        body: this.getResponsesBody(messages, params, true),
         async onEvent(chunk) {
-          if (callback) await callback(responseFromChatChunk(chunk));
+          const response = responseFromResponsesChunk(chunk);
+          if (callback && response && (response.content || response.reasoning_content || response.usage)) {
+            await callback(response);
+          }
         },
         signal: options.signal,
       });
@@ -138,12 +247,12 @@ export class OpenAIClient {
     if (!this.isConfigured()) return { flag: false, content: PROVIDER_NOT_READY_MESSAGE, reasoning_content: "" };
 
     try {
-      const response = await requestJson<JsonObject>(this.getChatCompletionsUrl(), {
+      const response = await requestJson<JsonObject>(this.getResponsesUrl(), {
         headers: this.getHeaders(),
-        body: this.getChatCompletionsBody(messages, params, false),
+        body: this.getResponsesBody(messages, params, false),
         signal: options.signal,
       });
-      return responseFromChatCompletion(response);
+      return responseFromResponsesCompletion(response);
     } catch (err) {
       if (isAbortError(err)) return { flag: false, content: "", reasoning_content: "" };
       return { flag: false, content: String(err), reasoning_content: "" };

@@ -4,7 +4,7 @@ import type { ModelParamDef, ChatModelEditorState } from "@/types";
 function transformToPresetList(originalList) {
   const descriptionMapping = {
     max_tokens: { descriptionKey: "chat.maxTokensTip" },
-    max_completion_tokens: { descriptionKey: "chat.maxCompletionTokensTip" },
+    max_output_tokens: { descriptionKey: "chat.maxCompletionTokensTip" },
     temperature: { descriptionKey: "chat.temperatureTip" },
     top_p: { descriptionKey: "chat.topPTip" },
     frequency_penalty: { descriptionKey: "chat.frequencyPenaltyTip" },

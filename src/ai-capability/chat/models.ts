@@ -23,8 +23,8 @@ export const chatParamList: Partial<ChatModelParamDef>[] = [
     step: 1,
   },
   {
-    key: "max_completion_tokens",
-    label: "max_completion_tokens",
+    key: "max_output_tokens",
+    label: "max_output_tokens",
     type: "number",
     defaultValue: 2000,
     min: 0,
@@ -103,7 +103,7 @@ export type ChatModelCatalogItem = {
 export const chatModelCatalog: ChatModelCatalogItem[] = [
   {
     name: "gpt-5.5",
-    chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
+    chatParamKeys: ["max_output_tokens", "reasoning_effort", "verbosity"],
     messageFormat: "parts",
     providers: [
       {
@@ -118,7 +118,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
   },
   {
     name: "gpt-5.4",
-    chatParamKeys: ["max_completion_tokens", "reasoning_effort", "verbosity"],
+    chatParamKeys: ["max_output_tokens", "reasoning_effort", "verbosity"],
     messageFormat: "parts",
     providers: [
       {
@@ -133,7 +133,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
   },
   {
     name: "gpt-4.1",
-    chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
+    chatParamKeys: ["max_output_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
     messageFormat: "parts",
     providers: [
       {
@@ -148,7 +148,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
   },
   {
     name: "gpt-4o",
-    chatParamKeys: ["max_completion_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
+    chatParamKeys: ["max_output_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"],
     messageFormat: "parts",
     providers: [
       {
