@@ -1,11 +1,7 @@
-import type { ChatCallback, ChatCompletionParams, ChatProviderResponse, ChatRequestOptions, PackedChatMessage, ChatPromptContent } from "../types";
-import { normalizeUsage, requestJson, streamJsonEvents, type JsonObject } from "../../common";
+import type { ChatCompletionParams, ChatProviderResponse, PackedChatMessage, ChatPromptContent } from "../types";
+import { normalizeUsage, BaseChatClient, type JsonObject } from "../../common";
 
-const PROVIDER_NOT_READY_MESSAGE = "Chat provider is not configured.";
-
-function isAbortError(err: unknown): boolean {
-  return err instanceof DOMException && err.name === "AbortError";
-}
+const DEFAULT_BASE_URL = "https://api.openai.com/v1/responses";
 
 function toResponsesContentPart(part: ChatPromptContent, role: PackedChatMessage["role"]): JsonObject | null {
   if (part.type === "text") {
@@ -81,47 +77,6 @@ function collectReasoningSummary(output: unknown): string {
     .join("");
 }
 
-function responseFromResponsesChunk(chunk: JsonObject): ChatProviderResponse | null {
-  const chunkType = String(chunk.type || "");
-
-  if (chunkType === "response.output_text.delta") {
-    return {
-      flag: true,
-      content: String(chunk.delta || ""),
-      reasoning_content: "",
-    };
-  }
-
-  if (chunkType === "response.reasoning_summary_text.delta") {
-    return {
-      flag: true,
-      content: "",
-      reasoning_content: String(chunk.delta || ""),
-    };
-  }
-
-  if (chunkType === "response.completed") {
-    const response = (chunk.response || {}) as JsonObject;
-    return {
-      flag: true,
-      content: "",
-      reasoning_content: "",
-      usage: normalizeUsage((response.usage || chunk.usage) as JsonObject | null | undefined),
-    };
-  }
-
-  return null;
-}
-
-function responseFromResponsesCompletion(data: JsonObject): ChatProviderResponse {
-  return {
-    flag: true,
-    content: String(data.output_text || collectOutputText(data.output)),
-    reasoning_content: collectReasoningSummary(data.output),
-    usage: normalizeUsage(data.usage as JsonObject | null | undefined),
-  };
-}
-
 function normalizeOpenAIResponsesParams(params: ChatCompletionParams = {}): JsonObject {
   const {
     stream: _stream,
@@ -164,48 +119,12 @@ function normalizeOpenAIResponsesParams(params: ChatCompletionParams = {}): Json
   return requestParams;
 }
 
-export class OpenAIClient {
-  baseURL = "";
-  apiKey = "";
-  model = "";
-
-  constructor(baseURL: string, apiKey: string, model: string) {
-    this.init(baseURL, apiKey, model);
+export class OpenAIClient extends BaseChatClient {
+  getUrl(): string {
+    return this.baseURL || DEFAULT_BASE_URL;
   }
 
-  init(baseURL: string, apiKey: string, model: string): void {
-    this.baseURL = baseURL;
-    this.apiKey = apiKey;
-    this.model = model;
-  }
-
-  update(baseURL: string, apiKey: string, model: string): void {
-    if (baseURL !== this.baseURL || apiKey !== this.apiKey || model !== this.model) {
-      this.init(baseURL, apiKey, model);
-    }
-  }
-
-  destroy(): void {
-    this.baseURL = "";
-    this.apiKey = "";
-    this.model = "";
-  }
-
-  isConfigured(): boolean {
-    return Boolean(this.apiKey && this.model);
-  }
-
-  getHeaders(): Record<string, string> {
-    return {
-      authorization: `Bearer ${this.apiKey}`,
-    };
-  }
-
-  getResponsesUrl(): string {
-    return this.baseURL || "https://api.openai.com/v1/responses";
-  }
-
-  getResponsesBody(messages: PackedChatMessage[], params: ChatCompletionParams = {}, stream = true): JsonObject {
+  getBody(messages: PackedChatMessage[], params: ChatCompletionParams = {}, stream = true): JsonObject {
     return {
       model: this.model,
       input: toResponsesInput(messages),
@@ -214,63 +133,44 @@ export class OpenAIClient {
     };
   }
 
-  async chatStream(
-    messages: PackedChatMessage[],
-    params: ChatCompletionParams,
-    callback: ChatCallback | null = null,
-    options: ChatRequestOptions = {},
-  ): Promise<void> {
-    if (!this.isConfigured()) {
-      if (callback) await callback({ flag: false, content: PROVIDER_NOT_READY_MESSAGE, reasoning_content: "" });
-      return;
+  responseFromChunk(chunk: JsonObject): ChatProviderResponse | null {
+    const chunkType = String(chunk.type || "");
+
+    if (chunkType === "response.output_text.delta") {
+      return {
+        flag: true,
+        content: String(chunk.delta || ""),
+        reasoning_content: "",
+      };
     }
 
-    try {
-      await streamJsonEvents(this.getResponsesUrl(), {
-        headers: this.getHeaders(),
-        body: this.getResponsesBody(messages, params, true),
-        async onEvent(chunk) {
-          const response = responseFromResponsesChunk(chunk);
-          if (callback && response && (response.content || response.reasoning_content || response.usage)) {
-            await callback(response);
-          }
-        },
-        signal: options.signal,
-      });
-    } catch (err) {
-      if (isAbortError(err)) return;
-      if (callback) await callback({ flag: false, content: String(err), reasoning_content: "" });
+    if (chunkType === "response.reasoning_summary_text.delta") {
+      return {
+        flag: true,
+        content: "",
+        reasoning_content: String(chunk.delta || ""),
+      };
     }
+
+    if (chunkType === "response.completed") {
+      const response = (chunk.response || {}) as JsonObject;
+      return {
+        flag: true,
+        content: "",
+        reasoning_content: "",
+        usage: normalizeUsage((response.usage || chunk.usage) as JsonObject | null | undefined),
+      };
+    }
+
+    return null;
   }
 
-  async chatSync(messages: PackedChatMessage[], params: ChatCompletionParams, options: ChatRequestOptions = {}): Promise<ChatProviderResponse> {
-    if (!this.isConfigured()) return { flag: false, content: PROVIDER_NOT_READY_MESSAGE, reasoning_content: "" };
-
-    try {
-      const response = await requestJson<JsonObject>(this.getResponsesUrl(), {
-        headers: this.getHeaders(),
-        body: this.getResponsesBody(messages, params, false),
-        signal: options.signal,
-      });
-      return responseFromResponsesCompletion(response);
-    } catch (err) {
-      if (isAbortError(err)) return { flag: false, content: "", reasoning_content: "" };
-      return { flag: false, content: String(err), reasoning_content: "" };
-    }
-  }
-
-  async chat(
-    messages: PackedChatMessage[],
-    params: ChatCompletionParams = {},
-    callback: ChatCallback | null = null,
-    options: ChatRequestOptions = {},
-  ): Promise<void> {
-    if (params.stream !== false) {
-      await this.chatStream(messages, params, callback, options);
-      return;
-    }
-
-    const response = await this.chatSync(messages, params, options);
-    if (callback) await callback(response);
+  responseFromCompletion(data: JsonObject): ChatProviderResponse {
+    return {
+      flag: true,
+      content: String(data.output_text || collectOutputText(data.output)),
+      reasoning_content: collectReasoningSummary(data.output),
+      usage: normalizeUsage(data.usage as JsonObject | null | undefined),
+    };
   }
 }

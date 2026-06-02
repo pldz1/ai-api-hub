@@ -1,5 +1,7 @@
 import { OpenAIClient } from "./openai";
 
+const DEFAULT_BASE_URL = "https://api.openai.com/v1/chat/completions";
+
 export class AzureOpenAIClient extends OpenAIClient {
   getHeaders(): Record<string, string> {
     if (this.apiKey.startsWith("Bearer ")) {
@@ -13,7 +15,7 @@ export class AzureOpenAIClient extends OpenAIClient {
     };
   }
 
-  getResponsesUrl(): string {
-    return this.baseURL || "https://<YOUR-AZURE-PROJECT>.openai.azure.com/openai/v1/responses";
+  getUrl(): string {
+    return this.baseURL || DEFAULT_BASE_URL;
   }
 }
