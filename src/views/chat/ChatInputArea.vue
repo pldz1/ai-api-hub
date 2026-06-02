@@ -107,7 +107,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useStore } from "vuex";
 import type { ChatModelConfig, ChatPromptMessage } from "@/types";
@@ -294,11 +294,20 @@ const resolveStartChatConfirmation = (confirmed: boolean) => {
   if (dialog?.open) dialog.close();
 };
 
-const onInputText = async () => {
+/* When the browser supports field-sizing:content natively we skip the manual
+   height dance entirely — zero jitter. Older engines fall back to JS resize. */
+const supportsFieldSizing = CSS.supports("field-sizing", "content");
+
+const onInputText = () => {
+  if (supportsFieldSizing) return;
   const textarea = cciaTextareaRef.value;
   if (!textarea) return;
+  /* Hide overflow during measurement so the height-auto → scrollHeight
+     recalculation doesn't produce visible jank. */
+  textarea.style.overflowY = "hidden";
   textarea.style.height = "auto";
   textarea.style.height = `${textarea.scrollHeight}px`;
+  textarea.style.overflowY = "";
 };
 
 const debounce = (fn: Function, delay: number, immediate: boolean = false) => {
@@ -315,7 +324,9 @@ const debounce = (fn: Function, delay: number, immediate: boolean = false) => {
   };
 };
 
-const debounceInputText = debounce(onInputText, 50);
+/* immediate:true — first keystroke resizes instantly, trailing calls are
+   batched at most every 50ms so rapid typing stays responsive. */
+const debounceInputText = debounce(onInputText, 50, true);
 
 const onEnterKeydown = async (event: KeyboardEvent) => {
   if (event.key === "Enter" && !event.shiftKey) {
@@ -406,8 +417,27 @@ function removeInputImage(id: string) {
   inputImages.value = inputImages.value.filter((item) => item.id !== id);
 }
 
+/* ---- global shortcut: Ctrl+/ → focus the chat input ---- */
+function onGlobalKeydown(e: KeyboardEvent) {
+  const mod = e.ctrlKey || e.metaKey;
+  if (!mod) return;
+  if (e.key !== "/") return;
+
+  const el = e.target as HTMLElement | null;
+  const tag = el?.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el?.isContentEditable) return;
+
+  e.preventDefault();
+  cciaTextareaRef.value?.focus();
+}
+
+onMounted(() => {
+  document.addEventListener("keydown", onGlobalKeydown);
+});
+
 onBeforeUnmount(() => {
   resolveStartChatConfirmation(false);
+  document.removeEventListener("keydown", onGlobalKeydown);
 });
 
 watch(
@@ -465,8 +495,9 @@ watch(
     border-radius: initial;
     min-height: 36px;
     max-height: 188px;
-    line-height: 1.4;
-    font-size: 18px;
+    line-height: 1.5;
+    font-size: 16px;
+    field-sizing: content;
   }
 
   .ccia-model-area {
@@ -630,7 +661,7 @@ watch(
     .ccia-custom-textarea {
       order: 2;
       width: 100%;
-      font-size: 16px;
+      font-size: 14px;
       min-height: 32px;
     }
 
