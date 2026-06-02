@@ -69,6 +69,7 @@ let composerResizeObserver: ResizeObserver | null = null;
 
 const drawer = createChatDrawer();
 let activeRunnerChatId: string | null = null;
+let autoScrolledDraftMessageId = "";
 const curChatId = computed<string>(() => store.state.curChatId || "");
 const curConversation = computed(() => (curChatId.value ? store.state.chatConversationsById?.[curChatId.value] || null : null));
 const activeMessages = computed<ChatPromptMessage[]>(() => (curChatId.value ? store.state.chatMessagesById?.[curChatId.value] || [] : []));
@@ -101,6 +102,12 @@ const scrollMessagesToBottom = (behavior: ScrollBehavior = "smooth") => {
   const el = innerRef.value;
   if (!el) return;
   el.scrollTo({ top: el.scrollHeight, behavior });
+};
+
+const scrollOnceForDraft = (created: boolean, messageId: string) => {
+  if (!created || !messageId || autoScrolledDraftMessageId === messageId) return;
+  autoScrolledDraftMessageId = messageId;
+  nextTick(() => scrollMessagesToBottom("auto"));
 };
 
 const updateComposerHeight = () => {
@@ -189,15 +196,17 @@ const onStartChat = async (payload: ChatStartPayload) => {
 
   runner.onRuntimeUpdate = (runtime) => {
     if (!isActiveRunner()) return;
-    drawer.syncDraftAssistant(runtime);
-    if (runtime?.pending) nextTick(() => scrollMessagesToBottom("auto"));
+    const messageId = String(runtime?.draftMessageId || "");
+    const createdDraft = drawer.syncDraftAssistant(runtime);
+    scrollOnceForDraft(createdDraft, messageId);
     nextTick(updateScrollActions);
   };
 
   runner.onDraftUpdate = (content) => {
     if (!isActiveRunner()) return;
-    drawer.updateDraftContent(content, runner.getStream().getMessageId(), activeRuntime.value?.status === "error");
-    scrollMessagesToBottom("auto");
+    const messageId = runner.getStream().getMessageId();
+    const createdDraft = drawer.updateDraftContent(content, messageId, activeRuntime.value?.status === "error");
+    scrollOnceForDraft(createdDraft, messageId);
   };
 
   runner.onDraftRemove = () => {

@@ -23,8 +23,8 @@ import {
 export interface ChatDrawer {
   init(container: HTMLElement | null): void;
   renderConversation(messages: ChatPromptMessage[], options?: { reset?: boolean }): void;
-  updateDraftContent(draft: StreamDraft, messageId: string, isError?: boolean): void;
-  syncDraftAssistant(runtime: Record<string, unknown>): void;
+  updateDraftContent(draft: StreamDraft, messageId: string, isError?: boolean): boolean;
+  syncDraftAssistant(runtime: Record<string, unknown>): boolean;
   removeTempAssistantElem(): void;
   clearDraftWorkingIcon(): void;
   deleteMessage(mid: string): Promise<void>;
@@ -207,8 +207,10 @@ export function createChatDrawer(): ChatDrawer {
     draft: StreamDraft,
     messageId: string,
     isError?: boolean,
-  ): void {
-    if (!draftContentEl || draftMessageId !== messageId) {
+  ): boolean {
+    const isNew = !draftContentEl || draftMessageId !== messageId;
+
+    if (isNew) {
       removeTempAssistantElem();
       resetDraftState();
       draftMessageId = messageId;
@@ -233,9 +235,11 @@ export function createChatDrawer(): ChatDrawer {
         renderPending = false;
       });
     }
+
+    return isNew;
   }
 
-  function syncDraftAssistant(runtime: Record<string, unknown> = {}): void {
+  function syncDraftAssistant(runtime: Record<string, unknown> = {}): boolean {
     const dContent = String(runtime?.draftAssistantContent || "");
     const dReasoning = String(runtime?.draftReasoningContent || "");
     const dMid = String(runtime?.draftMessageId || "");
@@ -243,14 +247,14 @@ export function createChatDrawer(): ChatDrawer {
 
     if (!hasDraft) {
       removeTempAssistantElem();
-      return;
+      return false;
     }
 
     const storedDraftEl = dMid ? getMessageElement(dMid) : null;
     if (storedDraftEl && storedDraftEl.dataset.chatDraft !== "true") {
       draftContentEl = null;
       draftReasoningEl = null;
-      return;
+      return false;
     }
 
     const isNew = !draftContentEl || draftMessageId !== dMid;
@@ -273,6 +277,8 @@ export function createChatDrawer(): ChatDrawer {
       const isErrorStatus = String(runtime?.status || "") === "error";
       assistantEl.classList.toggle("is-error", isErrorStatus);
     }
+
+    return isNew;
   }
 
   return {
