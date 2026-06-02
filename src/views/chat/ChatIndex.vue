@@ -44,7 +44,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import type { ChatModelConfig, ChatPromptMessage } from "@/types";
 import { dsLoading } from "@/utils";
-import { ChatDrawer, addChat, getAllMessage, getChatSettings, getChatSessionRunner, resetCurrentChatDraft, stopChatSession } from "@/services";
+import { createChatDrawer, addChat, getAllMessage, getChatSettings, getChatSessionRunner, resetCurrentChatDraft, stopChatSession } from "@/services";
 import ChatHeaderBar from "@/views/chat/ChatHeaderBar.vue";
 import ChatInputArea from "@/views/chat/ChatInputArea.vue";
 import ChatInsTemplate from "@/views/chat/ChatInsTemplate.vue";
@@ -67,7 +67,7 @@ const canScrollBottom = ref(false);
 let scrollActionsFrame = 0;
 let composerResizeObserver: ResizeObserver | null = null;
 
-const drawer = new ChatDrawer();
+const drawer = createChatDrawer();
 let activeRunnerChatId: string | null = null;
 const curChatId = computed<string>(() => store.state.curChatId || "");
 const curConversation = computed(() => (curChatId.value ? store.state.chatConversationsById?.[curChatId.value] || null : null));
@@ -196,7 +196,7 @@ const onStartChat = async (payload: ChatStartPayload) => {
 
   runner.onDraftUpdate = (content) => {
     if (!isActiveRunner()) return;
-    drawer.updateDraftContent(content, runner.assistantStream.messageId, activeRuntime.value?.status === "error");
+    drawer.updateDraftContent(content, runner.getStream().getMessageId(), activeRuntime.value?.status === "error");
     scrollMessagesToBottom("auto");
   };
 

@@ -5,15 +5,24 @@ import { getUuid } from "@/utils";
 import { tr } from "@/i18n";
 import type { ChatModelConfig, ChatPromptContent, ChatPromptMessage, ChatResponseDelta, PackedChatMessage } from "@/types";
 import { addMessage } from "../conversation";
-import { AssistantStreamState, AssistantDraftContent } from "../rendering/assistant-stream-state";
+import { createStreamState, type StreamState, type StreamDraft } from "../rendering/stream-state";
 
 type ChatRuntimeStatus = "idle" | "loading" | "streaming" | "success" | "error" | "stopped";
 
+// ===== helpers =====
+
 function getSessionModel(chatId: string): ChatModelConfig | null {
-  return getModelFromSnapshot(store.state.chatConversationsById?.[chatId]?.modelSnapshot) || store.state.curChatModel || store.state.models.chat?.[0] || null;
+  return getModelFromSnapshot(store.state.chatConversationsById?.[chatId]?.modelSnapshot)
+    || store.state.curChatModel
+    || store.state.models.chat?.[0]
+    || null;
 }
 
-function packChatMessages(messages: ChatPromptMessage[], chatId: string, model: ChatModelConfig | null): PackedChatMessage[] {
+function packChatMessages(
+  messages: ChatPromptMessage[],
+  chatId: string,
+  model: ChatModelConfig | null,
+): PackedChatMessage[] {
   const settings = store.state.chatSettingsById?.[chatId] || store.state.curChatModelSettings;
   const firstPromptContent = settings?.prompts?.[0]?.content?.[0];
   const hasSystemPrompt = firstPromptContent?.type === "text" && Boolean(firstPromptContent.text);
@@ -32,32 +41,39 @@ function packChatMessages(messages: ChatPromptMessage[], chatId: string, model: 
   }));
 }
 
-class ChatSessionRunner {
-  chatId: string;
-  client: ChatGateway;
-  assistantStream: AssistantStreamState;
-  onDraftUpdate: ((content: AssistantDraftContent) => void) | null = null;
-  onDraftRemove: (() => void) | null = null;
-  onMessagePersisted: ((message: ChatPromptMessage) => void | Promise<void>) | null = null;
-  onRuntimeUpdate: ((runtime: Record<string, unknown>) => void) | null = null;
+// ===== runner factory =====
 
-  constructor(chatId: string) {
-    this.chatId = chatId;
-    this.client = new ChatGateway();
-    this.assistantStream = new AssistantStreamState();
+export interface ChatRunner {
+  chat(data: ChatPromptMessage): Promise<void>;
+  stop(): void;
+  getStream(): StreamState;
+  readonly chatId: string;
+  onDraftUpdate: ((draft: StreamDraft) => void) | null;
+  onDraftRemove: (() => void) | null;
+  onMessagePersisted: ((msg: ChatPromptMessage) => void | Promise<void>) | null;
+  onRuntimeUpdate: ((runtime: Record<string, unknown>) => void) | null;
+}
+
+function createChatRunner(chatId: string): ChatRunner {
+  const stream = createStreamState();
+  const client = new ChatGateway();
+
+  let _onDraftUpdate: ((draft: StreamDraft) => void) | null = null;
+  let _onDraftRemove: (() => void) | null = null;
+  let _onMessagePersisted: ((msg: ChatPromptMessage) => void | Promise<void>) | null = null;
+  let _onRuntimeUpdate: ((runtime: Record<string, unknown>) => void) | null = null;
+
+  // === runtime sync ===
+
+  function updateRuntime(runtime: Record<string, unknown> = {}) {
+    store.dispatch("setChatRuntime", { cid: chatId, runtime });
+    _onRuntimeUpdate?.(runtime);
   }
 
-  updateRuntime(runtime = {}) {
-    store.dispatch("setChatRuntime", {
-      cid: this.chatId,
-      runtime,
-    });
-    this.onRuntimeUpdate?.(runtime);
-  }
-
-  clearDraft(status: ChatRuntimeStatus = "idle", extra = {}) {
-    const completedInBackground = ["success", "error", "stopped"].includes(status) && store.state.curChatId !== this.chatId;
-    this.updateRuntime({
+  function clearDraft(status: ChatRuntimeStatus = "idle", extra: Record<string, unknown> = {}) {
+    const completedInBackground =
+      ["success", "error", "stopped"].includes(status) && store.state.curChatId !== chatId;
+    updateRuntime({
       status,
       pending: false,
       completedNotice: completedInBackground,
@@ -66,138 +82,167 @@ class ChatSessionRunner {
       draftReasoningContent: "",
       ...extra,
     });
-    this.onDraftRemove?.();
+    _onDraftRemove?.();
   }
 
-  async persistAssistantMessage() {
-    if (!this.assistantStream.hasContent()) return false;
+  async function persistAssistant(): Promise<boolean> {
+    if (!stream.hasContent()) return false;
 
-    const assistantData: ChatPromptMessage = {
+    const draft = stream.getDraft();
+    const assistantMsg: ChatPromptMessage = {
       role: "assistant",
-      content: [{ type: "text", text: this.assistantStream.content.content }],
-      reasoning_content: this.assistantStream.content.reasoning_content,
-      mid: this.assistantStream.messageId,
-      meta: {
-        isContextBlocked: this.assistantStream.hasError || undefined,
-      },
+      content: [{ type: "text", text: draft.content }],
+      reasoning_content: draft.reasoning_content,
+      mid: stream.getMessageId(),
+      meta: { isContextBlocked: stream.isError() || undefined },
     };
-    if (this.assistantStream.tokenUsage) assistantData.token_usage = this.assistantStream.tokenUsage;
+    if (stream.getTokenUsage()) assistantMsg.token_usage = stream.getTokenUsage();
 
-    await store.dispatch("pushChatMessage", {
-      cid: this.chatId,
-      msg: assistantData,
-    });
-    await addMessage(this.chatId, this.assistantStream.messageId, assistantData);
-    await this.onMessagePersisted?.(assistantData);
+    await store.dispatch("pushChatMessage", { cid: chatId, msg: assistantMsg });
+    await addMessage(chatId, stream.getMessageId(), assistantMsg);
+    await _onMessagePersisted?.(assistantMsg);
     return true;
   }
 
-  enqueueProviderDelta(delta: ChatResponseDelta): void {
-    if (this.assistantStream.forceStopped) return;
+  function enqueueDelta(delta: ChatResponseDelta) {
+    if (stream.isStopped()) return;
 
-    this.assistantStream.applyDelta(delta);
-    this.onDraftUpdate?.(this.assistantStream.content);
+    stream.applyDelta(delta);
+    _onDraftUpdate?.(stream.getDraft());
 
     if (delta.kind === "error") {
-      this.updateRuntime({
+      updateRuntime({
         status: "error",
         pending: false,
-        draftMessageId: this.assistantStream.messageId,
-        draftAssistantContent: this.assistantStream.content.content,
-        draftReasoningContent: this.assistantStream.content.reasoning_content,
-        lastError: this.assistantStream.lastError,
+        draftMessageId: stream.getMessageId(),
+        draftAssistantContent: stream.getDraft().content,
+        draftReasoningContent: stream.getDraft().reasoning_content,
+        lastError: stream.getError(),
       });
     }
   }
 
-  async chat(data: ChatPromptMessage): Promise<void> {
-    this.assistantStream.reset(getUuid("msg"));
+  // === phase 1: prepare — reset stream, persist user message, set loading ===
 
-    const model = getSessionModel(this.chatId);
-    const settings = store.state.chatSettingsById?.[this.chatId] || store.state.curChatModelSettings;
+  async function prepareRequest(data: ChatPromptMessage): Promise<void> {
+    stream.startStream(getUuid("msg"));
+
     const userMessage = { ...data, mid: getUuid("msg") };
+    await store.dispatch("pushChatMessage", { cid: chatId, msg: userMessage });
+    await addMessage(chatId, userMessage.mid, userMessage);
+    await _onMessagePersisted?.(userMessage);
 
-    await store.dispatch("pushChatMessage", {
-      cid: this.chatId,
-      msg: userMessage,
+    updateRuntime({
+      status: "loading",
+      pending: true,
+      draftMessageId: stream.getMessageId(),
+      draftAssistantContent: "",
+      draftReasoningContent: "",
+      lastError: "",
     });
-    await addMessage(this.chatId, userMessage.mid, userMessage);
-    await this.onMessagePersisted?.(userMessage);
+  }
 
-    const history = (store.state.chatMessagesById?.[this.chatId] || []).filter((msg) => !msg.meta?.isContextBlocked);
+  // === phase 2: execute — build request, call gateway, iterate stream ===
+
+  async function executeStream(): Promise<boolean> {
+    const model = getSessionModel(chatId);
+    const settings = store.state.chatSettingsById?.[chatId] || store.state.curChatModelSettings;
+
+    const history = (store.state.chatMessagesById?.[chatId] || [])
+      .filter((msg) => !msg.meta?.isContextBlocked);
     const passedMsgLen = Number(settings?.passedMsgLen || history.length || 1);
     const messages = history.slice(-Math.min(passedMsgLen, history.length));
-    const packedMessages = packChatMessages(messages, this.chatId, model);
+    const packedMessages = packChatMessages(messages, chatId, model);
     const request = {
       model,
       params: buildChatCompletionParams(model, settings),
       capabilities: messages[messages.length - 1]?.meta?.usedCapabilities || {},
     };
 
-    this.updateRuntime({
-      status: "loading",
-      pending: true,
-      draftMessageId: this.assistantStream.messageId,
-      draftAssistantContent: "",
-      draftReasoningContent: "",
-      lastError: "",
-    });
+    client.init(request.model);
+    const gen = client.chat(packedMessages, request);
 
-    this.client.init(request.model);
-    const stream = this.client.chat(packedMessages, request);
-    let next = await stream.next();
+    let next = await gen.next();
     while (!next.done) {
-      this.enqueueProviderDelta(next.value as ChatResponseDelta);
-      next = await stream.next();
+      enqueueDelta(next.value as ChatResponseDelta);
+      next = await gen.next();
     }
-    const completed = Boolean(next.value);
+    return Boolean(next.value);
+  }
 
-    if (this.assistantStream.forceStopped) {
-      this.clearDraft("stopped");
+  // === phase 3: finalize — handle outcome, persist, clean up ===
+
+  async function finalizeStream(completed: boolean): Promise<void> {
+    if (stream.isStopped()) {
+      clearDraft("stopped");
       return;
     }
 
-    if (this.assistantStream.hasError) {
-      if (!this.assistantStream.hasContent()) {
-        this.assistantStream.content.content = this.assistantStream.lastError || tr("toast.modelRequestFailed", { error: "" });
+    if (stream.isError()) {
+      if (!stream.hasContent()) {
+        stream.setContent(stream.getError() || tr("toast.modelRequestFailed", { error: "" }));
       }
-      await this.persistAssistantMessage();
-      this.clearDraft("error", { lastError: this.assistantStream.lastError || tr("toast.modelRequestFailed", { error: "" }) });
+      await persistAssistant();
+      clearDraft("error", { lastError: stream.getError() || tr("toast.modelRequestFailed", { error: "" }) });
       return;
     }
 
     if (!completed) {
-      this.clearDraft("error");
+      clearDraft("error");
       return;
     }
 
-    if (!this.assistantStream.content.content) {
-      this.assistantStream.content.content = tr("chat.timeoutNoContent");
+    if (!stream.getDraft().content) {
+      stream.setContent(tr("chat.timeoutNoContent"));
     }
 
-    await this.persistAssistantMessage();
-    this.clearDraft("success");
+    stream.complete();
+    await persistAssistant();
+    clearDraft("success");
   }
 
-  stop(): void {
-    this.assistantStream.stop();
-    this.client.abort();
-    this.clearDraft("stopped");
+  // === public API ===
+
+  async function chat(data: ChatPromptMessage): Promise<void> {
+    await prepareRequest(data);
+    const completed = await executeStream();
+    await finalizeStream(completed);
   }
+
+  function stop() {
+    stream.stop();
+    client.abort();
+    clearDraft("stopped");
+  }
+
+  return {
+    chat,
+    stop,
+    getStream: () => stream,
+    get chatId() { return chatId; },
+    set onDraftUpdate(v) { _onDraftUpdate = v; },
+    set onDraftRemove(v) { _onDraftRemove = v; },
+    set onMessagePersisted(v) { _onMessagePersisted = v; },
+    set onRuntimeUpdate(v) { _onRuntimeUpdate = v; },
+    get onDraftUpdate() { return _onDraftUpdate; },
+    get onDraftRemove() { return _onDraftRemove; },
+    get onMessagePersisted() { return _onMessagePersisted; },
+    get onRuntimeUpdate() { return _onRuntimeUpdate; },
+  };
 }
 
-const runnerMap = new Map<string, ChatSessionRunner>();
+// ===== runner registry =====
 
-export function getChatSessionRunner(chatId: string): ChatSessionRunner | null {
+const runnerMap = new Map<string, ChatRunner>();
+
+export function getChatSessionRunner(chatId: string): ChatRunner | null {
   if (!chatId) return null;
-  if (!runnerMap.has(chatId)) runnerMap.set(chatId, new ChatSessionRunner(chatId));
+  if (!runnerMap.has(chatId)) runnerMap.set(chatId, createChatRunner(chatId));
   return runnerMap.get(chatId) || null;
 }
 
 export function stopChatSession(chatId: string): void {
-  const runner = runnerMap.get(chatId);
-  if (!runner) return;
-  runner.stop();
+  runnerMap.get(chatId)?.stop();
 }
 
 export function removeChatSessionRunner(chatId: string): void {

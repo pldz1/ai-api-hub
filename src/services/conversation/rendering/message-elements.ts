@@ -6,6 +6,14 @@ import { textToHtml } from "@/utils";
 import { createSvgIcon } from "@/utils/svg-icon";
 import type { ChatPromptContent } from "@/types";
 
+export interface MessageElementActions {
+  onCopyAssistantMessage?: (mid: string) => void | Promise<void>;
+  onDeleteMessage?: (mid: string) => void | Promise<void>;
+  onPreviewImage?: (url: string) => void | Promise<void>;
+}
+
+// -- helpers --
+
 function createWorkingIcon(): HTMLDivElement {
   const wrapper = document.createElement("div");
   wrapper.className = "cmba-working-icon";
@@ -26,193 +34,179 @@ function createWorkingIcon(): HTMLDivElement {
       </g>
     </svg>
   `;
-
   return wrapper;
 }
 
-type ChatMessageElementActions = {
-  onCopyAssistantMessage?: (mid: string) => void | Promise<void>;
-  onDeleteMessage?: (mid: string) => void | Promise<void>;
-  onPreviewImage?: (url: string) => void | Promise<void>;
-};
+function createIconButton(icon: string, tip: string): HTMLDivElement {
+  const button = document.createElement("div");
+  button.classList.add("chat-md-bubble-options-button", "tooltip", "tooltip-top");
+  button.dataset.tip = tip;
+  button.appendChild(createSvgIcon(icon, { size: "16px" }));
+  return button;
+}
 
-/**
- * Creates chat message DOM nodes.
- *
- * The factory owns markup only. Store updates, persistence, clipboard, and image
- * preview behavior are supplied through callbacks by the caller.
- */
-export class ChatMessageElementFactory {
-  container: HTMLElement | null;
-  actions: ChatMessageElementActions;
+function createMessageOptions(
+  mid: string,
+  which: ("copy" | "delete")[],
+  actions: MessageElementActions,
+): HTMLDivElement {
+  const optionsDiv = document.createElement("div");
+  optionsDiv.classList.add(which.includes("copy") ? "cmba-options" : "cmbu-options");
 
-  constructor(actions: ChatMessageElementActions = {}) {
-    this.container = null;
-    this.actions = actions;
+  if (which.includes("copy")) {
+    const copyBtn = createIconButton(copyIcon, tr("tooltip.copyText"));
+    copyBtn.addEventListener("click", () => actions.onCopyAssistantMessage?.(mid));
+    optionsDiv.appendChild(copyBtn);
   }
 
-  setMessageActions(actions: ChatMessageElementActions = {}): void {
-    this.actions = {
-      ...this.actions,
-      ...actions,
-    };
+  if (which.includes("delete")) {
+    const deleteBtn = createIconButton(deleteIcon, tr("tooltip.deleteMessage"));
+    deleteBtn.addEventListener("click", () => actions.onDeleteMessage?.(mid));
+    optionsDiv.appendChild(deleteBtn);
   }
 
-  createUserMessageElement(content: ChatPromptContent[], mid: string): HTMLDivElement | null {
-    if (!this.container) return null;
+  return optionsDiv;
+}
 
-    const userDiv = document.createElement("div");
-    userDiv.classList.add("chat-md-bubble-user");
-    userDiv.id = mid;
+// -- public element factories --
 
-    const userContentDiv = document.createElement("div");
-    userContentDiv.classList.add("cmbu-user-content");
+export function createUserMessageElement(
+  container: HTMLElement,
+  content: ChatPromptContent[],
+  mid: string,
+  actions: MessageElementActions,
+): HTMLDivElement | null {
+  const userDiv = document.createElement("div");
+  userDiv.classList.add("chat-md-bubble-user");
+  userDiv.id = mid;
 
-    const contentAreaDiv = document.createElement("div");
-    contentAreaDiv.classList.add("cmbu-content-area");
+  const userContentDiv = document.createElement("div");
+  userContentDiv.classList.add("cmbu-user-content");
 
-    const imageAreaEl = document.createElement("div");
-    imageAreaEl.classList.add("cmbu-img-area");
+  const contentAreaDiv = document.createElement("div");
+  contentAreaDiv.classList.add("cmbu-content-area");
 
-    const textDiv = document.createElement("div");
-    textDiv.classList.add("cmbu-content-text");
+  const imageAreaEl = document.createElement("div");
+  imageAreaEl.classList.add("cmbu-img-area");
 
-    for (const prompt of content) {
-      if (prompt.type === "text") {
-        textDiv.innerHTML = textToHtml(prompt.text);
-      }
+  const textDiv = document.createElement("div");
+  textDiv.classList.add("cmbu-content-text");
 
-      if (prompt.type === "image_url") {
-        const imageEl = document.createElement("img");
-        imageEl.classList.add("cmbu-item");
-        imageEl.src = prompt.image_url.url;
-        imageEl.onclick = () => this.actions.onPreviewImage?.(imageEl.src);
-        imageAreaEl.appendChild(imageEl);
-      }
+  for (const prompt of content) {
+    if (prompt.type === "text") {
+      textDiv.innerHTML = textToHtml(prompt.text);
     }
 
-    if (content.some((item) => item.type === "image_url")) {
-      contentAreaDiv.appendChild(imageAreaEl);
+    if (prompt.type === "image_url") {
+      const imageEl = document.createElement("img");
+      imageEl.classList.add("cmbu-item");
+      imageEl.src = prompt.image_url.url;
+      imageEl.onclick = () => actions.onPreviewImage?.(imageEl.src);
+      imageAreaEl.appendChild(imageEl);
     }
-
-    contentAreaDiv.appendChild(textDiv);
-    userContentDiv.appendChild(contentAreaDiv);
-    userContentDiv.appendChild(this.createMessageOptions(mid, ["delete"]));
-    userDiv.appendChild(userContentDiv);
-    this.container.appendChild(userDiv);
-
-    return userDiv;
   }
 
-  createAssistantMessageElement(
-    content: ChatPromptContent[],
-    reasoningContent: string | null | undefined,
-    mid: string,
-    isError: boolean = false,
-  ): HTMLDivElement | null {
-    if (!this.container) return null;
-
-    const assistantDiv = document.createElement("div");
-    assistantDiv.id = mid;
-    assistantDiv.classList.add("chat-md-bubble-assistant");
-    if (isError) assistantDiv.classList.add("is-error");
-    this.container.appendChild(assistantDiv);
-
-    const textDiv = this.createAssistantResponseElement(assistantDiv, mid, false);
-
-    if (reasoningContent) {
-      const reasoningTextDiv = this.insertReasoningElem(textDiv);
-      renderBlock("markdown-content", reasoningTextDiv, reasoningContent);
-    }
-
-    const text = content[0]?.type === "text" ? content[0].text : "";
-    renderBlock("markdown-content", textDiv, text);
-
-    return assistantDiv;
+  if (content.some((item) => item.type === "image_url")) {
+    contentAreaDiv.appendChild(imageAreaEl);
   }
 
-  createAssistantResponseElement(assistantDiv: HTMLDivElement, mid: string, working: boolean = false): HTMLDivElement {
-    const contentDiv = document.createElement("div");
-    contentDiv.classList.add("cmba-assistant-content");
+  contentAreaDiv.appendChild(textDiv);
+  userContentDiv.appendChild(contentAreaDiv);
+  userContentDiv.appendChild(createMessageOptions(mid, ["delete"], actions));
+  userDiv.appendChild(userContentDiv);
+  container.appendChild(userDiv);
 
-    const iconDiv = document.createElement("div");
-    iconDiv.classList.add("cmba-assistant-icon");
-    if (working) {
-      iconDiv.appendChild(createWorkingIcon());
-    }
+  return userDiv;
+}
 
-    const textDiv = document.createElement("div");
-    textDiv.classList.add("markdown-content");
+export function createAssistantMessageElement(
+  container: HTMLElement,
+  content: ChatPromptContent[],
+  reasoningContent: string | null | undefined,
+  mid: string,
+  actions: MessageElementActions,
+  isError = false,
+): HTMLDivElement | null {
+  const assistantDiv = document.createElement("div");
+  assistantDiv.id = mid;
+  assistantDiv.classList.add("chat-md-bubble-assistant");
+  if (isError) assistantDiv.classList.add("is-error");
+  container.appendChild(assistantDiv);
 
-    contentDiv.appendChild(textDiv);
-    if (!working) contentDiv.appendChild(this.createMessageOptions(mid, ["copy", "delete"]));
-    assistantDiv.appendChild(iconDiv);
-    assistantDiv.appendChild(contentDiv);
-    return textDiv;
+  const textDiv = createAssistantResponseElement(assistantDiv, mid, false, actions);
+
+  if (reasoningContent) {
+    const reasoningTextDiv = insertReasoningElem(textDiv);
+    renderBlock("markdown-content", reasoningTextDiv, reasoningContent);
   }
 
-  createMessageOptions(mid: string, actions: ("copy" | "delete")[]): HTMLDivElement {
-    const optionsDiv = document.createElement("div");
-    optionsDiv.classList.add(actions.includes("copy") ? "cmba-options" : "cmbu-options");
+  const text = content[0]?.type === "text" ? content[0].text : "";
+  renderBlock("markdown-content", textDiv, text);
 
-    if (actions.includes("copy")) {
-      const copyButton = this.createIconButton(copyIcon, tr("tooltip.copyText"));
-      copyButton.addEventListener("click", () => this.actions.onCopyAssistantMessage?.(mid));
-      optionsDiv.appendChild(copyButton);
-    }
+  return assistantDiv;
+}
 
-    if (actions.includes("delete")) {
-      const deleteButton = this.createIconButton(deleteIcon, tr("tooltip.deleteMessage"));
-      deleteButton.addEventListener("click", () => this.actions.onDeleteMessage?.(mid));
-      optionsDiv.appendChild(deleteButton);
-    }
+export function createAssistantResponseElement(
+  assistantDiv: HTMLDivElement,
+  mid: string,
+  working: boolean,
+  actions: MessageElementActions,
+): HTMLDivElement {
+  const contentDiv = document.createElement("div");
+  contentDiv.classList.add("cmba-assistant-content");
 
-    return optionsDiv;
+  const iconDiv = document.createElement("div");
+  iconDiv.classList.add("cmba-assistant-icon");
+  if (working) {
+    iconDiv.appendChild(createWorkingIcon());
   }
 
-  createIconButton(icon: string, tip: string): HTMLDivElement {
-    const button = document.createElement("div");
-    button.classList.add("chat-md-bubble-options-button", "tooltip", "tooltip-top");
-    button.dataset.tip = tip;
-    button.appendChild(createSvgIcon(icon, { size: "16px" }));
-    return button;
-  }
+  const textDiv = document.createElement("div");
+  textDiv.classList.add("markdown-content");
 
-  insertReasoningElem(el: HTMLElement): HTMLDivElement | null {
-    const reasoningEl = document.createElement("div");
-    const parent = el.parentNode;
-    if (!parent) return null;
+  contentDiv.appendChild(textDiv);
+  if (!working) contentDiv.appendChild(createMessageOptions(mid, ["copy", "delete"], actions));
+  assistantDiv.appendChild(iconDiv);
+  assistantDiv.appendChild(contentDiv);
+  return textDiv;
+}
 
-    parent.insertBefore(reasoningEl, el);
-    reasoningEl.className = "cmba-reasoning-content";
+export function createAssistantDraftElement(
+  container: HTMLElement,
+  mid: string,
+): HTMLDivElement | null {
+  const assistantDiv = document.createElement("div");
+  assistantDiv.id = mid;
+  assistantDiv.classList.add("chat-md-bubble-assistant");
+  container.appendChild(assistantDiv);
 
-    const detailsEl = document.createElement("details");
-    reasoningEl.appendChild(detailsEl);
+  return createAssistantResponseElement(assistantDiv, mid, true, {});
+}
 
-    const summaryEl = document.createElement("summary");
-    summaryEl.innerHTML = tr("tooltip.reasoning");
-    detailsEl.appendChild(summaryEl);
+export function insertReasoningElem(el: HTMLElement): HTMLDivElement | null {
+  const reasoningEl = document.createElement("div");
+  const parent = el.parentNode;
+  if (!parent) return null;
 
-    const reasoningTextDiv = document.createElement("div");
-    reasoningTextDiv.className = "markdown-content";
-    detailsEl.appendChild(reasoningTextDiv);
+  parent.insertBefore(reasoningEl, el);
+  reasoningEl.className = "cmba-reasoning-content";
 
-    return reasoningTextDiv;
-  }
+  const detailsEl = document.createElement("details");
+  reasoningEl.appendChild(detailsEl);
 
-  createAssistantDraftElement(mid: string): HTMLDivElement | null {
-    if (!this.container) return null;
+  const summaryEl = document.createElement("summary");
+  summaryEl.innerHTML = tr("tooltip.reasoning");
+  detailsEl.appendChild(summaryEl);
 
-    const assistantDiv = document.createElement("div");
-    assistantDiv.id = mid;
-    assistantDiv.classList.add("chat-md-bubble-assistant");
-    this.container.appendChild(assistantDiv);
+  const reasoningTextDiv = document.createElement("div");
+  reasoningTextDiv.className = "markdown-content";
+  detailsEl.appendChild(reasoningTextDiv);
 
-    return this.createAssistantResponseElement(assistantDiv, mid, true);
-  }
+  return reasoningTextDiv;
+}
 
-  findMessageIndex(id: string): number {
-    if (!this.container) return -1;
-    return Array.from(this.container.children).findIndex((child) => child.id === id);
-  }
+export function findMessageIndex(container: HTMLElement, id: string): number {
+  return Array.from(container.children).findIndex(
+    (child) => (child as HTMLElement).id === id,
+  );
 }

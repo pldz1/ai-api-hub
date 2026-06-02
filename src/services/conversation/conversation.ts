@@ -2,9 +2,41 @@ import store from "@/store";
 import { createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
 import { dsAlert, generateRandomCname, getUuid, isValidChatInfoArray } from "@/utils";
 import { tr } from "@/i18n";
-import { chatConversationApi, chatMessageApi, chatSettingsApi } from "./data/conversation-api";
+import { apiRequest } from "../app";
 import { removeChatSessionRunner } from "./runtime/session-runner";
-import type { ChatModelConfig, ChatModelSettings, ChatPromptMessage, ConversationModelSnapshot } from "@/types";
+import type {
+  ChatListItem,
+  ChatModelConfig,
+  ChatModelSettings,
+  ChatPromptMessage,
+  ConversationModelSnapshot,
+  PersistedChatSettings,
+  StoredChatMessage,
+} from "@/types";
+
+// ===== internal API wrappers =====
+
+const chatConversationApi = {
+  getList: () => apiRequest<ChatListItem[]>("post", "/_api/chat/getChatList", {}),
+  add: (cid: string, cname: string) => apiRequest<null>("post", "/_api/chat/addChat", { cid, cname }),
+  delete: (cid: string) => apiRequest<null>("post", "/_api/chat/deleteChat", { cid }),
+  rename: (cid: string, cname: string) => apiRequest<null>("post", "/_api/chat/renameChat", { cid, cname }),
+};
+
+const chatSettingsApi = {
+  get: (cid: string) => apiRequest<string>("post", "/_api/chat/getChatSettings", { cid }),
+  set: (cid: string, payload: PersistedChatSettings) =>
+    apiRequest<null>("post", "/_api/chat/setChatSettings", { cid, data: JSON.stringify(payload) }),
+};
+
+const chatMessageApi = {
+  getAll: (cid: string) => apiRequest<StoredChatMessage[]>("post", "/_api/chat/getAllMessage", { cid }),
+  add: (cid: string, mid: string, message: ChatPromptMessage) =>
+    apiRequest<null>("post", "/_api/chat/addMessage", { cid, mid, message: JSON.stringify(message) }),
+  delete: (cid: string, mid: string) => apiRequest<null>("post", "/_api/chat/deleteMessage", { cid, mid }),
+};
+
+// ===== helpers =====
 
 function createChatSettingsPayload(
   modelSnapshot: ConversationModelSnapshot | null,
@@ -20,6 +52,21 @@ function createChatSettingsPayload(
     settings: mergeChatSettingsWithModel(model, settings || {}),
   };
 }
+
+// ===== message builder =====
+
+/** Pack a user message from the chat input state. */
+export function packUserMsg(imageUrls: string[], text: string, allowImages = true): ChatPromptMessage {
+  const res: ChatPromptMessage = { role: "user", content: [{ type: "text", text }] };
+  if (!allowImages) return res;
+
+  imageUrls.forEach((url) => {
+    res.content.push({ type: "image_url", image_url: { url, detail: "low" } });
+  });
+  return res;
+}
+
+// ===== CRUD =====
 
 export async function resetCurrentChatDraft(): Promise<void> {
   await store.dispatch("setCurChatModelSettings", mergeChatSettingsWithModel(store.state.curChatModel, {}));
@@ -68,11 +115,7 @@ export async function getChatSettings(cid: string = store.state.curChatId): Prom
   await store.dispatch("hydrateChatSession", {
     cid,
     conversation: modelSnapshot
-      ? {
-          id: cid,
-          title: store.state.chatList.find((item) => item.cid === cid)?.cname || "",
-          modelSnapshot,
-        }
+      ? { id: cid, title: store.state.chatList.find((item) => item.cid === cid)?.cname || "", modelSnapshot }
       : null,
     settings: mergeChatSettingsWithModel(model, parsedSettings),
   });
@@ -107,11 +150,7 @@ export async function addChat(name: string | null = null, model: ChatModelConfig
   );
   if (!modelSnapshot) return false;
 
-  const conversation = {
-    id: chatId,
-    title: chatName,
-    modelSnapshot,
-  };
+  const conversation = { id: chatId, title: chatName, modelSnapshot };
   const modelForSettings = getModelFromSnapshot(modelSnapshot) || store.state.curChatModel;
   const settings = store.state.curChatId ? mergeChatSettingsWithModel(modelForSettings, store.state.curChatModelSettings) : store.state.curChatModelSettings;
   const settingsPayload = createChatSettingsPayload(modelSnapshot, settings, model);
@@ -158,10 +197,7 @@ export async function deleteChat(cid: string): Promise<boolean> {
     return false;
   }
 
-  await store.dispatch(
-    "resetChatList",
-    store.state.chatList.filter((chat) => chat.cid !== cid),
-  );
+  await store.dispatch("resetChatList", store.state.chatList.filter((chat) => chat.cid !== cid));
   await store.dispatch("removeChatSession", cid);
 
   if (cid === store.state.curChatId) {
@@ -187,13 +223,7 @@ export async function renameChat(cid: string, cname: string): Promise<boolean> {
 
   const conversation = store.state.chatConversationsById?.[cid];
   if (conversation) {
-    await store.dispatch("hydrateChatSession", {
-      cid,
-      conversation: {
-        ...conversation,
-        title: cname,
-      },
-    });
+    await store.dispatch("hydrateChatSession", { cid, conversation: { ...conversation, title: cname } });
   }
 
   return true;

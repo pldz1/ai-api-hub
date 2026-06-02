@@ -3,136 +3,176 @@ import { dsAlert, getUuid } from "@/utils";
 import { tr } from "@/i18n";
 import type { ChatPromptMessage } from "@/types";
 import { deleteMessage as deleteChatMessage } from "../conversation";
-import { ChatMessageElementFactory } from "./message-elements";
-import { AssistantStreamState } from "./assistant-stream-state";
 import { renderAssistantDraft } from "./message-renderer";
+import type { StreamDraft } from "./stream-state";
+import {
+  type MessageElementActions,
+  createUserMessageElement,
+  createAssistantMessageElement,
+  createAssistantDraftElement,
+  insertReasoningElem,
+  findMessageIndex,
+} from "./message-elements";
 
 /**
  * DOM renderer for the chat message area.
  *
- * Conversation requests are driven by `ChatSessionRunner`; this class is
- * responsible for rendering stored messages and live draft state.
+ * Conversation requests are driven by the runner; this module renders stored
+ * messages and live draft state into a container element.
  */
-export class ChatDrawer extends ChatMessageElementFactory {
-  declare container: HTMLElement | null;
-  assistantStream: AssistantStreamState;
-  assistantDraftContentEl: HTMLDivElement | null;
-  assistantDraftReasoningEl: HTMLDivElement | null;
-  private _renderPending: boolean;
-  onAfterRender: (() => void) | null = null;
-  onMessageDeleted: (() => void | Promise<void>) | null = null;
+export interface ChatDrawer {
+  init(container: HTMLElement | null): void;
+  renderConversation(messages: ChatPromptMessage[], options?: { reset?: boolean }): void;
+  updateDraftContent(draft: StreamDraft, messageId: string, isError?: boolean): void;
+  syncDraftAssistant(runtime: Record<string, unknown>): void;
+  removeTempAssistantElem(): void;
+  clearDraftWorkingIcon(): void;
+  deleteMessage(mid: string): Promise<void>;
+  removeAllElem(): void;
+  getMessageElement(mid: string): HTMLElement | null;
+  onAfterRender: (() => void) | null;
+  onMessageDeleted: (() => void | Promise<void>) | null;
+}
 
-  constructor() {
-    super();
+export function createChatDrawer(): ChatDrawer {
+  let container: HTMLElement | null = null;
+  let draftContentEl: HTMLDivElement | null = null;
+  let draftReasoningEl: HTMLDivElement | null = null;
+  let draftMessageId = "";
+  let draftContent = "";
+  let draftReasoning = "";
+  let renderPending = false;
+  let _onAfterRender: (() => void) | null = null;
+  let _onMessageDeleted: (() => void | Promise<void>) | null = null;
 
-    this.assistantStream = new AssistantStreamState();
-    this.assistantDraftContentEl = null;
-    this.assistantDraftReasoningEl = null;
-    this._renderPending = false;
+  const actions: MessageElementActions = {
+    onPreviewImage: async (url) => {
+      await store.dispatch("setModalImage", url);
+      (document.getElementById("global_image_preview_modal") as HTMLDialogElement | null)?.showModal();
+    },
+    onCopyAssistantMessage: async (mid) => {
+      const idx = findMessageIndex(container!, mid);
+      if (idx < 0) {
+        console.error("Failed to find message:", mid);
+        dsAlert({ type: "error", message: tr("toast.invalidMessage") });
+        return;
+      }
+      const msg = store.state.messages[idx];
+      navigator.clipboard
+        .writeText(msg.content[0].text)
+        .then(() => dsAlert({ type: "success", message: tr("toast.messageCopySuccess") }))
+        .catch((err) => {
+          console.error("Failed to copy message:", err);
+          dsAlert({ type: "error", message: tr("toast.messageCopyFailed", { error: String(err) }) });
+        });
+    },
+    onDeleteMessage: async (mid) => {
+      await _deleteMessage(mid);
+    },
+  };
 
-    this.setMessageActions({
-      onPreviewImage: async (url: string) => {
-        await store.dispatch("setModalImage", url);
-        (document.getElementById("global_image_preview_modal") as HTMLDialogElement | null)?.showModal();
-      },
-      onCopyAssistantMessage: async (mid: string) => {
-        const index = this.findMessageIndex(mid);
-        if (index < 0) {
-          console.error("Failed to find message:", mid);
-          dsAlert({ type: "error", message: tr("toast.invalidMessage") });
-          return;
-        }
+  // === internal helpers ===
 
-        const message = store.state.messages[index];
-        navigator.clipboard
-          .writeText(message.content[0].text)
-          .then(() => dsAlert({ type: "success", message: tr("toast.messageCopySuccess") }))
-          .catch((err) => {
-            console.error("Failed to copy message:", err);
-            dsAlert({ type: "error", message: tr("toast.messageCopyFailed", { error: String(err) }) });
-          });
-      },
-      onDeleteMessage: async (mid: string) => {
-        await this.deleteMessage(mid);
-      },
-    });
+  function getMessageElement(mid: string): HTMLElement | null {
+    if (!container) return null;
+    return (Array.from(container.children).find(
+      (child) => child instanceof HTMLElement && child.id === mid,
+    ) as HTMLElement) || null;
   }
 
-  init(container: HTMLElement | null): void {
-    this.container = container;
+  function createStoredMessageElement(message: ChatPromptMessage): HTMLElement | null {
+    if (!message.mid) message.mid = getUuid("msg");
+    if (!container) return null;
+
+    if (message.role === "user") {
+      return createUserMessageElement(container, message.content, message.mid, actions);
+    }
+    if (message.role === "assistant") {
+      return createAssistantMessageElement(
+        container, message.content, message.reasoning_content,
+        message.mid, actions, Boolean(message.meta?.isContextBlocked),
+      );
+    }
+    return null;
   }
 
-  async deleteMessage(mid: string): Promise<void> {
-    const index = this.findMessageIndex(mid);
-    if (index < 0) {
+  function markDraftElement(): void {
+    const el = draftContentEl?.closest(".chat-md-bubble-assistant") as HTMLElement | null;
+    if (el) el.dataset.chatDraft = "true";
+  }
+
+  function clearDraftWorkingIcon(): void {
+    draftContentEl?.closest(".chat-md-bubble-assistant")
+      ?.querySelector(".cmba-assistant-icon")
+      ?.replaceChildren();
+  }
+
+  function removeTempAssistantElem(): void {
+    const assistantEl = draftContentEl?.closest(".chat-md-bubble-assistant");
+    if (assistantEl) assistantEl.remove();
+    draftContentEl = null;
+    draftReasoningEl = null;
+  }
+
+  function resetDraftState(): void {
+    draftMessageId = "";
+    draftContent = "";
+    draftReasoning = "";
+  }
+
+  function renderAssStream(): void {
+    if (draftContent || draftReasoning) clearDraftWorkingIcon();
+
+    draftReasoningEl = renderAssistantDraft(
+      { contentEl: draftContentEl, reasoningEl: draftReasoningEl },
+      { content: draftContent, reasoning_content: draftReasoning },
+      () => insertReasoningElem(draftContentEl!),
+    );
+  }
+
+  async function _deleteMessage(mid: string): Promise<void> {
+    const idx = findMessageIndex(container!, mid);
+    if (idx < 0) {
       console.error("Failed to find message:", mid);
       dsAlert({ type: "error", message: tr("toast.invalidMessage") });
       return;
     }
-
-    await store.dispatch("spliceMessages", index);
-    const target = this.getMessageElement(mid);
-    if (target) target.remove();
+    await store.dispatch("spliceMessages", idx);
+    getMessageElement(mid)?.remove();
     await deleteChatMessage(store.state.curChatId, mid);
-    await this.onMessageDeleted?.();
+    await _onMessageDeleted?.();
   }
 
-  clearDraftWorkingIcon(): void {
-    const assistantEl = this.assistantDraftContentEl?.closest(".chat-md-bubble-assistant");
-    const iconEl = assistantEl?.querySelector(".cmba-assistant-icon");
-    if (iconEl) {
-      iconEl.replaceChildren();
-    }
+  function removeAllElem(): void {
+    draftContentEl = null;
+    draftReasoningEl = null;
+    resetDraftState();
+    container?.replaceChildren();
   }
 
-  removeTempAssistantElem(): void {
-    const assistantEl = this.assistantDraftContentEl?.closest(".chat-md-bubble-assistant");
-    if (assistantEl) assistantEl.remove();
-    this.assistantDraftContentEl = null;
-    this.assistantDraftReasoningEl = null;
-  }
+  // === public API ===
 
-  getMessageElement(mid: string): HTMLElement | null {
-    if (!this.container) return null;
-    return (Array.from(this.container.children).find((child) => child instanceof HTMLElement && child.id === mid) as HTMLElement) || null;
-  }
+  function init(el: HTMLElement | null): void { container = el; }
 
-  createStoredMessageElement(message: ChatPromptMessage): HTMLElement | null {
-    if (!message.mid) message.mid = getUuid("msg");
-
-    if (message.role === "user") {
-      return this.createUserMessageElement(message.content, message.mid);
-    }
-
-    if (message.role === "assistant") {
-      return this.createAssistantMessageElement(message.content, message?.reasoning_content, message.mid, Boolean(message.meta?.isContextBlocked));
-    }
-
-    return null;
-  }
-
-  markDraftAssistantElement(): void {
-    const assistantEl = this.assistantDraftContentEl?.closest(".chat-md-bubble-assistant") as HTMLElement | null;
-    if (assistantEl) assistantEl.dataset.chatDraft = "true";
-  }
-
-  renderConversation(messages: ChatPromptMessage[] = [], options: { reset?: boolean } = {}): void {
+  function renderConversation(
+    messages: ChatPromptMessage[] = [],
+    options: { reset?: boolean } = {},
+  ): void {
     if (options.reset) {
-      this.removeAllElem();
-      messages.forEach((message) => this.createStoredMessageElement(message));
+      removeAllElem();
+      messages.forEach((m) => createStoredMessageElement(m));
       return;
     }
-
-    if (!this.container) return;
+    if (!container) return;
 
     const targetIds = new Set<string>();
-    for (const message of messages) {
-      if (!message.mid) message.mid = getUuid("msg");
-      targetIds.add(message.mid);
+    for (const m of messages) {
+      if (!m.mid) m.mid = getUuid("msg");
+      targetIds.add(m.mid);
     }
 
     const existingById = new Map<string, HTMLElement>();
-    Array.from(this.container.children).forEach((child) => {
+    Array.from(container.children).forEach((child) => {
       if (!(child instanceof HTMLElement)) return;
       if (child.dataset.chatDraft === "true") {
         existingById.set(child.id, child);
@@ -146,112 +186,108 @@ export class ChatDrawer extends ChatMessageElementFactory {
     });
 
     messages.forEach((message, index) => {
-      let messageEl = existingById.get(message.mid) || null;
-
-      if (messageEl?.dataset.chatDraft === "true") {
-        this.assistantDraftContentEl = null;
-        this.assistantDraftReasoningEl = null;
-        messageEl?.remove();
-        messageEl = null;
+      let el = existingById.get(message.mid) || null;
+      if (el?.dataset.chatDraft === "true") {
+        draftContentEl = null;
+        draftReasoningEl = null;
+        el.remove();
+        el = null;
       }
+      el = el || createStoredMessageElement(message);
+      if (!el) return;
 
-      messageEl = messageEl || this.createStoredMessageElement(message);
-      if (!messageEl) return;
-
-      const currentAtIndex = this.container.children[index] || null;
-      if (currentAtIndex !== messageEl) {
-        this.container.insertBefore(messageEl, currentAtIndex);
+      const currentAtIndex = container!.children[index] || null;
+      if (currentAtIndex !== el) {
+        container!.insertBefore(el, currentAtIndex);
       }
     });
   }
 
-  updateDraftContent(draft: { content: string; reasoning_content: string }, messageId: string, isError?: boolean): void {
-    if (!this.assistantDraftContentEl || this.assistantStream.messageId !== messageId) {
-      this.removeTempAssistantElem();
-      this.assistantStream.reset(messageId);
-      this.assistantDraftContentEl = this.createAssistantDraftElement(messageId);
-      this.markDraftAssistantElement();
-      this.assistantDraftReasoningEl = null;
+  function updateDraftContent(
+    draft: StreamDraft,
+    messageId: string,
+    isError?: boolean,
+  ): void {
+    if (!draftContentEl || draftMessageId !== messageId) {
+      removeTempAssistantElem();
+      resetDraftState();
+      draftMessageId = messageId;
+      draftContentEl = container ? createAssistantDraftElement(container, messageId) : null;
+      markDraftElement();
+      draftReasoningEl = null;
     }
 
-    this.assistantStream.content = draft;
+    draftContent = draft.content;
+    draftReasoning = draft.reasoning_content;
+
     if (isError !== undefined) {
-      const assistantEl = this.assistantDraftContentEl?.closest(".chat-md-bubble-assistant");
+      const assistantEl = draftContentEl?.closest(".chat-md-bubble-assistant");
       if (assistantEl) assistantEl.classList.toggle("is-error", isError);
     }
 
-    if (!this._renderPending) {
-      this._renderPending = true;
+    if (!renderPending) {
+      renderPending = true;
       requestAnimationFrame(() => {
-        this.renderAssStream();
-        this.onAfterRender?.();
-        this._renderPending = false;
+        renderAssStream();
+        _onAfterRender?.();
+        renderPending = false;
       });
     }
   }
 
-  syncDraftAssistant(runtime: Record<string, unknown> = {}): void {
-    const draft = {
-      content: String(runtime?.draftAssistantContent || ""),
-      reasoning_content: String(runtime?.draftReasoningContent || ""),
-    };
-    const draftMessageId = String(runtime?.draftMessageId || "");
-    const hasDraft = Boolean(draftMessageId || draft.content || draft.reasoning_content || runtime?.pending);
+  function syncDraftAssistant(runtime: Record<string, unknown> = {}): void {
+    const dContent = String(runtime?.draftAssistantContent || "");
+    const dReasoning = String(runtime?.draftReasoningContent || "");
+    const dMid = String(runtime?.draftMessageId || "");
+    const hasDraft = Boolean(dMid || dContent || dReasoning || runtime?.pending);
 
     if (!hasDraft) {
-      this.removeTempAssistantElem();
+      removeTempAssistantElem();
       return;
     }
 
-    const storedDraftEl = draftMessageId ? this.getMessageElement(draftMessageId) : null;
+    const storedDraftEl = dMid ? getMessageElement(dMid) : null;
     if (storedDraftEl && storedDraftEl.dataset.chatDraft !== "true") {
-      this.assistantDraftContentEl = null;
-      this.assistantDraftReasoningEl = null;
+      draftContentEl = null;
+      draftReasoningEl = null;
       return;
     }
 
-    const isNewElement = !this.assistantDraftContentEl || this.assistantStream.messageId !== draftMessageId;
+    const isNew = !draftContentEl || draftMessageId !== dMid;
 
-    if (isNewElement) {
-      this.removeTempAssistantElem();
-      this.assistantStream.reset(draftMessageId);
-      this.assistantDraftContentEl = this.createAssistantDraftElement(this.assistantStream.messageId);
-      this.markDraftAssistantElement();
-      this.assistantDraftReasoningEl = null;
+    if (isNew) {
+      removeTempAssistantElem();
+      resetDraftState();
+      draftMessageId = dMid;
+      draftContentEl = container ? createAssistantDraftElement(container, dMid) : null;
+      markDraftElement();
+      draftReasoningEl = null;
 
-      this.assistantStream.content = draft;
-      this.renderAssStream();
+      draftContent = dContent;
+      draftReasoning = dReasoning;
+      renderAssStream();
     }
 
-    const assistantEl = this.assistantDraftContentEl?.closest(".chat-md-bubble-assistant");
+    const assistantEl = draftContentEl?.closest(".chat-md-bubble-assistant");
     if (assistantEl) {
       const isErrorStatus = String(runtime?.status || "") === "error";
       assistantEl.classList.toggle("is-error", isErrorStatus);
     }
   }
 
-  renderAssStream(): void {
-    if (this.assistantStream.hasContent()) {
-      this.clearDraftWorkingIcon();
-    }
-
-    this.assistantDraftReasoningEl = renderAssistantDraft(
-      {
-        contentEl: this.assistantDraftContentEl,
-        reasoningEl: this.assistantDraftReasoningEl,
-      },
-      this.assistantStream.content,
-      () => this.insertReasoningElem(this.assistantDraftContentEl),
-    );
-  }
-
-  removeAllElem(): void {
-    this.assistantDraftContentEl = null;
-    this.assistantDraftReasoningEl = null;
-    this.assistantStream.reset();
-    if (!this.container) return;
-
-    this.container.replaceChildren();
-  }
-
+  return {
+    init,
+    renderConversation,
+    updateDraftContent,
+    syncDraftAssistant,
+    removeTempAssistantElem,
+    clearDraftWorkingIcon,
+    deleteMessage: _deleteMessage,
+    removeAllElem,
+    getMessageElement,
+    get onAfterRender() { return _onAfterRender; },
+    set onAfterRender(v) { _onAfterRender = v; },
+    get onMessageDeleted() { return _onMessageDeleted; },
+    set onMessageDeleted(v) { _onMessageDeleted = v; },
+  };
 }

@@ -1,17 +1,17 @@
 import { renderBlock } from "@/services/markdown/md-render";
-import type { AssistantDraftContent } from "./assistant-stream-state";
+import type { StreamDraft } from "./stream-state";
 
-export type AssistantDraftElements = {
+export interface AssistantDraftElements {
   contentEl: HTMLDivElement | null;
   reasoningEl: HTMLDivElement | null;
-};
+}
 
 const _lastReasoning = new WeakMap<HTMLElement, string>();
 const _lastContent = new WeakMap<HTMLElement, string>();
 
 export function renderAssistantDraft(
   elements: AssistantDraftElements,
-  draft: AssistantDraftContent,
+  draft: StreamDraft,
   ensureReasoningElement: () => HTMLDivElement | null,
 ): HTMLDivElement | null {
   if (!elements.contentEl) return elements.reasoningEl;
