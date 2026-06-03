@@ -12,17 +12,10 @@ type ChatRuntimeStatus = "idle" | "loading" | "streaming" | "success" | "error" 
 // ===== helpers =====
 
 function getSessionModel(chatId: string): ChatModelConfig | null {
-  return getModelFromSnapshot(store.state.chatConversationsById?.[chatId]?.modelSnapshot)
-    || store.state.curChatModel
-    || store.state.models.chat?.[0]
-    || null;
+  return getModelFromSnapshot(store.state.chatConversationsById?.[chatId]?.modelSnapshot) || store.state.curChatModel || store.state.models.chat?.[0] || null;
 }
 
-function packChatMessages(
-  messages: ChatPromptMessage[],
-  chatId: string,
-  model: ChatModelConfig | null,
-): PackedChatMessage[] {
+function packChatMessages(messages: ChatPromptMessage[], chatId: string, model: ChatModelConfig | null): PackedChatMessage[] {
   const settings = store.state.chatSettingsById?.[chatId] || store.state.curChatModelSettings;
   const firstPromptContent = settings?.prompts?.[0]?.content?.[0];
   const hasSystemPrompt = firstPromptContent?.type === "text" && Boolean(firstPromptContent.text);
@@ -71,8 +64,7 @@ function createChatRunner(chatId: string): ChatRunner {
   }
 
   function clearDraft(status: ChatRuntimeStatus = "idle", extra: Record<string, unknown> = {}) {
-    const completedInBackground =
-      ["success", "error", "stopped"].includes(status) && store.state.curChatId !== chatId;
+    const completedInBackground = ["success", "error", "stopped"].includes(status) && store.state.curChatId !== chatId;
     updateRuntime({
       status,
       pending: false,
@@ -148,8 +140,7 @@ function createChatRunner(chatId: string): ChatRunner {
     const model = getSessionModel(chatId);
     const settings = store.state.chatSettingsById?.[chatId] || store.state.curChatModelSettings;
 
-    const history = (store.state.chatMessagesById?.[chatId] || [])
-      .filter((msg) => !msg.meta?.isContextBlocked);
+    const history = (store.state.chatMessagesById?.[chatId] || []).filter((msg) => !msg.meta?.isContextBlocked);
     const passedMsgLen = Number(settings?.passedMsgLen || history.length || 1);
     const messages = history.slice(-Math.min(passedMsgLen, history.length));
     const packedMessages = packChatMessages(messages, chatId, model);
@@ -219,15 +210,33 @@ function createChatRunner(chatId: string): ChatRunner {
     chat,
     stop,
     getStream: () => stream,
-    get chatId() { return chatId; },
-    set onDraftUpdate(v) { _onDraftUpdate = v; },
-    set onDraftRemove(v) { _onDraftRemove = v; },
-    set onMessagePersisted(v) { _onMessagePersisted = v; },
-    set onRuntimeUpdate(v) { _onRuntimeUpdate = v; },
-    get onDraftUpdate() { return _onDraftUpdate; },
-    get onDraftRemove() { return _onDraftRemove; },
-    get onMessagePersisted() { return _onMessagePersisted; },
-    get onRuntimeUpdate() { return _onRuntimeUpdate; },
+    get chatId() {
+      return chatId;
+    },
+    set onDraftUpdate(v) {
+      _onDraftUpdate = v;
+    },
+    set onDraftRemove(v) {
+      _onDraftRemove = v;
+    },
+    set onMessagePersisted(v) {
+      _onMessagePersisted = v;
+    },
+    set onRuntimeUpdate(v) {
+      _onRuntimeUpdate = v;
+    },
+    get onDraftUpdate() {
+      return _onDraftUpdate;
+    },
+    get onDraftRemove() {
+      return _onDraftRemove;
+    },
+    get onMessagePersisted() {
+      return _onMessagePersisted;
+    },
+    get onRuntimeUpdate() {
+      return _onRuntimeUpdate;
+    },
   };
 }
 

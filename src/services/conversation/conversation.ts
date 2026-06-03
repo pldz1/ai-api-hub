@@ -25,8 +25,7 @@ const chatConversationApi = {
 
 const chatSettingsApi = {
   get: (cid: string) => apiRequest<string>("post", "/_api/chat/getChatSettings", { cid }),
-  set: (cid: string, payload: PersistedChatSettings) =>
-    apiRequest<null>("post", "/_api/chat/setChatSettings", { cid, data: JSON.stringify(payload) }),
+  set: (cid: string, payload: PersistedChatSettings) => apiRequest<null>("post", "/_api/chat/setChatSettings", { cid, data: JSON.stringify(payload) }),
 };
 
 const chatMessageApi = {
@@ -107,16 +106,19 @@ export async function getChatSettings(cid: string = store.state.curChatId): Prom
   const rawData = response.data;
   const parsed = typeof rawData === "string" ? JSON.parse(rawData) : rawData;
   const parsedSnapshot =
-    parsed && typeof parsed === "object" && "settings" in parsed ? ((parsed as { modelSnapshot?: ConversationModelSnapshot | null }).modelSnapshot || null) : null;
-  const parsedSettings = parsed && typeof parsed === "object" && "settings" in parsed ? ((parsed as { settings?: Partial<ChatModelSettings> }).settings || {}) : ((parsed as Partial<ChatModelSettings>) || {});
+    parsed && typeof parsed === "object" && "settings" in parsed
+      ? (parsed as { modelSnapshot?: ConversationModelSnapshot | null }).modelSnapshot || null
+      : null;
+  const parsedSettings =
+    parsed && typeof parsed === "object" && "settings" in parsed
+      ? (parsed as { settings?: Partial<ChatModelSettings> }).settings || {}
+      : (parsed as Partial<ChatModelSettings>) || {};
   const modelSnapshot = parsedSnapshot || createConversationModelSnapshot(fallbackModel);
   const model = getModelFromSnapshot(modelSnapshot) || fallbackModel;
 
   await store.dispatch("hydrateChatSession", {
     cid,
-    conversation: modelSnapshot
-      ? { id: cid, title: store.state.chatList.find((item) => item.cid === cid)?.cname || "", modelSnapshot }
-      : null,
+    conversation: modelSnapshot ? { id: cid, title: store.state.chatList.find((item) => item.cid === cid)?.cname || "", modelSnapshot } : null,
     settings: mergeChatSettingsWithModel(model, parsedSettings),
   });
   return true;
@@ -197,7 +199,10 @@ export async function deleteChat(cid: string): Promise<boolean> {
     return false;
   }
 
-  await store.dispatch("resetChatList", store.state.chatList.filter((chat) => chat.cid !== cid));
+  await store.dispatch(
+    "resetChatList",
+    store.state.chatList.filter((chat) => chat.cid !== cid),
+  );
   await store.dispatch("removeChatSession", cid);
 
   if (cid === store.state.curChatId) {

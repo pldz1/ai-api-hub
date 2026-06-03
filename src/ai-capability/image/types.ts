@@ -4,7 +4,7 @@ import type { TokenUsage } from "../common";
 // Provider runtime config (derived from user-owned model config)
 // ============================================================================
 
-export type ImageProviderRoute = "openai" | "dashscope";
+export type ImageProviderRoute = "openai" | "azure-openai" | "dashscope";
 export type ImageProviderConnectionField = "baseURL";
 
 export interface ImageProviderDefinition {
@@ -21,11 +21,17 @@ const imageProviderRegistryConfig = {
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://api.openai.com/v1",
   },
+  "Azure OpenAI": {
+    name: "Azure OpenAI",
+    route: "azure-openai",
+    connectionFields: ["baseURL"],
+    defaultBaseURL: "https://<YOUR-DEPLOYMENT-NAME>.openai.com/v1",
+  },
   DashScope: {
     name: "DashScope",
     route: "dashscope",
     connectionFields: ["baseURL"],
-    defaultBaseURL: "https://<workspace-id>.ap-southeast-1.maas.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+    defaultBaseURL: "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
   },
 } as const satisfies Record<string, ImageProviderDefinition>;
 

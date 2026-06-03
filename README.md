@@ -12,23 +12,24 @@ This is why you're here, right? Here's the current lineup:
 
 ### 💬 Chat Models
 
-| Model | Providers | Multimodal | Web Search | Vibe Check |
-|---|---|---|---|---|
-| **GPT-5.5** 🧠 | OpenAI · Azure | ✅ Vision | ✅ | The latest and greatest. Expensive, but worth every token |
-| **GPT-5.4** ⚡ | OpenAI · Azure | ✅ Vision | ✅ | The sweet spot between brains and speed |
-| **GPT-4.1** 🎯 | OpenAI · Azure | ✅ Vision | ✅ | Battle-tested veteran, still shipping |
-| **GPT-4o** 🏃 | OpenAI · Azure | ✅ Vision | ✅ | Lightweight & fast—your daily driver |
-| **DeepSeek V4 Pro** 🔮 | DeepSeek · DashScope | ❌ Text only | ✅ (DashScope) | 1M token context window. Absolute unit for Chinese |
-| **DeepSeek V4 Flash** ⚡ | DeepSeek · DashScope | ❌ Text only | ✅ (DashScope) | Pro's speedy sibling—cheap and cheerful |
-| **Qwen 3.7 Max** 🐉 | DashScope | ✅ Vision | ✅ | Alibaba's flagship. Chinese comprehension on another level |
+| Model                    | Providers            | Multimodal   | Web Search     | Vibe Check                                                 |
+| ------------------------ | -------------------- | ------------ | -------------- | ---------------------------------------------------------- |
+| **GPT-5.5** 🧠           | OpenAI · Azure       | ✅ Vision    | ✅             | The latest and greatest. Expensive, but worth every token  |
+| **GPT-5.4** ⚡           | OpenAI · Azure       | ✅ Vision    | ✅             | The sweet spot between brains and speed                    |
+| **GPT-4.1** 🎯           | OpenAI · Azure       | ✅ Vision    | ✅             | Battle-tested veteran, still shipping                      |
+| **GPT-4o** 🏃            | OpenAI · Azure       | ✅ Vision    | ✅             | Lightweight & fast—your daily driver                       |
+| **DeepSeek V4 Pro** 🔮   | DeepSeek · DashScope | ❌ Text only | ✅ (DashScope) | 1M token context window. Absolute unit for Chinese         |
+| **DeepSeek V4 Flash** ⚡ | DeepSeek · DashScope | ❌ Text only | ✅ (DashScope) | Pro's speedy sibling—cheap and cheerful                    |
+| **Qwen 3.7 Max** 🐉      | DashScope            | ✅ Vision    | ✅             | Alibaba's flagship. Chinese comprehension on another level |
 
 ### 🎨 Image Generation
 
-| Model | Provider | Capabilities |
-|---|---|---|
-| **GPT-Image-2** 🖼️ | OpenAI | Text-to-image + image-to-image + inpainting |
+| Model                 | Provider            | Capabilities                                |
+| --------------------- | ------------------- | ------------------------------------------- |
+| **GPT-Image-2** 🖼️    | OpenAI · Azure      | Text-to-image + image-to-image + inpainting |
+| **Qwen-Image-2.0** 🐉 | DashScope           | Text-to-image + image-to-image              |
 
-> 💡 **But wait, there's more** — you can add any custom model that speaks OpenAI / DeepSeek / DashScope compatible APIs. Running Ollama locally? Go for it. Third-party proxy? You do you.
+> 💡 **But wait, there's more** — you can add any custom model that speaks OpenAI / DashScope compatible APIs. Running locally? Go for it. Third-party proxy? You do you.
 
 ---
 
@@ -50,16 +51,16 @@ This is why you're here, right? Here's the current lineup:
 
 ## 🏗️ Tech Stack
 
-| Category | Stack |
-|---|---|
-| Framework | Vue 3 (Composition API + SFC) |
-| Language | TypeScript |
-| Build | Vite 6 |
-| State | Vuex 4 |
-| Routing | Vue Router 4 (Hash mode) |
-| i18n | vue-i18n 9 |
-| UI | DaisyUI 4 + Tailwind CSS 3 |
-| Markdown | markdown-it 14 + highlight.js 11 |
+| Category  | Stack                                                 |
+| --------- | ----------------------------------------------------- |
+| Framework | Vue 3 (Composition API + SFC)                         |
+| Language  | TypeScript                                            |
+| Build     | Vite 6                                                |
+| State     | Vuex 4                                                |
+| Routing   | Vue Router 4 (Hash mode)                              |
+| i18n      | vue-i18n 9                                            |
+| UI        | DaisyUI 4 + Tailwind CSS 3                            |
+| Markdown  | markdown-it 14 + highlight.js 11                      |
 | Streaming | Native Fetch API + ReadableStream (custom SSE parser) |
 
 ---
@@ -110,10 +111,16 @@ http://127.0.0.1:20090/#/?config=https://example.com/my-config.json
 
 ```
 src/
-├── ai-capability/        # AI provider abstraction layer
-│   ├── chat/providers/   # Chat clients (OpenAI, Azure, DeepSeek, DashScope)
-│   ├── image/providers/  # Image clients (OpenAI)
-│   └── common/           # Shared types, SSE client, token normalization
+├── ai-capability/        # AI provider abstraction layer (Template Method pattern)
+│   ├── common/           # Shared: BaseChatClient, BaseImageClient, SSE transport, usage
+│   ├── chat/             # Chat capability
+│   │   ├── providers/    #   Clients: OpenAI, Azure, DeepSeek, DashScope
+│   │   ├── executor.ts   #   Route → factory → ChatExecutor
+│   │   └── gateway.ts    #   Public API (chat, streaming, abort)
+│   └── image/            # Image capability
+│       ├── providers/    #   Clients: OpenAI, Azure, DashScope
+│       ├── executor.ts   #   Route → factory → ImageExecutor
+│       └── gateway.ts    #   Public API (generate, edit)
 ├── components/           # Reusable Vue components
 ├── constants/            # App metadata, model catalog, parameter presets
 ├── i18n/                 # EN & ZH dictionaries

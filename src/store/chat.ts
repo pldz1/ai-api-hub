@@ -1,9 +1,5 @@
 import { defaultModelCapabilities } from "@/constants";
-import {
-  createConversationModelSnapshot,
-  getModelFromSnapshot,
-  mergeChatSettingsWithModel,
-} from "@/models";
+import { createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
 
 const emptyTokenUsage = () => ({
   input_tokens: 0,

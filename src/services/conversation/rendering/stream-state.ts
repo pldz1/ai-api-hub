@@ -70,8 +70,12 @@ export function createStreamState() {
     if (reasoning) reasoningContent = reasoning;
   }
 
-  function complete() { if (status === "streaming") status = "completed"; }
-  function stop() { if (status === "streaming") status = "stopped"; }
+  function complete() {
+    if (status === "streaming") status = "completed";
+  }
+  function stop() {
+    if (status === "streaming") status = "stopped";
+  }
 
   // -- queries --
   const getDraft = (): StreamDraft => ({ content, reasoning_content: reasoningContent });

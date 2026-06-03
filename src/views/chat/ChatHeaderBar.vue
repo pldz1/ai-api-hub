@@ -171,7 +171,9 @@ onBeforeUnmount(() => {
   background: transparent;
   color: oklch(var(--bc) / 0.5);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
   font-size: 18px;
 
   &:hover {

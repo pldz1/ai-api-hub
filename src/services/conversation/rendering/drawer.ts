@@ -75,9 +75,7 @@ export function createChatDrawer(): ChatDrawer {
 
   function getMessageElement(mid: string): HTMLElement | null {
     if (!container) return null;
-    return (Array.from(container.children).find(
-      (child) => child instanceof HTMLElement && child.id === mid,
-    ) as HTMLElement) || null;
+    return (Array.from(container.children).find((child) => child instanceof HTMLElement && child.id === mid) as HTMLElement) || null;
   }
 
   function createStoredMessageElement(message: ChatPromptMessage): HTMLElement | null {
@@ -89,8 +87,12 @@ export function createChatDrawer(): ChatDrawer {
     }
     if (message.role === "assistant") {
       return createAssistantMessageElement(
-        container, message.content, message.reasoning_content,
-        message.mid, actions, Boolean(message.meta?.isContextBlocked),
+        container,
+        message.content,
+        message.reasoning_content,
+        message.mid,
+        actions,
+        Boolean(message.meta?.isContextBlocked),
       );
     }
     return null;
@@ -102,9 +104,7 @@ export function createChatDrawer(): ChatDrawer {
   }
 
   function clearDraftWorkingIcon(): void {
-    draftContentEl?.closest(".chat-md-bubble-assistant")
-      ?.querySelector(".cmba-assistant-icon")
-      ?.replaceChildren();
+    draftContentEl?.closest(".chat-md-bubble-assistant")?.querySelector(".cmba-assistant-icon")?.replaceChildren();
   }
 
   function removeTempAssistantElem(): void {
@@ -152,12 +152,11 @@ export function createChatDrawer(): ChatDrawer {
 
   // === public API ===
 
-  function init(el: HTMLElement | null): void { container = el; }
+  function init(el: HTMLElement | null): void {
+    container = el;
+  }
 
-  function renderConversation(
-    messages: ChatPromptMessage[] = [],
-    options: { reset?: boolean } = {},
-  ): void {
+  function renderConversation(messages: ChatPromptMessage[] = [], options: { reset?: boolean } = {}): void {
     if (options.reset) {
       removeAllElem();
       messages.forEach((m) => createStoredMessageElement(m));
@@ -203,11 +202,7 @@ export function createChatDrawer(): ChatDrawer {
     });
   }
 
-  function updateDraftContent(
-    draft: StreamDraft,
-    messageId: string,
-    isError?: boolean,
-  ): boolean {
+  function updateDraftContent(draft: StreamDraft, messageId: string, isError?: boolean): boolean {
     const isNew = !draftContentEl || draftMessageId !== messageId;
 
     if (isNew) {
@@ -291,9 +286,17 @@ export function createChatDrawer(): ChatDrawer {
     deleteMessage: _deleteMessage,
     removeAllElem,
     getMessageElement,
-    get onAfterRender() { return _onAfterRender; },
-    set onAfterRender(v) { _onAfterRender = v; },
-    get onMessageDeleted() { return _onMessageDeleted; },
-    set onMessageDeleted(v) { _onMessageDeleted = v; },
+    get onAfterRender() {
+      return _onAfterRender;
+    },
+    set onAfterRender(v) {
+      _onAfterRender = v;
+    },
+    get onMessageDeleted() {
+      return _onMessageDeleted;
+    },
+    set onMessageDeleted(v) {
+      _onMessageDeleted = v;
+    },
   };
 }

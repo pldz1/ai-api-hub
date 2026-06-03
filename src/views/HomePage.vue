@@ -11,17 +11,23 @@
         <h1 class="hlcc-title">{{ t("login.title") }}</h1>
         <p class="hlcc-copy">{{ t("login.description") }}</p>
         <div class="hlcc-badges">
+          <span> OpenAI</span>
+          <span> Azure OpenAI</span>
+          <span>DeepSeek</span>
+          <span> DashScope(Qwen)</span>
+        </div>
+        <div class="hlcc-badges">
           <span>{{ t("login.tags.chat") }}</span>
           <span>{{ t("login.tags.image") }}</span>
           <span>{{ t("login.tags.local") }}</span>
         </div>
+        <p class="hlcc-updated">LATEST-UPDATE-TIME: {{ UPDATE_TIME }}</p>
       </section>
 
       <section class="hlcc-container">
         <div class="hlcc-header">
           <span class="hlcc-label">{{ t("login.signInLabel") }}</span>
           <h2>{{ t("login.signInTitle") }}</h2>
-          <p>{{ t("login.signInDescription") }}</p>
         </div>
 
         <div class="hlcc-form">
@@ -45,7 +51,7 @@ import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import ThemeController from "@/components/ThemeController.vue";
 import LanguageController from "@/components/LanguageController.vue";
-import { APP_NAME } from "@/constants";
+import { APP_NAME, UPDATE_TIME } from "@/constants";
 
 const router = useRouter();
 const { t } = useI18n();
@@ -242,6 +248,14 @@ const onStart = async () => {
       background: oklch(0.82 0.16 87);
       box-shadow: 0 0 0 3px oklch(0.82 0.16 87 / 0.14);
     }
+  }
+
+  .hlcc-updated {
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: oklch(var(--bc) / 0.38);
   }
 
   .hlcc-login-button {

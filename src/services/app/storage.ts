@@ -1,14 +1,5 @@
 import { tr } from "@/i18n";
-import type {
-  ApiMethod,
-  ApiResponse,
-  RequestBody,
-  StoredChatMessage,
-  ChatListItem,
-  ImageConversationListItem,
-  ImageDataItem,
-  ModelSettings,
-} from "@/types";
+import type { ApiMethod, ApiResponse, RequestBody, StoredChatMessage, ChatListItem, ImageConversationListItem, ImageDataItem, ModelSettings } from "@/types";
 
 const STORAGE_KEY = "ai-api-hub.local-storage.v2";
 const IMAGE_DB_NAME = "ai-api-hub-images";
@@ -261,7 +252,7 @@ async function readStoredImageSources(imageIds: string[] = []): Promise<StoredIm
   return new Map(entries);
 }
 
-async function urlToDataUrl(url: string): Promise<string> {
+export async function urlToDataUrl(url: string): Promise<string> {
   if (!url || url.startsWith("data:")) return url;
 
   const response = await fetch(url);
@@ -540,11 +531,7 @@ export async function requestStorage<TData = unknown>(endpoint: string, body: Re
   }
 }
 
-export async function apiRequest<TData = unknown>(
-  method: ApiMethod,
-  endpoint: string,
-  body: RequestBody = {},
-): Promise<ApiResponse<TData>> {
+export async function apiRequest<TData = unknown>(method: ApiMethod, endpoint: string, body: RequestBody = {}): Promise<ApiResponse<TData>> {
   void method;
   return requestStorage<TData>(endpoint, body);
 }

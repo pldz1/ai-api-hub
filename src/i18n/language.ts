@@ -62,6 +62,7 @@ export const languages = {
     common: {
       autosavePending: "正在等待自动保存",
       back: "返回",
+      close: "关闭",
       duplicateSuffix: "副本",
       saveError: "保存失败",
       save: "保存",
@@ -102,6 +103,7 @@ export const languages = {
       editImageAction: "编辑",
       editImagePrepareFailed: "准备编辑图像失败: {error}",
       editPromptPlaceholder: "例如：保留主体轮廓，把背景改成清晨海边，增加柔和逆光",
+      editPromptPlaceholderShort: "描述你想如何修改这张图片",
       editPromptTitle: "编辑指令",
       editReady: "准备编辑",
       editSettingsTitle: "编辑设置",
@@ -124,7 +126,7 @@ export const languages = {
       imageRequestFailed: "图像请求失败",
       imageLoadFailed: "图片加载失败",
       initError: "模型初始化失败: {error}",
-      inputImageTip: "随请求携带的输入图像，发送为 { filename, content_type, data } ",
+      inputImageTip: "随请求携带的输入图像，发送为 {{ filename, content_type, data }} ",
       inputTokens: "输入",
       invalidResponse: "图像接口返回格式无效",
       maskTip: "图像编辑蒙版，PNG 透明区域表示需要编辑的位置 ",
@@ -197,7 +199,6 @@ export const languages = {
       browserModeTitle: "零服务器存储",
       description: "统一的聊天与图像生成前端，支持 OpenAI、Azure、DeepSeek 和 DashScope。完全运行在你的浏览器中，零遥测。",
       loginAction: "进入工作区",
-      signInDescription: "关掉那 12 个浏览器标签页。立即进入你的去中心化工作区。",
       signInLabel: "工作区",
       signInTitle: "立即开始",
       tags: {
@@ -320,6 +321,11 @@ export const languages = {
       importLinkConfirmTitle: "导入链接中的配置？",
       importReadError: "读取 JSON 文件失败 ",
       importSuccess: "已导入配置，系统会自动保存 ",
+      importPasswordLabel: "导入密码",
+      importPasswordPlaceholder: "请输入导入密码",
+      importPasswordRequired: "请输入密码",
+      importPasswordInvalid: "密码不正确",
+      importPasswordVerifying: "验证中…",
       modelCard: {
         behavior: {
           chat: "普通对话",
@@ -528,7 +534,7 @@ export const languages = {
       generationTitle: "Image Generation",
       imageLoadFailed: "Image load failed",
       initError: "Failed to initialize model: {error}",
-      inputImageTip: "Input image sent with the request as { filename, content_type, data }.",
+      inputImageTip: "Input image sent with the request as {{ filename, content_type, data }}.",
       inputTokens: "Input",
       invalidResponse: "The image API returned an invalid response format",
       maskTip: "Image edit mask. Transparent PNG areas indicate where edits should happen.",
@@ -602,7 +608,6 @@ export const languages = {
       description:
         "A unified chat and image generation frontend for OpenAI, Azure, DeepSeek, and DashScope. Running entirely in your browser with zero telemetry.",
       loginAction: "Enter Workspace",
-      signInDescription: "Close those 12 browser tabs. Access your decentralized workspace instantly.",
       signInLabel: "Workspace",
       signInTitle: "Get Started",
       tags: {
@@ -726,6 +731,11 @@ export const languages = {
       importLinkConfirmTitle: "Import settings from this link?",
       importReadError: "Failed to read the JSON file.",
       importSuccess: "Settings imported. Autosave will persist them shortly.",
+      importPasswordLabel: "Import password",
+      importPasswordPlaceholder: "Enter the import password",
+      importPasswordRequired: "Password is required",
+      importPasswordInvalid: "Incorrect password",
+      importPasswordVerifying: "Verifying…",
       modelCard: {
         behavior: {
           chat: "Chat",

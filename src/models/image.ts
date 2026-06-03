@@ -86,16 +86,18 @@ export const imageParamDefs: ImageModelParamDef[] = ["quality", "output_format",
 
 export function getImageModelSizes(model: LooseModelConfig | null = null): string[] {
   const modelConfig = normalizeImageModelConfig(model || {});
-  return findImageModelCatalogItem(modelConfig.model, modelConfig.provider)?.sizeList || [
-    "1024x1024",
-    "1536x1024",
-    "1024x1536",
-    "2048x2048",
-    "2048x1152",
-    "3840x2160",
-    "2160x3840",
-    "auto",
-  ];
+  return (
+    findImageModelCatalogItem(modelConfig.model, modelConfig.provider)?.sizeList || [
+      "1024x1024",
+      "1536x1024",
+      "1024x1536",
+      "2048x2048",
+      "2048x1152",
+      "3840x2160",
+      "2160x3840",
+      "auto",
+    ]
+  );
 }
 
 function mergeResolvedImageSettings(defs: ImageModelParamDef[], settings: Partial<ImageModelSettings> = {}): ImageModelSettings {

@@ -4,13 +4,14 @@
     <!-- Keep the product version and repository credit in one compact line. -->
     <span class="app-footer-copy">
       <a :href="REPO_SOURCE_LINK" target="_blank" rel="noopener noreferrer">{{ APP_NAME }} · {{ APP_VERSION }}</a>
+      <span class="app-footer-updated"> · {{ UPDATE_TIME }}</span>
     </span>
   </footer>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
-import { APP_NAME, APP_VERSION, REPO_SOURCE_LINK } from "@/constants";
+import { APP_NAME, APP_VERSION, REPO_SOURCE_LINK, UPDATE_TIME } from "@/constants";
 
 const { t } = useI18n();
 </script>
@@ -45,5 +46,11 @@ const { t } = useI18n();
 
 .app-footer-copy a:hover {
   text-decoration: underline;
+}
+
+.app-footer-updated {
+  color: oklch(var(--bc) / 0.4);
+  user-select: text;
+  cursor: text;
 }
 </style>

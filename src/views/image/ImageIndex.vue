@@ -18,7 +18,7 @@
               <span v-if="getMessageElapsedMs(message) !== null">{{ formatElapsedMs(getMessageElapsedMs(message)!) }}</span>
             </div>
 
-            <p v-if="message.prompt" class="image-message-prompt">{{ message.prompt }}</p>
+            <p v-if="message.prompt && message.role === 'user'" class="image-message-prompt">{{ message.prompt }}</p>
 
             <div v-if="message.attachments?.length" class="image-attachment-row">
               <div v-for="attachment in message.attachments" :key="attachment.id" class="image-attachment">
@@ -93,11 +93,11 @@
               </option>
             </select>
 
-            <select v-model="size" class="image-size-select" :disabled="isCurrentConversationSubmitting">
-              <option v-for="item in selectedModelSizes" :key="item" :value="item">
-                {{ item }}
-              </option>
-            </select>
+            <AppTooltip :text="t('tooltip.modelSettings')" placement="top">
+              <button class="image-settings-button" type="button" @click="onShowModelSettings">
+                <SvgIcon :src="paramIcon" />
+              </button>
+            </AppTooltip>
           </div>
 
           <div class="image-right-actions">
@@ -113,6 +113,7 @@
       <input ref="fileInputRef" class="image-file-input" type="file" accept="image/*" multiple @change="onFileChange" />
     </div>
     <ImageEditDialog ref="imageEditDialogRef" @apply="applyBrushEdit" @close="focusPromptInput" />
+    <ImageSettings ref="imageSettingsRef" :model="selectedModel" :settings="imageSettings" @close="onImageSettingsClose" />
   </section>
 </template>
 
@@ -124,10 +125,12 @@ import { useStore } from "vuex";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import ImageEditDialog from "@/views/image/ImageEditDialog.vue";
+import ImageSettings from "@/views/image/ImageSettings.vue";
+import type { ImageSettingsData } from "@/views/image/ImageSettings.vue";
 import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import attachIcon from "@/assets/svg/attach24.svg";
 import navImageIcon from "@/assets/svg/navImage24.svg";
-import { getImageModelSizes } from "@/models";
+import paramIcon from "@/assets/svg/param24.svg";
 import { addImageConversation, getImageConversationMessages, submitImageMessage } from "@/services/creation";
 import { dsAlert, getUuid, saveToLocal } from "@/utils";
 import type { ImageConversationMessage, ImageInputAttachment, ImagePayload, ImageModelConfig } from "@/types";
@@ -139,7 +142,6 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const prompt = ref("");
-const size = ref("1024x1024");
 const selectedModelIndex = ref(-1);
 const attachments = ref<ImageInputAttachment[]>([]);
 const isSubmitting = ref(false);
@@ -150,6 +152,8 @@ const messageScrollRef = ref<HTMLElement | null>(null);
 const pageRef = ref<HTMLElement | null>(null);
 const composerRef = ref<HTMLElement | null>(null);
 const imageEditDialogRef = ref<{ open: (image: ImageInputAttachment) => void } | null>(null);
+const imageSettingsRef = ref<{ openDialog: () => void } | null>(null);
+const imageSettings = ref<ImageSettingsData>({ size: "1024x1024", n: 1 });
 let runtimeTimer: number | null = null;
 let composerResizeObserver: ResizeObserver | null = null;
 
@@ -160,7 +164,6 @@ const runtimeTick = ref(Date.now());
 const mode = computed(() => (attachments.value.length > 0 ? "edit" : "generation"));
 const availableModels = computed<ImageModelConfig[]>(() => store.state.models.image || []);
 const selectedModel = computed<ImageModelConfig | null>(() => availableModels.value[selectedModelIndex.value] || null);
-const selectedModelSizes = computed(() => getImageModelSizes(selectedModel.value));
 const isCurrentConversationSubmitting = computed(() => Boolean(activeImageRuntime.value?.pending || activeImageRuntime.value?.status === "loading"));
 const isSendDisabled = computed(() => isCurrentConversationSubmitting.value || !prompt.value.trim() || !selectedModel.value);
 
@@ -315,6 +318,18 @@ function focusPromptInput() {
   nextTick(() => textareaRef.value?.focus());
 }
 
+function onShowModelSettings() {
+  if (!selectedModel.value) {
+    dsAlert({ type: "warn", message: t("chat.chooseModelFirst") });
+    return;
+  }
+  imageSettingsRef.value?.openDialog();
+}
+
+function onImageSettingsClose(settings: ImageSettingsData) {
+  imageSettings.value = settings;
+}
+
 function formatElapsedMs(elapsedMs: number) {
   return `${(elapsedMs / 1000).toFixed(1)}s`;
 }
@@ -343,7 +358,7 @@ async function send() {
   prompt.value = "";
   attachments.value = [];
   hasEditedMask.value = false;
-  resizeTextarea();
+  nextTick(() => resizeTextarea());
 
   if (!routeImageId.value) {
     const created = await addImageConversation(currentPrompt.slice(0, 28));
@@ -358,8 +373,10 @@ async function send() {
     mode: currentAttachments.length ? "edit" : "generation",
     prompt: currentPrompt,
     model: selectedModel.value,
-    size: size.value,
-    n: 1,
+    size: imageSettings.value.size,
+    n: imageSettings.value.n ?? 1,
+    quality: (imageSettings.value.quality as string) || undefined,
+    outputFormat: (imageSettings.value.output_format as string) || undefined,
     attachments: currentAttachments,
   });
 
@@ -415,19 +432,14 @@ watch(
 );
 
 watch(
-  selectedModelSizes,
-  (sizes) => {
-    if (!sizes.includes(size.value)) {
-      size.value = sizes[0] || "1024x1024";
-    }
-  },
-  { immediate: true },
-);
-
-watch(
   () => mode.value,
   () => {
-    selectedModelIndex.value = availableModels.value.length ? 0 : -1;
+    // Only auto-select the first model when nothing is selected yet.
+    // A model can handle both generation and edit — switching modes should
+    // not reset the user's choice.
+    if (selectedModelIndex.value < 0 && availableModels.value.length) {
+      selectedModelIndex.value = 0;
+    }
   },
 );
 
@@ -767,17 +779,14 @@ onBeforeUnmount(() => {
 .image-composer {
   position: relative;
   z-index: 1;
-  width: min(960px, 100%);
+  width: min(100%, 742px);
   pointer-events: auto;
   max-height: min(68vh, 620px);
   overflow-y: auto;
   padding: 14px 18px 12px;
-  border: 1px solid oklch(var(--bc) / 0.07);
+  border: 1px solid oklch(var(--bc) / 0.27);
   border-radius: 42px;
-  background: oklch(var(--b1));
-  box-shadow:
-    0 2px 6px oklch(var(--bc) / 0.05),
-    0 4px 8px oklch(var(--bc) / 0.06);
+  background: oklch(var(--b1) / 0.96);
   contain: layout paint;
 }
 
@@ -846,16 +855,16 @@ onBeforeUnmount(() => {
 
 .image-prompt-input {
   width: 100%;
-  min-height: 38px;
-  max-height: 180px;
-  padding: 8px 6px;
+  min-height: 36px;
+  max-height: 188px;
+  padding: 8px 0 6px;
   border: none;
   outline: none;
   resize: none;
   background: transparent;
   color: oklch(var(--bc));
-  font-size: 18px;
-  line-height: 1.45;
+  font-size: 16px;
+  line-height: 1.5;
 }
 
 .image-composer-actions {
@@ -890,6 +899,29 @@ onBeforeUnmount(() => {
   color: oklch(var(--bc));
 }
 
+.image-settings-button {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: oklch(var(--bc) / 0.6);
+  cursor: pointer;
+
+  &:hover {
+    color: oklch(var(--bc));
+  }
+
+  :deep(.svg-icon) {
+    width: 18px;
+    height: 18px;
+  }
+}
+
 .image-send-button {
   background-color: oklch(var(--n));
   color: oklch(var(--nc));
@@ -906,8 +938,7 @@ onBeforeUnmount(() => {
   }
 }
 
-.image-model-select,
-.image-size-select {
+.image-model-select {
   height: 32px;
   min-width: 0;
   max-width: 180px;
@@ -939,11 +970,6 @@ onBeforeUnmount(() => {
       0 10px 24px oklch(var(--bc) / 0.08);
     outline: none;
   }
-}
-
-.image-size-select {
-  max-width: 122px;
-  padding-right: 28px;
 }
 
 .image-mode-pill {

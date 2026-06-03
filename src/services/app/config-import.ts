@@ -13,6 +13,72 @@ interface ImportConfigOptions {
   source?: ConfigImportSource;
 }
 
+const IMPORT_PASSPHRASE = "ai-api-hub-config-import-gate";
+const IMPORT_SALT = new TextEncoder().encode("ai-api-hub-salt");
+
+async function deriveCryptoKey(passphrase: string, usage: KeyUsage[]): Promise<CryptoKey> {
+  const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: IMPORT_SALT, iterations: 100_000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    usage,
+  );
+}
+
+/**
+ * 解密 import password 参数（base64url 格式）。
+ * 密文格式：`base64url(12-byte IV + ciphertext)`
+ */
+export async function decryptImportPassword(base64urlCiphertext: string): Promise<string> {
+  const key = await deriveCryptoKey(IMPORT_PASSPHRASE, ["decrypt"]);
+  const normalized = base64urlCiphertext.replace(/-/g, "+").replace(/_/g, "/");
+  const raw = Uint8Array.from(window.atob(normalized), (c) => c.charCodeAt(0));
+  const iv = raw.slice(0, 12);
+  const ciphertext = raw.slice(12);
+  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
+  return new TextDecoder().decode(decrypted);
+}
+
+/**
+ * 验证用户输入的密码是否匹配 URL 中的 password 密文。
+ * @returns 匹配的明文，失败返回 null
+ */
+export async function verifyImportPassword(input: string, encryptedPassword: string): Promise<string | null> {
+  try {
+    const decrypted = await decryptImportPassword(encryptedPassword);
+    return decrypted === input ? decrypted : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 加密铭文 → base64url 密文（供配置导出方生成 URL 使用）。
+ * 仅用于线下生成 password 参数，不参与导入流程。
+ */
+export async function encryptImportPassword(plaintext: string): Promise<string> {
+  const key = await deriveCryptoKey(IMPORT_PASSPHRASE, ["encrypt"]);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(plaintext);
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
+  const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+  combined.set(iv);
+  combined.set(new Uint8Array(ciphertext), iv.length);
+  return btoa(String.fromCharCode(...combined))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+export function getInitialRoutePassword(): string {
+  const search = window.location.search || "";
+  const hash = window.location.hash || "";
+  const match = (search + hash).match(/[?&]password=([^&#]+)/);
+  return match ? decodeURIComponent(match[1].replace(/\+/g, "%20")) : "";
+}
+
 function clonePlainData<T>(data: T): T {
   return JSON.parse(JSON.stringify(data));
 }

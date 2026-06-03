@@ -9,21 +9,23 @@
     </main>
   </div>
   <input id="global-file-upload-input" type="file" style="display: none" />
-  <ConfigConfirm ref="configImportConfirmDialogRef" />
+  <ConfigConfirm ref="configImportConfirmDialogRef" :encrypted-password="configImportPassword" />
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import ConfigConfirm from "@/components/ConfigConfirm.vue";
-import { getInitialRouteConfigValue, getModels, getImageList, importSettingsFromConfigValue } from "@/services";
+import { getInitialRouteConfigValue, getInitialRoutePassword, getModels, getImageList, importSettingsFromConfigValue } from "@/services";
 
 const route = useRoute();
 const configImportConfirmDialogRef = ref<{ confirm: () => Promise<boolean> } | null>(null);
+const configImportPassword = ref("");
 const importedConfigValues = new Set<string>();
 
 async function importRouteConfig(routeText = "") {
   const routeConfigValue = getInitialRouteConfigValue(routeText);
+  configImportPassword.value = getInitialRoutePassword();
   if (!routeConfigValue || importedConfigValues.has(routeConfigValue)) return;
 
   const confirmed = await configImportConfirmDialogRef.value?.confirm();

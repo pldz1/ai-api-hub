@@ -3,6 +3,7 @@ import { tr } from "@/i18n";
 import { buildImageGenerationParams } from "@/models";
 import { dsAlert, getUuid } from "@/utils";
 import { runImageAITurn } from "@/ai-capability";
+import { urlToDataUrl } from "@/services/app/storage";
 import {
   addImageConversationAPI,
   deleteImageConversationAPI,
@@ -31,10 +32,23 @@ export async function runImageConversationTurn(request: ImageTurnRequest): Promi
   const { payloads, errors } = normalizeGeneratedImages(request.prompt, result.images || []);
   if (errors.length > 0 && payloads.length === 0) throw new Error(errors.join("\n"));
 
+  // Convert remote URLs to inline data URLs so conversation messages never
+  // reference third-party origins (avoids Tracking Prevention warnings and
+  // signed-URL expiry for OSS-hosted images).
+  const resolvedPayloads = await Promise.all(
+    payloads.map(async (p) => {
+      try {
+        return { ...p, src: await urlToDataUrl(p.src) };
+      } catch {
+        return p; // keep the original URL as fallback
+      }
+    }),
+  );
+
   return {
     mode: request.mode,
     prompt: request.prompt,
-    images: payloads,
+    images: resolvedPayloads,
     usage: result.usage || emptyImageUsage(),
     raw: result.raw,
   };

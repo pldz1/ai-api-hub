@@ -45,11 +45,7 @@ function createIconButton(icon: string, tip: string): HTMLDivElement {
   return button;
 }
 
-function createMessageOptions(
-  mid: string,
-  which: ("copy" | "delete")[],
-  actions: MessageElementActions,
-): HTMLDivElement {
+function createMessageOptions(mid: string, which: ("copy" | "delete")[], actions: MessageElementActions): HTMLDivElement {
   const optionsDiv = document.createElement("div");
   optionsDiv.classList.add(which.includes("copy") ? "cmba-options" : "cmbu-options");
 
@@ -146,12 +142,7 @@ export function createAssistantMessageElement(
   return assistantDiv;
 }
 
-export function createAssistantResponseElement(
-  assistantDiv: HTMLDivElement,
-  mid: string,
-  working: boolean,
-  actions: MessageElementActions,
-): HTMLDivElement {
+export function createAssistantResponseElement(assistantDiv: HTMLDivElement, mid: string, working: boolean, actions: MessageElementActions): HTMLDivElement {
   const contentDiv = document.createElement("div");
   contentDiv.classList.add("cmba-assistant-content");
 
@@ -171,10 +162,7 @@ export function createAssistantResponseElement(
   return textDiv;
 }
 
-export function createAssistantDraftElement(
-  container: HTMLElement,
-  mid: string,
-): HTMLDivElement | null {
+export function createAssistantDraftElement(container: HTMLElement, mid: string): HTMLDivElement | null {
   const assistantDiv = document.createElement("div");
   assistantDiv.id = mid;
   assistantDiv.classList.add("chat-md-bubble-assistant");
@@ -206,7 +194,5 @@ export function insertReasoningElem(el: HTMLElement): HTMLDivElement | null {
 }
 
 export function findMessageIndex(container: HTMLElement, id: string): number {
-  return Array.from(container.children).findIndex(
-    (child) => (child as HTMLElement).id === id,
-  );
+  return Array.from(container.children).findIndex((child) => (child as HTMLElement).id === id);
 }

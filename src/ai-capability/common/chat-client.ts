@@ -99,11 +99,7 @@ export abstract class BaseChatClient {
     }
   }
 
-  async chatSync(
-    messages: PackedChatMessage[],
-    params: ChatCompletionParams,
-    options: ChatRequestOptions = {},
-  ): Promise<ChatProviderResponse> {
+  async chatSync(messages: PackedChatMessage[], params: ChatCompletionParams, options: ChatRequestOptions = {}): Promise<ChatProviderResponse> {
     if (!this.isConfigured()) return { flag: false, content: PROVIDER_NOT_READY_MESSAGE, reasoning_content: "" };
 
     try {

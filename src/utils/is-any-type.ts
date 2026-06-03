@@ -1,5 +1,6 @@
 import { tr } from "@/i18n";
 import { getChatProviderConnectionFields, isChatModelProvider } from "@/models";
+import { isImageModelProvider } from "@/ai-capability/image";
 
 /**
  * Returns whether one user message contains at least one non-empty text part
@@ -100,7 +101,7 @@ export const getModelSettingValidationError = (data) => {
 
   const validateImageModel = (item, key, index) => {
     const provider = item.provider || item.apiType || "";
-    if (!["OpenAI", ""].includes(provider)) {
+    if (provider && !isImageModelProvider(provider)) {
       console.error(`Model settings validation error: invalid provider "${provider}":`, item);
       return tr("validation.invalidField", { path: fieldPath(itemPath(key, index), "provider") });
     }

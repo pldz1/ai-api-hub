@@ -143,7 +143,11 @@ export class ChatGateway {
    * Resolve effective chat completion parameters for the current turn,
    * applying any turn-level overrides.
    */
-  resolveChatParams(params: ChatCompletionParams = {}, turnCapabilities: Partial<ChatModelCapabilities> = {}, model: ChatModelConfig | null = null): ChatCompletionParams {
+  resolveChatParams(
+    params: ChatCompletionParams = {},
+    turnCapabilities: Partial<ChatModelCapabilities> = {},
+    model: ChatModelConfig | null = null,
+  ): ChatCompletionParams {
     return {
       ...params,
       webSearch: Boolean(turnCapabilities.webSearch),

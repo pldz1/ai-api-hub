@@ -364,7 +364,7 @@ watch(
   border: 1px solid oklch(var(--bc) / 0.1);
   background: oklch(var(--b1) / 0.98)
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
-      no-repeat right 12px center / 12px 12px;
+    no-repeat right 12px center / 12px 12px;
   color: oklch(var(--bc));
   appearance: none;
 

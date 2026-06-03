@@ -1,4 +1,5 @@
-import { generateImageByProvider } from "./providers";
+import { createImageExecutor, createImageProviderConfig } from "./providers/executor";
+import { normalizeImageUsage } from "../common/usage";
 import type { ImageGenerationParams, ImageGenerationResult, ImageInputFile, ImageProviderModel } from "./types";
 
 export interface ImageAITurnRequest {
@@ -60,9 +61,22 @@ export function buildImageAIParams(request: ImageAITurnRequest, buildParams?: Bu
 }
 
 export async function generateImage(model: ImageProviderModel, params: ImageGenerationParams): Promise<ImageGenerationResult> {
-  return generateImageByProvider(model, params);
+  const config = createImageProviderConfig(model);
+  if (!config) {
+    return {
+      images: [{ type: "text", data: `Unknown image provider: ${model?.provider || "unknown"}` }],
+      usage: normalizeImageUsage(),
+    };
+  }
+
+  try {
+    const executor = createImageExecutor(config);
+    return await executor.generate(params);
+  } catch (err) {
+    return { images: [{ type: "text", data: String(err) }], usage: normalizeImageUsage() };
+  }
 }
 
 export async function runImageAITurn(request: ImageAITurnRequest, buildParams?: BuildImageGenerationParams): Promise<ImageGenerationResult> {
-  return generateImageByProvider(request.model, buildImageAIParams(request, buildParams));
+  return generateImage(request.model, buildImageAIParams(request, buildParams));
 }

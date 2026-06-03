@@ -150,12 +150,9 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
     }, autosaveDelay);
   }
 
-  watch(
-    [draftModels, draftTemplates],
-    () => {
-      scheduleAutosave();
-    },
-  );
+  watch([draftModels, draftTemplates], () => {
+    scheduleAutosave();
+  });
 
   onBeforeUnmount(() => {
     if (autosaveTimer) window.clearTimeout(autosaveTimer);

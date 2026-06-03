@@ -2,12 +2,7 @@
   <Teleport to="body">
     <Transition name="panel-fade">
       <div v-if="open" class="cqp-backdrop" @click="$emit('close')">
-        <div
-          ref="panelRef"
-          class="cqp-panel"
-          :style="panelStyle"
-          @click.stop
-        >
+        <div ref="panelRef" class="cqp-panel" :style="panelStyle" @click.stop>
           <div class="cqp-panel-header">
             <span class="cqp-panel-title">{{ title }}</span>
             <button class="cqp-panel-close" @click="$emit('close')">&times;</button>
@@ -16,12 +11,7 @@
             <div v-if="questions.length === 0" class="cqp-empty">
               {{ emptyText }}
             </div>
-            <button
-              v-for="(q, i) in questions"
-              :key="q.mid"
-              class="cqp-question-item"
-              @click="onSelect(q.mid)"
-            >
+            <button v-for="(q, i) in questions" :key="q.mid" class="cqp-question-item" @click="onSelect(q.mid)">
               <span class="cqp-question-index">{{ i + 1 }}</span>
               <span class="cqp-question-text">{{ q.text }}</span>
             </button>
@@ -255,7 +245,9 @@ onBeforeUnmount(() => {
   transition: opacity 0.18s ease;
 
   .cqp-panel {
-    transition: transform 0.18s ease, opacity 0.18s ease;
+    transition:
+      transform 0.18s ease,
+      opacity 0.18s ease;
   }
 }
 
