@@ -6,7 +6,7 @@
         <h3>{{ t(isImageModel ? "user.modelCard.imageTitle" : "user.modelCard.chatTitle") }}</h3>
         <p>{{ t(isImageModel ? "user.modelCard.imageSubtitle" : "user.modelCard.chatSubtitle") }}</p>
         <div v-if="isImageModel" class="model-capability-row">
-          <span>OpenAI</span>
+          <span>{{ getProviderLabel(localModel.provider || "OpenAI") }}</span>
           <span>{{ hasImageInputParam ? t("user.modelCard.imageInputEnabled") : t("user.modelCard.imageInputDisabled") }}</span>
         </div>
       </div>
@@ -107,15 +107,20 @@ import { chatDisplayedCapabilityKeys, defaultChatModelEditorState, imageModelPro
 import { dsAlert } from "@/utils";
 import {
   getChatModelCapabilities,
-  imageParamDefs,
   chatProviderUsesField,
   getChatProviderDefinition,
   getChatProviderDefaultBaseURL,
   getChatProvidersForModel,
   getKnownChatProviderDefaultBaseURLs,
+  getImageProviderDefinition,
+  getImageProviderDefaultBaseURL,
+  getImageProvidersForModel,
+  getKnownImageProviderDefaultBaseURLs,
+  imageProviderUsesField,
+  resolveImageParamDefs,
 } from "@/models";
 
-import type { ChatModelConfig, ChatModelEditorState, ImageModelConfig, ImageModelEditorState, ModelConfig, ModelKind } from "@/types";
+import type { ChatModelConfig, ChatModelEditorState, ImageModelConfig, ImageModelEditorState, LooseModelConfig, ModelConfig, ModelKind } from "@/types";
 
 type ModelEditorState = Omit<ChatModelEditorState, "provider"> & {
   provider: ChatModelEditorState["provider"] | ImageModelEditorState["provider"];
@@ -146,9 +151,8 @@ let isSyncingFromProps = false;
 let lastModelSnapshot = "";
 
 const isImageModel = computed(() => props.kind === "image");
-const usesBaseURL = computed(() => chatProviderUsesField(localModel.provider, "baseURL"));
-const hasImageInputParam = computed(() => isImageModel.value && imageParamDefs.some((item) => item.type === "image"));
-const resolvedModelId = computed(() => localModel?.model);
+const usesBaseURL = computed(() => (isImageModel.value ? imageProviderUsesField(localModel.provider, "baseURL") : chatProviderUsesField(localModel.provider, "baseURL")));
+const hasImageInputParam = computed(() => isImageModel.value && resolveImageParamDefs(localModel as LooseModelConfig).some((item) => item.type === "image"));
 
 const modelSuggestionItems = computed(() => {
   const seen = new Set<string>();
@@ -162,7 +166,10 @@ const modelSuggestionItems = computed(() => {
 });
 const availableModelProviderList = computed(() => {
   // Limit providers to combinations that the request builders can route correctly.
-  if (isImageModel.value) return imageModelProviderList;
+  if (isImageModel.value) {
+    const allowedProviders = new Set(getImageProvidersForModel(localModel.model));
+    return imageModelProviderList.filter((item) => allowedProviders.has(item));
+  }
   const allowedProviders = new Set(getChatProvidersForModel(localModel.model));
   return chatProviderKeys.filter((item) => allowedProviders.has(item));
 });
@@ -198,21 +205,21 @@ function getProviderValue(item: ProviderSuggestion): ModelEditorState["provider"
 }
 
 function getProviderLabel(item: string): string {
-  return getChatProviderDefinition(item)?.name || item;
+  return (isImageModel.value ? getImageProviderDefinition(item)?.name : getChatProviderDefinition(item)?.name) || item;
 }
 
 function syncProviderBaseURL(provider = "", force = false) {
   // Auto-fill defaults only while the user has not customized the base URL.
-  if ((!force && isSyncingFromProps) || isImageModel.value) return;
-  const knownDefaults = getKnownChatProviderDefaultBaseURLs();
-  const nextDefault = getChatProviderDefaultBaseURL(provider);
+  if (!force && isSyncingFromProps) return;
+  const knownDefaults = isImageModel.value ? getKnownImageProviderDefaultBaseURLs() : getKnownChatProviderDefaultBaseURLs();
+  const nextDefault = isImageModel.value ? getImageProviderDefaultBaseURL(provider) : getChatProviderDefaultBaseURL(provider);
   const shouldReplace = !localModel.baseURL || knownDefaults.includes(localModel.baseURL);
   if (shouldReplace) localModel.baseURL = nextDefault;
 }
 
 function syncProviderForModel(force = false) {
   // Keep provider valid for the selected catalog model.
-  if ((!force && isSyncingFromProps) || isImageModel.value) return;
+  if (!force && isSyncingFromProps) return;
   if (!availableModelProviderList.value.some((item) => getProviderValue(item) === localModel.provider)) {
     localModel.provider = getProviderValue(availableModelProviderList.value[0] || "");
   }
@@ -228,10 +235,7 @@ function normalizeModelDraft(source: ModelEditorState = localModel): ModelEditor
     model: String(source.model || "").trim(),
   };
   if (isImageModel.value) {
-    return {
-      ...next,
-      provider: "OpenAI",
-    };
+    return next;
   }
   return next;
 }
@@ -251,7 +255,7 @@ function buildImageModelPayload(draft: ModelEditorState): ImageModelConfig {
     name: draft.name,
     apiKey: draft.apiKey,
     model: draft.model,
-    provider: "OpenAI",
+    provider: (draft.provider || "OpenAI") as ImageModelConfig["provider"],
     baseURL: draft.baseURL,
   };
 }

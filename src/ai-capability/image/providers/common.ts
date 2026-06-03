@@ -13,7 +13,7 @@ export const IMAGE_OPERATION_ENDPOINT = {
 const INVALID_IMAGE_RESPONSE_MESSAGE = "Invalid image response.";
 const EMPTY_IMAGE_RESPONSE_ITEM_MESSAGE = "Empty image response item.";
 
-const RESERVED_IMAGE_PARAM_KEYS = ["prompt", "size", "n", "quality", "outputFormat"];
+const RESERVED_IMAGE_PARAM_KEYS = ["prompt", "size", "n", "quality", "outputFormat", "attachments"];
 
 export function trimTrailingSlash(value: string = ""): string {
   return String(value || "").replace(/\/+$/, "");

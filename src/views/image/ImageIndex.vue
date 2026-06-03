@@ -94,7 +94,7 @@
             </select>
 
             <select v-model="size" class="image-size-select" :disabled="isCurrentConversationSubmitting">
-              <option v-for="item in imageModelSize" :key="item" :value="item">
+              <option v-for="item in selectedModelSizes" :key="item" :value="item">
                 {{ item }}
               </option>
             </select>
@@ -127,7 +127,7 @@ import ImageEditDialog from "@/views/image/ImageEditDialog.vue";
 import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import attachIcon from "@/assets/svg/attach24.svg";
 import navImageIcon from "@/assets/svg/navImage24.svg";
-import { imageModelSize } from "@/constants";
+import { getImageModelSizes } from "@/models";
 import { addImageConversation, getImageConversationMessages, submitImageMessage } from "@/services/creation";
 import { dsAlert, getUuid, saveToLocal } from "@/utils";
 import type { ImageConversationMessage, ImageInputAttachment, ImagePayload, ImageModelConfig } from "@/types";
@@ -160,6 +160,7 @@ const runtimeTick = ref(Date.now());
 const mode = computed(() => (attachments.value.length > 0 ? "edit" : "generation"));
 const availableModels = computed<ImageModelConfig[]>(() => store.state.models.image || []);
 const selectedModel = computed<ImageModelConfig | null>(() => availableModels.value[selectedModelIndex.value] || null);
+const selectedModelSizes = computed(() => getImageModelSizes(selectedModel.value));
 const isCurrentConversationSubmitting = computed(() => Boolean(activeImageRuntime.value?.pending || activeImageRuntime.value?.status === "loading"));
 const isSendDisabled = computed(() => isCurrentConversationSubmitting.value || !prompt.value.trim() || !selectedModel.value);
 
@@ -408,6 +409,16 @@ watch(
     }
     if (selectedModelIndex.value < 0 || selectedModelIndex.value >= models.length) {
       selectedModelIndex.value = 0;
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  selectedModelSizes,
+  (sizes) => {
+    if (!sizes.includes(size.value)) {
+      size.value = sizes[0] || "1024x1024";
     }
   },
   { immediate: true },

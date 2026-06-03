@@ -27,7 +27,7 @@
       <div class="setting-block">
         <span class="setting-label">{{ t("image.size") }}</span>
         <select class="setting-select" :value="settings.size" @change="updateSetting('size', $event.target.value)">
-          <option v-for="imsz in imageModelSize" :key="imsz" :value="imsz">
+          <option v-for="imsz in resolvedImageModelSize" :key="imsz" :value="imsz">
             {{ imsz }}
           </option>
         </select>
@@ -36,7 +36,7 @@
 
     <div class="ratio-grid">
       <button
-        v-for="option in imageModelSize"
+        v-for="option in resolvedImageModelSize"
         :key="option"
         type="button"
         class="ratio-card"
@@ -64,6 +64,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  imageModelSize: {
+    type: Array,
+    default: () => imageModelSize,
+  },
   mode: {
     type: String,
     default: "generation",
@@ -74,6 +78,7 @@ const emit = defineEmits(["update:settings"]);
 const { t } = useI18n();
 
 const selectedModelIndex = computed(() => props.imageModels.indexOf(props.settings.model));
+const resolvedImageModelSize = computed(() => (props.imageModelSize?.length ? props.imageModelSize : imageModelSize));
 
 const updateSetting = (key, value) => {
   emit("update:settings", { ...props.settings, [key]: value });
@@ -86,15 +91,43 @@ const onModelChange = (event) => {
 
 const sizeAlias = (value) => {
   if (value === "1024x1024") return "1:1";
-  if (value === "1024x1792") return "4:7";
-  if (value === "1792x1024") return "7:4";
+  const ratio = getSizeRatio(value);
+  if (ratio) return ratio;
   return value;
 };
 
 const sizeShapeClass = (value) => {
-  if (value === "1024x1792") return "portrait";
-  if (value === "1792x1024") return "landscape";
+  const dimensions = parseSize(value);
+  if (dimensions && dimensions.width < dimensions.height) return "portrait";
+  if (dimensions && dimensions.width > dimensions.height) return "landscape";
   return "square";
+};
+
+const parseSize = (value) => {
+  const match = String(value || "").match(/^(\d+)[x*](\d+)$/);
+  if (!match) return null;
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+  return { width, height };
+};
+
+const greatestCommonDivisor = (a, b) => {
+  let x = Math.abs(a);
+  let y = Math.abs(b);
+  while (y) {
+    const next = y;
+    y = x % y;
+    x = next;
+  }
+  return x || 1;
+};
+
+const getSizeRatio = (value) => {
+  const dimensions = parseSize(value);
+  if (!dimensions) return "";
+  const divisor = greatestCommonDivisor(dimensions.width, dimensions.height);
+  return `${dimensions.width / divisor}:${dimensions.height / divisor}`;
 };
 </script>
 

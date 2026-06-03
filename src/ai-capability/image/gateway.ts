@@ -38,6 +38,7 @@ export function getImageAttachmentParams(mode: ImageAITurnRequest["mode"], attac
 
 export function buildImageAIParams(request: ImageAITurnRequest, buildParams?: BuildImageGenerationParams): ImageGenerationParams {
   const settings = {
+    model: request.model,
     prompt: request.prompt,
     size: request.size || "1024x1024",
     n: request.n || 1,
@@ -54,6 +55,7 @@ export function buildImageAIParams(request: ImageAITurnRequest, buildParams?: Bu
     n: request.n || 1,
     quality: request.quality || String(baseParams.quality || "auto"),
     outputFormat: request.outputFormat || String(baseParams.output_format || "png"),
+    attachments: request.attachments || [],
   } as ImageGenerationParams;
 }
 

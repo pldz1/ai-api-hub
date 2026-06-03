@@ -1,6 +1,15 @@
 import type { ImageModelConfig, ImageModelSettings, ImageModelParamDef, LooseModelConfig } from "@/types";
 import { imageParamPresetList } from "@/constants/image-model";
 import { parseParamValue } from "./settings";
+import {
+  findImageModelCatalogItem,
+  imageProviderKeys,
+  isImageModelProvider,
+  imageProviderUsesField,
+  getImageProviderDefinition,
+  getImageProviderDefaultBaseURL,
+  getKnownImageProviderDefaultBaseURLs,
+} from "@/ai-capability/image";
 
 const defaultImageModelSettings = {
   model: null,
@@ -25,14 +34,15 @@ function getImageParamPreset(key = ""): Partial<ImageModelParamDef> | null {
  */
 export function normalizeImageModelConfig(model: LooseModelConfig | null | undefined = {}): ImageModelConfig {
   const data = model || {};
-  const modelId = data.model;
+  const provider = String(data.provider || "") === "Qwen" ? "DashScope" : data.provider;
+  const nextProvider = isImageModelProvider(provider) ? provider : "OpenAI";
 
   return {
     name: String(data.name || "").trim(),
-    provider: "OpenAI",
+    provider: nextProvider,
     baseURL: String(data.baseURL || "").trim(),
     apiKey: String(data.apiKey || "").trim(),
-    model: modelId,
+    model: String(data.model || "").trim(),
   };
 }
 
@@ -57,7 +67,36 @@ export function normalizeImageParamDef(def: Partial<ImageModelParamDef> = {}): I
   };
 }
 
+const normalizedImageParamDefs = new Map(imageParamPresetList.map((item) => [item.key, normalizeImageParamDef(item)] as const));
+
+export function getImageProvidersForModel(model = "") {
+  const catalogItem = findImageModelCatalogItem(model);
+  if (!catalogItem) return imageProviderKeys;
+  return catalogItem.providers.map((itemProvider) => itemProvider.provider);
+}
+
+export function resolveImageParamDefs(model: LooseModelConfig | null = null): ImageModelParamDef[] {
+  const modelConfig = normalizeImageModelConfig(model || {});
+  const catalogItem = findImageModelCatalogItem(modelConfig.model, modelConfig.provider);
+  const paramKeys = catalogItem?.imageParamKeys || ["quality", "output_format", "image", "mask"];
+  return paramKeys.map((key) => normalizedImageParamDefs.get(key)).filter(Boolean) as ImageModelParamDef[];
+}
+
 export const imageParamDefs: ImageModelParamDef[] = ["quality", "output_format", "image", "mask"].map((key) => normalizeImageParamDef({ key }));
+
+export function getImageModelSizes(model: LooseModelConfig | null = null): string[] {
+  const modelConfig = normalizeImageModelConfig(model || {});
+  return findImageModelCatalogItem(modelConfig.model, modelConfig.provider)?.sizeList || [
+    "1024x1024",
+    "1536x1024",
+    "1024x1536",
+    "2048x2048",
+    "2048x1152",
+    "3840x2160",
+    "2160x3840",
+    "auto",
+  ];
+}
 
 function mergeResolvedImageSettings(defs: ImageModelParamDef[], settings: Partial<ImageModelSettings> = {}): ImageModelSettings {
   const mergedSettings: ImageModelSettings = {
@@ -87,7 +126,7 @@ function mergeResolvedImageSettings(defs: ImageModelParamDef[], settings: Partia
  * Merges saved image settings with defaults derived from the active image model.
  */
 export function mergeImageSettingsWithModel(settings: Partial<ImageModelSettings> = {}): ImageModelSettings {
-  return mergeResolvedImageSettings(imageParamDefs, settings);
+  return mergeResolvedImageSettings(resolveImageParamDefs(settings.model as LooseModelConfig | null), settings);
 }
 
 /**
@@ -97,10 +136,11 @@ export function mergeImageSettingsWithModel(settings: Partial<ImageModelSettings
  * body fields.
  */
 export function buildImageGenerationParams(settings: Partial<ImageModelSettings> = {}): Record<string, unknown> {
-  const mergedSettings = mergeResolvedImageSettings(imageParamDefs, settings);
+  const defs = resolveImageParamDefs(settings.model as LooseModelConfig | null);
+  const mergedSettings = mergeResolvedImageSettings(defs, settings);
   const params: Record<string, unknown> = {};
 
-  imageParamDefs.forEach((item) => {
+  defs.forEach((item) => {
     const value = parseParamValue(item.type, mergedSettings[item.key], structuredClone(item.defaultValue));
     if (value === undefined || value === null) return;
     if (item.type === "string" && value === "") return;
@@ -112,3 +152,5 @@ export function buildImageGenerationParams(settings: Partial<ImageModelSettings>
 
   return params;
 }
+
+export { getImageProviderDefinition, getImageProviderDefaultBaseURL, getKnownImageProviderDefaultBaseURLs, imageProviderUsesField, isImageModelProvider };

@@ -1,7 +1,13 @@
 <template>
   <div class="image-studio" ref="dsAlertContainer">
     <div class="image-studio-main">
-      <ImageSettingsPanel :mode="mode" :settings="imageModelSettings" :image-models="imageModels" @update:settings="updateImageSettings" />
+      <ImageSettingsPanel
+        :mode="mode"
+        :settings="imageModelSettings"
+        :image-models="imageModels"
+        :image-model-size="activeImageModelSize"
+        @update:settings="updateImageSettings"
+      />
 
       <ImagePreviewPanel
         ref="previewPanelRef"
@@ -45,7 +51,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useStore } from "vuex";
 import { useI18n } from "vue-i18n";
-import { buildImageGenerationParams, imageParamDefs, mergeImageSettingsWithModel } from "@/models";
+import { buildImageGenerationParams, getImageModelSizes, mergeImageSettingsWithModel, resolveImageParamDefs } from "@/models";
 import { deleteImage, generateImage, getImageList, pushImage } from "@/services";
 import { copyToClipboard, dsAlert, saveToLocal } from "@/utils";
 import ImagePreviewPanel from "@/views/image/ImagePreviewPanel.vue";
@@ -72,6 +78,8 @@ const imageModels = computed(() => store.state.models.image || []);
 const imageList = computed(() => store.state.imageList);
 const getImageId = (item) => String(item?.id ?? "");
 const selectedImage = computed(() => imageList.value.find((item) => getImageId(item) === selectedImageId.value) || null);
+const activeImageParamDefs = computed(() => resolveImageParamDefs(imageModelSettings.value.model));
+const activeImageModelSize = computed(() => getImageModelSizes(imageModelSettings.value.model));
 const promptLength = computed(() => imageModelSettings.value.prompt.trim().length);
 const isEditMode = computed(() => props.mode === "edit");
 const generationStatusLabel = computed(() => {
@@ -79,9 +87,12 @@ const generationStatusLabel = computed(() => {
   return isEditMode.value ? t("image.editReady") : t("image.ready");
 });
 const promptImageParamKey = computed(
-  () => imageParamDefs.find((item) => item.type === "image" && item.key === "image")?.key || imageParamDefs.find((item) => item.type === "image")?.key || "",
+  () =>
+    activeImageParamDefs.value.find((item) => item.type === "image" && item.key === "image")?.key ||
+    activeImageParamDefs.value.find((item) => item.type === "image")?.key ||
+    "",
 );
-const maskImageParamKey = computed(() => imageParamDefs.find((item) => item.type === "image" && item.key === "mask")?.key || "");
+const maskImageParamKey = computed(() => activeImageParamDefs.value.find((item) => item.type === "image" && item.key === "mask")?.key || "");
 const workspaceImageParamKey = computed(() => (isEditMode.value ? promptImageParamKey.value : ""));
 const promptInputImage = computed(() => {
   const key = workspaceImageParamKey.value;
@@ -237,7 +248,7 @@ const onSendImg = async () => {
   try {
     const generationParams = buildImageGenerationParams(imageModelSettings.value);
     if (!isEditMode.value) {
-      imageParamDefs
+      activeImageParamDefs.value
         .filter((item) => item.type === "image")
         .forEach((item) => {
           delete generationParams[item.key];
@@ -333,6 +344,19 @@ watch(
     const prompt = imageModelSettings.value.prompt || "";
     imageModelSettings.value = mergeImageSettingsWithModel({ model, prompt });
   },
+);
+
+watch(
+  activeImageModelSize,
+  (sizes) => {
+    if (!sizes.includes(imageModelSettings.value.size)) {
+      imageModelSettings.value = mergeImageSettingsWithModel({
+        ...imageModelSettings.value,
+        size: sizes[0] || "1024x1024",
+      });
+    }
+  },
+  { immediate: true },
 );
 
 onMounted(async () => {

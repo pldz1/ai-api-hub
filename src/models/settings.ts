@@ -23,7 +23,7 @@ function sanitizeImageModelConfig(model: LooseModelConfig | ImageModelConfig): I
   const modelConfig = normalizeImageModelConfig(model as LooseModelConfig);
   return {
     name: modelConfig.name,
-    provider: "OpenAI",
+    provider: modelConfig.provider,
     apiKey: modelConfig.apiKey,
     model: modelConfig.model,
     baseURL: modelConfig.baseURL,
@@ -69,7 +69,7 @@ function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConf
   const modelConfig = normalizeImageModelConfig(model as LooseModelConfig);
   return {
     name: modelConfig.name,
-    provider: "OpenAI",
+    provider: modelConfig.provider,
     apiKey: modelConfig.apiKey,
     model: modelConfig.model,
     baseURL: modelConfig.baseURL,

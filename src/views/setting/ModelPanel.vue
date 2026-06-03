@@ -74,6 +74,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import ModelEditor from "./ModelEditor.vue";
 import { chatModelTypeList, imageModelTypeList } from "@/constants";
+import { getImageProviderDefaultBaseURL } from "@/models";
 import { append4Random } from "@/utils";
 import type { ChatModelConfig, ImageModelConfig, ModelConfig, ModelKind } from "@/types";
 
@@ -124,9 +125,9 @@ function addModel() {
     ? ({
         name: append4Random(t("user.imageModels.defaultName")),
         provider: "OpenAI",
-        baseURL: "https://api.openai.com/v1",
+        baseURL: getImageProviderDefaultBaseURL("OpenAI"),
         apiKey: "",
-        model: "",
+        model: "gpt-image-2",
       } as ImageModelConfig)
     : ({
         name: append4Random(t("user.chatModels.defaultName")),

@@ -1,27 +1,62 @@
 import type { TokenUsage } from "../common";
 
 // ============================================================================
-// Provider identity
+// Provider runtime config (derived from user-owned model config)
 // ============================================================================
 
-export type ImageModelProvider = "OpenAI";
+export type ImageProviderRoute = "openai" | "dashscope";
+export type ImageProviderConnectionField = "baseURL";
+
+export interface ImageProviderDefinition {
+  name: string;
+  route: ImageProviderRoute;
+  connectionFields: readonly ImageProviderConnectionField[];
+  defaultBaseURL?: string;
+}
+
+const imageProviderRegistryConfig = {
+  OpenAI: {
+    name: "OpenAI",
+    route: "openai",
+    connectionFields: ["baseURL"],
+    defaultBaseURL: "https://api.openai.com/v1",
+  },
+  DashScope: {
+    name: "DashScope",
+    route: "dashscope",
+    connectionFields: ["baseURL"],
+    defaultBaseURL: "https://<workspace-id>.ap-southeast-1.maas.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+  },
+} as const satisfies Record<string, ImageProviderDefinition>;
+
+export type ImageProviderKey = keyof typeof imageProviderRegistryConfig;
+
+export const imageProviderRegistry: Record<ImageProviderKey, ImageProviderDefinition> = imageProviderRegistryConfig;
+
+export const imageProviderKeys = Object.keys(imageProviderRegistry) as ImageProviderKey[];
+
+// ============================================================================
+// Core identity
+// ============================================================================
+
+export type ImageModelProvider = ImageProviderKey;
+
+export interface ImageModelCapabilities {
+  imageInput: boolean;
+  maskInput: boolean;
+}
 
 // ============================================================================
 // User-owned model config consumed by image services
 // ============================================================================
 
-export interface ImageModelConfigBase {
+export interface ImageModelConfig {
   name: string;
+  provider: ImageModelProvider;
+  baseURL: string;
   apiKey: string;
   model: string;
 }
-
-export interface OpenAIImageModelConfig extends ImageModelConfigBase {
-  provider: "OpenAI";
-  baseURL: string;
-}
-
-export type ImageModelConfig = OpenAIImageModelConfig;
 
 // ============================================================================
 // Image file input
@@ -50,6 +85,7 @@ export interface ImageGenerationParams {
   n?: number;
   quality?: string;
   outputFormat?: string;
+  attachments?: ImageInputFile[];
   [key: string]: ImageParamValue;
 }
 
