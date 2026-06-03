@@ -15,6 +15,7 @@
         <RightView>
           <ChatIndex v-if="routeName === 'chat'" />
           <ImageIndex v-else-if="routeName === 'image'" />
+          <VideoIndex v-else-if="routeName === 'video'" />
           <SettingIndex v-else-if="routeName === 'settings'" :active-tab="settingsActiveTab" />
 
           <template #footer>
@@ -35,6 +36,7 @@ import AppFooter from "@/components/AppFooter.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import ChatIndex from "./chat/ChatIndex.vue";
 import ImageIndex from "./image/ImageIndex.vue";
+import VideoIndex from "./video/VideoIndex.vue";
 import SettingIndex from "./setting/SettingIndex.vue";
 type SettingTabKey_M = "chat-templates" | "chat-models" | "image-models" | "app";
 

@@ -3,3 +3,4 @@ export * from "./sse-client";
 export * from "./usage";
 export * from "./chat-client";
 export * from "./image-client";
+export * from "./video-client";

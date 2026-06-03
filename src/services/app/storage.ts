@@ -1,13 +1,32 @@
 import { tr } from "@/i18n";
-import type { ApiMethod, ApiResponse, RequestBody, StoredChatMessage, ChatListItem, ImageConversationListItem, ImageDataItem, ModelSettings } from "@/types";
+import type {
+  ApiMethod,
+  ApiResponse,
+  RequestBody,
+  StoredChatMessage,
+  ChatListItem,
+  ImageConversationListItem,
+  ImageDataItem,
+  ModelSettings,
+  VideoConversationListItem,
+  VideoDataItem,
+} from "@/types";
 
 const STORAGE_KEY = "ai-api-hub.local-storage.v2";
 const IMAGE_DB_NAME = "ai-api-hub-images";
 const IMAGE_STORE_NAME = "images";
+const VIDEO_DB_NAME = "ai-api-hub-videos";
+const VIDEO_STORE_NAME = "videos";
 
 interface StoredImageConversation {
   iid: string;
   iname: string;
+  messages: string;
+}
+
+interface StoredVideoConversation {
+  vid: string;
+  vname: string;
   messages: string;
 }
 
@@ -22,12 +41,19 @@ interface StoredImageRecord {
   src?: string;
 }
 
+interface StoredVideoRecord {
+  id: string;
+  prompt: string;
+}
+
 interface LocalStorageState {
   models: ModelSettings;
   chatInsTemplateList: string;
   chats: StoredChatState[];
   images: StoredImageRecord[];
   imageConversations: StoredImageConversation[];
+  videos: StoredVideoRecord[];
+  videoConversations: StoredVideoConversation[];
 }
 
 type LocalRouteHandler = (body: RequestBody) => Promise<ApiResponse>;
@@ -42,6 +68,7 @@ function createDefaultModels(): ModelSettings {
   return {
     chat: [],
     image: [],
+    video: [],
   };
 }
 
@@ -52,6 +79,8 @@ function createDefaultState(): LocalStorageState {
     chats: [],
     images: [],
     imageConversations: [],
+    videos: [],
+    videoConversations: [],
   };
 }
 
@@ -267,6 +296,93 @@ export async function urlToDataUrl(url: string): Promise<string> {
     reader.onerror = () => reject(new Error(tr("storage.imageDataUrlFailed")));
     reader.readAsDataURL(blob);
   });
+}
+
+// -- video IndexedDB -------------------------------------------------------
+
+function openVideoDatabase(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (typeof indexedDB === "undefined") {
+      reject(new Error("IndexedDB is not available in this environment."));
+      return;
+    }
+
+    const request = indexedDB.open(VIDEO_DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(VIDEO_STORE_NAME)) {
+        db.createObjectStore(VIDEO_STORE_NAME);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("Failed to open the video database."));
+  });
+}
+
+async function withVideoStore<T>(mode: IDBTransactionMode, callback: (store: IDBObjectStore) => Promise<T>): Promise<T> {
+  const db = await openVideoDatabase();
+
+  try {
+    const transaction = db.transaction(VIDEO_STORE_NAME, mode);
+    const store = transaction.objectStore(VIDEO_STORE_NAME);
+    const transactionDone = new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error || new Error("Video storage transaction failed."));
+      transaction.onabort = () => reject(transaction.error || new Error("Video storage transaction was aborted."));
+    });
+    const result = await callback(store);
+    await transactionDone;
+
+    return result;
+  } finally {
+    db.close();
+  }
+}
+
+async function setVideoSource(videoId: string, src: string): Promise<void> {
+  await withVideoStore("readwrite", async (store) => {
+    await requestToPromise(store.put(src, videoId));
+  });
+}
+
+async function getVideoSource(videoId: string): Promise<string> {
+  const result = await withVideoStore("readonly", async (store) => {
+    return (await requestToPromise(store.get(videoId))) || "";
+  });
+  return typeof result === "string" ? result : "";
+}
+
+async function deleteVideoSource(videoId: string): Promise<void> {
+  await withVideoStore("readwrite", async (store) => {
+    await requestToPromise(store.delete(videoId));
+  });
+}
+
+function findVideoConversation(state: LocalStorageState, vid: string): StoredVideoConversation | null {
+  return state.videoConversations.find((item) => item.vid === vid) || null;
+}
+
+type StoredVideoSourceMap = Map<string, string>;
+
+async function readStoredVideoSources(videoIds: string[] = []): Promise<StoredVideoSourceMap> {
+  const entries = await Promise.all(
+    videoIds.map(async (id) => {
+      const src = await getVideoSource(id);
+      return [id, src] as const;
+    }),
+  );
+  return new Map(entries);
+}
+
+function normalizeStoredVideoRecords(items: unknown[] = []): StoredVideoRecord[] {
+  const records: Array<StoredVideoRecord | null> = (Array.isArray(items) ? items : []).map((item) => {
+    const record = item && typeof item === "object" ? (item as StoredVideoRecord) : null;
+    const id = asString(record?.id);
+    if (!id) return null;
+    return { id, prompt: asString(record?.prompt) };
+  });
+
+  return records.filter((item): item is StoredVideoRecord => Boolean(item));
 }
 
 async function handleGetModels(): Promise<ApiResponse<ModelSettings>> {
@@ -494,6 +610,98 @@ async function handleSetImageConversationMessages(body: RequestBody): Promise<Ap
   return ok(null);
 }
 
+// -- video handlers --------------------------------------------------------
+
+async function handleGetVideoList(): Promise<ApiResponse<VideoDataItem[]>> {
+  const state = readStorageState();
+  const videoRecords = normalizeStoredVideoRecords(state.videos);
+  const videoSourceMap = await readStoredVideoSources(videoRecords.map((item) => item.id));
+
+  return ok(
+    videoRecords.map((item) => ({
+      id: item.id,
+      prompt: item.prompt,
+      src: videoSourceMap.get(item.id) || "",
+    })),
+  );
+}
+
+async function handlePushVideo(body: RequestBody): Promise<ApiResponse<VideoDataItem>> {
+  const state = readStorageState();
+  const videoId = asString(body.video_id);
+  const prompt = asString(body.video_prompt);
+  if (!videoId) return fail("Video id is required.");
+  const src = await urlToDataUrl(asString(body.video_url));
+
+  await setVideoSource(videoId, src);
+
+  const video: VideoDataItem = { id: videoId, prompt, src };
+  const nextRecord = { id: videoId, prompt };
+  const videoRecords = normalizeStoredVideoRecords(state.videos);
+  const index = videoRecords.findIndex((item) => item.id === videoId);
+  if (index >= 0) videoRecords[index] = nextRecord;
+  else videoRecords.push(nextRecord);
+
+  state.videos = videoRecords;
+  writeStorageState(state);
+  return ok(video);
+}
+
+async function handleDeleteVideo(body: RequestBody): Promise<ApiResponse<null>> {
+  const state = readStorageState();
+  const videoId = asString(body.video_id);
+  if (!videoId) return fail("Video id is required.");
+  await deleteVideoSource(videoId);
+  state.videos = state.videos.filter((item) => item.id !== videoId);
+  writeStorageState(state);
+  return ok(null);
+}
+
+async function handleGetVideoConversationList(): Promise<ApiResponse<VideoConversationListItem[]>> {
+  const state = readStorageState();
+  return ok(state.videoConversations.map(({ vid, vname }) => ({ vid, vname })));
+}
+
+async function handleAddVideoConversation(body: RequestBody): Promise<ApiResponse<null>> {
+  const state = readStorageState();
+  const vid = asString(body.vid);
+  const vname = asString(body.vname);
+  if (!vid) return fail("Video conversation id is required.");
+
+  if (!findVideoConversation(state, vid)) {
+    state.videoConversations.push({ vid, vname, messages: "[]" });
+    writeStorageState(state);
+  }
+
+  return ok(null);
+}
+
+async function handleDeleteVideoConversation(body: RequestBody): Promise<ApiResponse<null>> {
+  const state = readStorageState();
+  const vid = asString(body.vid);
+  if (!vid) return fail("Video conversation id is required.");
+  state.videoConversations = state.videoConversations.filter((item) => item.vid !== vid);
+  writeStorageState(state);
+  return ok(null);
+}
+
+async function handleGetVideoConversationMessages(body: RequestBody): Promise<ApiResponse<string>> {
+  const state = readStorageState();
+  const vid = asString(body.vid);
+  if (!vid) return fail("Video conversation id is required.");
+  return ok(findVideoConversation(state, vid)?.messages || "[]");
+}
+
+async function handleSetVideoConversationMessages(body: RequestBody): Promise<ApiResponse<null>> {
+  const state = readStorageState();
+  const vid = asString(body.vid);
+  const conversation = findVideoConversation(state, vid);
+  if (!conversation) return fail("Video conversation not found.");
+  conversation.messages = asString(body.messages, "[]");
+  writeStorageState(state);
+  return ok(null);
+}
+
 const ROUTES: Record<string, LocalRouteHandler> = {
   "/_api/workspace/getModels": handleGetModels,
   "/_api/workspace/setModels": handleSetModels,
@@ -516,6 +724,14 @@ const ROUTES: Record<string, LocalRouteHandler> = {
   "/_api/image/deleteConversation": handleDeleteImageConversation,
   "/_api/image/getConversationMessages": handleGetImageConversationMessages,
   "/_api/image/setConversationMessages": handleSetImageConversationMessages,
+  "/_api/video/getVideoList": handleGetVideoList,
+  "/_api/video/pushVideo": handlePushVideo,
+  "/_api/video/deleteVideo": handleDeleteVideo,
+  "/_api/video/getConversationList": handleGetVideoConversationList,
+  "/_api/video/addConversation": handleAddVideoConversation,
+  "/_api/video/deleteConversation": handleDeleteVideoConversation,
+  "/_api/video/getConversationMessages": handleGetVideoConversationMessages,
+  "/_api/video/setConversationMessages": handleSetVideoConversationMessages,
 };
 
 export async function requestStorage<TData = unknown>(endpoint: string, body: RequestBody = {}): Promise<ApiResponse<TData>> {

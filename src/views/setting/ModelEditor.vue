@@ -1,5 +1,5 @@
 <template>
-  <div class="model-form-card" :class="{ 'image-model-form': isImageModel }">
+  <div class="model-form-card" :class="{ 'image-model-form': isImageModel || isVideoModel }">
     <!-- Connection and request routing fields -->
     <section class="model-form-section model-connection-section">
       <div class="model-form-grid">
@@ -27,9 +27,9 @@
 
         <!-- OpenAI-style base URL -->
         <label v-if="usesBaseURL" class="model-form-field model-form-field-span">
-          <span>{{ isImageModel ? t("user.modelCard.fields.imageUrl") : t("user.modelCard.fields.baseUrl") }}</span>
+          <span>{{ isImageModel || isVideoModel ? t("user.modelCard.fields.imageUrl") : t("user.modelCard.fields.baseUrl") }}</span>
           <input v-model.trim="localModel.baseURL" type="text" class="input input-bordered w-full" />
-          <small v-if="isImageModel">{{ t("user.modelCard.imageBaseUrlHelp") }}</small>
+          <small v-if="isImageModel || isVideoModel">{{ t("user.modelCard.imageBaseUrlHelp") }}</small>
         </label>
 
         <!-- Secret entry with a copy helper -->
@@ -46,7 +46,7 @@
     </section>
 
     <!-- Chat model capability preview -->
-    <section v-if="!isImageModel" class="model-form-section">
+    <section v-if="!isImageModel && !isVideoModel" class="model-form-section">
       <div class="model-section-head">
         <h4>{{ t("user.modelCard.capabilitiesTitle") }}</h4>
         <p>{{ t("user.modelCard.capabilitiesDescription") }}</p>
@@ -71,9 +71,11 @@ import {
   chatDisplayedCapabilityKeys,
   defaultChatModelEditorState,
   imageModelProviderList,
+  videoModelProviderList,
   chatProviderKeys,
   chatModelTypeList,
   imageModelTypeList,
+  videoModelTypeList,
 } from "@/constants";
 import { dsAlert } from "@/utils";
 import {
@@ -88,9 +90,22 @@ import {
   getImageProvidersForModel,
   getKnownImageProviderDefaultBaseURLs,
   imageProviderUsesField,
+  getVideoProviderDefinition,
+  getVideoProviderDefaultBaseURL,
+  getVideoProvidersForModel,
+  getKnownVideoProviderDefaultBaseURLs,
+  videoProviderUsesField,
 } from "@/models";
 
-import type { ChatModelConfig, ChatModelEditorState, ImageModelConfig, ImageModelEditorState, ModelConfig, ModelKind } from "@/types";
+import type {
+  ChatModelConfig,
+  ChatModelEditorState,
+  ImageModelConfig,
+  ImageModelEditorState,
+  VideoModelConfig,
+  ModelConfig,
+  ModelKind,
+} from "@/types";
 
 type ModelEditorState = Omit<ChatModelEditorState, "provider"> & {
   provider: ChatModelEditorState["provider"] | ImageModelEditorState["provider"];
@@ -120,11 +135,16 @@ let isSyncingFromProps = false;
 let lastModelSnapshot = "";
 
 const isImageModel = computed(() => props.kind === "image");
+const isVideoModel = computed(() => props.kind === "video");
 const usesBaseURL = computed(() =>
-  isImageModel.value ? imageProviderUsesField(localModel.provider, "baseURL") : chatProviderUsesField(localModel.provider, "baseURL"),
+  isVideoModel.value
+    ? videoProviderUsesField(localModel.provider, "baseURL")
+    : isImageModel.value
+    ? imageProviderUsesField(localModel.provider, "baseURL")
+    : chatProviderUsesField(localModel.provider, "baseURL"),
 );
 const availableModelOptions = computed(() => {
-  const catalog = isImageModel.value ? imageModelTypeList : chatModelTypeList;
+  const catalog = isVideoModel.value ? videoModelTypeList : isImageModel.value ? imageModelTypeList : chatModelTypeList;
   const options = catalog.map((item) => item.name);
   const currentModel = String(localModel.model || "").trim();
 
@@ -137,6 +157,10 @@ const availableModelOptions = computed(() => {
 
 const availableModelProviderList = computed(() => {
   // Limit providers to combinations that the request builders can route correctly.
+  if (isVideoModel.value) {
+    const allowedProviders = new Set(getVideoProvidersForModel(localModel.model));
+    return videoModelProviderList.filter((item) => allowedProviders.has(item));
+  }
   if (isImageModel.value) {
     const allowedProviders = new Set(getImageProvidersForModel(localModel.model));
     return imageModelProviderList.filter((item) => allowedProviders.has(item));
@@ -168,14 +192,23 @@ function getProviderValue(item: ProviderSuggestion): ModelEditorState["provider"
 }
 
 function getProviderLabel(item: string): string {
+  if (isVideoModel.value) return getVideoProviderDefinition(item)?.name || item;
   return (isImageModel.value ? getImageProviderDefinition(item)?.name : getChatProviderDefinition(item)?.name) || item;
 }
 
 function syncProviderBaseURL(provider = "", force = false) {
   // Auto-fill defaults only while the user has not customized the base URL.
   if (!force && isSyncingFromProps) return;
-  const knownDefaults = isImageModel.value ? getKnownImageProviderDefaultBaseURLs() : getKnownChatProviderDefaultBaseURLs();
-  const nextDefault = isImageModel.value ? getImageProviderDefaultBaseURL(provider) : getChatProviderDefaultBaseURL(provider);
+  const knownDefaults = isVideoModel.value
+    ? getKnownVideoProviderDefaultBaseURLs()
+    : isImageModel.value
+    ? getKnownImageProviderDefaultBaseURLs()
+    : getKnownChatProviderDefaultBaseURLs();
+  const nextDefault = isVideoModel.value
+    ? getVideoProviderDefaultBaseURL(provider)
+    : isImageModel.value
+    ? getImageProviderDefaultBaseURL(provider)
+    : getChatProviderDefaultBaseURL(provider);
   const shouldReplace = !localModel.baseURL || knownDefaults.includes(localModel.baseURL);
   if (shouldReplace) localModel.baseURL = nextDefault;
 }
@@ -223,8 +256,19 @@ function buildImageModelPayload(draft: ModelEditorState): ImageModelConfig {
   };
 }
 
+function buildVideoModelPayload(draft: ModelEditorState): VideoModelConfig {
+  return {
+    name: draft.name,
+    apiKey: draft.apiKey,
+    model: draft.model,
+    provider: (draft.provider || "DashScope") as VideoModelConfig["provider"],
+    baseURL: draft.baseURL,
+  };
+}
+
 function createModelPayload(): ModelConfig {
   const draft = normalizeModelDraft();
+  if (isVideoModel.value) return buildVideoModelPayload(draft);
   return isImageModel.value ? buildImageModelPayload(draft) : buildChatModelPayload(draft);
 }
 
@@ -275,7 +319,7 @@ watch(
 watch(
   () => [localModel.provider, localModel.model],
   () => {
-    if (isSyncingFromProps || isImageModel.value) return;
+    if (isSyncingFromProps || isImageModel.value || isVideoModel.value) return;
     syncProviderForModel();
     syncProviderBaseURL(localModel.provider);
   },

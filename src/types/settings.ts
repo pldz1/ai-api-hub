@@ -1,10 +1,10 @@
-import type { ImageModelConfig, ImageModelProvider, ChatModelConfig } from "@/ai-capability";
+import type { ImageModelConfig, ImageModelProvider, ChatModelConfig, VideoModelConfig, VideoModelProvider } from "@/ai-capability";
 import type { ChatFormProvider } from "./conversation";
 
-export type ModelKind = "chat" | "image";
+export type ModelKind = "chat" | "image" | "video";
 
 /** Union of canonical user-owned model configs used by the application. */
-export type ModelConfig = ChatModelConfig | ImageModelConfig;
+export type ModelConfig = ChatModelConfig | ImageModelConfig | VideoModelConfig;
 
 /**
  * Full in-memory workspace model settings.
@@ -15,6 +15,7 @@ export type ModelConfig = ChatModelConfig | ImageModelConfig;
 export interface ModelSettings {
   chat: ChatModelConfig[];
   image: ImageModelConfig[];
+  video: VideoModelConfig[];
 }
 
 /**
@@ -36,7 +37,7 @@ export interface SettingsImportPayload {
  */
 export interface LooseModelConfig {
   name?: string;
-  provider?: ChatFormProvider | ImageModelProvider | "";
+  provider?: ChatFormProvider | ImageModelProvider | VideoModelProvider | "";
   baseURL?: string;
   apiKey?: string;
   model?: string;

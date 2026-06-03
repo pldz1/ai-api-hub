@@ -28,6 +28,9 @@ export {
 
 export type { ImageModelConfig, ImageModelProvider, ImageInputFile, ImageModelParamDef, ImageModelParamType } from "@/ai-capability/image";
 
+// Video capability types.
+export type { VideoModelConfig, VideoModelProvider, VideoInputFile, VideoModelParamDef, VideoModelParamType } from "@/ai-capability/video";
+
 // Image types.
 export {
   type ImageModelEditorState,
@@ -43,6 +46,21 @@ export {
   type ImageTurnResponse,
   type ImageDataItem,
   type ImageConversationListItem,
+} from "./creation";
+
+// Video conversation types.
+export {
+  type VideoModelSettings,
+  type VideoConversationMessage,
+  type VideoConversationInfo,
+  type VideoConversationRole,
+  type VideoInputAttachment,
+  type VideoMessageStatus,
+  type VideoPayload,
+  type VideoTurnRequest,
+  type VideoTurnResponse,
+  type VideoDataItem,
+  type VideoConversationListItem,
 } from "./creation";
 
 // App setting

@@ -2,12 +2,14 @@ import { createStore } from "vuex";
 import { ChatState } from "./chat";
 import { UserState } from "./user";
 import { ImageState } from "./image";
+import { VideoState } from "./video";
 import { ModalState } from "./modal";
 
 const state = {
   ...UserState,
   ...ChatState,
   ...ImageState,
+  ...VideoState,
   ...ModalState,
 };
 
@@ -62,6 +64,18 @@ const mutations = {
   UPDATE_IMAGE_MESSAGE: createStateMutation("updateImageMessage"),
   SET_IMAGE_RUNTIME: createStateMutation("setImageRuntime"),
   RESET_IMAGE_RUNTIME: createStateMutation("resetImageRuntime"),
+  RESET_VIDEO_LIST: createStateMutation("resetVideoList"),
+  PUSH_VIDEO: createStateMutation("pushVideo"),
+  DELETE_VIDEO: createStateMutation("deleteVideo"),
+  RESET_VIDEO_CONVERSATION_LIST: createStateMutation("resetVideoConversationList"),
+  PUSH_VIDEO_CONVERSATION: createStateMutation("pushVideoConversation"),
+  DELETE_VIDEO_CONVERSATION: createStateMutation("deleteVideoConversation"),
+  SET_CURRENT_VIDEO_CONVERSATION_ID: createStateMutation("setCurVideoConversationId"),
+  RESET_VIDEO_MESSAGES: createStateMutation("resetVideoMessages"),
+  PUSH_VIDEO_MESSAGE: createStateMutation("pushVideoMessage"),
+  UPDATE_VIDEO_MESSAGE: createStateMutation("updateVideoMessage"),
+  SET_VIDEO_RUNTIME: createStateMutation("setVideoRuntime"),
+  RESET_VIDEO_RUNTIME: createStateMutation("resetVideoRuntime"),
   SET_MODAL_IMAGE: createStateMutation("setModalImage"),
 };
 
@@ -105,6 +119,18 @@ const passthroughActions = {
   updateImageMessage: "UPDATE_IMAGE_MESSAGE",
   setImageRuntime: "SET_IMAGE_RUNTIME",
   resetImageRuntime: "RESET_IMAGE_RUNTIME",
+  resetVideoList: "RESET_VIDEO_LIST",
+  pushVideo: "PUSH_VIDEO",
+  deleteVideo: "DELETE_VIDEO",
+  resetVideoConversationList: "RESET_VIDEO_CONVERSATION_LIST",
+  pushVideoConversation: "PUSH_VIDEO_CONVERSATION",
+  deleteVideoConversation: "DELETE_VIDEO_CONVERSATION",
+  setCurVideoConversationId: "SET_CURRENT_VIDEO_CONVERSATION_ID",
+  resetVideoMessages: "RESET_VIDEO_MESSAGES",
+  pushVideoMessage: "PUSH_VIDEO_MESSAGE",
+  updateVideoMessage: "UPDATE_VIDEO_MESSAGE",
+  setVideoRuntime: "SET_VIDEO_RUNTIME",
+  resetVideoRuntime: "RESET_VIDEO_RUNTIME",
   setModalImage: "SET_MODAL_IMAGE",
 };
 

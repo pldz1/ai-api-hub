@@ -22,6 +22,12 @@ const router = createRouter({
       props: true,
     },
     {
+      path: "/video/:vid?",
+      name: "video",
+      component: MainView,
+      props: true,
+    },
+    {
       path: "/settings",
       name: "settings",
       component: MainView,

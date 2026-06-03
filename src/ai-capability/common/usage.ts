@@ -45,3 +45,27 @@ export function normalizeImageUsage(usage: Record<string, unknown> | null = null
     total_tokens: Number.isFinite(totalTokens) ? totalTokens : 0,
   };
 }
+
+/**
+ * Normalize provider token accounting for video generation.
+ *
+ * Always returns a valid `TokenUsage` object — callers never need to
+ * null-check the result. Missing or malformed usage data is represented
+ * as zeros.
+ */
+export function normalizeVideoUsage(usage: Record<string, unknown> | null = null): TokenUsage {
+  if (!usage || typeof usage !== "object") {
+    return { input_tokens: 0, output_tokens: 0, total_tokens: 0 };
+  }
+
+  const inputTokens = Number(usage.input_tokens ?? usage.prompt_tokens ?? 0);
+  const outputTokens = Number(usage.output_tokens ?? usage.completion_tokens ?? 0);
+  const totalTokens = Number(usage.total_tokens ?? inputTokens + outputTokens);
+
+  return {
+    ...usage,
+    input_tokens: Number.isFinite(inputTokens) ? inputTokens : 0,
+    output_tokens: Number.isFinite(outputTokens) ? outputTokens : 0,
+    total_tokens: Number.isFinite(totalTokens) ? totalTokens : 0,
+  };
+}

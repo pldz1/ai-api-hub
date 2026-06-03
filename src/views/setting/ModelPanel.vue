@@ -21,7 +21,7 @@
           </button>
         </div>
         <div v-if="models.length === 0" class="settings-empty-list">
-          {{ t(isImageKind ? "user.imageModels.emptyList" : "user.chatModels.emptyList") }}
+          {{ t(isVideoKind ? "user.videoModels.emptyList" : isImageKind ? "user.imageModels.emptyList" : "user.chatModels.emptyList") }}
         </div>
       </aside>
 
@@ -30,15 +30,15 @@
         <div class="model-list-actions">
           <button class="model-list-action is-primary" type="button" @click="addModel">
             <SvgIcon class="model-list-action-icon" :src="newIcon" />
-            <span>{{ t(isImageKind ? "user.imageModels.add" : "user.chatModels.add") }}</span>
+            <span>{{ t(modelKindKey("add")) }}</span>
           </button>
           <button class="model-list-action" type="button" :disabled="!currentModel" @click="duplicateModel">
             <SvgIcon class="model-list-action-icon" :src="copyIcon" />
-            <span>{{ t(isImageKind ? "user.imageModels.duplicate" : "user.chatModels.duplicate") }}</span>
+            <span>{{ t(modelKindKey("duplicate")) }}</span>
           </button>
           <button class="model-list-action is-danger" type="button" :disabled="!currentModel" @click="deleteModel">
             <SvgIcon class="model-list-action-icon" :src="deleteIcon" />
-            <span>{{ t(isImageKind ? "user.imageModels.delete" : "user.chatModels.delete") }}</span>
+            <span>{{ t(modelKindKey("delete")) }}</span>
           </button>
         </div>
 
@@ -47,7 +47,7 @@
         </template>
 
         <div v-else class="settings-empty-detail">
-          {{ t(isImageKind ? "user.imageModels.emptyDetail" : "user.chatModels.emptyDetail") }}
+          {{ t(modelKindKey("emptyDetail")) }}
         </div>
       </section>
     </div>
@@ -62,13 +62,13 @@ import copyIcon from "@/assets/svg/copy16.svg";
 import deleteIcon from "@/assets/svg/delete16.svg";
 import newIcon from "@/assets/svg/new24.svg";
 import SvgIcon from "@/components/SvgIcon.vue";
-import { getImageProviderDefaultBaseURL } from "@/models";
+import { getImageProviderDefaultBaseURL, getVideoProviderDefaultBaseURL } from "@/models";
 import { append4Random } from "@/utils";
-import type { ChatModelConfig, ImageModelConfig, ModelConfig, ModelKind } from "@/types";
+import type { ChatModelConfig, ImageModelConfig, VideoModelConfig, ModelConfig, ModelKind } from "@/types";
 
 const props = withDefaults(
   defineProps<{
-    models?: (ChatModelConfig | ImageModelConfig)[];
+    models?: (ChatModelConfig | ImageModelConfig | VideoModelConfig)[];
     kind?: ModelKind;
   }>(),
   {
@@ -76,24 +76,35 @@ const props = withDefaults(
     kind: "chat",
   },
 );
-const emit = defineEmits<{ "update:models": [models: (ChatModelConfig | ImageModelConfig)[]] }>();
+const emit = defineEmits<{
+  "update:models": [models: (ChatModelConfig | ImageModelConfig | VideoModelConfig)[]];
+}>();
 const { t } = useI18n();
 const selectedIndex = ref(-1);
 
 const isImageKind = computed(() => props.kind === "image");
+const isVideoKind = computed(() => props.kind === "video");
 const currentModel = computed(() => {
   // Guard selection because parent updates can shrink or replace the model array.
   if (selectedIndex.value < 0 || selectedIndex.value >= props.models.length) return null;
   return props.models[selectedIndex.value];
 });
 
-function updateModels(nextModels: (ChatModelConfig | ImageModelConfig)[]) {
+function updateModels(nextModels: (ChatModelConfig | ImageModelConfig | VideoModelConfig)[]) {
   emit("update:models", nextModels);
 }
 
 function addModel() {
   // Seed new models with provider defaults so the editor starts from a usable shape.
-  const nextModel = isImageKind.value
+  const nextModel = isVideoKind.value
+    ? ({
+        name: append4Random(t("user.videoModels.defaultName")),
+        provider: "DashScope",
+        baseURL: getVideoProviderDefaultBaseURL("DashScope"),
+        apiKey: "",
+        model: "wan2.7-i2v-2026-04-25",
+      } as VideoModelConfig)
+    : isImageKind.value
     ? ({
         name: append4Random(t("user.imageModels.defaultName")),
         provider: "OpenAI",
@@ -137,11 +148,17 @@ function updateCurrentModel(nextModel: ModelConfig) {
   updateModels(props.models.map((item, index) => (index === selectedIndex.value ? nextModel : item)));
 }
 
-function getModelProviderLabel(model: ChatModelConfig | ImageModelConfig) {
+function modelKindKey(action: string): string {
+  if (isVideoKind.value) return `user.videoModels.${action}`;
+  if (isImageKind.value) return `user.imageModels.${action}`;
+  return `user.chatModels.${action}`;
+}
+
+function getModelProviderLabel(model: ChatModelConfig | ImageModelConfig | VideoModelConfig) {
   return model.provider || t("common.unsetProvider");
 }
 
-function modelListMeta(model: ChatModelConfig | ImageModelConfig) {
+function modelListMeta(model: ChatModelConfig | ImageModelConfig | VideoModelConfig) {
   return model.model || t("common.unsetModelId");
 }
 

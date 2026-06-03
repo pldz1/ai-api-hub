@@ -55,6 +55,12 @@
               <span v-if="isExpanded" class="nav-label">{{ t("chat.newImageCreation") }}</span>
             </button>
           </AppTooltip>
+          <AppTooltip :text="isExpanded ? '' : t('chat.newVideoCreation')" placement="right">
+            <button class="nav-item" :class="{ 'is-active': isVideoDraftRoute }" type="button" @click="onNewVideo">
+              <SvgIcon :src="videoIcon" class="nav-icon" />
+              <span v-if="isExpanded" class="nav-label">{{ t("chat.newVideoCreation") }}</span>
+            </button>
+          </AppTooltip>
           <div v-if="isExpanded" class="nav-delete-panel" :class="{ 'is-active': isDeleteMode }">
             <button class="nav-delete-btn" type="button" @click="toggleDeleteMode">
               <SvgIcon :src="deleteIcon" class="nav-icon" />
@@ -224,6 +230,73 @@
                 </div>
               </Transition>
             </div>
+
+            <div class="sidebar-section video-recents-section">
+              <button
+                class="section-toggle"
+                :class="{ 'is-collapsed': !isVideoSectionOpen }"
+                type="button"
+                :aria-expanded="isVideoSectionOpen"
+                @click="isVideoSectionOpen = !isVideoSectionOpen"
+              >
+                <span class="section-title">{{ t("chat.videoConversations") }}</span>
+                <span class="section-count">{{ videoConversationList.length }}</span>
+                <span class="section-caret"></span>
+              </button>
+              <Transition name="section-list">
+                <div v-if="isVideoSectionOpen" class="section-body">
+                  <div v-if="videoConversationList.length === 0" class="empty-tip">{{ t("chat.noVideoConversations") }}</div>
+                  <div v-else class="recents-list">
+                    <div v-for="item in videoConversationList" :key="item.vid" class="chat-item-wrapper">
+                      <div
+                        class="chat-item"
+                        :class="{
+                          'is-active': activeRouteVideoId === item.vid,
+                          'is-selected': isDeleteMode && selectedVideoConversationIds.includes(item.vid),
+                          'has-runtime-status': hasVideoRuntimeStatus(item.vid),
+                        }"
+                      >
+                        <input
+                          v-if="isDeleteMode"
+                          v-model="selectedVideoConversationIds"
+                          class="row-select-checkbox"
+                          type="checkbox"
+                          :value="item.vid"
+                          :aria-label="`Select ${item.vname}`"
+                          @click.stop
+                        />
+                        <button class="chat-main-btn" type="button" @click="onSelectVideoConversation(item)">
+                          <span class="chat-title-text">{{ item.vname }}</span>
+                        </button>
+                        <span
+                          v-if="hasVideoRuntimeStatus(item.vid)"
+                          class="session-status-dot"
+                          :class="getVideoRuntimeStatusClass(item.vid)"
+                          :title="getVideoRuntimeLabel(item.vid)"
+                          aria-hidden="true"
+                        ></span>
+
+                        <AppDropdownMenu placement="bottom-end">
+                          <template #trigger="{ toggle }">
+                            <button class="chat-menu-btn" :aria-label="t('chat.moreActions')" @click.stop="toggle">
+                              <span class="dot"></span>
+                              <span class="dot"></span>
+                              <span class="dot"></span>
+                            </button>
+                          </template>
+                          <template #default="{ close }">
+                            <button class="menu-option is-danger" type="button" @click="onDeleteVideoConversation(item, close)">
+                              <SvgIcon class="menu-option-icon" :src="deleteIcon" />
+                              <span>{{ t("chat.deleteVideoConversation") }}</span>
+                            </button>
+                          </template>
+                        </AppDropdownMenu>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
+            </div>
           </div>
         </Transition>
       </template>
@@ -295,6 +368,7 @@
 import { useStore } from "vuex";
 import { getChatList, deleteChat, renameChat, resetCurrentChatDraft } from "@/services";
 import { deleteImageConversation, getImageConversationList } from "@/services/creation";
+import { deleteVideoConversation, getVideoConversationList } from "@/services/creation";
 import { nextTick, ref, computed, onMounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
@@ -304,6 +378,7 @@ import brandIcon from "@/assets/svg/app18.svg";
 import newIcon from "@/assets/svg/new24.svg";
 import settingIcon from "@/assets/svg/setting24.svg";
 import libraryIcon from "@/assets/svg/navImage24.svg";
+import videoIcon from "@/assets/svg/video24.svg";
 import collapseIcon from "@/assets/svg/collapse24.svg";
 import expandIcon from "@/assets/svg/expand24.svg";
 import editIcon from "@/assets/svg/edit24.svg";
@@ -313,7 +388,7 @@ import AppDropdownMenu from "@/components/AppDropdownMenu.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
 import { APP_NAME, APP_VERSION } from "@/constants";
-type SettingTabKey_L = "chat-templates" | "chat-models" | "image-models" | "app";
+type SettingTabKey_L = "chat-templates" | "chat-models" | "image-models" | "video-models" | "app";
 
 const settingGroups = computed(() => [
   {
@@ -328,6 +403,11 @@ const settingGroups = computed(() => [
     key: "image",
     label: t("user.groups.image"),
     items: [{ key: "image-models" as SettingTabKey_L, label: t("user.tabs.imageModels.label"), description: t("user.tabs.imageModels.description") }],
+  },
+  {
+    key: "video",
+    label: t("user.groups.video"),
+    items: [{ key: "video-models" as SettingTabKey_L, label: t("user.tabs.videoModels.label"), description: t("user.tabs.videoModels.description") }],
   },
   {
     key: "app",
@@ -350,15 +430,19 @@ const { t, locale } = useI18n();
 const isExpanded = computed(() => props.expanded);
 const chatList = computed(() => [...store.state.chatList].reverse());
 const imageConversationList = computed(() => [...(store.state.imageConversationList || [])].reverse());
+const videoConversationList = computed(() => [...(store.state.videoConversationList || [])].reverse());
 const activeRouteChatId = computed(() => (route.name === "chat" && typeof route.params.cid === "string" ? route.params.cid : ""));
 const activeRouteImageId = computed(() => (route.name === "image" && typeof route.params.iid === "string" ? route.params.iid : ""));
+const activeRouteVideoId = computed(() => (route.name === "video" && typeof route.params.vid === "string" ? route.params.vid : ""));
 const isChatDraftRoute = computed(() => route.name === "chat" && !activeRouteChatId.value);
 const isImageDraftRoute = computed(() => route.name === "image" && !activeRouteImageId.value);
+const isVideoDraftRoute = computed(() => route.name === "video" && !activeRouteVideoId.value);
 const isSettingsRoute = computed(() => route.name === "settings");
 const isShowOptionCid = ref("");
 const isEditChatName = ref(false);
 const isChatSectionOpen = ref(true);
 const isImageSectionOpen = ref(true);
+const isVideoSectionOpen = ref(true);
 const isDeleteMode = ref(false);
 const currentTheme = ref(getStoredTheme());
 const editChatName = ref("");
@@ -366,6 +450,7 @@ const originalChatName = ref("");
 const editChatNameInputElRef = ref<HTMLInputElement[] | null>(null);
 const selectedChatIds = ref<string[]>([]);
 const selectedImageConversationIds = ref<string[]>([]);
+const selectedVideoConversationIds = ref<string[]>([]);
 const chatActionConfirmDialogRef = ref<HTMLDialogElement | null>(null);
 const chatActionConfirm = ref({
   title: "",
@@ -397,12 +482,15 @@ const localeOptions = computed<SidebarOption[]>(() => [
 ]);
 
 const activeLanguageMark = computed(() => (locale.value === "zh-CN" ? "ZH" : "EN"));
-const selectedConversationCount = computed(() => selectedChatIds.value.length + selectedImageConversationIds.value.length);
+const selectedConversationCount = computed(
+  () => selectedChatIds.value.length + selectedImageConversationIds.value.length + selectedVideoConversationIds.value.length,
+);
 const runningStatuses = new Set(["loading", "streaming"]);
 const completedStatuses = new Set(["success", "error", "stopped"]);
 
 const getChatRuntime = (cid: string) => store.state.chatRuntimeById?.[cid] || null;
 const getImageRuntime = (iid: string) => store.state.imageRuntimeById?.[iid] || null;
+const getVideoRuntime = (vid: string) => store.state.videoRuntimeById?.[vid] || null;
 
 const isRuntimeRunning = (runtime: any) => Boolean(runtime?.pending || runningStatuses.has(runtime?.status || ""));
 const isRuntimeCompletedNotice = (runtime: any) => Boolean(runtime?.completedNotice && completedStatuses.has(runtime?.status || ""));
@@ -417,6 +505,11 @@ const hasImageRuntimeStatus = (iid: string) => {
   return isRuntimeRunning(runtime) || isRuntimeCompletedNotice(runtime);
 };
 
+const hasVideoRuntimeStatus = (vid: string) => {
+  const runtime = getVideoRuntime(vid);
+  return isRuntimeRunning(runtime) || isRuntimeCompletedNotice(runtime);
+};
+
 const getRuntimeStatusClass = (runtime: any) => ({
   "is-running": isRuntimeRunning(runtime),
   "is-complete": isRuntimeCompletedNotice(runtime) && runtime?.status === "success",
@@ -426,6 +519,7 @@ const getRuntimeStatusClass = (runtime: any) => ({
 
 const getChatRuntimeStatusClass = (cid: string) => getRuntimeStatusClass(getChatRuntime(cid));
 const getImageRuntimeStatusClass = (iid: string) => getRuntimeStatusClass(getImageRuntime(iid));
+const getVideoRuntimeStatusClass = (vid: string) => getRuntimeStatusClass(getVideoRuntime(vid));
 
 const getRuntimeLabel = (runtime: any) => {
   if (isRuntimeRunning(runtime)) return t("chat.runtimeRunning");
@@ -436,6 +530,7 @@ const getRuntimeLabel = (runtime: any) => {
 
 const getChatRuntimeLabel = (cid: string) => getRuntimeLabel(getChatRuntime(cid));
 const getImageRuntimeLabel = (iid: string) => getRuntimeLabel(getImageRuntime(iid));
+const getVideoRuntimeLabel = (vid: string) => getRuntimeLabel(getVideoRuntime(vid));
 
 watch(chatList, (items) => {
   const ids = new Set(items.map((item) => item.cid));
@@ -445,6 +540,11 @@ watch(chatList, (items) => {
 watch(imageConversationList, (items) => {
   const ids = new Set(items.map((item) => item.iid));
   selectedImageConversationIds.value = selectedImageConversationIds.value.filter((id) => ids.has(id));
+});
+
+watch(videoConversationList, (items) => {
+  const ids = new Set(items.map((item) => item.vid));
+  selectedVideoConversationIds.value = selectedVideoConversationIds.value.filter((id) => ids.has(id));
 });
 
 const handleThemeChange = (item: SidebarOption) => {
@@ -474,9 +574,18 @@ const onNewImage = async () => {
   await router.push({ name: "image" });
 };
 
+const onNewVideo = async () => {
+  await router.push({ name: "video" });
+};
+
 const onSelectImageConversation = async (item: any) => {
   if (item.iid === activeRouteImageId.value) return;
   await router.push({ name: "image", params: { iid: item.iid } });
+};
+
+const onSelectVideoConversation = async (item: any) => {
+  if (item.vid === activeRouteVideoId.value) return;
+  await router.push({ name: "video", params: { vid: item.vid } });
 };
 
 const onSelectChat = async (item: any) => {
@@ -487,11 +596,13 @@ const onSelectChat = async (item: any) => {
 const clearSelectedConversations = () => {
   selectedChatIds.value = [];
   selectedImageConversationIds.value = [];
+  selectedVideoConversationIds.value = [];
 };
 
 const selectAllConversations = () => {
   selectedChatIds.value = chatList.value.map((item) => item.cid);
   selectedImageConversationIds.value = imageConversationList.value.map((item) => item.iid);
+  selectedVideoConversationIds.value = videoConversationList.value.map((item) => item.vid);
 };
 
 const toggleDeleteMode = () => {
@@ -554,7 +665,8 @@ const onDeleteChat = async (item: any, closeMenu: () => void) => {
 const onDeleteSelectedConversations = async () => {
   const chatIds = [...selectedChatIds.value];
   const imageIds = [...selectedImageConversationIds.value];
-  const total = chatIds.length + imageIds.length;
+  const videoIds = [...selectedVideoConversationIds.value];
+  const total = chatIds.length + imageIds.length + videoIds.length;
   if (!total) return;
 
   const confirmed = await requestChatActionConfirmation({
@@ -571,10 +683,15 @@ const onDeleteSelectedConversations = async () => {
   for (const id of imageIds) {
     await deleteImageConversation(id);
   }
+  for (const id of videoIds) {
+    await deleteVideoConversation(id);
+  }
   if (chatIds.includes(activeRouteChatId.value)) {
     await router.replace({ name: "chat" });
   } else if (imageIds.includes(activeRouteImageId.value)) {
     await router.replace({ name: "image" });
+  } else if (videoIds.includes(activeRouteVideoId.value)) {
+    await router.replace({ name: "video" });
   }
   clearSelectedConversations();
   isDeleteMode.value = false;
@@ -597,6 +714,24 @@ const onDeleteImageConversation = async (item: any, closeMenu: () => void) => {
     await router.replace({ name: "image" });
   }
   selectedImageConversationIds.value = selectedImageConversationIds.value.filter((id) => id !== imageId);
+};
+
+const onDeleteVideoConversation = async (item: any, closeMenu: () => void) => {
+  closeMenu?.();
+  const videoId = item?.vid || "";
+  const confirmed = await requestChatActionConfirmation({
+    title: t("chat.confirmDeleteVideoConversationTitle"),
+    message: t("chat.confirmDeleteVideoConversation", { name: item?.vname || "" }),
+    confirmText: t("chat.confirmDeleteChatConfirm"),
+    danger: true,
+  });
+  if (!confirmed) return;
+
+  if (videoId) await deleteVideoConversation(videoId);
+  if (videoId && videoId === activeRouteVideoId.value) {
+    await router.replace({ name: "video" });
+  }
+  selectedVideoConversationIds.value = selectedVideoConversationIds.value.filter((id) => id !== videoId);
 };
 
 // Start inline rename with the existing name selected. Keep a copy of the original
@@ -647,6 +782,7 @@ const changeChatName = async () => {
 onMounted(async () => {
   await getChatList();
   await getImageConversationList();
+  await getVideoConversationList();
 });
 </script>
 

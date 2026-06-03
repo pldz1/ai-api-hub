@@ -14,6 +14,7 @@ type ChatInstructionTemplate = {
 const emptyModelSettings = (): ModelSettings => ({
   chat: [],
   image: [],
+  video: [],
 });
 
 const getModelsAPI = (): Promise<ApiResponse<ModelSettings>> => apiRequest("post", "/_api/workspace/getModels", {});

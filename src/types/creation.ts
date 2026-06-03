@@ -1,4 +1,4 @@
-import type { TokenUsage, ImageModelProvider, ImageInputFile, ImageModelConfig } from "@/ai-capability";
+import type { TokenUsage, ImageModelProvider, ImageInputFile, ImageModelConfig, VideoModelConfig, VideoInputFile } from "@/ai-capability";
 
 export type ImageConversationRole = "user" | "assistant";
 export type ImageConversationMode = "generation" | "edit";
@@ -94,4 +94,84 @@ export interface ImageDataItem {
 export interface ImageConversationListItem {
   iid: string;
   iname: string;
+}
+
+// ============================================================================
+// Video conversation types
+// ============================================================================
+
+export type VideoConversationRole = "user" | "assistant";
+export type VideoMessageStatus = "ready" | "loading" | "success" | "error";
+
+export interface VideoModelSettings {
+  model: VideoModelConfig | null;
+  prompt: string;
+  resolution: string;
+  duration: number;
+  promptExtend: boolean;
+  watermark: boolean;
+  first_frame: VideoInputFile | null;
+  [key: string]: unknown;
+}
+
+export interface VideoPayload {
+  id: string;
+  src: string;
+  filename?: string;
+  contentType?: string;
+}
+
+export interface VideoInputAttachment extends VideoInputFile {
+  id: string;
+  previewUrl: string;
+}
+
+export interface VideoConversationMessage {
+  id: string;
+  role: VideoConversationRole;
+  prompt: string;
+  videos: VideoPayload[];
+  attachments?: VideoInputAttachment[];
+  status: VideoMessageStatus;
+  createdAt: number;
+  elapsedMs?: number;
+  usage?: TokenUsage | null;
+  error?: string;
+  modelName?: string;
+  resolution?: string;
+}
+
+export interface VideoTurnRequest {
+  prompt: string;
+  model: VideoModelConfig;
+  resolution?: string;
+  duration?: number;
+  promptExtend?: boolean;
+  watermark?: boolean;
+  attachments?: VideoInputAttachment[];
+  first_frame?: VideoInputAttachment;
+  last_frame?: VideoInputAttachment;
+}
+
+export interface VideoTurnResponse {
+  prompt: string;
+  videos: VideoPayload[];
+  usage: TokenUsage;
+  raw?: unknown;
+}
+
+export interface VideoConversationInfo {
+  vid: string;
+  vname: string;
+}
+
+export interface VideoDataItem {
+  id: string;
+  prompt: string;
+  src: string;
+}
+
+export interface VideoConversationListItem {
+  vid: string;
+  vname: string;
 }

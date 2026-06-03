@@ -1,7 +1,7 @@
 <template>
   <div class="settings-page">
     <main class="settings-main">
-      <section class="settings-main-content" :class="{ 'is-model-settings': activeTab === 'chat-models' || activeTab === 'image-models' }">
+      <section class="settings-main-content" :class="{ 'is-model-settings': activeTab === 'chat-models' || activeTab === 'image-models' || activeTab === 'video-models' }">
         <!-- Chat instruction templates -->
         <TemplatePanel v-if="activeTab === 'chat-templates'" :templates="typedDraftTemplates" @update:templates="updateDraftTemplates" />
 
@@ -10,6 +10,9 @@
 
         <!-- Image model registry -->
         <ModelPanel v-else-if="activeTab === 'image-models'" kind="image" :models="draftModels.image" @update:models="updateImageModels" />
+
+        <!-- Video model registry -->
+        <ModelPanel v-else-if="activeTab === 'video-models'" kind="video" :models="draftModels.video" @update:models="updateVideoModels" />
 
         <!-- App-level import/export tools -->
         <AppPanel v-else @export-settings="exportSettings" @import-settings="importSettings" />
@@ -29,8 +32,8 @@ import { buildModelSettings } from "@/models";
 import { SETTINGS_IMPORTED_EVENT, getChatInsTemplateList, getModels, importSettingsPayload, setChatInsTemplateList, setModels } from "@/services";
 import { dsAlert, uploadJsonFile } from "@/utils";
 import { APP_NAME, APP_VERSION } from "@/constants";
-type SettingTabKey_S = "chat-templates" | "chat-models" | "image-models" | "app";
-import type { ChatModelConfig, ImageModelConfig, ModelSettings, SettingsImportPayload } from "@/types";
+type SettingTabKey_S = "chat-templates" | "chat-models" | "image-models" | "video-models" | "app";
+import type { ChatModelConfig, ImageModelConfig, VideoModelConfig, ModelSettings, SettingsImportPayload } from "@/types";
 
 type ChatInstructionTemplate = { id: string; name: string; value: string };
 
@@ -50,7 +53,7 @@ interface UploadedJsonParseError {
 }
 
 function createEmptyModelSettings(): ModelSettings {
-  return { chat: [], image: [] };
+  return { chat: [], image: [], video: [] };
 }
 
 function clonePlainData<T>(data: T): T {
@@ -212,6 +215,10 @@ function updateChatModels(nextModels: ChatModelConfig[]) {
 
 function updateImageModels(nextModels: ImageModelConfig[]) {
   draftModels.value = { ...draftModels.value, image: nextModels };
+}
+
+function updateVideoModels(nextModels: VideoModelConfig[]) {
+  draftModels.value = { ...draftModels.value, video: nextModels };
 }
 
 function buildSettingsExportFilename(date = new Date()): string {

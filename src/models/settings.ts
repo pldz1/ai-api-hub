@@ -1,6 +1,15 @@
-import type { ChatModelConfig, ParamDefaultValue, ImageModelConfig, ImageModelParamType, ModelSettings, LooseModelConfig } from "@/types";
+import type {
+  ChatModelConfig,
+  ParamDefaultValue,
+  ImageModelConfig,
+  ImageModelParamType,
+  ModelSettings,
+  LooseModelConfig,
+  VideoModelConfig,
+} from "@/types";
 import { normalizeChatModelConfig } from "./chat";
 import { normalizeImageModelConfig } from "./image";
+import { normalizeVideoModelConfig } from "./video";
 
 /**
  * Sanitizes a chat model config before putting it back into store/export shape.
@@ -30,6 +39,18 @@ function sanitizeImageModelConfig(model: LooseModelConfig | ImageModelConfig): I
   };
 }
 
+/** Same as `sanitizeChatModelConfig`, but for video model payloads. */
+function sanitizeVideoModelConfig(model: LooseModelConfig | VideoModelConfig): VideoModelConfig {
+  const modelConfig = normalizeVideoModelConfig(model as LooseModelConfig);
+  return {
+    name: modelConfig.name,
+    provider: modelConfig.provider,
+    apiKey: modelConfig.apiKey,
+    model: modelConfig.model,
+    baseURL: modelConfig.baseURL,
+  };
+}
+
 /**
  * Normalizes model settings into the canonical in-memory user config shape.
  *
@@ -40,9 +61,12 @@ export function sanitizeModelSettings(data: Partial<ModelSettings> | null | unde
   const normalized = data || {};
   const imageModels = Array.isArray(normalized.image) ? normalized.image : [];
 
+  const videoModels = Array.isArray(normalized.video) ? normalized.video : [];
+
   return {
     chat: (Array.isArray(normalized.chat) ? normalized.chat : []).map((item) => sanitizeChatModelConfig(item as ChatModelConfig)),
     image: imageModels.map((item) => sanitizeImageModelConfig(item as LooseModelConfig)),
+    video: videoModels.map((item) => sanitizeVideoModelConfig(item as LooseModelConfig)),
   };
 }
 
@@ -76,6 +100,18 @@ function buildPersistedImageModelConfig(model: LooseModelConfig | ImageModelConf
   };
 }
 
+/** Builds the persisted video payload written to storage/export for one model. */
+function buildPersistedVideoModelConfig(model: LooseModelConfig | VideoModelConfig): VideoModelConfig {
+  const modelConfig = normalizeVideoModelConfig(model as LooseModelConfig);
+  return {
+    name: modelConfig.name,
+    provider: modelConfig.provider,
+    apiKey: modelConfig.apiKey,
+    model: modelConfig.model,
+    baseURL: modelConfig.baseURL,
+  };
+}
+
 /**
  * Builds the top-level persisted model payload written to local storage and
  * settings export JSON.
@@ -88,6 +124,7 @@ export function buildModelSettings(data: Partial<ModelSettings> | null | undefin
   return {
     chat: persistedSettings.chat.map((item) => buildPersistedChatModelConfig(item)),
     image: persistedSettings.image.map((item) => buildPersistedImageModelConfig(item)),
+    video: persistedSettings.video.map((item) => buildPersistedVideoModelConfig(item)),
   };
 }
 
