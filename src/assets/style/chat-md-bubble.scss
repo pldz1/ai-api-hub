@@ -71,9 +71,6 @@
   transform: none;
   pointer-events: auto;
   cursor: pointer;
-  background-color: oklch(var(--b1) / 0.94);
-  box-shadow: 0 6px 14px oklch(var(--bc) / 0.08);
-  transition: background-color 0.14s ease;
 
   &:hover,
   &:active {

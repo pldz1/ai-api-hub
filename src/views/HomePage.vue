@@ -11,9 +11,9 @@
         <h1 class="hlcc-title">{{ t("login.title") }}</h1>
         <p class="hlcc-copy">{{ t("login.description") }}</p>
         <div class="hlcc-badges">
-          <span>Chat</span>
-          <span>Image</span>
-          <span>Local</span>
+          <span>{{ t("login.tags.chat") }}</span>
+          <span>{{ t("login.tags.image") }}</span>
+          <span>{{ t("login.tags.local") }}</span>
         </div>
       </section>
 

@@ -193,14 +193,19 @@ export const languages = {
       tooltip: "切换语言",
     },
     login: {
-      browserModeDescription: "当前数据会保存在浏览器里，适合纯前端运行 ",
-      browserModeTitle: "浏览器存储模式",
-      description: "接上 OpenAI、Azure OpenAI 或 DeepSeek 之后，你可以在这里切模型、看历史记录、保存图片，也能继续维护自己的提示词模板 ",
+      browserModeDescription: "所有数据都安全保存在你的 localStorage 和 IndexedDB 中。你的密钥永远不会离开这台机器。",
+      browserModeTitle: "零服务器存储",
+      description: "统一的聊天与图像生成前端，支持 OpenAI、Azure、DeepSeek 和 DashScope。完全运行在你的浏览器中，零遥测。",
       loginAction: "进入工作区",
-      signInDescription: "项目现在默认进入单工作区，不再需要账号登录 ",
+      signInDescription: "关掉那 12 个浏览器标签页。立即进入你的去中心化工作区。",
       signInLabel: "工作区",
-      signInTitle: "继续使用",
-      title: "把聊天和生图放到一个顺手的入口里 ",
+      signInTitle: "立即开始",
+      tags: {
+        chat: "聊天",
+        image: "图像",
+        local: "100% 本地",
+      },
+      title: "一个本地运行的\nAI API 聚合平台",
     },
     markdown: {
       copied: "已复制!",
@@ -345,10 +350,6 @@ export const languages = {
         openAIRequestTarget: "请求会发送 model={model} ",
         placeholders: {
           imageModelId: "例如: gpt-image-2 / qwen-image-2.0",
-        },
-        sections: {
-          connectionDescription: "先选择模型能力，再配置 Provider、Base URL 和鉴权信息 ",
-          connectionTitle: "请求配置",
         },
         suggestionGroups: {
           custom: "其他",
@@ -596,15 +597,20 @@ export const languages = {
       tooltip: "Change language",
     },
     login: {
-      browserModeDescription: "Data stays in the browser for frontend-only usage.",
-      browserModeTitle: "Browser storage mode",
+      browserModeDescription: "All data lives securely in your localStorage and IndexedDB. Your keys never leave your machine.",
+      browserModeTitle: "Zero-Server Storage",
       description:
-        "Once OpenAI, Azure OpenAI, or DeepSeek is connected, you can switch models, revisit history, save images, and keep your prompt templates close at hand.",
-      loginAction: "Open workspace",
-      signInDescription: "This project now opens into a single local workspace without account login.",
+        "A unified chat and image generation frontend for OpenAI, Azure, DeepSeek, and DashScope. Running entirely in your browser with zero telemetry.",
+      loginAction: "Enter Workspace",
+      signInDescription: "Close those 12 browser tabs. Access your decentralized workspace instantly.",
       signInLabel: "Workspace",
-      signInTitle: "Continue",
-      title: "Keep chat and image generation behind one clean entry point.",
+      signInTitle: "Get Started",
+      tags: {
+        chat: "CHAT",
+        image: "IMAGE",
+        local: "100% LOCAL",
+      },
+      title: "A local-first\nAI API hub",
     },
     markdown: {
       copied: "Copied!",
@@ -751,10 +757,6 @@ export const languages = {
         openAIRequestTarget: "Requests send model={model}.",
         placeholders: {
           imageModelId: "For example: gpt-image-2 / qwen-image-2.0",
-        },
-        sections: {
-          connectionDescription: "Choose the model capability first, then configure the provider, base URL, and authentication details.",
-          connectionTitle: "Request",
         },
         suggestionGroups: {
           custom: "Other",

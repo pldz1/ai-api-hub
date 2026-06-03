@@ -1,24 +1,7 @@
 <template>
   <div class="model-form-card" :class="{ 'image-model-form': isImageModel }">
-    <!-- Model identity, provider capability summary, and behavior hints -->
-    <div class="model-form-header">
-      <div>
-        <h3>{{ t(isImageModel ? "user.modelCard.imageTitle" : "user.modelCard.chatTitle") }}</h3>
-        <p>{{ t(isImageModel ? "user.modelCard.imageSubtitle" : "user.modelCard.chatSubtitle") }}</p>
-        <div v-if="isImageModel" class="model-capability-row">
-          <span>{{ getProviderLabel(localModel.provider || "OpenAI") }}</span>
-          <span>{{ hasImageInputParam ? t("user.modelCard.imageInputEnabled") : t("user.modelCard.imageInputDisabled") }}</span>
-        </div>
-      </div>
-    </div>
-
     <!-- Connection and request routing fields -->
-    <section class="model-form-section">
-      <div class="model-section-head">
-        <h4>{{ t("user.modelCard.sections.connectionTitle") }}</h4>
-        <p>{{ t("user.modelCard.sections.connectionDescription") }}</p>
-      </div>
-
+    <section class="model-form-section model-connection-section">
       <div class="model-form-grid">
         <!-- Shared display name field -->
         <label class="model-form-field model-form-field-span">
@@ -26,11 +9,11 @@
           <input v-model.trim="localModel.name" type="text" class="input input-bordered w-full" />
         </label>
 
-        <!-- Chat model selector with grouped suggestions -->
-        <label v-if="!isImageModel" class="model-form-field">
+        <!-- Shared model selector -->
+        <label class="model-form-field">
           <span>{{ t("user.modelCard.fields.model") }}</span>
           <select v-model="localModel.model" class="model-select model-select-bordered w-full">
-            <option v-for="item in modelSuggestionItems" :key="getSuggestionValue(item)" :value="getSuggestionValue(item)">{{ getSuggestionLabel(item) }}</option>
+            <option v-for="modelName in availableModelOptions" :key="modelName" :value="modelName">{{ modelName }}</option>
           </select>
         </label>
 
@@ -41,25 +24,6 @@
             <option v-for="ai in availableModelProviderList" :key="getProviderValue(ai)" :value="getProviderValue(ai)">{{ getProviderLabel(ai) }}</option>
           </select>
         </label>
-
-        <!-- Image model override for OpenAI-compatible endpoints -->
-        <div v-if="isImageModel" class="model-form-field model-form-field-span">
-          <label>{{ t("user.modelCard.fields.modelOverride") }}</label>
-          <input v-model.trim="localModel.model" type="text" class="input input-bordered w-full" :placeholder="t('user.modelCard.placeholders.imageModelId')" />
-          <small>{{ t("user.modelCard.imageModelHelp") }}</small>
-          <div class="model-suggestion-list">
-            <button
-              v-for="item in modelSuggestions"
-              :key="getSuggestionValue(item)"
-              type="button"
-              class="btn btn-sm"
-              :class="localModel.model === getSuggestionValue(item) ? 'btn-neutral' : 'btn-outline'"
-              @click="localModel.model = getSuggestionValue(item)"
-            >
-              {{ getSuggestionLabel(item) }}
-            </button>
-          </div>
-        </div>
 
         <!-- OpenAI-style base URL -->
         <label v-if="usesBaseURL" class="model-form-field model-form-field-span">
@@ -90,7 +54,7 @@
       <div class="model-capability-grid">
         <div v-for="item in chatCapabilityRows" :key="item.key" class="model-capability-toggle" :class="{ disabled: !item.supported }">
           <span class="model-capability-indicator" :class="{ active: item.supported }"></span>
-          <span>{{ item.label }}</span>
+          <span class="model-capability-label">{{ item.label }}</span>
           <small>{{ item.supported ? t("user.modelCard.supportStates.supported") : t("user.modelCard.supportStates.unsupported") }}</small>
         </div>
       </div>
@@ -103,7 +67,14 @@ import { computed, reactive, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import copyIcon from "@/assets/svg/copy16.svg";
 import SvgIcon from "@/components/SvgIcon.vue";
-import { chatDisplayedCapabilityKeys, defaultChatModelEditorState, imageModelProviderList, chatProviderKeys } from "@/constants";
+import {
+  chatDisplayedCapabilityKeys,
+  defaultChatModelEditorState,
+  imageModelProviderList,
+  chatProviderKeys,
+  chatModelTypeList,
+  imageModelTypeList,
+} from "@/constants";
 import { dsAlert } from "@/utils";
 import {
   getChatModelCapabilities,
@@ -117,31 +88,29 @@ import {
   getImageProvidersForModel,
   getKnownImageProviderDefaultBaseURLs,
   imageProviderUsesField,
-  resolveImageParamDefs,
 } from "@/models";
 
-import type { ChatModelConfig, ChatModelEditorState, ImageModelConfig, ImageModelEditorState, LooseModelConfig, ModelConfig, ModelKind } from "@/types";
+import type { ChatModelConfig, ChatModelEditorState, ImageModelConfig, ImageModelEditorState, ModelConfig, ModelKind } from "@/types";
 
 type ModelEditorState = Omit<ChatModelEditorState, "provider"> & {
   provider: ChatModelEditorState["provider"] | ImageModelEditorState["provider"];
 };
 type ModelEditorInput = Partial<ModelConfig> & { apiType?: ModelEditorState["provider"] };
-type ModelSuggestion = string | { name: string };
 type ProviderSuggestion = ModelEditorState["provider"];
 
 const props = withDefaults(
   defineProps<{
     model?: ModelEditorInput;
-    modelSuggestions?: ModelSuggestion[];
     kind?: ModelKind;
   }>(),
   {
     model: () => ({}),
-    modelSuggestions: () => [],
     kind: "chat",
   },
 );
-const emit = defineEmits<{ "update:model": [model: ModelConfig] }>();
+const emit = defineEmits<{
+  "update:model": [model: ModelConfig];
+}>();
 const { t } = useI18n();
 
 const localModel = reactive<ModelEditorState>({
@@ -151,19 +120,21 @@ let isSyncingFromProps = false;
 let lastModelSnapshot = "";
 
 const isImageModel = computed(() => props.kind === "image");
-const usesBaseURL = computed(() => (isImageModel.value ? imageProviderUsesField(localModel.provider, "baseURL") : chatProviderUsesField(localModel.provider, "baseURL")));
-const hasImageInputParam = computed(() => isImageModel.value && resolveImageParamDefs(localModel as LooseModelConfig).some((item) => item.type === "image"));
+const usesBaseURL = computed(() =>
+  isImageModel.value ? imageProviderUsesField(localModel.provider, "baseURL") : chatProviderUsesField(localModel.provider, "baseURL"),
+);
+const availableModelOptions = computed(() => {
+  const catalog = isImageModel.value ? imageModelTypeList : chatModelTypeList;
+  const options = catalog.map((item) => item.name);
+  const currentModel = String(localModel.model || "").trim();
 
-const modelSuggestionItems = computed(() => {
-  const seen = new Set<string>();
-  const items = [...props.modelSuggestions];
-
-  items.forEach((item) => seen.add(getSuggestionValue(item)));
-  if (localModel.model && !seen.has(localModel.model)) {
-    items.push({ name: localModel.model });
+  if (currentModel && !options.includes(currentModel)) {
+    return [currentModel, ...options];
   }
-  return items;
+
+  return options;
 });
+
 const availableModelProviderList = computed(() => {
   // Limit providers to combinations that the request builders can route correctly.
   if (isImageModel.value) {
@@ -190,14 +161,6 @@ function createEmptyModelEditorState(): ModelEditorState {
   return {
     ...structuredClone(defaultChatModelEditorState),
   };
-}
-
-function getSuggestionValue(item: ModelSuggestion): string {
-  return typeof item === "string" ? item : item.name;
-}
-
-function getSuggestionLabel(item: ModelSuggestion): string {
-  return typeof item === "string" ? item : item.name;
 }
 
 function getProviderValue(item: ProviderSuggestion): ModelEditorState["provider"] {
@@ -326,63 +289,33 @@ watch(
 
 <style lang="scss" scoped>
 .model-form-card {
-  border: 1px solid oklch(var(--bc) / 0.07);
-  border-radius: 22px;
-  background: oklch(var(--b1) / 0.82);
-  padding: 24px;
-  box-shadow: 0 10px 28px oklch(var(--bc) / 0.04);
-}
-
-.model-form-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 18px;
-
-  h3 {
-    font-size: 18px;
-    line-height: 1.15;
-    font-weight: 600;
-    color: oklch(var(--bc));
-  }
-
-  p {
-    margin-top: 6px;
-    font-size: 12px;
-    color: oklch(var(--bc) / 0.68);
-  }
-}
-
-.model-capability-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 10px;
-
-  span {
-    border-radius: 999px;
-    padding: 5px 9px;
-    border: 1px solid oklch(var(--bc) / 0.06);
-    background: oklch(var(--b1) / 0.84);
-    color: oklch(var(--bc) / 0.68);
-    font-size: 11px;
-    font-weight: 700;
-  }
-}
-.model-form-section {
-  margin-top: 18px;
-  border: 1px solid oklch(var(--bc) / 0.06);
-  border-radius: 18px;
+  border: 1px solid oklch(var(--bc) / 0.08);
+  border-radius: 14px;
+  background: oklch(var(--b1));
   padding: 18px;
-  background: oklch(var(--b1) / 0.68);
+}
+
+.model-form-section {
+  min-width: 0;
+}
+
+.model-connection-section {
+  padding-right: 0;
+}
+
+.model-form-section + .model-form-section {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid oklch(var(--bc) / 0.08);
 }
 
 .model-section-head {
-  margin-bottom: 14px;
+  max-width: 760px;
+  margin-bottom: 12px;
 
   h4 {
-    font-size: 14px;
+    font-size: 13px;
+    line-height: 1.35;
     font-weight: 700;
     color: oklch(var(--bc));
   }
@@ -399,7 +332,7 @@ watch(
 .model-capability-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 18px;
+  gap: 16px 18px;
 }
 
 .model-form-field {
@@ -412,7 +345,8 @@ watch(
   label {
     font-size: 12px;
     font-weight: 600;
-    color: oklch(var(--bc) / 0.82);
+    line-height: 1.3;
+    color: oklch(var(--bc) / 0.74);
   }
 
   small {
@@ -423,20 +357,16 @@ watch(
 }
 
 .model-select {
-  min-height: 42px;
+  width: 100%;
+  min-height: 46px;
   padding: 0 38px 0 14px;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid oklch(var(--bc) / 0.1);
-  background:
-    linear-gradient(180deg, oklch(var(--b1) / 0.98), oklch(var(--b2) / 0.92)),
+  background: oklch(var(--b1) / 0.98)
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
       no-repeat right 12px center / 12px 12px;
   color: oklch(var(--bc));
   appearance: none;
-  box-shadow: 0 8px 20px oklch(var(--bc) / 0.05);
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease;
 
   &:hover {
     border-color: oklch(var(--bc) / 0.18);
@@ -445,9 +375,6 @@ watch(
   &:focus {
     outline: none;
     border-color: oklch(var(--p) / 0.42);
-    box-shadow:
-      0 0 0 3px oklch(var(--p) / 0.12),
-      0 12px 26px oklch(var(--bc) / 0.08);
   }
 }
 
@@ -460,66 +387,71 @@ watch(
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 52px;
+  min-height: 46px;
   background: oklch(var(--b1) / 0.96);
+  border-radius: 12px;
 
   input {
     flex: 1;
     min-width: 0;
   }
-}
 
-.model-suggestion-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-
-  .btn {
-    min-height: 36px;
-    padding-inline: 12px;
-    border-radius: 999px;
-    font-size: 12px;
+  :deep(.btn) {
+    border-radius: 8px;
+    box-shadow: none;
   }
 }
 
 .model-capability-toggle {
-  min-height: 48px;
+  min-height: 46px;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 2px 10px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
   align-items: center;
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid oklch(var(--bc) / 0.08);
-  background: oklch(var(--b1) / 0.74);
+  background: oklch(var(--b2) / 0.42);
 
   .model-capability-indicator {
-    width: 11px;
-    height: 11px;
-    grid-row: span 2;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
     border: 1px solid oklch(var(--bc) / 0.32);
 
     &.active {
       border-color: oklch(var(--p) / 0.32);
       background: oklch(var(--p));
-      box-shadow: 0 0 0 3px oklch(var(--p) / 0.1);
     }
   }
 
-  span {
+  .model-capability-label {
+    min-width: 0;
     font-size: 12px;
     font-weight: 700;
     color: oklch(var(--bc));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   small {
+    justify-self: end;
+    border-radius: 8px;
+    padding: 3px 8px;
+    background: oklch(var(--b1) / 0.82);
     font-size: 11px;
     color: oklch(var(--bc) / 0.62);
+    white-space: nowrap;
   }
 
   &.disabled {
-    opacity: 0.55;
+    background: transparent;
+
+    .model-capability-label,
+    small {
+      opacity: 0.56;
+    }
   }
 }
 
@@ -528,25 +460,16 @@ watch(
   .model-capability-grid {
     grid-template-columns: 1fr;
   }
-
-  .model-form-header {
-    flex-direction: column;
-  }
 }
 
 @media (max-width: 720px) {
   .model-form-card {
-    border-radius: 22px;
-  }
-
-  .model-form-section {
-    margin-top: 18px;
-    padding: 18px;
-    border-radius: 20px;
+    border-radius: 14px;
+    padding: 16px;
   }
 
   .model-section-head {
-    margin-bottom: 16px;
+    margin-bottom: 14px;
 
     h4 {
       font-size: 15px;
@@ -560,7 +483,7 @@ watch(
 
   .model-form-grid,
   .model-capability-grid {
-    gap: 16px;
+    gap: 14px;
   }
 
   .model-form-field {
@@ -586,25 +509,31 @@ watch(
     min-height: 50px;
   }
 
-  .model-suggestion-list {
-    gap: 8px;
-
-    .btn {
-      min-height: 36px;
-      font-size: 12px;
-    }
-  }
-
   .model-capability-toggle {
-    min-height: 50px;
+    min-height: 48px;
     padding: 12px;
 
-    span {
+    .model-capability-label {
       font-size: 12px;
     }
 
     small {
       font-size: 11px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .model-form-card {
+    padding: 14px;
+  }
+
+  .model-capability-toggle {
+    grid-template-columns: auto minmax(0, 1fr);
+
+    small {
+      grid-column: 2;
+      justify-self: start;
     }
   }
 }

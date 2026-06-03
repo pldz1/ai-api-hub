@@ -1,64 +1,49 @@
 <template>
   <div class="settings-section">
-    <!-- Model panel header and list actions -->
-    <div class="section-header">
-      <div>
-        <h2>{{ t(resolvedTitleKey) }}</h2>
-        <p>{{ t(resolvedDescriptionKey) }}</p>
-      </div>
-      <div class="section-actions">
-        <button class="btn btn-neutral" @click="addModel">{{ t(isImageKind ? "user.imageModels.add" : "user.chatModels.add") }}</button>
-        <button class="btn btn-outline" :disabled="selectedIndex === -1" @click="duplicateModel">
-          {{ t(isImageKind ? "user.imageModels.duplicate" : "user.chatModels.duplicate") }}
-        </button>
-        <button v-if="!isImageKind" class="btn btn-outline btn-error" :disabled="selectedIndex === -1" @click="deleteModel">
-          {{ t("user.chatModels.delete") }}
-        </button>
-      </div>
-    </div>
-
-    <div class="settings-workspace">
+    <div class="settings-workspace model-settings-workspace">
       <!-- Configured models list -->
-      <aside class="settings-list-panel">
-        <button
-          v-for="(model, index) in models"
-          :key="`${model.name}-${index}`"
-          class="settings-list-item"
-          :class="{ active: index === selectedIndex }"
-          @click="selectedIndex = index"
-        >
-          <div class="settings-list-title-row">
-            <div class="settings-list-title">{{ model.name || t("common.unnamedModel") }}</div>
-            <span v-if="isImageKind" class="provider-chip">{{ model.provider || "OpenAI" }}</span>
-          </div>
-          <div class="settings-list-meta">
-            <span v-if="!isImageKind">{{ model.provider || t("common.unsetProvider") }}</span>
-            <span>{{ modelListMeta(model) }}</span>
-          </div>
-          <div v-if="isImageKind" class="settings-list-badges">
-            <span class="active">Generation</span>
-            <span class="active">Edit</span>
-          </div>
-        </button>
+      <aside class="settings-list-panel model-list-panel" :class="{ empty: models.length === 0 }">
+        <div class="model-list-rail">
+          <button
+            v-for="(model, index) in models"
+            :key="`${model.name}-${index}`"
+            class="settings-list-item"
+            :class="{ active: index === selectedIndex }"
+            @click="selectedIndex = index"
+          >
+            <div class="settings-list-title-row">
+              <div class="settings-list-title">{{ model.name || t("common.unnamedModel") }}</div>
+              <span class="provider-chip">{{ getModelProviderLabel(model) }}</span>
+            </div>
+            <div class="settings-list-meta">
+              <span>{{ modelListMeta(model) }}</span>
+            </div>
+          </button>
+        </div>
         <div v-if="models.length === 0" class="settings-empty-list">
           {{ t(isImageKind ? "user.imageModels.emptyList" : "user.chatModels.emptyList") }}
         </div>
       </aside>
 
       <!-- Selected model details and editor -->
-      <section class="settings-detail-panel">
-        <template v-if="currentModel">
-          <div class="detail-toolbar">
-            <div>
-              <h3>{{ currentModel.name || t("common.unnamedModel") }}</h3>
-              <p>{{ detailSummary }}</p>
-            </div>
-            <button v-if="isImageKind" class="btn btn-outline btn-error" @click="deleteModel">
-              {{ t("user.imageModels.delete") }}
-            </button>
-          </div>
+      <section class="settings-detail-content">
+        <div class="model-list-actions">
+          <button class="model-list-action is-primary" type="button" @click="addModel">
+            <SvgIcon class="model-list-action-icon" :src="newIcon" />
+            <span>{{ t(isImageKind ? "user.imageModels.add" : "user.chatModels.add") }}</span>
+          </button>
+          <button class="model-list-action" type="button" :disabled="!currentModel" @click="duplicateModel">
+            <SvgIcon class="model-list-action-icon" :src="copyIcon" />
+            <span>{{ t(isImageKind ? "user.imageModels.duplicate" : "user.chatModels.duplicate") }}</span>
+          </button>
+          <button class="model-list-action is-danger" type="button" :disabled="!currentModel" @click="deleteModel">
+            <SvgIcon class="model-list-action-icon" :src="deleteIcon" />
+            <span>{{ t(isImageKind ? "user.imageModels.delete" : "user.chatModels.delete") }}</span>
+          </button>
+        </div>
 
-          <ModelEditor :model="currentModel" :model-suggestions="modelSuggestions" :kind="kind" @update:model="updateCurrentModel" />
+        <template v-if="currentModel">
+          <ModelEditor :model="currentModel" :kind="kind" @update:model="updateCurrentModel" />
         </template>
 
         <div v-else class="settings-empty-detail">
@@ -73,7 +58,10 @@
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import ModelEditor from "./ModelEditor.vue";
-import { chatModelTypeList, imageModelTypeList } from "@/constants";
+import copyIcon from "@/assets/svg/copy16.svg";
+import deleteIcon from "@/assets/svg/delete16.svg";
+import newIcon from "@/assets/svg/new24.svg";
+import SvgIcon from "@/components/SvgIcon.vue";
 import { getImageProviderDefaultBaseURL } from "@/models";
 import { append4Random } from "@/utils";
 import type { ChatModelConfig, ImageModelConfig, ModelConfig, ModelKind } from "@/types";
@@ -82,14 +70,10 @@ const props = withDefaults(
   defineProps<{
     models?: (ChatModelConfig | ImageModelConfig)[];
     kind?: ModelKind;
-    titleKey?: string;
-    descriptionKey?: string;
   }>(),
   {
     models: () => [],
     kind: "chat",
-    titleKey: "",
-    descriptionKey: "",
   },
 );
 const emit = defineEmits<{ "update:models": [models: (ChatModelConfig | ImageModelConfig)[]] }>();
@@ -97,22 +81,10 @@ const { t } = useI18n();
 const selectedIndex = ref(-1);
 
 const isImageKind = computed(() => props.kind === "image");
-const resolvedTitleKey = computed(() => props.titleKey || (isImageKind.value ? "user.imageModels.title" : "user.chatModels.title"));
-const resolvedDescriptionKey = computed(() => props.descriptionKey || (isImageKind.value ? "user.imageModels.description" : "user.chatModels.description"));
-const modelSuggestions = computed(() => (isImageKind.value ? imageModelTypeList : chatModelTypeList));
 const currentModel = computed(() => {
   // Guard selection because parent updates can shrink or replace the model array.
   if (selectedIndex.value < 0 || selectedIndex.value >= props.models.length) return null;
   return props.models[selectedIndex.value];
-});
-const detailSummary = computed(() => {
-  // Show the most useful routing detail for the currently selected model.
-  if (!currentModel.value) return "";
-  if (!isImageKind.value) return currentModel.value.provider || t("user.chatModels.providerHint");
-  const model = currentModel.value as ImageModelConfig;
-  const modelId = model.model || t("common.unsetModelId");
-  const endpointLabel = model.baseURL || "";
-  return `${model.provider || "OpenAI"} · ${endpointLabel || modelId}`;
 });
 
 function updateModels(nextModels: (ChatModelConfig | ImageModelConfig)[]) {
@@ -165,11 +137,12 @@ function updateCurrentModel(nextModel: ModelConfig) {
   updateModels(props.models.map((item, index) => (index === selectedIndex.value ? nextModel : item)));
 }
 
+function getModelProviderLabel(model: ChatModelConfig | ImageModelConfig) {
+  return model.provider || t("common.unsetProvider");
+}
+
 function modelListMeta(model: ChatModelConfig | ImageModelConfig) {
-  // Image models are identified by endpoint/base URL, while chat models use model IDs.
-  if (!isImageKind.value) return model.model || t("common.unsetModelId");
-  const imageModel = model as ImageModelConfig;
-  return imageModel.baseURL || t("user.modelCard.fields.imageUrl");
+  return model.model || t("common.unsetModelId");
 }
 
 watch(
@@ -183,6 +156,150 @@ watch(
 </script>
 
 <style lang="scss" scoped>
+.settings-workspace.model-settings-workspace {
+  width: min(100%, 1064px);
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  gap: 22px;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.settings-list-panel.model-list-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: oklch(var(--b1));
+  box-shadow: none;
+
+  &.empty {
+    overflow: hidden;
+  }
+}
+
+.model-list-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(112px, max-content));
+  gap: 6px;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+.model-list-action {
+  min-width: 0;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid oklch(var(--bc) / 0.1);
+  border-radius: 8px;
+  background: oklch(var(--b1));
+  color: oklch(var(--bc) / 0.76);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+
+  span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: oklch(var(--bc) / 0.18);
+    background: oklch(var(--b2) / 0.5);
+    color: oklch(var(--bc));
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  &.is-primary {
+    border-color: oklch(var(--p) / 0.28);
+    background: oklch(var(--p) / 0.1);
+    color: oklch(var(--p));
+
+    &:hover {
+      border-color: oklch(var(--p) / 0.42);
+      background: oklch(var(--p) / 0.14);
+    }
+  }
+
+  &.is-danger {
+    color: oklch(var(--er));
+
+    &:hover:not(:disabled) {
+      border-color: oklch(var(--er) / 0.28);
+      background: oklch(var(--er) / 0.1);
+    }
+  }
+}
+
+.model-list-action-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.model-list-rail {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 8px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: oklch(var(--bc) / 0.18);
+    background-clip: content-box;
+  }
+
+  &::-webkit-scrollbar-track {
+    margin-block: 6px;
+    background: transparent;
+  }
+}
+
+.settings-list-panel.model-list-panel .settings-list-item {
+  width: 100%;
+  flex: 0 0 auto;
+  min-height: 76px;
+  padding: 12px 13px;
+  border-radius: 10px;
+  box-shadow: none;
+  transition: none;
+
+  &:hover {
+    border-color: oklch(var(--bc) / 0.12);
+    box-shadow: none;
+  }
+
+  &.active {
+    border-color: oklch(var(--p) / 0.28);
+    background: oklch(var(--p) / 0.1);
+    box-shadow: none;
+  }
+}
+
 .settings-list-title-row {
   display: flex;
   align-items: flex-start;
@@ -192,68 +309,45 @@ watch(
 
 .provider-chip {
   flex: 0 0 auto;
-  border-radius: 999px;
+  max-width: 42%;
+  border-radius: 8px;
   padding: 3px 8px;
   border: 1px solid oklch(var(--bc) / 0.06);
-  background: oklch(var(--b1) / 0.86);
+  background: oklch(var(--b2) / 0.5);
   color: oklch(var(--bc) / 0.68);
   font-size: 10px;
   font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.settings-list-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-
-  span {
-    border-radius: 999px;
-    padding: 4px 8px;
-    background: oklch(var(--b2));
-    color: oklch(var(--bc) / 0.62);
-    font-size: 10px;
-    font-weight: 700;
-    border: 1px solid oklch(var(--bc) / 0.04);
-
-    &.active {
-      background: oklch(var(--p) / 0.12);
-      color: oklch(var(--p));
-      border-color: oklch(var(--p) / 0.14);
-    }
-  }
-}
-
-@media (max-width: 720px) {
-  .section-header {
-    .section-actions {
-      width: 100%;
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-
-      .btn {
-        width: 100%;
-      }
-    }
+@media (max-width: 900px) {
+  .settings-workspace.model-settings-workspace {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 16px;
+    flex: 0 0 auto;
+    overflow: visible;
   }
 
-  .settings-workspace {
-    gap: 18px;
+  .settings-list-panel.model-list-panel {
+    border-radius: 14px;
+    max-height: min(42vh, 286px);
+    padding: 8px;
+    overflow: hidden;
   }
 
-  .settings-list-panel,
-  .settings-detail-panel {
-    border-radius: 22px;
+  .model-list-rail {
+    padding-right: 8px;
+    overflow-y: auto;
   }
 
-  .settings-list-panel {
-    max-height: none;
-    padding: 12px;
-  }
-
-  .settings-list-item {
-    padding: 16px;
+  .settings-list-panel.model-list-panel .settings-list-item {
+    width: 100%;
+    flex: 0 0 auto;
+    min-height: 76px;
   }
 
   .settings-list-title-row {
@@ -268,17 +362,16 @@ watch(
   .settings-list-meta {
     margin-top: 6px;
   }
+}
 
-  .settings-detail-panel {
-    padding: 16px;
+@media (max-width: 480px) {
+  .model-list-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .detail-toolbar {
-    gap: 12px;
-
-    .btn {
-      width: 100%;
-    }
+  .model-list-action {
+    padding-inline: 6px;
+    font-size: 11px;
   }
 }
 </style>

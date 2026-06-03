@@ -1,45 +1,44 @@
 <template>
   <div class="settings-section">
-    <!-- Template panel header and primary creation action -->
-    <div class="section-header">
-      <div>
-        <h2>{{ t("user.templates.title") }}</h2>
-        <p>{{ t("user.templates.description") }}</p>
-      </div>
-      <button class="btn btn-neutral" @click="addTemplate">{{ t("user.templates.add") }}</button>
-    </div>
-
-    <div class="settings-workspace">
+    <div class="settings-workspace template-settings-workspace">
       <!-- Saved instruction templates list -->
-      <aside class="settings-list-panel">
-        <button
-          v-for="(template, index) in templates"
-          :key="template.id"
-          class="settings-list-item"
-          :class="{ active: index === selectedIndex }"
-          @click="selectedIndex = index"
-        >
-          <div class="settings-list-title">{{ template.name || t("common.unnamedTemplate") }}</div>
-          <div class="settings-list-meta">{{ summarizeTemplate(template.value) }}</div>
-        </button>
+      <aside class="settings-list-panel template-list-panel" :class="{ empty: templates.length === 0 }">
+        <div class="template-list-rail">
+          <button
+            v-for="(template, index) in templates"
+            :key="template.id"
+            class="settings-list-item"
+            :class="{ active: index === selectedIndex }"
+            @click="selectedIndex = index"
+          >
+            <div class="settings-list-title">{{ template.name || t("common.unnamedTemplate") }}</div>
+            <div class="settings-list-meta">
+              <span>{{ summarizeTemplate(template.value) }}</span>
+            </div>
+          </button>
+        </div>
         <div v-if="templates.length === 0" class="settings-empty-list">{{ t("user.templates.emptyList") }}</div>
       </aside>
 
       <!-- Selected template editor -->
-      <section class="settings-detail-panel">
-        <template v-if="currentTemplate">
-          <div class="detail-toolbar">
-            <div>
-              <h3>{{ currentTemplate.name || t("common.unnamedTemplate") }}</h3>
-              <p>{{ t("user.templates.detailHint") }}</p>
-            </div>
-            <div class="detail-toolbar-actions">
-              <button class="btn btn-outline" @click="duplicateTemplate">{{ t("user.templates.duplicate") }}</button>
-              <button class="btn btn-outline btn-error" @click="deleteTemplate">{{ t("user.templates.delete") }}</button>
-            </div>
-          </div>
+      <section class="settings-detail-content">
+        <div class="template-list-actions">
+          <button class="template-list-action is-primary" type="button" @click="addTemplate">
+            <SvgIcon class="template-list-action-icon" :src="newIcon" />
+            <span>{{ t("user.templates.add") }}</span>
+          </button>
+          <button class="template-list-action" type="button" :disabled="!currentTemplate" @click="duplicateTemplate">
+            <SvgIcon class="template-list-action-icon" :src="copyIcon" />
+            <span>{{ t("user.templates.duplicate") }}</span>
+          </button>
+          <button class="template-list-action is-danger" type="button" :disabled="!currentTemplate" @click="deleteTemplate">
+            <SvgIcon class="template-list-action-icon" :src="deleteIcon" />
+            <span>{{ t("user.templates.delete") }}</span>
+          </button>
+        </div>
 
-          <div class="template-form-card">
+        <template v-if="currentTemplate">
+          <div class="template-editor">
             <!-- Template metadata and prompt body -->
             <label>
               <span>{{ t("user.templates.name") }}</span>
@@ -61,6 +60,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import copyIcon from "@/assets/svg/copy16.svg";
+import deleteIcon from "@/assets/svg/delete16.svg";
+import newIcon from "@/assets/svg/new24.svg";
+import SvgIcon from "@/components/SvgIcon.vue";
 import { append4Random, getUuid } from "@/utils";
 
 type ChatInstructionTemplate = { id: string; name: string; value: string };
@@ -136,21 +139,156 @@ watch(
 </script>
 
 <style lang="scss" scoped>
-.detail-toolbar-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.settings-workspace.template-settings-workspace {
+  width: min(100%, 1064px);
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  gap: 22px;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
-.template-form-card {
-  border: 1px solid oklch(var(--bc) / 0.07);
-  border-radius: 22px;
-  background: oklch(var(--b1) / 0.82);
-  padding: 24px;
+.settings-list-panel.template-list-panel {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: oklch(var(--b1));
+  box-shadow: none;
+
+  &.empty {
+    overflow: hidden;
+  }
+}
+
+.template-list-rail {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 8px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: oklch(var(--bc) / 0.18);
+    background-clip: content-box;
+  }
+
+  &::-webkit-scrollbar-track {
+    margin-block: 6px;
+    background: transparent;
+  }
+}
+
+.settings-list-panel.template-list-panel .settings-list-item {
+  width: 100%;
+  flex: 0 0 auto;
+  min-height: 76px;
+  padding: 12px 13px;
+  border-radius: 10px;
+  box-shadow: none;
+  transition: none;
+
+  &:hover {
+    border-color: oklch(var(--bc) / 0.12);
+    box-shadow: none;
+  }
+
+  &.active {
+    border-color: oklch(var(--p) / 0.28);
+    background: oklch(var(--p) / 0.1);
+    box-shadow: none;
+  }
+}
+
+.template-list-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(112px, max-content));
+  gap: 6px;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+.template-list-action {
+  min-width: 0;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid oklch(var(--bc) / 0.1);
+  border-radius: 8px;
+  background: oklch(var(--b1));
+  color: oklch(var(--bc) / 0.76);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+
+  span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: oklch(var(--bc) / 0.18);
+    background: oklch(var(--b2) / 0.5);
+    color: oklch(var(--bc));
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  &.is-primary {
+    border-color: oklch(var(--p) / 0.28);
+    background: oklch(var(--p) / 0.1);
+    color: oklch(var(--p));
+
+    &:hover {
+      border-color: oklch(var(--p) / 0.42);
+      background: oklch(var(--p) / 0.14);
+    }
+  }
+
+  &.is-danger {
+    color: oklch(var(--er));
+
+    &:hover:not(:disabled) {
+      border-color: oklch(var(--er) / 0.28);
+      background: oklch(var(--er) / 0.1);
+    }
+  }
+}
+
+.template-list-action-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.template-editor {
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   gap: 18px;
-  box-shadow: 0 10px 28px oklch(var(--bc) / 0.04);
 
   label {
     display: flex;
@@ -167,33 +305,51 @@ watch(
 
 .template-textarea {
   min-height: 280px;
+  flex: 1 1 auto;
   resize: vertical;
 }
 
-@media (max-width: 720px) {
-  .detail-toolbar-actions {
+@media (max-width: 900px) {
+  .settings-workspace.template-settings-workspace {
+    display: flex;
+    flex-direction: column;
     width: 100%;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
-
-    .btn {
-      width: 100%;
-    }
+    gap: 16px;
+    flex: 0 0 auto;
+    overflow: visible;
   }
 
-  .template-form-card {
-    padding: 18px;
+  .settings-list-panel.template-list-panel {
+    border-radius: 14px;
+    max-height: min(42vh, 286px);
+    padding: 8px;
+    overflow: hidden;
+  }
+
+  .template-list-rail {
+    padding-right: 8px;
+    overflow-y: auto;
+  }
+
+  .settings-list-panel.template-list-panel .settings-list-item {
+    width: 100%;
+    flex: 0 0 auto;
+    min-height: 76px;
+  }
+}
+
+@media (max-width: 480px) {
+  .template-list-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .template-list-action {
+    padding-inline: 6px;
+    font-size: 11px;
+  }
+
+  .template-editor {
     gap: 18px;
-    border-radius: 20px;
-
-    label {
-      gap: 8px;
-    }
-
-    span {
-      font-size: 12px;
-    }
   }
 
   .template-textarea {

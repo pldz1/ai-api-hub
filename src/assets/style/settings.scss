@@ -2,8 +2,10 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  width: min(100%, 980px);
   height: 100%;
   min-height: 0;
+  margin-inline: auto;
 
   :where(.btn) {
     min-height: 38px;
@@ -112,8 +114,7 @@
   overflow: hidden;
 }
 
-.settings-list-panel,
-.settings-detail-panel {
+.settings-list-panel {
   min-height: 0;
   border: 1px solid oklch(var(--bc) / 0.07);
   border-radius: 24px;
@@ -196,41 +197,18 @@
   background: oklch(var(--b1) / 0.5);
 }
 
-.settings-detail-panel {
-  padding: 18px;
+.settings-detail-content {
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
   overflow-y: auto;
 }
 
-.detail-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-
-  h3 {
-    font-size: 18px;
-    font-weight: 600;
-    color: oklch(var(--bc));
-  }
-
-  p {
-    margin-top: 6px;
-    font-size: 13px;
-    line-height: 1.55;
-    color: oklch(var(--bc) / 0.68);
-  }
-}
-
 @media (max-width: 1100px) {
   .settings-workspace {
     grid-template-columns: 1fr;
-  }
-
-  .detail-toolbar {
-    flex-direction: column;
   }
 }
 
@@ -285,8 +263,7 @@
     overflow: visible;
   }
 
-  .settings-list-panel,
-  .settings-detail-panel {
+  .settings-list-panel {
     width: 100%;
     min-width: 0;
     border-radius: 22px;
@@ -312,23 +289,10 @@
     line-height: 1.55;
   }
 
-  .settings-detail-panel {
-    padding: 16px;
+  .settings-detail-content {
+    min-width: 0;
     gap: 18px;
     overflow: visible;
-  }
-
-  .detail-toolbar {
-    gap: 12px;
-
-    h3 {
-      font-size: 18px;
-    }
-
-    p {
-      font-size: 12px;
-      line-height: 1.65;
-    }
   }
 
   .settings-empty-list,

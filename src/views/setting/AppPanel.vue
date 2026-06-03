@@ -1,31 +1,34 @@
 <template>
   <div class="settings-section">
-    <!-- App settings header -->
-    <div class="section-header">
-      <div>
-        <h2>{{ t("user.app.title") }}</h2>
-        <p>{{ t("user.app.description") }}</p>
-      </div>
-    </div>
-
-    <div class="app-settings-grid">
+    <div class="app-settings-workspace">
       <!-- Settings backup and restore actions -->
-      <section class="app-settings-card">
-        <h3>{{ t("user.app.importExport") }}</h3>
-        <p>{{ t("user.app.importExportDescription") }}</p>
-        <div class="app-settings-actions">
-          <button class="btn btn-outline" @click="emit('export-settings')">{{ t("user.app.export") }}</button>
-          <button class="btn btn-outline" @click="emit('import-settings')">{{ t("user.app.import") }}</button>
+      <section class="app-settings-row">
+        <div class="app-settings-copy">
+          <h3>{{ t("user.app.importExport") }}</h3>
+          <p>{{ t("user.app.importExportDescription") }}</p>
+        </div>
+        <div class="app-settings-actions two-actions">
+          <button class="app-settings-action" type="button" @click="emit('export-settings')">
+            <SvgIcon class="app-settings-action-icon" :src="saveIcon" />
+            <span>{{ t("user.app.export") }}</span>
+          </button>
+          <button class="app-settings-action" type="button" @click="emit('import-settings')">
+            <SvgIcon class="app-settings-action-icon" :src="attachIcon" />
+            <span>{{ t("user.app.import") }}</span>
+          </button>
         </div>
       </section>
 
       <!-- Project resources -->
-      <section class="app-settings-card">
-        <h3>{{ t("user.app.resources") }}</h3>
-        <p>{{ t("user.app.resourcesDescription") }}</p>
+      <section class="app-settings-row">
+        <div class="app-settings-copy">
+          <h3>{{ t("user.app.resources") }}</h3>
+          <p>{{ t("user.app.resourcesDescription") }}</p>
+        </div>
         <div class="app-settings-actions">
-          <a class="btn btn-outline" href="https://github.com/pldz1/ai-api-hub/releases" target="_blank" rel="noopener noreferrer">
-            {{ t("user.app.releases") }}
+          <a class="app-settings-action" href="https://github.com/pldz1/ai-api-hub/releases" target="_blank" rel="noopener noreferrer">
+            <SvgIcon class="app-settings-action-icon" :src="webIcon" />
+            <span>{{ t("user.app.releases") }}</span>
           </a>
         </div>
       </section>
@@ -35,6 +38,10 @@
 
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
+import attachIcon from "@/assets/svg/attach24.svg";
+import saveIcon from "@/assets/svg/save18.svg";
+import webIcon from "@/assets/svg/web24.svg";
+import SvgIcon from "@/components/SvgIcon.vue";
 
 // Parent view owns import/export workflows; this panel only exposes the actions.
 const emit = defineEmits<{
@@ -46,72 +53,115 @@ const { t } = useI18n();
 </script>
 
 <style lang="scss" scoped>
-.app-settings-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+.app-settings-workspace {
+  width: min(100%, 1064px);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
-.app-settings-card {
-  border: 1px solid oklch(var(--bc) / 0.07);
-  border-radius: 24px;
-  background: oklch(var(--b1) / 0.82);
-  padding: 24px;
-  box-shadow: 0 10px 28px oklch(var(--bc) / 0.04);
+.app-settings-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 18px;
+  align-items: center;
+  min-height: 76px;
+  padding: 12px 13px;
+  border: 1px solid oklch(var(--bc) / 0.06);
+  border-radius: 10px;
+  background: oklch(var(--b1));
+}
+
+.app-settings-copy {
+  min-width: 0;
 
   h3 {
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.35;
+    font-weight: 700;
     color: oklch(var(--bc));
   }
 
   p {
-    margin-top: 8px;
-    font-size: 13px;
-    line-height: 1.6;
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.5;
     color: oklch(var(--bc) / 0.68);
   }
 }
 
 .app-settings-actions {
-  margin-top: 18px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(112px, max-content);
+  gap: 6px;
+  justify-content: flex-end;
+
+  &.two-actions {
+    grid-template-columns: repeat(2, minmax(112px, max-content));
+  }
 }
 
-@media (max-width: 1100px) {
-  .app-settings-grid {
-    grid-template-columns: 1fr;
+.app-settings-action {
+  min-width: 0;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid oklch(var(--bc) / 0.1);
+  border-radius: 8px;
+  background: oklch(var(--b1));
+  color: oklch(var(--bc) / 0.76);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+
+  span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
+
+  &:hover {
+    border-color: oklch(var(--bc) / 0.18);
+    background: oklch(var(--b2) / 0.5);
+    color: oklch(var(--bc));
+  }
+}
+
+.app-settings-action-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
 }
 
 @media (max-width: 720px) {
-  .app-settings-grid {
-    gap: 16px;
+  .app-settings-workspace {
+    width: 100%;
+    flex: 0 0 auto;
+    overflow: visible;
   }
 
-  .app-settings-card {
-    border-radius: 20px;
-    padding: 18px;
-
-    h3 {
-      font-size: 18px;
-    }
-
-    p {
-      font-size: 13px;
-      line-height: 1.6;
-    }
+  .app-settings-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 
-  .app-settings-actions {
-    margin-top: 18px;
-    gap: 10px;
+  .app-settings-actions,
+  .app-settings-actions.two-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+  }
 
-    .btn {
-      width: 100%;
-    }
+  .app-settings-actions:not(.two-actions) {
+    grid-template-columns: 1fr;
   }
 }
 </style>

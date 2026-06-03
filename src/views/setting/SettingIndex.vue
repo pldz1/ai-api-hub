@@ -1,16 +1,7 @@
 <template>
   <div class="settings-page">
-    <!-- Active settings workspace and autosave status -->
     <main class="settings-main">
-      <header class="settings-main-header">
-        <p>{{ activeTabInfo.description }}</p>
-        <div class="settings-status" :class="statusClass">
-          <span class="settings-status-dot"></span>
-          <span>{{ statusLabel }}</span>
-        </div>
-      </header>
-
-      <section class="settings-main-content">
+      <section class="settings-main-content" :class="{ 'is-model-settings': activeTab === 'chat-models' || activeTab === 'image-models' }">
         <!-- Chat instruction templates -->
         <TemplatePanel v-if="activeTab === 'chat-templates'" :templates="typedDraftTemplates" @update:templates="updateDraftTemplates" />
 
@@ -42,7 +33,6 @@ type SettingTabKey_S = "chat-templates" | "chat-models" | "image-models" | "app"
 import type { ChatModelConfig, ImageModelConfig, ModelSettings, SettingsImportPayload } from "@/types";
 
 type ChatInstructionTemplate = { id: string; name: string; value: string };
-type SettingsAutosaveState = "saved" | "dirty" | "saving" | "error";
 
 interface SettingsDraftPayload {
   models: ModelSettings;
@@ -90,7 +80,6 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
   const autosaveDelay = options.autosaveDelay ?? 500;
   const draftModels = ref<ModelSettings>(createEmptyModelSettings());
   const draftTemplates = ref<unknown[]>([]);
-  const autosaveState = ref<SettingsAutosaveState>("saved");
   const lastSavedSnapshot = ref("");
   const currentDraftSnapshot = ref("");
   let autosaveTimer: number | null = null;
@@ -109,7 +98,7 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
   }
 
   const hasUnsavedChanges = computed(() => currentDraftSnapshot.value !== lastSavedSnapshot.value);
-  const shouldBlockUnload = computed(() => autosaveState.value === "saving" || hasUnsavedChanges.value);
+  const shouldBlockUnload = computed(() => hasUnsavedChanges.value);
 
   function syncDraftFromSource(payload: Partial<SettingsDraftPayload> | null | undefined = options.getInitialDraft()) {
     // Hydration resets the save baseline so initial store data is not treated as dirty.
@@ -119,7 +108,6 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
     draftTemplates.value = normalizedPayload.templates;
     currentDraftSnapshot.value = serializeDraftPayload(normalizedPayload);
     lastSavedSnapshot.value = currentDraftSnapshot.value;
-    autosaveState.value = "saved";
     isHydrating = false;
   }
 
@@ -127,23 +115,19 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
     // Ignore overlapping save cycles; the watcher will schedule another pass after edits.
     if (isHydrating || isPersisting) return false;
     if (!hasUnsavedChanges.value) {
-      autosaveState.value = "saved";
       return true;
     }
 
     const nextDraft = getDraftPayload();
     isPersisting = true;
-    autosaveState.value = "saving";
 
     try {
       const persisted = await options.persistDraft(nextDraft);
       if (!persisted) {
-        autosaveState.value = "error";
         return false;
       }
 
       lastSavedSnapshot.value = serializeDraftPayload(nextDraft);
-      autosaveState.value = "saved";
       return true;
     } finally {
       isPersisting = false;
@@ -157,11 +141,9 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
     if (isHydrating || isPersisting) return;
     currentDraftSnapshot.value = getDraftSnapshot();
     if (!hasUnsavedChanges.value) {
-      autosaveState.value = "saved";
       return;
     }
 
-    autosaveState.value = "dirty";
     if (autosaveTimer) window.clearTimeout(autosaveTimer);
     autosaveTimer = window.setTimeout(() => {
       persistCurrentDraft();
@@ -182,7 +164,6 @@ function useSettingsDraft(options: UseSettingsDraftOptions) {
   syncDraftFromSource();
 
   return {
-    autosaveState,
     draftModels,
     draftTemplates,
     shouldBlockUnload,
@@ -201,29 +182,9 @@ defineEmits<{
 
 const store = useStore();
 const { t } = useI18n();
-const settingGroups = computed(() => [
-  {
-    key: "chat",
-    label: t("user.groups.chat"),
-    items: [
-      { key: "chat-templates" as SettingTabKey_S, label: t("user.tabs.templates.label"), description: t("user.tabs.templates.description") },
-      { key: "chat-models" as SettingTabKey_S, label: t("user.tabs.chatModels.label"), description: t("user.tabs.chatModels.description") },
-    ],
-  },
-  {
-    key: "image",
-    label: t("user.groups.image"),
-    items: [{ key: "image-models" as SettingTabKey_S, label: t("user.tabs.imageModels.label"), description: t("user.tabs.imageModels.description") }],
-  },
-  {
-    key: "app",
-    label: t("user.groups.app"),
-    items: [{ key: "app" as SettingTabKey_S, label: t("user.tabs.app.label"), description: t("user.tabs.app.description") }],
-  },
-]);
 const activeTab = computed(() => props.activeTab);
 
-const { autosaveState, draftModels, draftTemplates, shouldBlockUnload, getDraftPayload, syncDraftFromSource } = useSettingsDraft({
+const { draftModels, draftTemplates, shouldBlockUnload, getDraftPayload, syncDraftFromSource } = useSettingsDraft({
   getInitialDraft: () => ({
     models: store.state.models,
     templates: store.state.chatInsTemplateList,
@@ -239,21 +200,6 @@ const { autosaveState, draftModels, draftTemplates, shouldBlockUnload, getDraftP
 });
 
 const typedDraftTemplates = computed<ChatInstructionTemplate[]>(() => draftTemplates.value as ChatInstructionTemplate[]);
-const activeTabInfo = computed(
-  () => settingGroups.value.flatMap((group) => group.items).find((item) => item.key === activeTab.value) || settingGroups.value[0].items[0],
-);
-const statusLabel = computed(() => {
-  // Map save state to localized copy for the status pill.
-  if (autosaveState.value === "saving") return t("common.saving");
-  if (autosaveState.value === "error") return t("common.saveError");
-  if (autosaveState.value === "dirty") return t("common.autosavePending");
-  return t("common.saved");
-});
-const statusClass = computed(() => ({
-  dirty: autosaveState.value === "dirty",
-  saving: autosaveState.value === "saving",
-  error: autosaveState.value === "error",
-}));
 
 function isUploadedJsonParseError(data: unknown): data is UploadedJsonParseError {
   return Boolean(data) && typeof data === "object" && "__jsonParseError" in data;
@@ -359,9 +305,11 @@ onBeforeUnmount(() => {
 }
 
 .settings-main {
+  width: min(100%, 1080px);
   min-width: 0;
   min-height: 0;
   flex: 1;
+  margin-inline: auto;
   padding: 20px 22px 18px;
   display: flex;
   flex-direction: column;
@@ -369,67 +317,8 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.settings-main-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 18px;
-
-  p {
-    max-width: 36rem;
-    font-size: 13px;
-    line-height: 1.65;
-    color: oklch(var(--bc) / 0.68);
-  }
-}
-
-.settings-status {
-  border-radius: 999px;
-  padding: 7px 12px;
-  background-color: oklch(var(--b1) / 0.9);
-  font-size: 12px;
-  color: oklch(var(--bc) / 0.68);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid oklch(var(--bc) / 0.06);
-
-  .settings-status-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 999px;
-    background-color: oklch(var(--bc) / 0.45);
-  }
-
-  &.dirty {
-    background-color: oklch(var(--wa) / 0.16);
-    color: oklch(var(--wa));
-
-    .settings-status-dot {
-      background-color: oklch(var(--wa));
-    }
-  }
-
-  &.saving {
-    background-color: oklch(var(--p) / 0.12);
-    color: oklch(var(--p));
-
-    .settings-status-dot {
-      background-color: oklch(var(--p));
-    }
-  }
-
-  &.error {
-    background-color: oklch(var(--er) / 0.12);
-    color: oklch(var(--er));
-
-    .settings-status-dot {
-      background-color: oklch(var(--er));
-    }
-  }
-}
-
 .settings-main-content {
+  width: 100%;
   min-height: 0;
   flex: 1;
   overflow-y: auto;
@@ -446,10 +335,9 @@ onBeforeUnmount(() => {
   contain: layout paint style;
 }
 
-@media (max-width: 768px) {
-  .settings-main-header {
-    flex-direction: column;
-  }
+.settings-main-content.is-model-settings {
+  width: min(100%, 1180px);
+  align-self: center;
 }
 
 @media (max-width: 720px) {
@@ -457,20 +345,6 @@ onBeforeUnmount(() => {
     padding: 14px 14px 16px;
     gap: 14px;
     flex: 1 1 auto;
-  }
-
-  .settings-main-header {
-    gap: 10px;
-
-    p {
-      max-width: none;
-      font-size: 12px;
-      line-height: 1.55;
-    }
-  }
-
-  .settings-status {
-    align-self: flex-start;
   }
 
   .settings-main-content {

@@ -3,10 +3,10 @@
     <div class="sidebar-wrapper">
       <!-- Header: Back button (settings) or logo + toggle -->
       <div class="sidebar-header">
-        <AppTooltip v-if="isSettingsRoute" :text="isExpanded ? '' : t('common.back')" placement="right">
+        <AppTooltip v-if="isSettingsRoute && isExpanded" :text="t('common.back')" placement="right">
           <button class="back-btn" type="button" @click="onBackFromSettings">
             <SvgIcon :src="backIcon" class="back-icon" />
-            <span v-if="isExpanded" class="back-label">{{ t("common.back") }}</span>
+            <span class="back-label">{{ t("common.back") }}</span>
           </button>
         </AppTooltip>
         <a v-else-if="isExpanded" class="brand-logo" href="/">
@@ -665,12 +665,6 @@ $radius-md: 12px;
   border-right: 1px solid oklch(var(--p) / 0.08);
   overflow: hidden;
   contain: layout paint style;
-  transition:
-    width 0.22s ease,
-    flex-basis 0.22s ease,
-    transform 0.22s ease,
-    background-color 0.22s ease,
-    border-color 0.22s ease;
   transform: translateX(0);
 
   &.is-expanded {
