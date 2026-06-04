@@ -1,6 +1,6 @@
 import store from "@/store";
 import { createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
-import { dsAlert, generateRandomCname, getUuid, isValidChatInfoArray } from "@/utils";
+import { dsAlert, getUuid } from "@/utils";
 import { tr } from "@/i18n";
 import { apiRequest } from "../app";
 import { removeChatSessionRunner } from "./runtime/session-runner";
@@ -81,13 +81,6 @@ export async function getChatList(): Promise<boolean> {
     return false;
   }
 
-  if (!isValidChatInfoArray(response.data)) {
-    await store.dispatch("resetChatList", []);
-    console.error("Invalid chat info array:", response.data);
-    dsAlert({ type: "error", message: tr("toast.chatListInvalid") });
-    return false;
-  }
-
   await store.dispatch("resetChatList", response.data);
   return true;
 }
@@ -146,7 +139,7 @@ export async function setChatSettings(cid: string = store.state.curChatId): Prom
 
 export async function addChat(name: string | null = null, model: ChatModelConfig | null = null): Promise<boolean> {
   const chatId = getUuid("chat");
-  const chatName = name || generateRandomCname();
+  const chatName = name || getUuid("chat");
   const modelSnapshot = createConversationModelSnapshot(
     model || store.state.curConversation?.modelSnapshot?.modelConfig || store.state.curChatModel || store.state.models.chat?.[0] || null,
   );

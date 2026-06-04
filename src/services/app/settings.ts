@@ -1,7 +1,7 @@
 import store from "@/store";
 import { tr } from "@/i18n";
 import { buildModelSettings, sanitizeModelSettings } from "@/models";
-import { dsAlert, getChatTemplateListValidationError, getModelSettingValidationError } from "@/utils";
+import { dsAlert } from "@/utils";
 import { apiRequest } from "./storage";
 import type { ApiResponse, ModelSettings } from "@/types";
 
@@ -38,14 +38,6 @@ export async function getModels(): Promise<boolean> {
 
   try {
     const parsed = res.data;
-    const validationError = getModelSettingValidationError(parsed);
-    if (validationError) {
-      await store.dispatch("setModels", emptyModelSettings());
-      console.error("Model settings validation error:", validationError);
-      dsAlert({ type: "error", message: tr("toast.userModelsInvalid", { error: validationError }) });
-      return false;
-    }
-
     await store.dispatch("setModels", sanitizeModelSettings(parsed as ModelSettings));
     return true;
   } catch (error) {
@@ -79,14 +71,6 @@ export async function getChatInsTemplateList(): Promise<boolean> {
 
   try {
     const templates = parseStoredJson<ChatInstructionTemplate[]>(res.data, []);
-    const validationError = getChatTemplateListValidationError(templates);
-    if (validationError) {
-      await store.dispatch("setChatInsTemplateList", []);
-      console.error("Chat instruction templates validation error:", validationError);
-      dsAlert({ type: "error", message: tr("toast.userTemplatesFetchFailed", { error: validationError }) });
-      return false;
-    }
-
     await store.dispatch("setChatInsTemplateList", templates);
     return true;
   } catch (error) {
@@ -98,19 +82,19 @@ export async function getChatInsTemplateList(): Promise<boolean> {
 }
 
 export async function setChatInsTemplateList(templates: unknown[] = store.state.chatInsTemplateList): Promise<boolean> {
-  const validationError = getChatTemplateListValidationError(templates);
-  if (validationError) {
-    console.error("Chat instruction templates validation error:", validationError);
-    dsAlert({ type: "error", message: tr("toast.userTemplatesSaveFailed", { error: validationError }) });
+  try {
+    const res = await setChatInsTemplateListAPI(JSON.stringify(templates as ChatInstructionTemplate[]));
+
+    if (!res.flag) {
+      console.error("Failed to save chat instruction templates:", res.log);
+      dsAlert({ type: "error", message: tr("toast.userTemplatesSaveFailed", { error: res.log }) });
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error saving chat instruction templates:", error);
+    dsAlert({ type: "error", message: tr("toast.userTemplatesSaveFailed", { error: error instanceof Error ? error.message : String(error) }) });
     return false;
   }
-
-  const res = await setChatInsTemplateListAPI(JSON.stringify(templates as ChatInstructionTemplate[]));
-  if (!res.flag) {
-    console.error("Failed to save chat instruction templates:", res.log);
-    dsAlert({ type: "error", message: tr("toast.userTemplatesSaveFailed", { error: res.log }) });
-    return false;
-  }
-
-  return true;
 }

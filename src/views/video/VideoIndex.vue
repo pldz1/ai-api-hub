@@ -26,7 +26,13 @@
             <p v-if="message.prompt && message.role === 'user'" class="video-message-prompt">{{ message.prompt }}</p>
 
             <div v-if="message.attachments?.length" class="video-attachment-row">
-              <div v-for="att in message.attachments" :key="att.id" class="video-attachment">
+              <div
+                v-for="att in message.attachments"
+                :key="att.id"
+                class="video-attachment"
+                :class="{ clickable: message.role === 'user' && att.content_type?.startsWith('image/') }"
+                @click="message.role === 'user' && att.content_type?.startsWith('image/') && previewAttachmentImage(att.previewUrl)"
+              >
                 <img v-if="att.content_type?.startsWith('image/')" :src="att.previewUrl" :alt="att.filename" />
                 <span v-else class="video-audio-badge">{{ att.filename }}</span>
               </div>
@@ -166,6 +172,7 @@
       <input ref="lastFrameInputRef" class="video-file-input" type="file" accept="image/*" @change="onLastFrameChange" />
       <input ref="audioInputRef" class="video-file-input" type="file" accept="audio/*" @change="onAudioFileChange" />
     </div>
+    <ImageModal />
     <VideoSettings ref="videoSettingsRef" :model="selectedModel" :settings="videoSettings" @close="onVideoSettingsClose" />
   </section>
 </template>
@@ -176,6 +183,7 @@ import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import AppTooltip from "@/components/AppTooltip.vue";
+import ImageModal from "@/components/ImageModal.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import VideoSettings from "@/views/video/VideoSettings.vue";
 import type { VideoSettingsData } from "@/views/video/VideoSettings.vue";
@@ -288,6 +296,13 @@ function splitDataUrl(dataUrl: string) {
     contentType: match?.[1] || "image/png",
     data: match?.[2] || dataUrl,
   };
+}
+
+async function previewAttachmentImage(src: string) {
+  if (!src) return;
+  await store.dispatch("setModalImage", src);
+  const dialog = document.getElementById("global_image_preview_modal") as HTMLDialogElement | null;
+  dialog?.showModal();
 }
 
 const MAX_IMAGE_DIM = 1024;
@@ -701,6 +716,7 @@ onBeforeUnmount(() => {
 .video-attachment-row, .video-output-grid { margin-top: 14px; }
 .video-attachment-row { display: flex; flex-wrap: wrap; gap: 10px; }
 .video-attachment { width: 96px; height: 96px; overflow: hidden; border-radius: 8px; border: 1px solid rgba(17, 24, 39, 0.08);
+  &.clickable { cursor: zoom-in; }
   img { width: 100%; height: 100%; object-fit: cover; }
 }
 .video-audio-badge { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 12px; color: oklch(var(--bc)); background: oklch(var(--b2)); }

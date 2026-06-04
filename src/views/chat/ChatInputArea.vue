@@ -39,7 +39,7 @@
               </select>
               <div v-else class="ccia-model-lock">
                 <AppTooltip :text="t('tooltip.cannotEditModel')" placement="top">
-                  {{ lockedModelName }}
+                  {{ readonlyModelName }}
                 </AppTooltip>
               </div>
             </div>
@@ -120,8 +120,8 @@ import { defaultModelCapabilities } from "@/constants";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import { createConversationModelSnapshot, getChatModelCapabilities, mergeChatSettingsWithModel, getModelFromSnapshot } from "@/models";
-import { packUserMsg } from "@/services";
-import { dsAlert, getUuid, isValidUserMsg } from "@/utils";
+import { packUserMsg, setChatSettings } from "@/services";
+import { dsAlert, getUuid } from "@/utils";
 import ChatSettings from "@/views/chat/ChatSettings.vue";
 
 type InputCapabilityKey = string;
@@ -177,9 +177,9 @@ const curConversation = computed(() => store.state.curConversation);
 const inputCapabilities = computed<Record<string, boolean>>(() => store.state.inputCapabilities || {});
 const selectedModel = ref<ChatModelConfig | null>(null);
 
-const isModelSelectionReadonly = computed(() => Boolean(props.modelSelectionReadonly || curChatId.value));
+const isModelSelectionReadonly = computed(() => Boolean(props.modelSelectionReadonly));
 const draftSnapshot = computed(() => createConversationModelSnapshot(selectedModel.value));
-const activeSnapshot = computed(() => curConversation.value?.modelSnapshot || draftSnapshot.value);
+const activeSnapshot = computed(() => draftSnapshot.value || curConversation.value?.modelSnapshot || null);
 const supportedCapabilities = computed(() => {
   const model = getModelFromSnapshot(activeSnapshot.value);
   return model ? getChatModelCapabilities(model) : { ...defaultModelCapabilities };
@@ -188,7 +188,7 @@ const activeCapabilities = computed(() => ({
   imageRead: supportedCapabilities.value.imageRead,
   webSearch: Boolean(supportedCapabilities.value.webSearch && inputCapabilities.value.webSearch),
 }));
-const lockedModelName = computed(() => curConversation.value?.modelSnapshot?.displayName || t("input.lockedModel"));
+const readonlyModelName = computed(() => draftSnapshot.value?.displayName || curConversation.value?.modelSnapshot?.displayName || t("input.lockedModel"));
 
 const getModelSelectionKey = (model: ChatModelConfig | null) => [model?.provider, model?.name, model?.model, model?.baseURL].join("|");
 
@@ -203,14 +203,32 @@ watch(
 watch(
   () => selectedModel.value,
   async (model, previousModel) => {
-    if (curChatId.value || !model) return;
+    if (!model) return;
 
     await store.dispatch("setCurChatModel", model);
 
     if (!previousModel || getModelSelectionKey(previousModel) !== getModelSelectionKey(model)) {
-      await store.dispatch("setCurChatModelSettings", mergeChatSettingsWithModel(model, {}));
+      if (curChatId.value) {
+        await store.dispatch("setCurConversationModel", model);
+      }
+
+      await store.dispatch("setCurChatModelSettings", mergeChatSettingsWithModel(model, curChatId.value ? store.state.curChatModelSettings || {} : {}));
       await store.dispatch("resetInputCapabilities");
+
+      if (curChatId.value) {
+        await setChatSettings(curChatId.value);
+      }
     }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => curConversation.value?.modelSnapshot,
+  (snapshot) => {
+    const model = getModelFromSnapshot(snapshot);
+    if (!model || getModelSelectionKey(selectedModel.value) === getModelSelectionKey(model)) return;
+    selectedModel.value = model;
   },
   { immediate: true },
 );
@@ -221,7 +239,7 @@ const onSendInputData = async () => {
     return;
   }
 
-  if (!curChatId.value && !selectedModel.value) {
+  if (!selectedModel.value) {
     console.warn("No chat ID and no selected model found.");
     dsAlert({ type: "warn", message: t("input.selectChatModel") });
     return;
@@ -233,8 +251,8 @@ const onSendInputData = async () => {
     return;
   }
 
-  if (curChatId.value && !curConversation.value?.modelSnapshot) {
-    console.warn("Existing chat without a model snapshot.");
+  if (!draftSnapshot.value) {
+    console.warn("No selected model snapshot available.");
     dsAlert({ type: "warn", message: t("toast.modelInitCheck") });
     return;
   }
@@ -244,28 +262,31 @@ const onSendInputData = async () => {
     if (!confirmed) return;
   }
 
+  if (curChatId.value) {
+    const currentConversationModel = getModelFromSnapshot(curConversation.value?.modelSnapshot);
+    if (getModelSelectionKey(currentConversationModel) !== getModelSelectionKey(selectedModel.value)) {
+      await store.dispatch("setCurConversationModel", selectedModel.value);
+    }
+    await setChatSettings(curChatId.value);
+  }
+
   const imageUrls = inputImages.value.map((item) => item.src);
   const data = packUserMsg(imageUrls, inputText.value, activeCapabilities.value.imageRead);
-  if (isValidUserMsg(data)) {
-    inputText.value = "";
-    inputImages.value = [];
-    emit("on-start", {
-      message: {
-        ...data,
-        meta: {
-          usedCapabilities: {
-            ...activeCapabilities.value,
-          },
+  inputText.value = "";
+  inputImages.value = [];
+  emit("on-start", {
+    message: {
+      ...data,
+      meta: {
+        usedCapabilities: {
+          ...activeCapabilities.value,
         },
       },
-      model: selectedModel.value,
-    });
+    },
+    model: selectedModel.value,
+  });
 
-    if (cciaTextareaRef.value) cciaTextareaRef.value.style.height = "";
-  } else {
-    console.error("Invalid user message data:", data);
-    dsAlert({ type: "error", message: t("toast.invalidQuestion") });
-  }
+  if (cciaTextareaRef.value) cciaTextareaRef.value.style.height = "";
 };
 
 const onToggleCapability = async (key: InputCapabilityKey, value: boolean) => {

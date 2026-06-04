@@ -12,3 +12,8 @@ export function getUuid(prefix: string): string {
   const id = `${pre}-${base36Timestamp}-${random4Segment()}-${random4Segment()}`;
   return id;
 }
+
+export function append4Random(prefix: string): string {
+  const randomId = Math.random().toString(36).slice(-4);
+  return `${prefix}-${randomId}`;
+}

@@ -29,8 +29,8 @@ import AppPanel from "./AppPanel.vue";
 import ModelPanel from "./ModelPanel.vue";
 import TemplatePanel from "./TemplatePanel.vue";
 import { buildModelSettings } from "@/models";
-import { SETTINGS_IMPORTED_EVENT, getChatInsTemplateList, getModels, importSettingsPayload, setChatInsTemplateList, setModels } from "@/services";
-import { dsAlert, uploadJsonFile } from "@/utils";
+import { SETTINGS_IMPORTED_EVENT, getChatInsTemplateList, getModels, importSettingsFromUploadedJsonFile, setChatInsTemplateList, setModels } from "@/services";
+import { dsAlert } from "@/utils";
 import { APP_NAME, APP_VERSION } from "@/constants";
 type SettingTabKey_S = "chat-templates" | "chat-models" | "image-models" | "video-models" | "app";
 import type { ChatModelConfig, ImageModelConfig, VideoModelConfig, ModelSettings, SettingsImportPayload } from "@/types";
@@ -46,10 +46,6 @@ interface UseSettingsDraftOptions {
   autosaveDelay?: number;
   getInitialDraft: () => SettingsDraftPayload;
   persistDraft: (draft: SettingsDraftPayload) => Promise<boolean>;
-}
-
-interface UploadedJsonParseError {
-  __jsonParseError: string;
 }
 
 function createEmptyModelSettings(): ModelSettings {
@@ -201,10 +197,6 @@ const { draftModels, draftTemplates, shouldBlockUnload, getDraftPayload, syncDra
 
 const typedDraftTemplates = computed<ChatInstructionTemplate[]>(() => draftTemplates.value as ChatInstructionTemplate[]);
 
-function isUploadedJsonParseError(data: unknown): data is UploadedJsonParseError {
-  return Boolean(data) && typeof data === "object" && "__jsonParseError" in data;
-}
-
 function updateDraftTemplates(nextTemplates: ChatInstructionTemplate[]) {
   draftTemplates.value = nextTemplates;
 }
@@ -261,20 +253,7 @@ async function exportSettings() {
 }
 
 async function importSettings() {
-  // Validate imports before applying them because imported data updates multiple stores.
-  const jsonData = await uploadJsonFile();
-  if (isUploadedJsonParseError(jsonData)) {
-    console.error("Failed to parse imported settings:", jsonData.__jsonParseError);
-    dsAlert({ type: "error", duration: 6000, message: `${t("user.importReadError")} ${jsonData.__jsonParseError}` });
-    return;
-  }
-  if (!jsonData) {
-    console.error("Failed to read imported settings file.");
-    dsAlert({ type: "error", message: t("user.importReadError") });
-    return;
-  }
-
-  if (!(await importSettingsPayload(jsonData))) return;
+  if (!(await importSettingsFromUploadedJsonFile())) return;
   syncDraftFromSource({
     models: store.state.models,
     templates: store.state.chatInsTemplateList,

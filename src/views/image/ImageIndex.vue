@@ -21,7 +21,13 @@
             <p v-if="message.prompt && message.role === 'user'" class="image-message-prompt">{{ message.prompt }}</p>
 
             <div v-if="message.attachments?.length" class="image-attachment-row">
-              <div v-for="attachment in message.attachments" :key="attachment.id" class="image-attachment">
+              <div
+                v-for="attachment in message.attachments"
+                :key="attachment.id"
+                class="image-attachment"
+                :class="{ clickable: message.role === 'user' }"
+                @click="message.role === 'user' && previewAttachmentImage(attachment.previewUrl)"
+              >
                 <img :src="attachment.previewUrl" :alt="attachment.filename" />
               </div>
             </div>
@@ -113,6 +119,7 @@
       <input ref="fileInputRef" class="image-file-input" type="file" accept="image/*" multiple @change="onFileChange" />
     </div>
     <ImageEditDialog ref="imageEditDialogRef" @apply="applyBrushEdit" @close="focusPromptInput" />
+    <ImageModal />
     <ImageSettings ref="imageSettingsRef" :model="selectedModel" :settings="imageSettings" @close="onImageSettingsClose" />
   </section>
 </template>
@@ -123,6 +130,7 @@ import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import AppTooltip from "@/components/AppTooltip.vue";
+import ImageModal from "@/components/ImageModal.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import ImageEditDialog from "@/views/image/ImageEditDialog.vue";
 import ImageSettings from "@/views/image/ImageSettings.vue";
@@ -270,6 +278,13 @@ function removeAttachment(id: string) {
   if (attachments.value.length < 2) hasEditedMask.value = false;
 }
 
+async function previewAttachmentImage(src: string) {
+  if (!src) return;
+  await store.dispatch("setModalImage", src);
+  const dialog = document.getElementById("global_image_preview_modal") as HTMLDialogElement | null;
+  dialog?.showModal();
+}
+
 async function imagePayloadToAttachment(image: ImagePayload): Promise<ImageInputAttachment> {
   const response = await fetch(image.src);
   const blob = await response.blob();
@@ -283,8 +298,6 @@ async function openEditDialog(image?: ImagePayload) {
   if (image) {
     try {
       const attachment = await imagePayloadToAttachment(image);
-      attachments.value = [attachment];
-      hasEditedMask.value = false;
       imageEditDialogRef.value?.open(attachment);
     } catch (error) {
       console.error("Failed to load image for editing:", error);
@@ -665,6 +678,10 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border-radius: 8px;
   border: 1px solid rgba(17, 24, 39, 0.08);
+
+  &.clickable {
+    cursor: zoom-in;
+  }
 
   img {
     width: 100%;

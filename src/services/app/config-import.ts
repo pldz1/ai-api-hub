@@ -1,6 +1,6 @@
 import store from "@/store";
 import { sanitizeModelSettings } from "@/models";
-import { dsAlert, getSettingsImportValidationError, isSettingsImportPackage, isValidSettingsImport } from "@/utils";
+import { dsAlert, uploadJsonFile } from "@/utils";
 import { tr } from "@/i18n";
 import { getModels, setChatInsTemplateList, setModels } from "./settings";
 import type { ModelSettings, SettingsImportPayload } from "@/types";
@@ -13,63 +13,8 @@ interface ImportConfigOptions {
   source?: ConfigImportSource;
 }
 
-const IMPORT_PASSPHRASE = "ai-api-hub-config-import-gate";
-const IMPORT_SALT = new TextEncoder().encode("ai-api-hub-salt");
-
-async function deriveCryptoKey(passphrase: string, usage: KeyUsage[]): Promise<CryptoKey> {
-  const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: IMPORT_SALT, iterations: 100_000, hash: "SHA-256" },
-    keyMaterial,
-    { name: "AES-GCM", length: 256 },
-    false,
-    usage,
-  );
-}
-
-/**
- * 解密 import password 参数（base64url 格式）。
- * 密文格式：`base64url(12-byte IV + ciphertext)`
- */
-export async function decryptImportPassword(base64urlCiphertext: string): Promise<string> {
-  const key = await deriveCryptoKey(IMPORT_PASSPHRASE, ["decrypt"]);
-  const normalized = base64urlCiphertext.replace(/-/g, "+").replace(/_/g, "/");
-  const raw = Uint8Array.from(window.atob(normalized), (c) => c.charCodeAt(0));
-  const iv = raw.slice(0, 12);
-  const ciphertext = raw.slice(12);
-  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
-  return new TextDecoder().decode(decrypted);
-}
-
-/**
- * 验证用户输入的密码是否匹配 URL 中的 password 密文。
- * @returns 匹配的明文，失败返回 null
- */
-export async function verifyImportPassword(input: string, encryptedPassword: string): Promise<string | null> {
-  try {
-    const decrypted = await decryptImportPassword(encryptedPassword);
-    return decrypted === input ? decrypted : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * 加密铭文 → base64url 密文（供配置导出方生成 URL 使用）。
- * 仅用于线下生成 password 参数，不参与导入流程。
- */
-export async function encryptImportPassword(plaintext: string): Promise<string> {
-  const key = await deriveCryptoKey(IMPORT_PASSPHRASE, ["encrypt"]);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encoded = new TextEncoder().encode(plaintext);
-  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
-  const combined = new Uint8Array(iv.length + ciphertext.byteLength);
-  combined.set(iv);
-  combined.set(new Uint8Array(ciphertext), iv.length);
-  return btoa(String.fromCharCode(...combined))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+interface UploadedJsonParseError {
+  __jsonParseError: string;
 }
 
 export function getInitialRoutePassword(): string {
@@ -81,6 +26,10 @@ export function getInitialRoutePassword(): string {
 
 function clonePlainData<T>(data: T): T {
   return JSON.parse(JSON.stringify(data));
+}
+
+function isUploadedJsonParseError(data: unknown): data is UploadedJsonParseError {
+  return Boolean(data) && typeof data === "object" && "__jsonParseError" in data;
 }
 
 function normalizeBase64Url(value: string): string {
@@ -147,36 +96,46 @@ export function getConfigImportSource(configValue: string): ConfigImportSource {
 
 export async function importSettingsPayload(data: unknown, options: ImportConfigOptions = {}): Promise<boolean> {
   const shouldNotify = options.notify !== false;
+  const currentModels = clonePlainData(store.state.models);
+  const currentTemplates = clonePlainData(store.state.chatInsTemplateList);
 
-  if (!isValidSettingsImport(data)) {
-    const validationError = getSettingsImportValidationError(data);
-    if (shouldNotify) {
-      dsAlert({
-        duration: 5000,
-        type: "error",
-        message: validationError ? `${tr("user.importInvalid")} ${validationError}` : tr("user.importInvalid"),
-      });
+  try {
+    const importedPackage = clonePlainData(data) as Partial<SettingsImportPayload> & Partial<ModelSettings>;
+    const modelSource = importedPackage && typeof importedPackage === "object" && "models" in importedPackage ? importedPackage.models : importedPackage;
+    if (
+      !modelSource ||
+      typeof modelSource !== "object" ||
+      (!Array.isArray((modelSource as Partial<ModelSettings>).chat) &&
+        !Array.isArray((modelSource as Partial<ModelSettings>).image) &&
+        !Array.isArray((modelSource as Partial<ModelSettings>).video))
+    ) {
+      throw new Error("Invalid config: missing model settings.");
     }
-    return false;
-  }
 
-  if (isSettingsImportPackage(data)) {
-    const importedPackage = clonePlainData(data) as SettingsImportPayload;
-    const models = sanitizeModelSettings(importedPackage.models);
+    const models = sanitizeModelSettings(modelSource as Partial<ModelSettings>);
+    const templates = "models" in importedPackage && Array.isArray(importedPackage.templates) ? clonePlainData(importedPackage.templates) : undefined;
 
     await store.dispatch("setModels", models);
-    if (Array.isArray(importedPackage.templates)) {
-      await store.dispatch("setChatInsTemplateList", clonePlainData(importedPackage.templates));
+    if (Array.isArray(templates)) {
+      await store.dispatch("setChatInsTemplateList", templates);
     }
 
     const modelsSaved = await setModels(models);
-    const templatesSaved = Array.isArray(importedPackage.templates) ? await setChatInsTemplateList(importedPackage.templates) : true;
+    const templatesSaved = Array.isArray(templates) ? await setChatInsTemplateList(templates) : true;
 
-    if (modelsSaved === false || templatesSaved === false) return false;
-  } else {
-    const models = sanitizeModelSettings(clonePlainData(data) as ModelSettings);
-    await store.dispatch("setModels", models);
-    if ((await setModels(models)) === false) return false;
+    if (modelsSaved === false || templatesSaved === false) {
+      await store.dispatch("setModels", currentModels);
+      await store.dispatch("setChatInsTemplateList", currentTemplates);
+      return false;
+    }
+  } catch (error) {
+    await store.dispatch("setModels", currentModels);
+    await store.dispatch("setChatInsTemplateList", currentTemplates);
+    console.error("Failed to import settings:", error);
+    if (shouldNotify) {
+      dsAlert({ type: "error", message: tr("user.importFailed", { error: error instanceof Error ? error.message : String(error) }) });
+    }
+    return false;
   }
 
   if (shouldNotify) {
@@ -184,6 +143,28 @@ export async function importSettingsPayload(data: unknown, options: ImportConfig
   }
   notifySettingsImported();
   return true;
+}
+
+export async function importSettingsFromUploadedJsonFile(options: ImportConfigOptions = {}): Promise<boolean> {
+  const jsonData = await uploadJsonFile();
+
+  if (isUploadedJsonParseError(jsonData)) {
+    console.error("Failed to parse imported settings:", jsonData.__jsonParseError);
+    if (options.notify !== false) {
+      dsAlert({ type: "error", duration: 6000, message: `${tr("user.importReadError")} ${jsonData.__jsonParseError}` });
+    }
+    return false;
+  }
+
+  if (!jsonData) {
+    console.error("Failed to read imported settings file.");
+    if (options.notify !== false) {
+      dsAlert({ type: "error", message: tr("user.importReadError") });
+    }
+    return false;
+  }
+
+  return importSettingsPayload(jsonData, options);
 }
 
 export async function importSettingsFromConfigValue(configValue: string, options: ImportConfigOptions = {}): Promise<boolean> {

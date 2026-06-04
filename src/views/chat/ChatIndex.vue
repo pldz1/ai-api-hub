@@ -49,7 +49,7 @@ import ChatHeaderBar from "@/views/chat/ChatHeaderBar.vue";
 import ChatInputArea from "@/views/chat/ChatInputArea.vue";
 import ChatInsTemplate from "@/views/chat/ChatInsTemplate.vue";
 import ChatScrollActions from "@/views/chat/ChatScrollActions.vue";
-import ImageModal from "@/views/chat/ImageModal.vue";
+import ImageModal from "@/components/ImageModal.vue";
 
 type ChatStartPayload = {
   message: ChatPromptMessage;
@@ -71,12 +71,11 @@ const drawer = createChatDrawer();
 let activeRunnerChatId: string | null = null;
 let autoScrolledDraftMessageId = "";
 const curChatId = computed<string>(() => store.state.curChatId || "");
-const curConversation = computed(() => (curChatId.value ? store.state.chatConversationsById?.[curChatId.value] || null : null));
 const activeMessages = computed<ChatPromptMessage[]>(() => (curChatId.value ? store.state.chatMessagesById?.[curChatId.value] || [] : []));
 const activeRuntime = computed(() => (curChatId.value ? store.state.chatRuntimeById?.[curChatId.value] || null : null));
 const routeChatId = computed(() => (typeof route.params.cid === "string" ? route.params.cid : ""));
 const isChatting = computed(() => Boolean(activeRuntime.value?.pending || ["loading", "streaming"].includes(activeRuntime.value?.status)));
-const isModelSelectionReadonly = computed(() => Boolean(curConversation.value?.modelSnapshot && (curChatId.value || activeMessages.value.length > 0)));
+const isModelSelectionReadonly = computed(() => isChatting.value);
 const isShowTemplate = computed(() => !routeChatId.value && activeMessages.value.length === 0);
 
 const readScrollActions = () => {
@@ -183,7 +182,9 @@ const onStartChat = async (payload: ChatStartPayload) => {
   const { message, model: selectedModel } = payload;
 
   if (!curChatId.value) {
-    const created = await addChat(null, selectedModel);
+    const messageContent = message.content.find((c) => c.type === "text")?.text || "";
+    const compressedContent = messageContent.length > 16 ? messageContent.slice(0, 16) : messageContent;
+    const created = await addChat(compressedContent, selectedModel);
     if (!created || !store.state.curChatId) return;
     await router.replace({ name: "chat", params: { cid: store.state.curChatId } });
   }

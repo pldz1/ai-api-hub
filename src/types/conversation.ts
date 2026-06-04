@@ -19,7 +19,7 @@ export interface ChatModelEditorState {
 /**
  * Conversation-bound model snapshot.
  *
- * This captures which user-configured model a conversation is locked to.
+ * This captures the user-configured model currently selected for a conversation.
  * Runtime request params and other derived metadata are intentionally excluded;
  * they are recomputed from `modelConfig` when needed.
  */

@@ -6,28 +6,38 @@
           <SvgIcon :src="closeIcon" />
         </button>
         <div class="ied-toolbar-actions">
-          <button class="ied-icon-button" type="button" :aria-label="t('image.clearBrush')" @click="clearMask">
-            <svg-icon :src="revertIcon" />
-          </button>
+          <!-- Download -->
           <button class="ied-secondary-button" type="button" @click="downloadImage">{{ t("image.download") }}</button>
-          <label class="ied-brush-control">
+          <!-- Reset -->
+          <button class="ied-secondary-button" :class="{ active: editMode }" type="button" @click="clearMask">
+            {{ t("image.editResetAction") }}
+          </button>
+          <!-- Brush size -->
+          <label class="ied-brush-control" :class="{ disabled: !editMode }">
             <span>{{ t("image.brushSize") }}</span>
-            <input v-model.number="brushSize" type="range" min="8" max="96" step="1" />
+            <input v-model.number="brushSize" type="range" min="8" max="96" step="1" :disabled="!editMode" />
           </label>
+          <!-- Start editing -->
+          <button class="ied-secondary-button" :class="{ active: editMode }" type="button" @click="editMode = !editMode">
+            {{ t("image.editImageAction") }}
+          </button>
+          <!-- Save modification -->
           <button class="ied-save-button" type="button" @click="save">{{ t("common.save") }}</button>
         </div>
       </header>
 
-      <main class="ied-stage">
+      <main ref="stageRef" class="ied-stage" @wheel.prevent="onWheel">
         <div class="ied-canvas-frame" :style="canvasFrameStyle">
           <canvas ref="imageCanvasRef" class="ied-canvas ied-image-layer"></canvas>
           <canvas
             ref="maskCanvasRef"
             class="ied-canvas ied-mask-layer"
-            @pointerdown="startPaint"
-            @pointermove="paint"
-            @pointerup="stopPaint"
-            @pointerleave="stopPaint"
+            :class="{ editing: editMode, panning: isPanning }"
+            @pointerdown="onPointerDown"
+            @pointermove="onPointerMove"
+            @pointerup="onPointerUp"
+            @pointercancel="onPointerUp"
+            @pointerleave="onPointerUp"
           ></canvas>
         </div>
       </main>
@@ -41,7 +51,6 @@ import { useI18n } from "vue-i18n";
 import { dsAlert } from "@/utils";
 import SvgIcon from "@/components/SvgIcon.vue";
 import closeIcon from "@/assets/svg/delete32.svg";
-import revertIcon from "@/assets/svg/revert32.svg";
 import type { ImageInputAttachment } from "@/types";
 
 const emit = defineEmits<{
@@ -51,14 +60,21 @@ const emit = defineEmits<{
 
 const dialogRef = ref<HTMLDialogElement | null>(null);
 const { t } = useI18n();
+const stageRef = ref<HTMLElement | null>(null);
 const imageCanvasRef = ref<HTMLCanvasElement | null>(null);
 const maskCanvasRef = ref<HTMLCanvasElement | null>(null);
 const sourceImage = ref<ImageInputAttachment | null>(null);
 const brushSize = ref(36);
+const editMode = ref(false);
 const isPainting = ref(false);
+const isPanning = ref(false);
 const canvasAspectRatio = ref("1 / 1");
 const naturalSize = ref({ width: 1, height: 1 });
 const stageSize = ref({ width: 1, height: 1 });
+const zoomScale = ref(1);
+const translateX = ref(0);
+const translateY = ref(0);
+const lastPointer = ref({ x: 0, y: 0 });
 const canvasFrameStyle = computed(() => {
   const naturalWidth = Math.max(1, naturalSize.value.width);
   const naturalHeight = Math.max(1, naturalSize.value.height);
@@ -69,6 +85,7 @@ const canvasFrameStyle = computed(() => {
   return {
     width: `${Math.round(naturalWidth * scale)}px`,
     height: `${Math.round(naturalHeight * scale)}px`,
+    transform: `translate3d(${translateX.value}px, ${translateY.value}px, 0) scale(${zoomScale.value})`,
   };
 });
 
@@ -106,19 +123,106 @@ function drawBrush(event: PointerEvent) {
 }
 
 function startPaint(event: PointerEvent) {
+  if (!editMode.value) return;
+
   isPainting.value = true;
   (event.currentTarget as HTMLElement | null)?.setPointerCapture?.(event.pointerId);
   drawBrush(event);
 }
 
 function paint(event: PointerEvent) {
-  if (!isPainting.value) return;
+  if (!editMode.value || !isPainting.value) return;
   drawBrush(event);
 }
 
 function stopPaint(event: PointerEvent) {
   isPainting.value = false;
   (event.currentTarget as HTMLElement | null)?.releasePointerCapture?.(event.pointerId);
+}
+
+function resetView() {
+  zoomScale.value = 1;
+  translateX.value = 0;
+  translateY.value = 0;
+  isPanning.value = false;
+  isPainting.value = false;
+}
+
+function clampZoom(value: number) {
+  return Math.min(6, Math.max(1, value));
+}
+
+function zoomAt(clientX: number, clientY: number, nextScale: number) {
+  const stage = stageRef.value;
+  if (!stage) return;
+
+  const previousScale = zoomScale.value;
+  const clampedScale = clampZoom(nextScale);
+
+  if (clampedScale === 1) {
+    resetView();
+    return;
+  }
+
+  const rect = stage.getBoundingClientRect();
+  const relativeX = clientX - rect.left - rect.width / 2;
+  const relativeY = clientY - rect.top - rect.height / 2;
+  const ratio = clampedScale / previousScale;
+
+  translateX.value = relativeX - (relativeX - translateX.value) * ratio;
+  translateY.value = relativeY - (relativeY - translateY.value) * ratio;
+  zoomScale.value = clampedScale;
+}
+
+function onWheel(event: WheelEvent) {
+  const nextScale = zoomScale.value * (1 - event.deltaY * 0.0018);
+  zoomAt(event.clientX, event.clientY, nextScale);
+}
+
+function startPan(event: PointerEvent) {
+  isPanning.value = true;
+  lastPointer.value = { x: event.clientX, y: event.clientY };
+  (event.currentTarget as HTMLElement | null)?.setPointerCapture?.(event.pointerId);
+}
+
+function pan(event: PointerEvent) {
+  if (!isPanning.value) return;
+
+  translateX.value += event.clientX - lastPointer.value.x;
+  translateY.value += event.clientY - lastPointer.value.y;
+  lastPointer.value = { x: event.clientX, y: event.clientY };
+}
+
+function stopPan(event: PointerEvent) {
+  isPanning.value = false;
+  (event.currentTarget as HTMLElement | null)?.releasePointerCapture?.(event.pointerId);
+}
+
+function onPointerDown(event: PointerEvent) {
+  if (editMode.value) {
+    startPaint(event);
+    return;
+  }
+
+  startPan(event);
+}
+
+function onPointerMove(event: PointerEvent) {
+  if (editMode.value) {
+    paint(event);
+    return;
+  }
+
+  pan(event);
+}
+
+function onPointerUp(event: PointerEvent) {
+  if (editMode.value) {
+    stopPaint(event);
+    return;
+  }
+
+  stopPan(event);
 }
 
 function clearMask() {
@@ -220,6 +324,8 @@ function updateStageSize() {
 
 async function open(image: ImageInputAttachment) {
   sourceImage.value = image;
+  editMode.value = false;
+  resetView();
   updateStageSize();
   dialogRef.value?.showModal();
   await loadImage();
@@ -227,6 +333,7 @@ async function open(image: ImageInputAttachment) {
 
 function close() {
   if (dialogRef.value?.open) dialogRef.value.close();
+  resetView();
   emit("close");
 }
 
@@ -277,9 +384,16 @@ defineExpose({ open, close });
 }
 
 .ied-toolbar-actions {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .ied-icon-button {
@@ -308,6 +422,10 @@ defineExpose({ open, close });
     width: 104px;
     accent-color: #fff;
   }
+
+  &.disabled {
+    opacity: 0.45;
+  }
 }
 
 .ied-secondary-button,
@@ -317,11 +435,17 @@ defineExpose({ open, close });
   border: none;
   border-radius: 999px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .ied-secondary-button {
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
+
+  &.active {
+    background: #fff;
+    color: #111827;
+  }
 }
 
 .ied-save-button {
@@ -343,6 +467,8 @@ defineExpose({ open, close });
   background: #fff;
   box-shadow: 0 22px 80px rgba(0, 0, 0, 0.32);
   overflow: hidden;
+  transform-origin: center center;
+  will-change: transform;
 }
 
 .ied-canvas {
@@ -354,9 +480,17 @@ defineExpose({ open, close });
 }
 
 .ied-mask-layer {
-  cursor: crosshair;
+  cursor: grab;
   opacity: 0.48;
   touch-action: none;
+
+  &.editing {
+    cursor: crosshair;
+  }
+
+  &.panning {
+    cursor: grabbing;
+  }
 }
 
 @media (max-width: 720px) {
