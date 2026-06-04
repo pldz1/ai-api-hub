@@ -42,6 +42,15 @@
             </button>
           </label>
         </div>
+
+        <!-- Proxy toggle: only for video models (DashScope CORS workaround) -->
+        <label v-if="isVideoModel" class="model-form-field model-form-field-span model-proxy-toggle">
+          <span class="proxy-toggle-row">
+            <input v-model="localModel.useProxy" type="checkbox" class="checkbox checkbox-sm" />
+            <span>{{ t("user.videoModels.useProxy") }}</span>
+          </span>
+          <small>{{ t("user.videoModels.useProxyHelp") }}</small>
+        </label>
       </div>
     </section>
 
@@ -109,6 +118,7 @@ import type {
 
 type ModelEditorState = Omit<ChatModelEditorState, "provider"> & {
   provider: ChatModelEditorState["provider"] | ImageModelEditorState["provider"];
+  useProxy?: boolean;
 };
 type ModelEditorInput = Partial<ModelConfig> & { apiType?: ModelEditorState["provider"] };
 type ProviderSuggestion = ModelEditorState["provider"];
@@ -222,17 +232,14 @@ function syncProviderForModel(force = false) {
 }
 
 function normalizeModelDraft(source: ModelEditorState = localModel): ModelEditorState {
-  // Keep the persisted shape provider-agnostic for all chat providers.
   const next: ModelEditorState = {
     name: String(source.name || "").trim(),
     provider: source.provider,
     baseURL: String(source.baseURL || "").trim(),
     apiKey: String(source.apiKey || "").trim(),
     model: String(source.model || "").trim(),
+    useProxy: source.useProxy ?? false,
   };
-  if (isImageModel.value) {
-    return next;
-  }
   return next;
 }
 
@@ -263,6 +270,7 @@ function buildVideoModelPayload(draft: ModelEditorState): VideoModelConfig {
     model: draft.model,
     provider: (draft.provider || "DashScope") as VideoModelConfig["provider"],
     baseURL: draft.baseURL,
+    useProxy: draft.useProxy ?? false,
   };
 }
 
@@ -424,6 +432,17 @@ watch(
 
 .model-form-field-span {
   grid-column: 1 / -1;
+}
+
+.model-proxy-toggle {
+  cursor: pointer;
+}
+
+.proxy-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
 }
 
 .model-key-input {

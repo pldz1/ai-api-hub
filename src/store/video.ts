@@ -7,6 +7,7 @@ export interface VideoRuntime {
   startedAt: number;
   elapsedMs: number;
   error: string;
+  taskStatus?: string;
 }
 
 function _defaultVideoRuntime(): VideoRuntime {

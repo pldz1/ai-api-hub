@@ -12,6 +12,7 @@ export abstract class BaseVideoClient {
   baseURL = "";
   apiKey = "";
   model = "";
+  useProxy = false;
 
   /** Whether the provider uses DashScope-style async task submission.
    *  When false, `generate()` expects a direct (synchronous) response and
@@ -24,21 +25,22 @@ export abstract class BaseVideoClient {
   /** Maximum poll attempts before timing out. */
   protected maxPollAttempts = 80;
 
-  constructor(baseURL: string, apiKey: string, model: string) {
-    this.init(baseURL, apiKey, model);
+  constructor(baseURL: string, apiKey: string, model: string, useProxy = false) {
+    this.init(baseURL, apiKey, model, useProxy);
   }
 
   // -- lifecycle -----------------------------------------------------------
 
-  init(baseURL: string, apiKey: string, model: string): void {
+  init(baseURL: string, apiKey: string, model: string, useProxy = false): void {
     this.baseURL = baseURL;
     this.apiKey = apiKey;
     this.model = model;
+    this.useProxy = useProxy;
   }
 
-  update(baseURL: string, apiKey: string, model: string): void {
-    if (baseURL !== this.baseURL || apiKey !== this.apiKey || model !== this.model) {
-      this.init(baseURL, apiKey, model);
+  update(baseURL: string, apiKey: string, model: string, useProxy = false): void {
+    if (baseURL !== this.baseURL || apiKey !== this.apiKey || model !== this.model || useProxy !== this.useProxy) {
+      this.init(baseURL, apiKey, model, useProxy);
     }
   }
 
@@ -82,7 +84,7 @@ export abstract class BaseVideoClient {
 
   // -- template method -----------------------------------------------------
 
-  async generate(params: VideoGenerationParams): Promise<VideoGenerationResult> {
+  async generate(params: VideoGenerationParams, onStatusUpdate?: (status: string) => void): Promise<VideoGenerationResult> {
     if (!this.isConfigured()) {
       return {
         videos: [{ type: "text", data: VIDEO_PROVIDER_NOT_READY_MESSAGE }],
@@ -134,12 +136,10 @@ export abstract class BaseVideoClient {
       await new Promise((resolve) => setTimeout(resolve, this.pollIntervalMs));
 
       const pollRes = await fetch(fetchUrl, {
-        method: "POST",
+        method: "GET",
         headers: {
           authorization: `Bearer ${this.apiKey}`,
-          "content-type": "application/json",
         },
-        body: JSON.stringify({}),
       });
       const pollData = await pollRes.json().catch(() => null);
 
@@ -153,6 +153,10 @@ export abstract class BaseVideoClient {
       }
 
       const status: string = (pollData?.output?.task_status || "").toUpperCase();
+
+      if ((status === "PENDING" || status === "RUNNING") && onStatusUpdate) {
+        onStatusUpdate(status);
+      }
 
       if (status === "SUCCEEDED" || status === "FAILED") {
         return this.responseFromTaskResult(pollData);

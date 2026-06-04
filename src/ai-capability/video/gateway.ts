@@ -56,6 +56,7 @@ export function buildVideoAIParams(
 export async function generateVideo(
   model: VideoProviderModel,
   params: VideoGenerationParams,
+  onStatusUpdate?: (status: string) => void,
 ): Promise<VideoGenerationResult> {
   const config = createVideoProviderConfig(model);
   if (!config) {
@@ -67,7 +68,7 @@ export async function generateVideo(
 
   try {
     const executor = createVideoExecutor(config);
-    return await executor.generate(params);
+    return await executor.generate(params, onStatusUpdate);
   } catch (err) {
     return { videos: [{ type: "text", data: String(err) }], usage: normalizeVideoUsage() };
   }
@@ -76,6 +77,7 @@ export async function generateVideo(
 export async function runVideoAITurn(
   request: VideoAITurnRequest,
   buildParams?: BuildVideoGenerationParams,
+  onStatusUpdate?: (status: string) => void,
 ): Promise<VideoGenerationResult> {
-  return generateVideo(request.model, buildVideoAIParams(request, buildParams));
+  return generateVideo(request.model, buildVideoAIParams(request, buildParams), onStatusUpdate);
 }

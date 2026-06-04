@@ -38,6 +38,7 @@ export type VideoModelProvider = VideoProviderKey;
 export interface VideoModelCapabilities {
   imageInput: boolean;
   audioInput: boolean;
+  videoInput: boolean;
 }
 
 // ============================================================================
@@ -50,6 +51,7 @@ export interface VideoModelConfig {
   baseURL: string;
   apiKey: string;
   model: string;
+  useProxy?: boolean;
 }
 
 // ============================================================================

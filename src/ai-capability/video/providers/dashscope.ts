@@ -5,12 +5,13 @@ import type { VideoGenerationParams, VideoGenerationResult, VideoInputFile, Vide
 
 // -- constants -------------------------------------------------------------
 
-const DEFAULT_DASHSCOPE_VIDEO_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis";
-const DASHSCOPE_TASK_BASE_URL = "https://dashscope.aliyuncs.com/api/v1/tasks";
+const DASHSCOPE_ORIGIN = "https://dashscope.aliyuncs.com";
+const DASHSCOPE_PROXY_PREFIX = "/io/llm/ai-api-hub-dashscope-proxy";
 
-const DASHSCOPE_RESERVED_PARAM_KEYS = [
-  "prompt", "resolution", "duration", "promptExtend", "prompt_extend", "watermark", "media", "first_frame", "last_frame",
-];
+const DEFAULT_DASHSCOPE_VIDEO_URL = `${DASHSCOPE_ORIGIN}/api/v1/services/aigc/video-generation/video-synthesis`;
+const DASHSCOPE_TASK_BASE_URL = `${DASHSCOPE_ORIGIN}/api/v1/tasks`;
+
+const DASHSCOPE_RESERVED_PARAM_KEYS = ["prompt", "resolution", "duration", "promptExtend", "prompt_extend", "watermark", "media", "first_frame", "last_frame"];
 
 // -- helpers ---------------------------------------------------------------
 
@@ -107,9 +108,13 @@ function normalizeDashScopeVideoResult(data: JsonObject): VideoGenerationResult 
 // -- client ----------------------------------------------------------------
 
 export class DashScopeVideoClient extends BaseVideoClient {
+  private applyProxy(url: string): string {
+    if (!this.useProxy) return url;
+    return url.replace(DASHSCOPE_ORIGIN, DASHSCOPE_PROXY_PREFIX);
+  }
 
   getUrl(_params: VideoGenerationParams): string {
-    return this.trimTrailingSlash(this.baseURL || DEFAULT_DASHSCOPE_VIDEO_URL);
+    return this.applyProxy(this.trimTrailingSlash(this.baseURL || DEFAULT_DASHSCOPE_VIDEO_URL));
   }
 
   getBody(params: VideoGenerationParams): { body: Record<string, unknown>; isFormData: boolean } {
@@ -128,7 +133,7 @@ export class DashScopeVideoClient extends BaseVideoClient {
   getFetchUrl(data: JsonObject): string {
     const taskId = (data?.output as Record<string, unknown> | undefined)?.task_id;
     if (!taskId) throw new Error("No task_id in DashScope video submission response");
-    return `${DASHSCOPE_TASK_BASE_URL}/${taskId}`;
+    return this.applyProxy(`${DASHSCOPE_TASK_BASE_URL}/${taskId}`);
   }
 
   responseFromTaskResult(data: JsonObject): VideoGenerationResult {

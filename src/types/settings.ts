@@ -42,4 +42,5 @@ export interface LooseModelConfig {
   apiKey?: string;
   model?: string;
   modelType?: string;
+  useProxy?: boolean;
 }

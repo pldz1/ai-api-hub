@@ -20,8 +20,8 @@ export const languages = {
       confirmDeleteSelectedConversationsTitle: "确认删除已选对话",
       confirmRenameChat: "将'{oldName}'重命名为'{newName}'？",
       confirmRenameChatConfirm: "确认重命名",
-      confirmRenameChatTitle: '确认重命名对话',
-      defaultSystemPrompt: '作为 AI 助手，请在回答中加入自然、克制但有趣的 emoji，让表达更生动 ',
+      confirmRenameChatTitle: "确认重命名对话",
+      defaultSystemPrompt: "作为 AI 助手，请在回答中加入自然、克制但有趣的 emoji，让表达更生动 ",
       deleteChat: "删除对话",
       deleteConversations: "删除对话",
       deleteImageConversation: "删除图像对话",
@@ -132,7 +132,7 @@ export const languages = {
       imageRequestFailed: "图像请求失败",
       imageLoadFailed: "图片加载失败",
       initError: "模型初始化失败: {error}",
-      inputImageTip: "随请求携带的输入图像，发送为 {{ filename, content_type, data }} ",
+      inputImageTip: "随请求携带的输入图像，发送为 {'{'}{'{'}filename, content_type, data{'}'}{'}'} ",
       inputTokens: "输入",
       invalidResponse: "图像接口返回格式无效",
       maskTip: "图像编辑蒙版，PNG 透明区域表示需要编辑的位置 ",
@@ -204,6 +204,15 @@ export const languages = {
       promptExtendTip: "是否由模型自动扩展提示词以获得更好效果",
       watermarkTip: "是否在生成结果中添加水印",
       firstFrameTip: "视频起始画面，作为图生视频的输入图像",
+      modelType: {
+        t2v: "文生视频",
+        i2v: "图生视频",
+        r2v: "参考生视频",
+      },
+      taskStatus: {
+        pending: "任务排队中，请耐心等待...",
+        running: "视频生成中，请耐心等待...",
+      },
     },
     input: {
       capabilities: {
@@ -362,6 +371,10 @@ export const languages = {
         emptyDetail: "选择一个视频模型开始编辑，或者先新增一个",
         emptyList: "还没有视频模型，先新增一个",
         title: "视频模型",
+        proxyNotice:
+          "DashScope 视频模型受浏览器跨域限制，直接请求会被拦截。请在下方模型编辑器中手动开启「使用代理」开关，开启后请求 URL 将被替换为本地开发代理路径。若不开启，URL 替换不会生效。",
+        useProxy: "使用代理（开发环境）",
+        useProxyHelp: "开启后，https://dashscope.aliyuncs.com 将被替换为 /io/llm/ai-api-hub-dashscope-proxy，通过 Vite 开发服务器代理转发以解决跨域问题。",
       },
       importInvalid: "不是有效的设置 JSON ",
       importLinkConfirm: "导入后会覆盖当前模型配置；如果配置包包含提示词模板，也会覆盖当前模板 是否继续？",
@@ -592,7 +605,7 @@ export const languages = {
       generationTitle: "Image Generation",
       imageLoadFailed: "Image load failed",
       initError: "Failed to initialize model: {error}",
-      inputImageTip: "Input image sent with the request as {{ filename, content_type, data }}.",
+      inputImageTip: "Input image sent with the request as {'{'}{'{'}filename, content_type, data{'}'}{'}'} .",
       inputTokens: "Input",
       invalidResponse: "The image API returned an invalid response format",
       maskTip: "Image edit mask. Transparent PNG areas indicate where edits should happen.",
@@ -664,6 +677,15 @@ export const languages = {
       promptExtendTip: "Let the model auto-extend the prompt for better results",
       watermarkTip: "Whether to add a watermark to generated results",
       firstFrameTip: "The starting frame image for image-to-video generation",
+      modelType: {
+        t2v: "Text to Video",
+        i2v: "Image to Video",
+        r2v: "Reference to Video",
+      },
+      taskStatus: {
+        pending: "Task queued, please wait...",
+        running: "Generating video, please wait...",
+      },
     },
     input: {
       capabilities: {
@@ -823,6 +845,11 @@ export const languages = {
         emptyDetail: "Choose a video model to edit, or add a new one first.",
         emptyList: "No video models yet. Add one to get started.",
         title: "Video Models",
+        proxyNotice:
+          "DashScope video models are blocked by browser CORS restrictions. Enable the 'Use Proxy' toggle in the model editor below — this rewrites the request URL to the local dev proxy path. Without it, URL rewriting will not take effect.",
+        useProxy: "Use Proxy (dev only)",
+        useProxyHelp:
+          "When enabled, https://dashscope.aliyuncs.com is rewritten to /io/llm/ai-api-hub-dashscope-proxy and forwarded by the Vite dev server to resolve CORS.",
       },
       importInvalid: "This is not a valid settings JSON file.",
       importLinkConfirm:

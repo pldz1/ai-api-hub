@@ -11,14 +11,14 @@ import { DashScopeVideoClient } from "./dashscope";
 
 // -- runtime config --------------------------------------------------------
 
-type VideoProviderRuntimeConfig = Pick<VideoModelConfig, "provider" | "baseURL" | "apiKey" | "model"> & {
+type VideoProviderRuntimeConfig = Pick<VideoModelConfig, "provider" | "baseURL" | "apiKey" | "model" | "useProxy"> & {
   route: VideoProviderRoute;
 };
 
 // -- executor interface ----------------------------------------------------
 
 export interface VideoExecutor {
-  generate(params: VideoGenerationParams): Promise<VideoGenerationResult>;
+  generate(params: VideoGenerationParams, onStatusUpdate?: (status: string) => void): Promise<VideoGenerationResult>;
 }
 
 // -- registry accessors ----------------------------------------------------
@@ -53,7 +53,7 @@ export function getKnownVideoProviderDefaultBaseURLs(): string[] {
  * Converts user-owned video model config into runtime-only provider constructor args.
  */
 export function createVideoProviderConfig(
-  model: VideoModelConfig | { provider?: VideoModelProvider; baseURL?: string; apiKey?: string; model?: string },
+  model: VideoModelConfig | { provider?: VideoModelProvider; baseURL?: string; apiKey?: string; model?: string; useProxy?: boolean },
 ): VideoProviderRuntimeConfig | null {
   const provider = model.provider || "DashScope";
   const providerDefinition = getVideoProviderDefinition(provider);
@@ -65,6 +65,7 @@ export function createVideoProviderConfig(
     baseURL: model.baseURL || "",
     apiKey: model.apiKey || "",
     model: model.model || "",
+    useProxy: model.useProxy ?? false,
   };
 }
 
@@ -73,5 +74,5 @@ export function createVideoProviderConfig(
  */
 export function createVideoExecutor(config: VideoProviderRuntimeConfig): VideoExecutor {
   // DashScope is the only provider for now; structured for future additions.
-  return new DashScopeVideoClient(config.baseURL, config.apiKey, config.model);
+  return new DashScopeVideoClient(config.baseURL, config.apiKey, config.model, config.useProxy ?? false);
 }

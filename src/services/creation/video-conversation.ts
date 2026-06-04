@@ -3,7 +3,7 @@ import { tr } from "@/i18n";
 import { buildVideoGenerationParams } from "@/models";
 import { dsAlert, getUuid } from "@/utils";
 import { runVideoAITurn } from "@/ai-capability";
-import { urlToDataUrl } from "@/services/app/storage";
+import { urlToDataUrl, setVideoSource, getVideoSource, deleteVideoSource } from "@/services/app/storage";
 import {
   addVideoConversationAPI,
   deleteVideoConversationAPI,
@@ -15,27 +15,105 @@ import { pushVideo } from "./video-gallery";
 import { createVideoMessage, emptyVideoUsage, getVideoConversationName, normalizeGeneratedVideos } from "./video-message";
 import type { VideoConversationInfo, VideoConversationMessage, VideoTurnRequest, VideoTurnResponse } from "@/types";
 
+// Marker prefix written into VideoPayload.src when the actual data is in IDB.
+const IDB_SRC_PREFIX = "idb:";
+
 /**
- * Strip the raw `data` field from attachments before persisting.
- * The `data` field (raw base64 without data-URL prefix) is only used for API
- * submission. Keeping it in localStorage would waste quota. `previewUrl`
- * stays so the UI can always render attachment thumbnails.
+ * Offload video data URLs to IndexedDB and replace src with an "idb:{id}"
+ * reference. Also strips raw attachment data that is only needed at submit
+ * time. The result is safe to write into localStorage.
  */
-function sanitizeMessagesForPersist(messages: VideoConversationMessage[]): VideoConversationMessage[] {
-  return messages.map((msg) => {
-    if (!msg.attachments?.length) return msg;
-    return {
-      ...msg,
-      attachments: msg.attachments.map((att) => ({ ...att, data: "" })),
-    };
-  });
+async function sanitizeMessagesForPersist(messages: VideoConversationMessage[]): Promise<VideoConversationMessage[]> {
+  return Promise.all(
+    messages.map(async (msg) => {
+      let sanitizedAttachments = msg.attachments?.length
+        ? msg.attachments.map((att) => ({ ...att, data: "" }))
+        : msg.attachments;
+
+      let sanitizedVideos = msg.videos;
+      if (msg.videos?.length) {
+        sanitizedVideos = await Promise.all(
+          msg.videos.map(async (video) => {
+            const src = video.src || "";
+            if (!src || src.startsWith(IDB_SRC_PREFIX) || !src.startsWith("data:")) return video;
+            await setVideoSource(video.id, src);
+            return { ...video, src: `${IDB_SRC_PREFIX}${video.id}` };
+          }),
+        );
+      }
+
+      // Offload attachment previewUrls (first_frame / last_frame thumbnails).
+      if (msg.attachments?.length) {
+        sanitizedAttachments = await Promise.all(
+          (sanitizedAttachments || msg.attachments).map(async (att) => {
+            const previewUrl = att.previewUrl || "";
+            const idbKey = `${att.id}-preview`;
+            const nextPreviewUrl =
+              previewUrl && !previewUrl.startsWith(IDB_SRC_PREFIX) && previewUrl.startsWith("data:")
+                ? (await setVideoSource(idbKey, previewUrl), `${IDB_SRC_PREFIX}${idbKey}`)
+                : att.previewUrl;
+            return { ...att, previewUrl: nextPreviewUrl };
+          }),
+        );
+      }
+
+      return { ...msg, attachments: sanitizedAttachments, videos: sanitizedVideos };
+    }),
+  );
+}
+
+/**
+ * Resolve "idb:{id}" placeholders back to data URLs from IndexedDB.
+ * Called after loading messages from localStorage.
+ */
+async function resolveVideoMessageSources(messages: VideoConversationMessage[]): Promise<VideoConversationMessage[]> {
+  return Promise.all(
+    messages.map(async (msg) => {
+      const resolvedVideos = msg.videos?.length
+        ? await Promise.all(
+            msg.videos.map(async (video) => {
+              const src = video.src || "";
+              if (!src.startsWith(IDB_SRC_PREFIX)) return video;
+              const resolved = await getVideoSource(src.slice(IDB_SRC_PREFIX.length));
+              return { ...video, src: resolved || src };
+            }),
+          )
+        : msg.videos;
+
+      const resolvedAttachments = msg.attachments?.length
+        ? await Promise.all(
+            msg.attachments.map(async (att) => {
+              const previewUrl = att.previewUrl || "";
+              if (!previewUrl.startsWith(IDB_SRC_PREFIX)) return att;
+              const resolved = await getVideoSource(previewUrl.slice(IDB_SRC_PREFIX.length));
+              return { ...att, previewUrl: resolved || previewUrl };
+            }),
+          )
+        : msg.attachments;
+
+      return { ...msg, videos: resolvedVideos, attachments: resolvedAttachments };
+    }),
+  );
+}
+
+/** Delete IDB entries for all videos and attachment previews (best-effort). */
+async function cleanupVideoMessageSources(messages: VideoConversationMessage[]): Promise<void> {
+  await Promise.allSettled([
+    ...messages.flatMap((msg) =>
+      (msg.videos || []).map((v) => deleteVideoSource(v.id)),
+    ),
+    ...messages.flatMap((msg) =>
+      (msg.attachments || []).map((att) => deleteVideoSource(`${att.id}-preview`)),
+    ),
+  ]);
 }
 
 async function persistVideoMessages(vid: string): Promise<boolean> {
   if (!vid) return false;
   const messages = store.state.videoMessagesById?.[vid] ||
     (vid === store.state.curVideoConversationId ? store.state.videoMessages || [] : []);
-  const res = await setVideoConversationMessagesAPI(vid, sanitizeMessagesForPersist(messages));
+  const sanitized = await sanitizeMessagesForPersist(messages);
+  const res = await setVideoConversationMessagesAPI(vid, sanitized);
   if (!res.flag) {
     console.error("Failed to persist video messages:", res.log);
     dsAlert({ type: "error", message: tr("toast.videoPushFailed", { error: res.log }) });
@@ -44,8 +122,11 @@ async function persistVideoMessages(vid: string): Promise<boolean> {
   return true;
 }
 
-export async function runVideoConversationTurn(request: VideoTurnRequest): Promise<VideoTurnResponse> {
-  const result = await runVideoAITurn(request, buildVideoGenerationParams);
+export async function runVideoConversationTurn(
+  request: VideoTurnRequest,
+  onStatusUpdate?: (status: string) => void,
+): Promise<VideoTurnResponse> {
+  const result = await runVideoAITurn(request, buildVideoGenerationParams, onStatusUpdate);
   const { payloads, errors } = normalizeGeneratedVideos(request.prompt, result.videos || []);
   if (errors.length > 0 && payloads.length === 0) throw new Error(errors.join("\n"));
 
@@ -110,8 +191,12 @@ export async function submitVideoMessage(request: VideoTurnRequest): Promise<Vid
 
   const startedAt = performance.now();
 
+  const handlePollStatus = (taskStatus: string) => {
+    store.dispatch("setVideoRuntime", { vid: conversationId, runtime: { taskStatus } });
+  };
+
   try {
-    const response = await runVideoConversationTurn(request);
+    const response = await runVideoConversationTurn(request, handlePollStatus);
     const elapsedMs = performance.now() - startedAt;
     const completed: VideoConversationMessage = {
       ...assistantMessage,
@@ -131,6 +216,7 @@ export async function submitVideoMessage(request: VideoTurnRequest): Promise<Vid
         completedNotice: store.state.curVideoConversationId !== conversationId,
         elapsedMs,
         error: "",
+        taskStatus: undefined,
       },
     });
 
@@ -159,6 +245,7 @@ export async function submitVideoMessage(request: VideoTurnRequest): Promise<Vid
         completedNotice: store.state.curVideoConversationId !== conversationId,
         elapsedMs,
         error: failed.error || "",
+        taskStatus: undefined,
       },
     });
     return failed;
@@ -199,9 +286,10 @@ export async function getVideoConversationMessages(vid: string): Promise<boolean
   const res = await getVideoConversationMessagesAPI(vid);
   if (!res.flag) return false;
   try {
-    const messages = JSON.parse(res.data || "[]");
+    const raw = JSON.parse(res.data || "[]");
+    const messages = await resolveVideoMessageSources(Array.isArray(raw) ? raw : []);
     await store.dispatch("setCurVideoConversationId", vid);
-    await store.dispatch("resetVideoMessages", { vid, messages: Array.isArray(messages) ? messages : [] });
+    await store.dispatch("resetVideoMessages", { vid, messages });
     return true;
   } catch {
     await store.dispatch("setCurVideoConversationId", vid);
@@ -211,6 +299,17 @@ export async function getVideoConversationMessages(vid: string): Promise<boolean
 }
 
 export async function deleteVideoConversation(vid: string): Promise<boolean> {
+  // Clean up IDB video sources before removing the conversation record.
+  const msgRes = await getVideoConversationMessagesAPI(vid);
+  if (msgRes.flag) {
+    try {
+      const messages = JSON.parse(msgRes.data || "[]") as VideoConversationMessage[];
+      await cleanupVideoMessageSources(messages);
+    } catch {
+      // Best-effort — don't block deletion on cleanup failure.
+    }
+  }
+
   const res = await deleteVideoConversationAPI(vid);
   if (!res.flag) return false;
   await store.dispatch("deleteVideoConversation", vid);

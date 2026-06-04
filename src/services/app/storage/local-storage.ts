@@ -11,12 +11,17 @@ import type {
   VideoConversationListItem,
   VideoDataItem,
 } from "@/types";
+import {
+  setImageSource,
+  getImageSource,
+  deleteImageSource,
+  setVideoSource,
+  getVideoSource,
+  deleteVideoSource,
+  urlToDataUrl,
+} from "./indexeddb";
 
 const STORAGE_KEY = "ai-api-hub.local-storage.v2";
-const IMAGE_DB_NAME = "ai-api-hub-images";
-const IMAGE_STORE_NAME = "images";
-const VIDEO_DB_NAME = "ai-api-hub-videos";
-const VIDEO_STORE_NAME = "videos";
 
 interface StoredImageConversation {
   iid: string;
@@ -58,6 +63,7 @@ interface LocalStorageState {
 
 type LocalRouteHandler = (body: RequestBody) => Promise<ApiResponse>;
 type StoredImageSourceMap = Map<string, string>;
+type StoredVideoSourceMap = Map<string, string>;
 type SetModelsRequestBody = RequestBody & { data: ModelSettings };
 
 function asString(value: unknown, fallback = ""): string {
@@ -129,6 +135,32 @@ function normalizeStoredImageConversations(items: unknown): StoredImageConversat
     .filter((item): item is StoredImageConversation => Boolean(item));
 }
 
+function normalizeStoredImageRecords(items: unknown[] = []): StoredImageRecord[] {
+  const records: Array<StoredImageRecord | null> = (Array.isArray(items) ? items : []).map((item) => {
+    const record = item && typeof item === "object" ? (item as StoredImageRecord) : null;
+    const id = asString(record?.id);
+    if (!id) return null;
+    return {
+      id,
+      prompt: asString(record?.prompt),
+      src: asString(record?.src),
+    };
+  });
+
+  return records.filter((item): item is StoredImageRecord => Boolean(item));
+}
+
+function normalizeStoredVideoRecords(items: unknown[] = []): StoredVideoRecord[] {
+  const records: Array<StoredVideoRecord | null> = (Array.isArray(items) ? items : []).map((item) => {
+    const record = item && typeof item === "object" ? (item as StoredVideoRecord) : null;
+    const id = asString(record?.id);
+    if (!id) return null;
+    return { id, prompt: asString(record?.prompt) };
+  });
+
+  return records.filter((item): item is StoredVideoRecord => Boolean(item));
+}
+
 function readStorageState(): LocalStorageState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -168,92 +200,16 @@ function findImageConversation(state: LocalStorageState, iid: string): StoredIma
   return state.imageConversations.find((item) => item.iid === iid) || null;
 }
 
+function findVideoConversation(state: LocalStorageState, vid: string): StoredVideoConversation | null {
+  return state.videoConversations.find((item) => item.vid === vid) || null;
+}
+
 function ok<TData = null>(data: TData = null as TData, log = "Successfully."): ApiResponse<TData> {
   return { flag: true, log, data };
 }
 
 function fail<TData = null>(log: string): ApiResponse<TData> {
   return { flag: false, log, data: null as TData };
-}
-
-function openImageDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    if (typeof indexedDB === "undefined") {
-      reject(new Error("IndexedDB is not available in this environment."));
-      return;
-    }
-
-    const request = indexedDB.open(IMAGE_DB_NAME, 1);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(IMAGE_STORE_NAME)) {
-        db.createObjectStore(IMAGE_STORE_NAME);
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error("Failed to open the image database."));
-  });
-}
-
-function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error("IndexedDB request failed."));
-  });
-}
-
-async function withImageStore<T>(mode: IDBTransactionMode, callback: (store: IDBObjectStore) => Promise<T>): Promise<T> {
-  const db = await openImageDatabase();
-
-  try {
-    const transaction = db.transaction(IMAGE_STORE_NAME, mode);
-    const store = transaction.objectStore(IMAGE_STORE_NAME);
-    const transactionDone = new Promise<void>((resolve, reject) => {
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error || new Error("Image storage transaction failed."));
-      transaction.onabort = () => reject(transaction.error || new Error("Image storage transaction was aborted."));
-    });
-    const result = await callback(store);
-    await transactionDone;
-
-    return result;
-  } finally {
-    db.close();
-  }
-}
-
-async function setImageSource(imageId: string, src: string): Promise<void> {
-  await withImageStore("readwrite", async (store) => {
-    await requestToPromise(store.put(src, imageId));
-  });
-}
-
-async function getImageSource(imageId: string): Promise<string> {
-  const result = await withImageStore("readonly", async (store) => {
-    return (await requestToPromise(store.get(imageId))) || "";
-  });
-  return typeof result === "string" ? result : "";
-}
-
-async function deleteImageSource(imageId: string): Promise<void> {
-  await withImageStore("readwrite", async (store) => {
-    await requestToPromise(store.delete(imageId));
-  });
-}
-
-function normalizeStoredImageRecords(items: unknown[] = []): StoredImageRecord[] {
-  const records: Array<StoredImageRecord | null> = (Array.isArray(items) ? items : []).map((item) => {
-    const record = item && typeof item === "object" ? (item as StoredImageRecord) : null;
-    const id = asString(record?.id);
-    if (!id) return null;
-    return {
-      id,
-      prompt: asString(record?.prompt),
-      src: asString(record?.src),
-    };
-  });
-
-  return records.filter((item): item is StoredImageRecord => Boolean(item));
 }
 
 async function migrateLegacyInlineImages(state: LocalStorageState): Promise<StoredImageRecord[]> {
@@ -281,89 +237,6 @@ async function readStoredImageSources(imageIds: string[] = []): Promise<StoredIm
   return new Map(entries);
 }
 
-export async function urlToDataUrl(url: string): Promise<string> {
-  if (!url || url.startsWith("data:")) return url;
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(tr("storage.imageFetchFailed", { status: response.status }));
-  }
-
-  const blob = await response.blob();
-  return await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(typeof reader.result === "string" ? reader.result : "");
-    reader.onerror = () => reject(new Error(tr("storage.imageDataUrlFailed")));
-    reader.readAsDataURL(blob);
-  });
-}
-
-// -- video IndexedDB -------------------------------------------------------
-
-function openVideoDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    if (typeof indexedDB === "undefined") {
-      reject(new Error("IndexedDB is not available in this environment."));
-      return;
-    }
-
-    const request = indexedDB.open(VIDEO_DB_NAME, 1);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(VIDEO_STORE_NAME)) {
-        db.createObjectStore(VIDEO_STORE_NAME);
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error("Failed to open the video database."));
-  });
-}
-
-async function withVideoStore<T>(mode: IDBTransactionMode, callback: (store: IDBObjectStore) => Promise<T>): Promise<T> {
-  const db = await openVideoDatabase();
-
-  try {
-    const transaction = db.transaction(VIDEO_STORE_NAME, mode);
-    const store = transaction.objectStore(VIDEO_STORE_NAME);
-    const transactionDone = new Promise<void>((resolve, reject) => {
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error || new Error("Video storage transaction failed."));
-      transaction.onabort = () => reject(transaction.error || new Error("Video storage transaction was aborted."));
-    });
-    const result = await callback(store);
-    await transactionDone;
-
-    return result;
-  } finally {
-    db.close();
-  }
-}
-
-async function setVideoSource(videoId: string, src: string): Promise<void> {
-  await withVideoStore("readwrite", async (store) => {
-    await requestToPromise(store.put(src, videoId));
-  });
-}
-
-async function getVideoSource(videoId: string): Promise<string> {
-  const result = await withVideoStore("readonly", async (store) => {
-    return (await requestToPromise(store.get(videoId))) || "";
-  });
-  return typeof result === "string" ? result : "";
-}
-
-async function deleteVideoSource(videoId: string): Promise<void> {
-  await withVideoStore("readwrite", async (store) => {
-    await requestToPromise(store.delete(videoId));
-  });
-}
-
-function findVideoConversation(state: LocalStorageState, vid: string): StoredVideoConversation | null {
-  return state.videoConversations.find((item) => item.vid === vid) || null;
-}
-
-type StoredVideoSourceMap = Map<string, string>;
-
 async function readStoredVideoSources(videoIds: string[] = []): Promise<StoredVideoSourceMap> {
   const entries = await Promise.all(
     videoIds.map(async (id) => {
@@ -374,16 +247,7 @@ async function readStoredVideoSources(videoIds: string[] = []): Promise<StoredVi
   return new Map(entries);
 }
 
-function normalizeStoredVideoRecords(items: unknown[] = []): StoredVideoRecord[] {
-  const records: Array<StoredVideoRecord | null> = (Array.isArray(items) ? items : []).map((item) => {
-    const record = item && typeof item === "object" ? (item as StoredVideoRecord) : null;
-    const id = asString(record?.id);
-    if (!id) return null;
-    return { id, prompt: asString(record?.prompt) };
-  });
-
-  return records.filter((item): item is StoredVideoRecord => Boolean(item));
-}
+// -- handlers -----------------------------------------------------------------
 
 async function handleGetModels(): Promise<ApiResponse<ModelSettings>> {
   const state = readStorageState();
@@ -609,8 +473,6 @@ async function handleSetImageConversationMessages(body: RequestBody): Promise<Ap
   writeStorageState(state);
   return ok(null);
 }
-
-// -- video handlers --------------------------------------------------------
 
 async function handleGetVideoList(): Promise<ApiResponse<VideoDataItem[]>> {
   const state = readStorageState();

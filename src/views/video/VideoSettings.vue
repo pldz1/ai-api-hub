@@ -7,47 +7,50 @@
         </button>
       </form>
       <h3 class="text-lg font-bold">{{ t("video.settingsTitle") }}</h3>
-      <div class="ims-container">
-        <div class="ims-setting-item">
-          <div class="ims-setting-label">
+      <div class="vms-container">
+        <!-- Resolution -->
+        <div class="vms-setting-item">
+          <div class="vms-setting-label">
             <span>{{ t("video.resolution") }}</span>
             <AppTooltip :text="t('video.resolutionTip')" placement="bottom">
-              <SvgIcon class="ims-info-icon" :src="infoIcon" />
+              <SvgIcon class="vms-info-icon" :src="infoIcon" />
             </AppTooltip>
           </div>
-          <div class="ims-setting-content">
-            <select v-model="localSettings.resolution" class="ims-select">
+          <div class="vms-setting-content">
+            <select v-model="localSettings.resolution" class="vms-select">
               <option v-for="item in availableResolutions" :key="item" :value="item">{{ item }}</option>
             </select>
           </div>
         </div>
 
-        <div class="ims-setting-item">
-          <div class="ims-setting-label">
+        <!-- Duration -->
+        <div class="vms-setting-item">
+          <div class="vms-setting-label">
             <span>{{ t("video.duration") }}</span>
             <AppTooltip :text="t('video.durationTip')" placement="bottom">
-              <SvgIcon class="ims-info-icon" :src="infoIcon" />
+              <SvgIcon class="vms-info-icon" :src="infoIcon" />
             </AppTooltip>
           </div>
-          <div class="ims-setting-content">
+          <div class="vms-setting-content">
             <input v-model.number="localSettings.duration" type="range" min="5" max="10" step="5" class="range range-xs" />
-            <span style="margin-left: 12px">{{ localSettings.duration }}s</span>
+            <input v-model.number="localSettings.duration" type="number" min="5" max="10" class="input input-bordered" />
           </div>
         </div>
 
-        <div v-for="item in activeParamDefs" :key="item.key" class="ims-setting-item">
-          <div class="ims-setting-label">
+        <!-- Dynamic params from model definition -->
+        <div v-for="item in activeParamDefs" :key="item.key" class="vms-setting-item">
+          <div class="vms-setting-label">
             <span>{{ item.label || item.key }}</span>
             <AppTooltip v-if="getParamDescription(item)" :text="getParamDescription(item)" placement="bottom">
-              <SvgIcon class="ims-info-icon" :src="infoIcon" />
+              <SvgIcon class="vms-info-icon" :src="infoIcon" />
             </AppTooltip>
           </div>
-          <div class="ims-setting-content">
+          <div class="vms-setting-content">
             <template v-if="item.type === 'boolean'">
               <input v-model="localSettings[item.key]" type="checkbox" class="toggle toggle-primary" />
             </template>
             <template v-else>
-              <input v-model="localSettings[item.key]" type="text" class="input input-bordered ims-input-full" :placeholder="item.placeholder || item.key" />
+              <input v-model="localSettings[item.key]" type="text" class="input input-bordered vms-input-full" :placeholder="item.placeholder || item.key" />
             </template>
           </div>
         </div>
@@ -103,9 +106,24 @@ function getParamDescription(item: VideoModelParamDef): string {
   return item.descriptionKey ? t(item.descriptionKey as string) : item.description || "";
 }
 
+watch(
+  () => [props.model, props.settings],
+  () => {
+    localSettings.resolution = props.settings?.resolution || availableResolutions.value[0] || "720P";
+    localSettings.duration = props.settings?.duration || 5;
+    activeParamDefs.value.forEach((item) => {
+      localSettings[item.key] = props.settings[item.key] ?? item.defaultValue ?? "";
+    });
+  },
+  { deep: true },
+);
+
 function openDialog() {
-  localSettings.resolution = props.settings?.resolution || "720P";
+  localSettings.resolution = props.settings?.resolution || availableResolutions.value[0] || "720P";
   localSettings.duration = props.settings?.duration || 5;
+  activeParamDefs.value.forEach((item) => {
+    localSettings[item.key] = props.settings[item.key] ?? item.defaultValue ?? "";
+  });
   dialogRef.value?.showModal();
 }
 
@@ -116,3 +134,154 @@ function handleClose() {
 
 defineExpose({ openDialog });
 </script>
+
+<style lang="scss" scoped>
+.video-model-settings {
+  overflow: hidden;
+
+  .modal-box {
+    width: min(664px, calc(100vw - 24px));
+    max-width: none;
+    max-height: min(88dvh, 760px);
+    padding: 18px 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow: hidden;
+  }
+
+  .vms-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    max-height: min(64dvh, 450px);
+    padding: 8px;
+    overflow-y: auto;
+  }
+
+  .vms-setting-item {
+    display: flex;
+    flex-direction: row;
+    width: min(596px, 100%);
+    max-width: 100%;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .vms-setting-label {
+    width: 198px;
+    font-size: 16px;
+    text-align: right;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .vms-info-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .vms-setting-content {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 348px;
+    gap: 8px;
+
+    .input {
+      width: 92px;
+      max-width: 92px;
+    }
+
+    .vms-input-full {
+      width: 100%;
+      max-width: none;
+    }
+  }
+
+  .vms-select {
+    width: 100%;
+    max-width: 220px;
+    height: 32px;
+    border: 2px solid oklch(var(--bc) / 0.08);
+    border-radius: 8px;
+    background: oklch(var(--b1));
+    color: oklch(var(--bc));
+    font-size: 14px;
+    padding: 0 30px 0 8px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23111827' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+    background-size: 12px 12px;
+  }
+}
+
+@media (max-width: 720px) {
+  .video-model-settings {
+    .modal-box {
+      width: min(100vw - 16px, 664px);
+      max-height: calc(100dvh - 16px);
+      padding: 14px 14px 12px;
+      border-radius: 12px;
+    }
+
+    h3 {
+      font-size: 1rem;
+      line-height: 1.35;
+    }
+
+    .vms-container {
+      max-height: calc(100dvh - 132px);
+      padding: 6px 2px 2px;
+      align-items: stretch;
+    }
+
+    .vms-setting-item {
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid oklch(var(--bc) / 0.06);
+    }
+
+    .vms-setting-label {
+      width: 100%;
+      text-align: left;
+      justify-content: space-between;
+      font-size: 14px;
+      gap: 6px;
+    }
+
+    .vms-info-icon {
+      width: 20px;
+      height: 20px;
+      flex: 0 0 auto;
+    }
+
+    .vms-setting-content {
+      width: 100%;
+      flex-wrap: wrap;
+      gap: 8px;
+
+      .input {
+        width: 100%;
+        max-width: none;
+        flex: 1 1 100%;
+      }
+
+      .range {
+        width: 100%;
+        flex: 1 1 100%;
+      }
+    }
+  }
+}
+</style>

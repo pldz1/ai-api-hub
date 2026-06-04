@@ -26,7 +26,40 @@ export const videoModelCatalog: VideoModelCatalogItem[] = [
     providers: [
       {
         provider: "DashScope",
-        capabilities: { imageInput: true, audioInput: true },
+        capabilities: { imageInput: true, audioInput: true, videoInput: false },
+      },
+    ],
+  },
+  {
+    name: "wan2.7-t2v",
+    videoParamKeys: ["resolution", "duration", "prompt_extend", "watermark", "first_frame"],
+    resolutionList: ["720P", "1080P"],
+    providers: [
+      {
+        provider: "DashScope",
+        capabilities: { imageInput: false, audioInput: false, videoInput: false },
+      },
+    ],
+  },
+  {
+    name: "wan2.7-r2v",
+    videoParamKeys: ["resolution", "duration", "prompt_extend", "watermark", "first_frame"],
+    resolutionList: ["720P", "1080P"],
+    providers: [
+      {
+        provider: "DashScope",
+        capabilities: { imageInput: true, audioInput: true, videoInput: true },
+      },
+    ],
+  },
+  {
+    name: "wan2.7-videoedit",
+    videoParamKeys: ["resolution", "duration", "prompt_extend", "watermark", "first_frame"],
+    resolutionList: ["720P", "1080P"],
+    providers: [
+      {
+        provider: "DashScope",
+        capabilities: { imageInput: true, audioInput: true, videoInput: true },
       },
     ],
   },
@@ -47,10 +80,7 @@ export function findVideoModelCatalogItem(model: string = "", provider?: VideoMo
   return catalogItems.find((item) => item.providers.some((p) => p.provider === provider)) || catalogItems[0] || null;
 }
 
-export function findVideoModelCatalogProvider(
-  model: string = "",
-  provider?: VideoModelProvider | null,
-): VideoModelCatalogItem["providers"][number] | null {
+export function findVideoModelCatalogProvider(model: string = "", provider?: VideoModelProvider | null): VideoModelCatalogItem["providers"][number] | null {
   const catalogItem = findVideoModelCatalogItem(model, provider);
   if (!catalogItem) return null;
   if (!provider) return catalogItem.providers[0] || null;
@@ -60,6 +90,7 @@ export function findVideoModelCatalogProvider(
 export const defaultVideoModelCapabilities: VideoModelCapabilities = {
   imageInput: false,
   audioInput: false,
+  videoInput: false,
 };
 
 export const videoDisplayedCapabilityKeys: (keyof VideoModelCapabilities)[] = ["imageInput", "audioInput"];

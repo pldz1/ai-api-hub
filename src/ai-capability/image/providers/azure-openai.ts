@@ -12,18 +12,18 @@ export class AzureOpenAIImageClient extends OpenAIImageClient {
     return "https://<YOUR-DEPLOYMENT-NAME>.openai.com/v1";
   }
 
-  getHeaders(): Record<string, string> {
+  getHeaders(isFormData?: boolean): Record<string, string> {
     if (this.apiKey.startsWith("Bearer ")) {
       return {
         accept: "application/json",
         authorization: this.apiKey,
-        "content-type": "application/json",
+        ...(!isFormData ? { "content-type": "application/json" } : {}),
       };
     }
     return {
       accept: "application/json",
       "api-key": this.apiKey,
-      "content-type": "application/json",
+      ...(!isFormData ? { "content-type": "application/json" } : {}),
     };
   }
 }

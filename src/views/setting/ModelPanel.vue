@@ -27,6 +27,9 @@
 
       <!-- Selected model details and editor -->
       <section class="settings-detail-content">
+        <div v-if="isVideoKind" class="video-proxy-notice">
+          {{ t("user.videoModels.proxyNotice") }}
+        </div>
         <div class="model-list-actions">
           <button class="model-list-action is-primary" type="button" @click="addModel">
             <SvgIcon class="model-list-action-icon" :src="newIcon" />
@@ -337,6 +340,17 @@ watch(
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.video-proxy-notice {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid oklch(var(--er) / 0.28);
+  background: oklch(var(--er) / 0.08);
+  color: oklch(var(--er));
+  font-size: 12px;
+  line-height: 1.6;
+  margin-bottom: 12px;
 }
 
 @media (max-width: 900px) {

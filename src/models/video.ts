@@ -1,8 +1,11 @@
 import type { VideoModelConfig, VideoModelSettings, VideoModelParamDef, LooseModelConfig } from "@/types";
+import type { VideoModelCapabilities } from "@/ai-capability/video";
 import { videoParamPresetList } from "@/constants/video-model";
 import { parseParamValue } from "./settings";
 import {
   findVideoModelCatalogItem,
+  findVideoModelCatalogProvider,
+  defaultVideoModelCapabilities,
   videoProviderKeys,
   isVideoModelProvider,
   videoProviderUsesField,
@@ -35,6 +38,7 @@ export function normalizeVideoModelConfig(model: LooseModelConfig | null | undef
     baseURL: String(data.baseURL || "").trim(),
     apiKey: String(data.apiKey || "").trim(),
     model: String(data.model || "").trim(),
+    useProxy: Boolean(data.useProxy ?? false),
   };
 }
 
@@ -127,6 +131,20 @@ export function buildVideoGenerationParams(settings: Partial<VideoModelSettings>
   });
 
   return params;
+}
+
+export type VideoModelType = "t2v" | "i2v" | "r2v";
+
+export function getVideoModelCapabilities(model: LooseModelConfig | null = null): VideoModelCapabilities {
+  const config = normalizeVideoModelConfig(model || {});
+  return findVideoModelCatalogProvider(config.model, config.provider)?.capabilities || defaultVideoModelCapabilities;
+}
+
+export function getVideoModelType(model: LooseModelConfig | null = null): VideoModelType {
+  const caps = getVideoModelCapabilities(model);
+  if (caps.videoInput) return "r2v";
+  if (caps.imageInput) return "i2v";
+  return "t2v";
 }
 
 export {

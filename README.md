@@ -24,10 +24,10 @@ This is why you're here, right? Here's the current lineup:
 
 ### 🎨 Image Generation
 
-| Model                 | Provider            | Capabilities                                |
-| --------------------- | ------------------- | ------------------------------------------- |
-| **GPT-Image-2** 🖼️    | OpenAI · Azure      | Text-to-image + image-to-image + inpainting |
-| **Qwen-Image-2.0** 🐉 | DashScope           | Text-to-image + image-to-image              |
+| Model                 | Provider       | Capabilities                                |
+| --------------------- | -------------- | ------------------------------------------- |
+| **GPT-Image-2** 🖼️    | OpenAI · Azure | Text-to-image + image-to-image + inpainting |
+| **Qwen-Image-2.0** 🐉 | DashScope      | Text-to-image + image-to-image              |
 
 > 💡 **But wait, there's more** — you can add any custom model that speaks OpenAI / DashScope compatible APIs. Running locally? Go for it. Third-party proxy? You do you.
 
@@ -130,6 +130,36 @@ src/
 ├── store/                # Vuex state management
 ├── types/                # TypeScript type definitions
 └── views/                # Page components (chat, image, settings, layout)
+```
+
+---
+
+## ⚠️⚠️⚠️ Video Generation Supported by Nginx Proxy.
+
+Add the DashScope reverse proxy inside the same `server` block and scope it under the `/io/llm/` route only. Requests to `/io/llm/ai-api-hub-dashscope-proxy/` will be forwarded to `https://dashscope.aliyuncs.com/`, while the `/io/llm/` SPA will continue to be served from `/usr/share/nginx/templates/ai-api-hub/`. Make sure the proxy `location` is placed before the static `/io/llm/` location so Nginx matches the proxy rule first. In the frontend, use `/io/llm/ai-api-hub-dashscope-proxy/...` as the API base path instead of `/ai-api-hub-dashscope-proxy/...`. This keeps the DashScope proxy limited to the LLM demo route and prevents it from affecting other site paths.
+
+The nginx configuration shall like this:
+
+```txt
+    location ^~ /io/llm/ai-api-hub-dashscope-proxy/ {
+        proxy_pass https://dashscope.aliyuncs.com/;
+
+        proxy_http_version 1.1;
+        proxy_ssl_server_name on;
+
+        proxy_set_header Host dashscope.aliyuncs.com;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        # Proxy Authorization、X-DashScope-Async...
+        proxy_pass_request_headers on;
+
+        # If support stram output.
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
 ```
 
 ---

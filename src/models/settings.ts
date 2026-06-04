@@ -48,6 +48,7 @@ function sanitizeVideoModelConfig(model: LooseModelConfig | VideoModelConfig): V
     apiKey: modelConfig.apiKey,
     model: modelConfig.model,
     baseURL: modelConfig.baseURL,
+    useProxy: modelConfig.useProxy ?? false,
   };
 }
 
@@ -109,6 +110,7 @@ function buildPersistedVideoModelConfig(model: LooseModelConfig | VideoModelConf
     apiKey: modelConfig.apiKey,
     model: modelConfig.model,
     baseURL: modelConfig.baseURL,
+    useProxy: modelConfig.useProxy ?? false,
   };
 }
 

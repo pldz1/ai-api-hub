@@ -34,7 +34,7 @@
 
             <div v-if="message.status === 'loading'" class="video-loading-card">
               <div class="video-loading-preview"></div>
-              <span>{{ t("video.processingRequest") }}</span>
+              <span>{{ loadingStatusText }}</span>
             </div>
 
             <div v-if="message.videos.length" class="video-output-grid">
@@ -62,10 +62,10 @@
         :class="{ 'has-media': firstFrame || lastFrame || drivingAudio }"
         @paste="onPaste"
       >
-        <!-- Media slots: first frame + last frame + driving audio -->
-        <div class="video-media-slots">
-          <!-- First frame slot -->
-          <div class="video-media-slot" :class="{ filled: !!firstFrame }" @click="openFirstFramePicker">
+        <!-- Media slots: shown/hidden based on model capabilities -->
+        <div v-if="activeCapabilities.imageInput || activeCapabilities.audioInput" class="video-media-slots">
+          <!-- First frame slot (image-to-video / reference-to-video) -->
+          <div v-if="activeCapabilities.imageInput" class="video-media-slot" :class="{ filled: !!firstFrame }" @click="openFirstFramePicker">
             <div v-if="firstFrame" class="video-media-preview">
               <img :src="firstFrame.previewUrl" :alt="firstFrame.filename" />
               <button class="video-media-remove" type="button" :aria-label="t('video.removeAttachment')" @click.stop="firstFrame = null">×</button>
@@ -77,8 +77,8 @@
             </div>
           </div>
 
-          <!-- Last frame slot -->
-          <div class="video-media-slot" :class="{ filled: !!lastFrame }" @click="openLastFramePicker">
+          <!-- Last frame slot (image-to-video / reference-to-video) -->
+          <div v-if="activeCapabilities.imageInput" class="video-media-slot" :class="{ filled: !!lastFrame }" @click="openLastFramePicker">
             <div v-if="lastFrame" class="video-media-preview">
               <img :src="lastFrame.previewUrl" :alt="lastFrame.filename" />
               <button class="video-media-remove" type="button" :aria-label="t('video.removeAttachment')" @click.stop="lastFrame = null">×</button>
@@ -91,7 +91,7 @@
           </div>
 
           <!-- Driving audio slot -->
-          <div class="video-media-slot" :class="{ filled: !!drivingAudio }" @click="openAudioPicker">
+          <div v-if="activeCapabilities.audioInput" class="video-media-slot" :class="{ filled: !!drivingAudio }" @click="openAudioPicker">
             <div v-if="drivingAudio" class="video-media-preview">
               <span class="video-media-audio-name">{{ drivingAudio.filename }}</span>
               <button class="video-media-remove" type="button" :aria-label="t('video.removeAttachment')" @click.stop="drivingAudio = null">×</button>
@@ -124,9 +124,28 @@
               <option :value="-1" disabled>
                 {{ availableModels.length ? t("video.selectModel") : t("video.videoModelNotConfigured") }}
               </option>
-              <option v-for="(model, index) in availableModels" :key="`${model.name}-${index}`" :value="index">
-                {{ model.name || model.model }}
-              </option>
+              <template v-if="modelGroups.t2v.length || modelGroups.i2v.length || modelGroups.r2v.length">
+                <optgroup v-if="modelGroups.t2v.length" :label="t('video.modelType.t2v')">
+                  <option v-for="{ model, index } in modelGroups.t2v" :key="`t2v-${index}`" :value="index">
+                    {{ model.name || model.model }}
+                  </option>
+                </optgroup>
+                <optgroup v-if="modelGroups.i2v.length" :label="t('video.modelType.i2v')">
+                  <option v-for="{ model, index } in modelGroups.i2v" :key="`i2v-${index}`" :value="index">
+                    {{ model.name || model.model }}
+                  </option>
+                </optgroup>
+                <optgroup v-if="modelGroups.r2v.length" :label="t('video.modelType.r2v')">
+                  <option v-for="{ model, index } in modelGroups.r2v" :key="`r2v-${index}`" :value="index">
+                    {{ model.name || model.model }}
+                  </option>
+                </optgroup>
+              </template>
+              <template v-else>
+                <option v-for="(model, index) in availableModels" :key="`${model.name}-${index}`" :value="index">
+                  {{ model.name || model.model }}
+                </option>
+              </template>
             </select>
 
             <AppTooltip :text="t('tooltip.modelSettings')" placement="top">
@@ -166,6 +185,7 @@ import imageIcon from "@/assets/svg/navImage24.svg";
 import navVideoIcon from "@/assets/svg/navImage24.svg";
 import paramIcon from "@/assets/svg/param24.svg";
 import { addVideoConversation, getVideoConversationMessages, submitVideoMessage } from "@/services/creation";
+import { getVideoModelCapabilities, getVideoModelType } from "@/models";
 import { dsAlert, getUuid } from "@/utils";
 import type { VideoConversationMessage, VideoInputAttachment, VideoModelConfig } from "@/types";
 
@@ -201,6 +221,31 @@ const activeVideoRuntime = computed(() =>
 const runtimeTick = ref(Date.now());
 const availableModels = computed<VideoModelConfig[]>(() => store.state.models.video || []);
 const selectedModel = computed<VideoModelConfig | null>(() => availableModels.value[selectedModelIndex.value] || null);
+
+const activeCapabilities = computed(() =>
+  getVideoModelCapabilities(selectedModel.value as Record<string, unknown> | null),
+);
+
+const modelGroups = computed(() => {
+  const t2v: { model: VideoModelConfig; index: number }[] = [];
+  const i2v: { model: VideoModelConfig; index: number }[] = [];
+  const r2v: { model: VideoModelConfig; index: number }[] = [];
+  availableModels.value.forEach((model, index) => {
+    const type = getVideoModelType(model as Record<string, unknown>);
+    if (type === "r2v") r2v.push({ model, index });
+    else if (type === "i2v") i2v.push({ model, index });
+    else t2v.push({ model, index });
+  });
+  return { t2v, i2v, r2v };
+});
+
+const loadingStatusText = computed(() => {
+  const ts = activeVideoRuntime.value?.taskStatus;
+  if (ts === "PENDING") return t("video.taskStatus.pending");
+  if (ts === "RUNNING") return t("video.taskStatus.running");
+  return t("video.processingRequest");
+});
+
 const isCurrentConversationSubmitting = computed(
   () => Boolean(activeVideoRuntime.value?.pending || activeVideoRuntime.value?.status === "loading"),
 );
@@ -585,9 +630,12 @@ onBeforeUnmount(() => {
   scrollbar-gutter: stable;
   padding: var(--video-top-gap) var(--video-side-gap) var(--video-bottom-gap);
   box-sizing: border-box;
+  contain: layout paint style;
 }
 
 .video-empty-state {
+  position: relative;
+  isolation: isolate;
   min-height: 100%;
   display: flex;
   flex-direction: column;
@@ -595,6 +643,31 @@ onBeforeUnmount(() => {
   justify-content: center;
   text-align: center;
   color: oklch(var(--bc));
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 45%;
+    z-index: -1;
+    pointer-events: none;
+    border-radius: 999px;
+    transform: translate(-50%, -50%);
+  }
+
+  &::before {
+    width: min(560px, 88vw);
+    aspect-ratio: 1;
+    background: radial-gradient(circle, oklch(var(--p) / 0.16) 0%, oklch(var(--p) / 0.07) 36%, oklch(var(--p) / 0) 70%);
+    filter: blur(8px);
+  }
+
+  &::after {
+    width: min(340px, 64vw);
+    aspect-ratio: 1;
+    background: radial-gradient(circle, oklch(var(--p) / 0.12) 0%, oklch(var(--p) / 0.05) 44%, oklch(var(--p) / 0) 74%);
+  }
 
   h1 { margin: 18px 0 8px; font-size: 32px; font-weight: 700; }
   p { width: min(520px, 100%); margin: 0; line-height: 1.7; }
@@ -645,6 +718,17 @@ onBeforeUnmount(() => {
 .video-composer-wrap {
   position: absolute; left: 0; right: 0; bottom: var(--video-composer-bottom); z-index: 6;
   display: flex; justify-content: center; padding: 0 var(--video-composer-shell-gap); pointer-events: none;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0;
+    bottom: calc(var(--video-composer-bottom) * -1);
+    height: clamp(170px, 30vh, 260px);
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.8) 46%, oklch(var(--b1)) 82%, oklch(var(--b1)) 100%);
+  }
 }
 
 .video-composer {

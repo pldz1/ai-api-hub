@@ -13,6 +13,24 @@ export default defineConfig({
   server: {
     host: "127.0.0.1",
     port: 20090,
+    proxy: {
+      "/io/llm/ai-api-hub-dashscope-proxy": {
+        target: "https://dashscope.aliyuncs.com",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/io\/llm\/ai-api-hub-dashscope-proxy/, ""),
+        configure: (proxy) => {
+          proxy.on("error", (err, req) => {
+            console.error("[proxy error]", req.method, req.url, err.message);
+          });
+          proxy.on("proxyRes", (proxyRes, req) => {
+            if (proxyRes.statusCode >= 400) {
+              console.warn("[proxy upstream]", proxyRes.statusCode, req.method, req.url);
+            }
+          });
+        },
+      },
+    },
   },
   build: {
     emptyOutDir: true,
