@@ -94,14 +94,8 @@ async function resolveImageMessageSources(messages: ImageConversationMessage[]):
 /** Delete IDB entries for all media in the given messages (best-effort). */
 async function cleanupImageMessageSources(messages: ImageConversationMessage[]): Promise<void> {
   await Promise.allSettled([
-    ...messages.flatMap((msg) =>
-      (msg.images || [])
-        .filter((img) => img.src?.startsWith(IDB_SRC_PREFIX) || img.id)
-        .map((img) => deleteImageSource(img.id)),
-    ),
-    ...messages.flatMap((msg) =>
-      (msg.attachments || []).map((att) => deleteImageSource(`${att.id}-preview`)),
-    ),
+    ...messages.flatMap((msg) => (msg.images || []).filter((img) => img.src?.startsWith(IDB_SRC_PREFIX) || img.id).map((img) => deleteImageSource(img.id))),
+    ...messages.flatMap((msg) => (msg.attachments || []).map((att) => deleteImageSource(`${att.id}-preview`))),
   ]);
 }
 

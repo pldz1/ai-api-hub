@@ -1,10 +1,4 @@
-import {
-  ImageProviderConnectionField,
-  ImageProviderDefinition,
-  ImageProviderKey,
-  imageProviderKeys,
-  imageProviderRegistry,
-} from "../types";
+import { ImageProviderConnectionField, ImageProviderDefinition, ImageProviderKey, imageProviderKeys, imageProviderRegistry } from "../types";
 import type { ImageGenerationParams, ImageGenerationResult, ImageModelConfig, ImageModelProvider, ImageProviderRoute } from "../types";
 
 import { AzureOpenAIImageClient } from "./azure-openai";

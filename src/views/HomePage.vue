@@ -308,10 +308,16 @@ const capabilityHighlights = [
   letter-spacing: 0.02em;
   cursor: pointer;
   box-shadow: 0 10px 22px oklch(var(--bc) / 0.12);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 
-  &:hover { transform: translateY(-2px); }
-  &:active { transform: translateY(0); }
+  &:hover {
+    transform: translateY(-2px);
+  }
+  &:active {
+    transform: translateY(0);
+  }
 }
 
 .home-updated {
@@ -447,13 +453,17 @@ const capabilityHighlights = [
   letter-spacing: 0.02em;
   cursor: pointer;
   box-shadow: 0 10px 22px oklch(var(--bc) / 0.12);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 14px 28px oklch(var(--bc) / 0.18);
   }
-  &:active { transform: translateY(0); }
+  &:active {
+    transform: translateY(0);
+  }
 }
 
 /* ── Responsive ── */
@@ -484,12 +494,21 @@ const capabilityHighlights = [
   .mobile-btn {
     display: block;
   }
-  .home-updated { display: none; }
+  .home-updated {
+    display: none;
+  }
 }
 
 @media (max-width: 640px) {
-  .home { padding: 8px; }
-  .home-shell { border-radius: 14px; }
-  .home-left { padding: 26px 14px 16px; gap: 20px; }
+  .home {
+    padding: 8px;
+  }
+  .home-shell {
+    border-radius: 14px;
+  }
+  .home-left {
+    padding: 26px 14px 16px;
+    gap: 20px;
+  }
 }
 </style>

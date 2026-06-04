@@ -106,15 +106,7 @@ import {
   videoProviderUsesField,
 } from "@/models";
 
-import type {
-  ChatModelConfig,
-  ChatModelEditorState,
-  ImageModelConfig,
-  ImageModelEditorState,
-  VideoModelConfig,
-  ModelConfig,
-  ModelKind,
-} from "@/types";
+import type { ChatModelConfig, ChatModelEditorState, ImageModelConfig, ImageModelEditorState, VideoModelConfig, ModelConfig, ModelKind } from "@/types";
 
 type ModelEditorState = Omit<ChatModelEditorState, "provider"> & {
   provider: ChatModelEditorState["provider"] | ImageModelEditorState["provider"];
@@ -150,8 +142,8 @@ const usesBaseURL = computed(() =>
   isVideoModel.value
     ? videoProviderUsesField(localModel.provider, "baseURL")
     : isImageModel.value
-    ? imageProviderUsesField(localModel.provider, "baseURL")
-    : chatProviderUsesField(localModel.provider, "baseURL"),
+      ? imageProviderUsesField(localModel.provider, "baseURL")
+      : chatProviderUsesField(localModel.provider, "baseURL"),
 );
 const availableModelOptions = computed(() => {
   const catalog = isVideoModel.value ? videoModelTypeList : isImageModel.value ? imageModelTypeList : chatModelTypeList;
@@ -212,13 +204,13 @@ function syncProviderBaseURL(provider = "", force = false) {
   const knownDefaults = isVideoModel.value
     ? getKnownVideoProviderDefaultBaseURLs()
     : isImageModel.value
-    ? getKnownImageProviderDefaultBaseURLs()
-    : getKnownChatProviderDefaultBaseURLs();
+      ? getKnownImageProviderDefaultBaseURLs()
+      : getKnownChatProviderDefaultBaseURLs();
   const nextDefault = isVideoModel.value
     ? getVideoProviderDefaultBaseURL(provider)
     : isImageModel.value
-    ? getImageProviderDefaultBaseURL(provider)
-    : getChatProviderDefaultBaseURL(provider);
+      ? getImageProviderDefaultBaseURL(provider)
+      : getChatProviderDefaultBaseURL(provider);
   const shouldReplace = !localModel.baseURL || knownDefaults.includes(localModel.baseURL);
   if (shouldReplace) localModel.baseURL = nextDefault;
 }

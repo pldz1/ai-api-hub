@@ -5,10 +5,7 @@
       <SvgIcon :src="menuIcon" />
     </button>
     <div class="main-view-content">
-      <LeftView
-        :expanded="sidebarExpanded"
-        @toggle="sidebarExpanded = !sidebarExpanded"
-      />
+      <LeftView :expanded="sidebarExpanded" @toggle="sidebarExpanded = !sidebarExpanded" />
       <div class="main-view-stage">
         <RightView>
           <ChatIndex v-if="routeName === 'chat'" />

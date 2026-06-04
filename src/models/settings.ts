@@ -1,12 +1,4 @@
-import type {
-  ChatModelConfig,
-  ParamDefaultValue,
-  ImageModelConfig,
-  ImageModelParamType,
-  ModelSettings,
-  LooseModelConfig,
-  VideoModelConfig,
-} from "@/types";
+import type { ChatModelConfig, ParamDefaultValue, ImageModelConfig, ImageModelParamType, ModelSettings, LooseModelConfig, VideoModelConfig } from "@/types";
 import { normalizeChatModelConfig } from "./chat";
 import { normalizeImageModelConfig } from "./image";
 import { normalizeVideoModelConfig } from "./video";

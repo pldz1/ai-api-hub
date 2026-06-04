@@ -148,7 +148,6 @@ const chatSettingsRef = ref<ChatSettingsExpose | null>(null);
 const imageFileInputRef = ref<HTMLInputElement | null>(null);
 const inputImages = ref<ChatInputImage[]>([]);
 
-
 const store = useStore();
 const { t } = useI18n();
 const chatModels = computed<ChatModelConfig[]>(() => store.state.models.chat || []);
@@ -267,7 +266,6 @@ const onSendInputData = async () => {
 const onToggleCapability = async (key: InputCapabilityKey, value: boolean) => {
   await store.dispatch("setInputCapability", { key, value });
 };
-
 
 /* When the browser supports field-sizing:content natively we skip the manual
    height dance entirely — zero jitter. Older engines fall back to JS resize. */

@@ -10,12 +10,7 @@
       </div>
 
       <div v-else class="video-message-list">
-        <article
-          v-for="message in messages"
-          :key="message.id"
-          class="video-message"
-          :class="[`is-${message.role}`, `is-${message.status}`]"
-        >
+        <article v-for="message in messages" :key="message.id" class="video-message" :class="[`is-${message.role}`, `is-${message.status}`]">
           <div class="video-message-body">
             <div v-if="message.role !== 'user'" class="video-message-meta">
               <span>{{ message.modelName }}</span>
@@ -62,12 +57,7 @@
     </div>
 
     <div class="video-composer-wrap">
-      <div
-        ref="composerRef"
-        class="video-composer"
-        :class="{ 'has-media': firstFrame || lastFrame || drivingAudio }"
-        @paste="onPaste"
-      >
+      <div ref="composerRef" class="video-composer" :class="{ 'has-media': firstFrame || lastFrame || drivingAudio }" @paste="onPaste">
         <!-- Media slots: shown/hidden based on model capabilities -->
         <div v-if="activeCapabilities.imageInput || activeCapabilities.audioInput" class="video-media-slots">
           <!-- First frame slot (image-to-video / reference-to-video) -->
@@ -122,11 +112,7 @@
 
         <div class="video-composer-actions">
           <div class="video-left-actions">
-            <select
-              v-model="selectedModelIndex"
-              class="video-model-select"
-              :disabled="isCurrentConversationSubmitting || availableModels.length === 0"
-            >
+            <select v-model="selectedModelIndex" class="video-model-select" :disabled="isCurrentConversationSubmitting || availableModels.length === 0">
               <option :value="-1" disabled>
                 {{ availableModels.length ? t("video.selectModel") : t("video.videoModelNotConfigured") }}
               </option>
@@ -223,16 +209,12 @@ let composerResizeObserver: ResizeObserver | null = null;
 
 const messages = computed<VideoConversationMessage[]>(() => store.state.videoMessages || []);
 const routeVideoId = computed(() => (typeof route.params.vid === "string" ? route.params.vid : ""));
-const activeVideoRuntime = computed(() =>
-  routeVideoId.value ? store.state.videoRuntimeById?.[routeVideoId.value] || null : store.state.videoRuntime || null,
-);
+const activeVideoRuntime = computed(() => (routeVideoId.value ? store.state.videoRuntimeById?.[routeVideoId.value] || null : store.state.videoRuntime || null));
 const runtimeTick = ref(Date.now());
 const availableModels = computed<VideoModelConfig[]>(() => store.state.models.video || []);
 const selectedModel = computed<VideoModelConfig | null>(() => availableModels.value[selectedModelIndex.value] || null);
 
-const activeCapabilities = computed(() =>
-  getVideoModelCapabilities(selectedModel.value as Record<string, unknown> | null),
-);
+const activeCapabilities = computed(() => getVideoModelCapabilities(selectedModel.value as Record<string, unknown> | null));
 
 const modelGroups = computed(() => {
   const t2v: { model: VideoModelConfig; index: number }[] = [];
@@ -254,12 +236,8 @@ const loadingStatusText = computed(() => {
   return t("video.processingRequest");
 });
 
-const isCurrentConversationSubmitting = computed(
-  () => Boolean(activeVideoRuntime.value?.pending || activeVideoRuntime.value?.status === "loading"),
-);
-const isSendDisabled = computed(
-  () => isCurrentConversationSubmitting.value || !prompt.value.trim() || !selectedModel.value,
-);
+const isCurrentConversationSubmitting = computed(() => Boolean(activeVideoRuntime.value?.pending || activeVideoRuntime.value?.status === "loading"));
+const isSendDisabled = computed(() => isCurrentConversationSubmitting.value || !prompt.value.trim() || !selectedModel.value);
 
 function resizeTextarea() {
   const textarea = textareaRef.value;
@@ -316,14 +294,22 @@ function resizeImageDataUrl(dataUrl: string): Promise<string> {
         resolve(dataUrl);
         return;
       }
-      if (width > height) { height = Math.round(height * (MAX_IMAGE_DIM / width)); width = MAX_IMAGE_DIM; }
-      else { width = Math.round(width * (MAX_IMAGE_DIM / height)); height = MAX_IMAGE_DIM; }
+      if (width > height) {
+        height = Math.round(height * (MAX_IMAGE_DIM / width));
+        width = MAX_IMAGE_DIM;
+      } else {
+        width = Math.round(width * (MAX_IMAGE_DIM / height));
+        height = MAX_IMAGE_DIM;
+      }
 
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext("2d");
-      if (!ctx) { resolve(dataUrl); return; }
+      if (!ctx) {
+        resolve(dataUrl);
+        return;
+      }
       ctx.drawImage(img, 0, 0, width, height);
       resolve(canvas.toDataURL("image/jpeg", 0.85));
     };
@@ -684,61 +670,178 @@ onBeforeUnmount(() => {
     background: radial-gradient(circle, oklch(var(--p) / 0.12) 0%, oklch(var(--p) / 0.05) 44%, oklch(var(--p) / 0) 74%);
   }
 
-  h1 { margin: 18px 0 8px; font-size: 32px; font-weight: 700; }
-  p { width: min(520px, 100%); margin: 0; line-height: 1.7; }
+  h1 {
+    margin: 18px 0 8px;
+    font-size: 32px;
+    font-weight: 700;
+  }
+  p {
+    width: min(520px, 100%);
+    margin: 0;
+    line-height: 1.7;
+  }
 }
 
 .video-empty-mark {
-  width: 74px; height: 74px;
-  display: grid; place-items: center;
+  width: 74px;
+  height: 74px;
+  display: grid;
+  place-items: center;
   border-radius: 24px;
   background: #f3f4f6;
-  :deep(.svg-icon) { width: 34px; height: 34px; }
+  :deep(.svg-icon) {
+    width: 34px;
+    height: 34px;
+  }
 }
 
-.video-message-list { display: flex; flex-direction: column; gap: 22px; }
+.video-message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
 
 .video-message {
   display: flex;
-  &.is-user { justify-content: flex-end; .video-message-body { max-width: min(560px, 82%); border-radius: 30px; background: #f1f1f0; } }
-  &.is-assistant { justify-content: flex-start; .video-message-body { width: min(720px, 100%); border-radius: 8px; background: transparent; } }
+  &.is-user {
+    justify-content: flex-end;
+    .video-message-body {
+      max-width: min(560px, 82%);
+      border-radius: 30px;
+      background: #f1f1f0;
+    }
+  }
+  &.is-assistant {
+    justify-content: flex-start;
+    .video-message-body {
+      width: min(720px, 100%);
+      border-radius: 8px;
+      background: transparent;
+    }
+  }
 }
 
-.video-message-body { min-width: 0; padding: 16px 18px; }
-
-.video-message-meta, .video-usage-row {
-  display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px;
-  span { min-height: 24px; display: inline-flex; align-items: center; padding: 0 9px; border-radius: 999px; background: rgba(17, 24, 39, 0.05); }
+.video-message-body {
+  min-width: 0;
+  padding: 16px 18px;
 }
 
-.video-message-prompt { margin: 4px 0 0; color: oklch(var(--bc)); line-height: 1.7; white-space: pre-wrap; }
-
-.video-attachment-row, .video-output-grid { margin-top: 14px; }
-.video-attachment-row { display: flex; flex-wrap: wrap; gap: 10px; }
-.video-attachment { width: 96px; height: 96px; overflow: hidden; border-radius: 8px; border: 1px solid rgba(17, 24, 39, 0.08);
-  &.clickable { cursor: zoom-in; }
-  img { width: 100%; height: 100%; object-fit: cover; }
+.video-message-meta,
+.video-usage-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  span {
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: rgba(17, 24, 39, 0.05);
+  }
 }
-.video-audio-badge { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 12px; color: oklch(var(--bc)); background: oklch(var(--b2)); }
 
-.video-output-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
-.video-output-card { margin: 0; overflow: hidden; border-radius: 8px; background: #000;
-  video { display: block; width: 100%; max-height: 400px; }
+.video-message-prompt {
+  margin: 4px 0 0;
+  color: oklch(var(--bc));
+  line-height: 1.7;
+  white-space: pre-wrap;
 }
 
-.video-loading-card { width: min(360px, 100%); margin-top: 14px; color: oklch(var(--b1)); font-size: 13px; }
-.video-loading-preview { width: 100%; aspect-ratio: 16 / 9; margin-bottom: 10px; border-radius: 8px; background: #e5e7eb; }
-.video-error-message { margin-top: 12px; padding: 12px 14px; border-radius: 8px; background: #fef2f2; color: #b91c1c; line-height: 1.6; }
-.video-usage-row { margin-top: 12px; }
+.video-attachment-row,
+.video-output-grid {
+  margin-top: 14px;
+}
+.video-attachment-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.video-attachment {
+  width: 96px;
+  height: 96px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  &.clickable {
+    cursor: zoom-in;
+  }
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+.video-audio-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 12px;
+  color: oklch(var(--bc));
+  background: oklch(var(--b2));
+}
+
+.video-output-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+.video-output-card {
+  margin: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+  video {
+    display: block;
+    width: 100%;
+    max-height: 400px;
+  }
+}
+
+.video-loading-card {
+  width: min(360px, 100%);
+  margin-top: 14px;
+  color: oklch(var(--b1));
+  font-size: 13px;
+}
+.video-loading-preview {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  background: #e5e7eb;
+}
+.video-error-message {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  line-height: 1.6;
+}
+.video-usage-row {
+  margin-top: 12px;
+}
 
 .video-composer-wrap {
-  position: absolute; left: 0; right: 0; bottom: var(--video-composer-bottom); z-index: 6;
-  display: flex; justify-content: center; padding: 0 var(--video-composer-shell-gap); pointer-events: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--video-composer-bottom);
+  z-index: 6;
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--video-composer-shell-gap);
+  pointer-events: none;
 
   &::before {
     content: "";
     position: absolute;
-    left: 0; right: 0;
+    left: 0;
+    right: 0;
     bottom: calc(var(--video-composer-bottom) * -1);
     height: clamp(170px, 30vh, 260px);
     z-index: 0;
@@ -748,105 +851,223 @@ onBeforeUnmount(() => {
 }
 
 .video-composer {
-  position: relative; z-index: 1; width: min(100%, 742px); pointer-events: auto;
-  max-height: min(68vh, 620px); overflow-y: auto;
+  position: relative;
+  z-index: 1;
+  width: min(100%, 742px);
+  pointer-events: auto;
+  max-height: min(68vh, 620px);
+  overflow-y: auto;
   padding: 14px 18px 12px;
-  border: 1px solid oklch(var(--bc) / 0.27); border-radius: 42px;
+  border: 1px solid oklch(var(--bc) / 0.27);
+  border-radius: 42px;
   background: oklch(var(--b1) / 0.96);
 }
 
 /* ---- media slots ---- */
 .video-media-slots {
-  display: flex; gap: 10px; margin-bottom: 10px;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .video-media-slot {
-  flex: 1; min-width: 0; height: 64px;
-  border: 2px dashed oklch(var(--bc) / 0.16); border-radius: 12px;
-  cursor: pointer; overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  height: 64px;
+  border: 2px dashed oklch(var(--bc) / 0.16);
+  border-radius: 12px;
+  cursor: pointer;
+  overflow: hidden;
   transition: border-color 0.16s;
-  &:hover { border-color: oklch(var(--p) / 0.4); }
-  &.filled { border-style: solid; border-color: oklch(var(--bc) / 0.12); cursor: default; }
+  &:hover {
+    border-color: oklch(var(--p) / 0.4);
+  }
+  &.filled {
+    border-style: solid;
+    border-color: oklch(var(--bc) / 0.12);
+    cursor: default;
+  }
 }
 
 .video-media-empty {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  height: 100%; gap: 2px; color: oklch(var(--bc) / 0.45); font-size: 12px;
-  .video-media-empty-icon { width: 20px; height: 20px; opacity: 0.5; }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 2px;
+  color: oklch(var(--bc) / 0.45);
+  font-size: 12px;
+  .video-media-empty-icon {
+    width: 20px;
+    height: 20px;
+    opacity: 0.5;
+  }
 }
 
 .video-media-preview {
-  position: relative; width: 100%; height: 100%;
-  img { width: 100%; height: 100%; object-fit: cover; }
+  position: relative;
+  width: 100%;
+  height: 100%;
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .video-media-audio-name {
-  display: flex; align-items: center; justify-content: center;
-  width: 100%; height: 100%; font-size: 13px; font-weight: 600;
-  color: oklch(var(--bc)); background: oklch(var(--b2));
-  padding: 0 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  color: oklch(var(--bc));
+  background: oklch(var(--b2));
+  padding: 0 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .video-media-remove {
-  position: absolute; top: 4px; right: 4px;
-  width: 20px; height: 20px; border: none; border-radius: 999px;
-  background: oklch(var(--bc) / 0.72); color: oklch(var(--nc));
-  line-height: 18px; font-size: 14px; cursor: pointer;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 999px;
+  background: oklch(var(--bc) / 0.72);
+  color: oklch(var(--nc));
+  line-height: 18px;
+  font-size: 14px;
+  cursor: pointer;
 }
 
 .video-media-tag {
-  position: absolute; left: 6px; bottom: 4px;
-  height: 20px; padding: 0 8px; display: inline-flex; align-items: center;
-  border-radius: 999px; background: oklch(var(--b1) / 0.9);
-  color: oklch(var(--bc)); font-size: 11px; font-weight: 600;
+  position: absolute;
+  left: 6px;
+  bottom: 4px;
+  height: 20px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: oklch(var(--b1) / 0.9);
+  color: oklch(var(--bc));
+  font-size: 11px;
+  font-weight: 600;
   box-shadow: 0 1px 3px oklch(var(--bc) / 0.12);
 }
 
 .video-prompt-input {
-  width: 100%; min-height: 36px; max-height: 188px;
-  padding: 8px 0 6px; border: none; outline: none; resize: none;
-  background: transparent; color: oklch(var(--bc)); font-size: 16px; line-height: 1.5;
+  width: 100%;
+  min-height: 36px;
+  max-height: 188px;
+  padding: 8px 0 6px;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: oklch(var(--bc));
+  font-size: 16px;
+  line-height: 1.5;
 }
 
-.video-composer-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 2px; }
-.video-left-actions, .video-right-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.video-composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 2px;
+}
+.video-left-actions,
+.video-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
 
 .video-send-button {
-  width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center;
-  border: none; border-radius: 50%;
-  background-color: oklch(var(--n)); color: oklch(var(--nc));
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background-color: oklch(var(--n));
+  color: oklch(var(--nc));
   box-shadow: 0 8px 20px oklch(var(--bc) / 0.16);
-  &:disabled { opacity: 0.36; cursor: not-allowed; }
-  :deep(.svg-icon) { width: 20px; height: 20px; }
+  &:disabled {
+    opacity: 0.36;
+    cursor: not-allowed;
+  }
+  :deep(.svg-icon) {
+    width: 20px;
+    height: 20px;
+  }
 }
 
 .video-settings-button {
-  width: 24px; height: 24px; flex: 0 0 auto;
-  display: inline-flex; align-items: center; justify-content: center;
-  border: none; border-radius: 50%; background: transparent;
-  color: oklch(var(--bc) / 0.6); cursor: pointer;
-  &:hover { color: oklch(var(--bc)); }
-  :deep(.svg-icon) { width: 18px; height: 18px; }
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: oklch(var(--bc) / 0.6);
+  cursor: pointer;
+  &:hover {
+    color: oklch(var(--bc));
+  }
+  :deep(.svg-icon) {
+    width: 18px;
+    height: 18px;
+  }
 }
 
 .video-model-select {
-  height: 32px; min-width: 0; max-width: 180px;
-  border: 2px solid oklch(var(--bc) / 0.08); border-radius: 8px;
-  background: linear-gradient(180deg, oklch(var(--b1) / 0.96), oklch(var(--b2) / 0.94)),
+  height: 32px;
+  min-width: 0;
+  max-width: 180px;
+  border: 2px solid oklch(var(--bc) / 0.08);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, oklch(var(--b1) / 0.96), oklch(var(--b2) / 0.94)),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23111827' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
       no-repeat right 9px center / 12px 12px;
-  color: oklch(var(--bc)); font-size: 16px; padding: 0 30px 0 4px; appearance: none;
+  color: oklch(var(--bc));
+  font-size: 16px;
+  padding: 0 30px 0 4px;
+  appearance: none;
 }
 
-.video-file-input { display: none; }
+.video-file-input {
+  display: none;
+}
 
 @media (max-width: 640px) {
   .video-chat-page {
-    --video-side-gap: 12px; --video-top-gap: 60px;
+    --video-side-gap: 12px;
+    --video-top-gap: 60px;
     --video-composer-bottom: max(12px, env(safe-area-inset-bottom));
-    --video-composer-shell-gap: 6px; --video-scroll-tail-gap: 26px;
+    --video-composer-shell-gap: 6px;
+    --video-scroll-tail-gap: 26px;
   }
-  .video-composer { border-radius: 28px; padding: 12px; }
-  .video-media-slots { flex-direction: column; }
+  .video-composer {
+    border-radius: 28px;
+    padding: 12px;
+  }
+  .video-media-slots {
+    flex-direction: column;
+  }
 }
 </style>

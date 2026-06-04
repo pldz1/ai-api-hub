@@ -92,9 +92,7 @@ const localSettings = reactive<VideoSettingsData>({
   duration: props.settings?.duration || 5,
 });
 
-const availableResolutions = computed(() =>
-  getVideoModelResolutions(props.model as unknown as Record<string, unknown> | null),
-);
+const availableResolutions = computed(() => getVideoModelResolutions(props.model as unknown as Record<string, unknown> | null));
 
 const activeParamDefs = computed(() =>
   resolveVideoParamDefs(props.model as unknown as Record<string, unknown> | null).filter(

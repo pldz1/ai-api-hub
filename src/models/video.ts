@@ -45,9 +45,7 @@ export function normalizeVideoModelConfig(model: LooseModelConfig | null | undef
 export function normalizeVideoParamDef(def: Partial<VideoModelParamDef> = {}): VideoModelParamDef {
   const preset = getVideoParamPreset(def.key);
   const nextType = def.type || preset?.type || "string";
-  const fallbackDefaultValue = Object.prototype.hasOwnProperty.call(preset || {}, "defaultValue")
-    ? structuredClone(preset.defaultValue)
-    : "";
+  const fallbackDefaultValue = Object.prototype.hasOwnProperty.call(preset || {}, "defaultValue") ? structuredClone(preset.defaultValue) : "";
   const nextDefaultValue = parseParamValue(nextType, def.defaultValue, fallbackDefaultValue);
 
   return {
@@ -64,9 +62,7 @@ export function normalizeVideoParamDef(def: Partial<VideoModelParamDef> = {}): V
   };
 }
 
-const normalizedVideoParamDefs = new Map(
-  videoParamPresetList.map((item) => [item.key, normalizeVideoParamDef(item)] as const),
-);
+const normalizedVideoParamDefs = new Map(videoParamPresetList.map((item) => [item.key, normalizeVideoParamDef(item)] as const));
 
 export function getVideoProvidersForModel(model: string = "") {
   const catalogItem = findVideoModelCatalogItem(model);
@@ -81,8 +77,8 @@ export function resolveVideoParamDefs(model: LooseModelConfig | null = null): Vi
   return paramKeys.map((key) => normalizedVideoParamDefs.get(key)).filter(Boolean) as VideoModelParamDef[];
 }
 
-export const videoParamDefs: VideoModelParamDef[] = ["resolution", "duration", "prompt_extend", "watermark", "first_frame"].map(
-  (key) => normalizeVideoParamDef({ key }),
+export const videoParamDefs: VideoModelParamDef[] = ["resolution", "duration", "prompt_extend", "watermark", "first_frame"].map((key) =>
+  normalizeVideoParamDef({ key }),
 );
 
 export function getVideoModelResolutions(model: LooseModelConfig | null = null): string[] {
@@ -90,10 +86,7 @@ export function getVideoModelResolutions(model: LooseModelConfig | null = null):
   return findVideoModelCatalogItem(modelConfig.model, modelConfig.provider)?.resolutionList || ["720P", "1080P"];
 }
 
-function mergeResolvedVideoSettings(
-  _defs: VideoModelParamDef[],
-  settings: Partial<VideoModelSettings> = {},
-): VideoModelSettings {
+function mergeResolvedVideoSettings(_defs: VideoModelParamDef[], settings: Partial<VideoModelSettings> = {}): VideoModelSettings {
   return {
     ...structuredClone(defaultVideoModelSettings),
     model: settings.model ?? null,
@@ -120,13 +113,8 @@ export function buildVideoGenerationParams(settings: Partial<VideoModelSettings>
     if (value === undefined || value === null) return;
     if (item.type === "string" && value === "") return;
     if (item.type === "array" && !Array.isArray(value)) return;
-    if (item.type === "object" && (typeof value !== "object" || Array.isArray(value) || Object.keys(value || {}).length === 0))
-      return;
-    if (
-      item.type === "image" &&
-      (!value || typeof value !== "object" || !("filename" in value) || !("content_type" in value) || !("data" in value))
-    )
-      return;
+    if (item.type === "object" && (typeof value !== "object" || Array.isArray(value) || Object.keys(value || {}).length === 0)) return;
+    if (item.type === "image" && (!value || typeof value !== "object" || !("filename" in value) || !("content_type" in value) || !("data" in value))) return;
     params[item.key] = value;
   });
 
@@ -147,10 +135,4 @@ export function getVideoModelType(model: LooseModelConfig | null = null): VideoM
   return "t2v";
 }
 
-export {
-  getVideoProviderDefinition,
-  getVideoProviderDefaultBaseURL,
-  getKnownVideoProviderDefaultBaseURLs,
-  videoProviderUsesField,
-  isVideoModelProvider,
-};
+export { getVideoProviderDefinition, getVideoProviderDefaultBaseURL, getKnownVideoProviderDefaultBaseURLs, videoProviderUsesField, isVideoModelProvider };

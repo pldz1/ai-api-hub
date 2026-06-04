@@ -4,10 +4,10 @@ Client-side persistence layer. All external code imports from the barrel (`@/ser
 
 ## Files
 
-| File | Responsibility |
-|------|---------------|
-| `index.ts` | Re-exports the public API from both modules |
-| `indexeddb.ts` | IndexedDB operations for image and video binary data; `urlToDataUrl` utility |
+| File               | Responsibility                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------- |
+| `index.ts`         | Re-exports the public API from both modules                                                       |
+| `indexeddb.ts`     | IndexedDB operations for image and video binary data; `urlToDataUrl` utility                      |
 | `local-storage.ts` | JSON state in `localStorage` — models, chats, image/video metadata, conversations; route dispatch |
 
 ## How it works

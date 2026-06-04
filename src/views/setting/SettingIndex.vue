@@ -1,7 +1,10 @@
 <template>
   <div class="settings-page">
     <main class="settings-main">
-      <section class="settings-main-content" :class="{ 'is-model-settings': activeTab === 'chat-models' || activeTab === 'image-models' || activeTab === 'video-models' }">
+      <section
+        class="settings-main-content"
+        :class="{ 'is-model-settings': activeTab === 'chat-models' || activeTab === 'image-models' || activeTab === 'video-models' }"
+      >
         <!-- Chat instruction templates -->
         <TemplatePanel v-if="activeTab === 'chat-templates'" :templates="typedDraftTemplates" @update:templates="updateDraftTemplates" />
 

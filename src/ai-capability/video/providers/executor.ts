@@ -1,10 +1,4 @@
-import {
-  VideoProviderConnectionField,
-  VideoProviderDefinition,
-  VideoProviderKey,
-  videoProviderKeys,
-  videoProviderRegistry,
-} from "../types";
+import { VideoProviderConnectionField, VideoProviderDefinition, VideoProviderKey, videoProviderKeys, videoProviderRegistry } from "../types";
 import type { VideoGenerationParams, VideoGenerationResult, VideoModelConfig, VideoModelProvider, VideoProviderRoute } from "../types";
 
 import { DashScopeVideoClient } from "./dashscope";

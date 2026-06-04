@@ -108,20 +108,20 @@ function addModel() {
         model: "wan2.7-i2v-2026-04-25",
       } as VideoModelConfig)
     : isImageKind.value
-    ? ({
-        name: append4Random(t("user.imageModels.defaultName")),
-        provider: "OpenAI",
-        baseURL: getImageProviderDefaultBaseURL("OpenAI"),
-        apiKey: "",
-        model: "gpt-image-2",
-      } as ImageModelConfig)
-    : ({
-        name: append4Random(t("user.chatModels.defaultName")),
-        provider: "OpenAI",
-        baseURL: "https://api.openai.com/v1",
-        apiKey: "",
-        model: "gpt-5.5",
-      } as ChatModelConfig);
+      ? ({
+          name: append4Random(t("user.imageModels.defaultName")),
+          provider: "OpenAI",
+          baseURL: getImageProviderDefaultBaseURL("OpenAI"),
+          apiKey: "",
+          model: "gpt-image-2",
+        } as ImageModelConfig)
+      : ({
+          name: append4Random(t("user.chatModels.defaultName")),
+          provider: "OpenAI",
+          baseURL: "https://api.openai.com/v1",
+          apiKey: "",
+          model: "gpt-5.5",
+        } as ChatModelConfig);
   const nextModels = [...props.models, nextModel];
   updateModels(nextModels);
   selectedIndex.value = nextModels.length - 1;

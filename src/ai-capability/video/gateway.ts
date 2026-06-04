@@ -20,10 +20,7 @@ export interface VideoAITurnRequest {
 
 export type BuildVideoGenerationParams = (settings: Record<string, unknown>) => Record<string, unknown>;
 
-export function buildVideoAIParams(
-  request: VideoAITurnRequest,
-  buildParams?: BuildVideoGenerationParams,
-): VideoGenerationParams {
+export function buildVideoAIParams(request: VideoAITurnRequest, buildParams?: BuildVideoGenerationParams): VideoGenerationParams {
   const settings: Record<string, unknown> = {
     model: request.model,
     prompt: request.prompt,

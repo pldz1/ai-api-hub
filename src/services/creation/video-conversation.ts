@@ -26,9 +26,7 @@ const IDB_SRC_PREFIX = "idb:";
 async function sanitizeMessagesForPersist(messages: VideoConversationMessage[]): Promise<VideoConversationMessage[]> {
   return Promise.all(
     messages.map(async (msg) => {
-      let sanitizedAttachments = msg.attachments?.length
-        ? msg.attachments.map((att) => ({ ...att, data: "" }))
-        : msg.attachments;
+      let sanitizedAttachments = msg.attachments?.length ? msg.attachments.map((att) => ({ ...att, data: "" })) : msg.attachments;
 
       let sanitizedVideos = msg.videos;
       if (msg.videos?.length) {
@@ -99,19 +97,14 @@ async function resolveVideoMessageSources(messages: VideoConversationMessage[]):
 /** Delete IDB entries for all videos and attachment previews (best-effort). */
 async function cleanupVideoMessageSources(messages: VideoConversationMessage[]): Promise<void> {
   await Promise.allSettled([
-    ...messages.flatMap((msg) =>
-      (msg.videos || []).map((v) => deleteVideoSource(v.id)),
-    ),
-    ...messages.flatMap((msg) =>
-      (msg.attachments || []).map((att) => deleteVideoSource(`${att.id}-preview`)),
-    ),
+    ...messages.flatMap((msg) => (msg.videos || []).map((v) => deleteVideoSource(v.id))),
+    ...messages.flatMap((msg) => (msg.attachments || []).map((att) => deleteVideoSource(`${att.id}-preview`))),
   ]);
 }
 
 async function persistVideoMessages(vid: string): Promise<boolean> {
   if (!vid) return false;
-  const messages = store.state.videoMessagesById?.[vid] ||
-    (vid === store.state.curVideoConversationId ? store.state.videoMessages || [] : []);
+  const messages = store.state.videoMessagesById?.[vid] || (vid === store.state.curVideoConversationId ? store.state.videoMessages || [] : []);
   const sanitized = await sanitizeMessagesForPersist(messages);
   const res = await setVideoConversationMessagesAPI(vid, sanitized);
   if (!res.flag) {
@@ -122,10 +115,7 @@ async function persistVideoMessages(vid: string): Promise<boolean> {
   return true;
 }
 
-export async function runVideoConversationTurn(
-  request: VideoTurnRequest,
-  onStatusUpdate?: (status: string) => void,
-): Promise<VideoTurnResponse> {
+export async function runVideoConversationTurn(request: VideoTurnRequest, onStatusUpdate?: (status: string) => void): Promise<VideoTurnResponse> {
   const result = await runVideoAITurn(request, buildVideoGenerationParams, onStatusUpdate);
   const { payloads, errors } = normalizeGeneratedVideos(request.prompt, result.videos || []);
   if (errors.length > 0 && payloads.length === 0) throw new Error(errors.join("\n"));
