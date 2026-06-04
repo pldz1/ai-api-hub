@@ -180,6 +180,7 @@ export function insertReasoningElem(el: HTMLElement): HTMLDivElement | null {
   reasoningEl.className = "cmba-reasoning-content";
 
   const detailsEl = document.createElement("details");
+  detailsEl.open = true;
   reasoningEl.appendChild(detailsEl);
 
   const summaryEl = document.createElement("summary");

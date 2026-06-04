@@ -160,6 +160,7 @@ export function createChatDrawer(): ChatDrawer {
     if (options.reset) {
       removeAllElem();
       messages.forEach((m) => createStoredMessageElement(m));
+      container?.querySelectorAll(".cmba-reasoning-content details").forEach((el) => el.removeAttribute("open"));
       return;
     }
     if (!container) return;

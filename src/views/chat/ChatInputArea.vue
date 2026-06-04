@@ -79,26 +79,6 @@
       </div>
     </div>
 
-    <!-- Confirm the selected model before starting a brand-new chat session. -->
-    <dialog
-      ref="startChatConfirmDialogRef"
-      class="modal ccia-start-chat-confirm"
-      @cancel.prevent="resolveStartChatConfirmation(false)"
-      @close="resolveStartChatConfirmation(false)"
-    >
-      <div class="modal-box">
-        <h3 class="ccia-confirm-title">{{ t("input.confirmStartChatTitle") }}</h3>
-        <p class="ccia-confirm-message">{{ t("input.confirmStartChat", { model: draftSnapshot?.displayName || "" }) }}</p>
-        <div class="modal-action ccia-confirm-actions">
-          <button class="btn btn-primary" type="button" @click="resolveStartChatConfirmation(true)">
-            {{ t("input.confirmStartChatConfirm") }}
-          </button>
-          <button class="btn btn-ghost" type="button" @click="resolveStartChatConfirmation(false)">
-            {{ t("input.confirmStartChatCancel") }}
-          </button>
-        </div>
-      </div>
-    </dialog>
     <input ref="imageFileInputRef" class="ccia-file-input" type="file" accept="image/*" multiple @change="onImageFileChange" />
   </div>
 
@@ -163,11 +143,11 @@ const emit = defineEmits<{
 
 const inputText = ref("");
 const cciaTextareaRef = ref<HTMLTextAreaElement | null>(null);
-const startChatConfirmDialogRef = ref<HTMLDialogElement | null>(null);
+
 const chatSettingsRef = ref<ChatSettingsExpose | null>(null);
 const imageFileInputRef = ref<HTMLInputElement | null>(null);
 const inputImages = ref<ChatInputImage[]>([]);
-let startChatConfirmResolve: ((confirmed: boolean) => void) | null = null;
+
 
 const store = useStore();
 const { t } = useI18n();
@@ -257,11 +237,6 @@ const onSendInputData = async () => {
     return;
   }
 
-  if (!curChatId.value) {
-    const confirmed = await requestStartChatConfirmation();
-    if (!confirmed) return;
-  }
-
   if (curChatId.value) {
     const currentConversationModel = getModelFromSnapshot(curConversation.value?.modelSnapshot);
     if (getModelSelectionKey(currentConversationModel) !== getModelSelectionKey(selectedModel.value)) {
@@ -293,27 +268,6 @@ const onToggleCapability = async (key: InputCapabilityKey, value: boolean) => {
   await store.dispatch("setInputCapability", { key, value });
 };
 
-const requestStartChatConfirmation = () =>
-  new Promise<boolean>((resolve) => {
-    const dialog = startChatConfirmDialogRef.value;
-    if (!dialog?.showModal) {
-      resolve(false);
-      return;
-    }
-
-    startChatConfirmResolve = resolve;
-    dialog.showModal();
-  });
-
-const resolveStartChatConfirmation = (confirmed: boolean) => {
-  if (startChatConfirmResolve) {
-    startChatConfirmResolve(Boolean(confirmed));
-    startChatConfirmResolve = null;
-  }
-
-  const dialog = startChatConfirmDialogRef.value;
-  if (dialog?.open) dialog.close();
-};
 
 /* When the browser supports field-sizing:content natively we skip the manual
    height dance entirely — zero jitter. Older engines fall back to JS resize. */
@@ -457,7 +411,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  resolveStartChatConfirmation(false);
   document.removeEventListener("keydown", onGlobalKeydown);
 });
 
@@ -626,32 +579,6 @@ watch(
   .ccia-send-icon {
     width: 20px;
     height: 20px;
-  }
-
-  .ccia-start-chat-confirm {
-    .modal-box {
-      max-width: 420px;
-      border: 1px solid oklch(var(--bc) / 0.12);
-      background: oklch(var(--b1));
-      border-radius: 8px;
-    }
-
-    .ccia-confirm-title {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 700;
-      color: oklch(var(--bc));
-    }
-
-    .ccia-confirm-message {
-      margin: 12px 0 0;
-      line-height: 1.55;
-      color: oklch(var(--bc) / 0.72);
-    }
-
-    .ccia-confirm-actions {
-      gap: 8px;
-    }
   }
 
   .ccia-file-input {

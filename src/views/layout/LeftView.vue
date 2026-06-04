@@ -9,7 +9,7 @@
             <span class="back-label">{{ t("common.back") }}</span>
           </button>
         </AppTooltip>
-        <a v-else-if="isExpanded" class="brand-logo" href="/">
+        <a v-else-if="isExpanded" class="brand-logo" href="../">
           <SvgIcon class="logo-icon" :src="brandIcon" colored />
           <span class="logo-text">{{ APP_NAME }} · {{ APP_VERSION }}</span>
         </a>
@@ -30,9 +30,9 @@
             v-for="item in group.items"
             :key="item.key"
             class="settings-tab-btn"
-            :class="{ active: activeTab === item.key }"
+            :class="{ active: activeSettingsTab === item.key }"
             type="button"
-            @click="$emit('update:activeTab', item.key)"
+            @click="router.push({ name: `settings-${item.key}` })"
           >
             <span>{{ item.label }}</span>
             <small>{{ item.description }}</small>
@@ -304,7 +304,7 @@
       <div class="sidebar-footer">
         <div class="settings-shell">
           <AppTooltip :text="isExpanded ? '' : t('home.settingsTitle')" placement="right">
-            <button class="settings-btn" :class="{ 'is-active': route.name === 'settings' }" type="button" @click="onShowModelSettings">
+            <button class="settings-btn" :class="{ 'is-active': isSettingsRoute }" type="button" @click="onShowModelSettings">
               <SvgIcon :src="settingIcon" style="width: 24px; height: 24px" />
               <span v-if="isExpanded">{{ t("home.settingsTitle") }}</span>
             </button>
@@ -418,10 +418,9 @@ const settingGroups = computed(() => [
 
 const props = defineProps({
   expanded: { type: Boolean, default: true },
-  activeTab: { type: String as () => SettingTabKey_L, default: "chat-models" as SettingTabKey_L },
 });
 
-const emit = defineEmits(["toggle", "update:activeTab"]);
+const emit = defineEmits(["toggle"]);
 const store = useStore();
 const router = useRouter();
 const route = useRoute();
@@ -437,7 +436,17 @@ const activeRouteVideoId = computed(() => (route.name === "video" && typeof rout
 const isChatDraftRoute = computed(() => route.name === "chat" && !activeRouteChatId.value);
 const isImageDraftRoute = computed(() => route.name === "image" && !activeRouteImageId.value);
 const isVideoDraftRoute = computed(() => route.name === "video" && !activeRouteVideoId.value);
-const isSettingsRoute = computed(() => route.name === "settings");
+const isSettingsRoute = computed(() => typeof route.name === "string" && route.name.startsWith("settings"));
+
+const activeSettingsTab = computed<SettingTabKey_L>(() => {
+  const name = route.name?.toString() || "";
+  if (name === "settings-chat-templates") return "chat-templates";
+  if (name === "settings-chat-models") return "chat-models";
+  if (name === "settings-image-models") return "image-models";
+  if (name === "settings-video-models") return "video-models";
+  if (name === "settings-app") return "app";
+  return "chat-models";
+});
 const isShowOptionCid = ref("");
 const isEditChatName = ref(false);
 const isChatSectionOpen = ref(true);
@@ -566,7 +575,7 @@ const onNewChat = async () => {
   await router.push({ name: "chat" });
 };
 
-const onShowModelSettings = () => router.push({ name: "settings" });
+const onShowModelSettings = () => router.push({ name: "settings-chat-models" });
 
 const onBackFromSettings = () => router.push({ name: "chat" });
 

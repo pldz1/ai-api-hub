@@ -12,22 +12,31 @@ This is why you're here, right? Here's the current lineup:
 
 ### 💬 Chat Models
 
-| Model                    | Providers            | Multimodal   | Web Search     | Vibe Check                                                 |
+| Model                    | Providers            | Vision       | Web Search     | Vibe Check                                                 |
 | ------------------------ | -------------------- | ------------ | -------------- | ---------------------------------------------------------- |
-| **GPT-5.5** 🧠           | OpenAI · Azure       | ✅ Vision    | ✅             | The latest and greatest. Expensive, but worth every token  |
-| **GPT-5.4** ⚡           | OpenAI · Azure       | ✅ Vision    | ✅             | The sweet spot between brains and speed                    |
-| **GPT-4.1** 🎯           | OpenAI · Azure       | ✅ Vision    | ✅             | Battle-tested veteran, still shipping                      |
-| **GPT-4o** 🏃            | OpenAI · Azure       | ✅ Vision    | ✅             | Lightweight & fast—your daily driver                       |
-| **DeepSeek V4 Pro** 🔮   | DeepSeek · DashScope | ❌ Text only | ✅ (DashScope) | 1M token context window. Absolute unit for Chinese         |
-| **DeepSeek V4 Flash** ⚡ | DeepSeek · DashScope | ❌ Text only | ✅ (DashScope) | Pro's speedy sibling—cheap and cheerful                    |
-| **Qwen 3.7 Max** 🐉      | DashScope            | ✅ Vision    | ✅             | Alibaba's flagship. Chinese comprehension on another level |
+| **GPT-5.5** 🧠           | OpenAI · Azure       | ✅           | ✅             | The latest and greatest. Expensive, but worth every token  |
+| **GPT-5.4** ⚡           | OpenAI · Azure       | ✅           | ✅             | The sweet spot between brains and speed                    |
+| **GPT-4.1** 🎯           | OpenAI · Azure       | ✅           | ✅             | Battle-tested veteran, still shipping                      |
+| **GPT-4o** 🏃            | OpenAI · Azure       | ✅           | ✅             | Lightweight & fast—your daily driver                       |
+| **DeepSeek V4 Pro** 🔮   | DeepSeek · DashScope | ❌           | ✅ (DashScope) | 1M token context window. Absolute unit for Chinese         |
+| **DeepSeek V4 Flash** ⚡ | DeepSeek · DashScope | ❌           | ✅ (DashScope) | Pro's speedy sibling—cheap and cheerful                    |
+| **Qwen 3.7 Max** 🐉      | DashScope            | ✅           | ✅             | Alibaba's flagship. Chinese comprehension on another level |
 
 ### 🎨 Image Generation
 
-| Model                 | Provider       | Capabilities                                |
-| --------------------- | -------------- | ------------------------------------------- |
-| **GPT-Image-2** 🖼️    | OpenAI · Azure | Text-to-image + image-to-image + inpainting |
-| **Qwen-Image-2.0** 🐉 | DashScope      | Text-to-image + image-to-image              |
+| Model                    | Provider       | Image-to-Image | Inpainting    | Output Sizes                                                       |
+| ------------------------ | -------------- | -------------- | ------------- | ------------------------------------------------------------------ |
+| **GPT-Image-2** 🖼️       | OpenAI · Azure | ✅             | ✅            | Up to 3840×2160 (8 sizes + auto)                                  |
+| **Qwen-Image-2.0 Pro** 🐉 | DashScope      | ✅             | ❌            | Up to 3840×2160 (7 sizes)                                         |
+
+### 🎬 Video Generation
+
+| Model                     | Provider  | Input         | Resolution     | Description                                        |
+| ------------------------- | --------- | ------------- | -------------- | --------------------------------------------------- |
+| **Wan2.7 I2V** 🎥          | DashScope | Image + Audio | 720P · 1080P   | Image-to-Video: animate a still image into a clip   |
+| **Wan2.7 T2V** 📝          | DashScope | Text only     | 720P · 1080P   | Text-to-Video: generate video from prompt alone     |
+| **Wan2.7 R2V** 🔗          | DashScope | Image/Audio/Video | 720P · 1080P | Reference-to-Video: multi-modal guided generation   |
+| **Wan2.7 VideoEdit** ✂️    | DashScope | Image/Audio/Video | 720P · 1080P | Video Editing: modify existing video with prompts   |
 
 > 💡 **But wait, there's more** — you can add any custom model that speaks OpenAI / DashScope compatible APIs. Running locally? Go for it. Third-party proxy? You do you.
 
@@ -117,10 +126,14 @@ src/
 │   │   ├── providers/    #   Clients: OpenAI, Azure, DeepSeek, DashScope
 │   │   ├── executor.ts   #   Route → factory → ChatExecutor
 │   │   └── gateway.ts    #   Public API (chat, streaming, abort)
-│   └── image/            # Image capability
-│       ├── providers/    #   Clients: OpenAI, Azure, DashScope
-│       ├── executor.ts   #   Route → factory → ImageExecutor
-│       └── gateway.ts    #   Public API (generate, edit)
+│   ├── image/            # Image capability
+│   │   ├── providers/    #   Clients: OpenAI, Azure, DashScope
+│   │   ├── executor.ts   #   Route → factory → ImageExecutor
+│   │   └── gateway.ts    #   Public API (generate, edit)
+│   └── video/            # Video capability
+│       ├── providers/    #   Clients: DashScope
+│       ├── executor.ts   #   Route → factory → VideoExecutor
+│       └── gateway.ts    #   Public API (generate video)
 ├── components/           # Reusable Vue components
 ├── constants/            # App metadata, model catalog, parameter presets
 ├── i18n/                 # EN & ZH dictionaries

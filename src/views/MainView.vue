@@ -7,16 +7,14 @@
     <div class="main-view-content">
       <LeftView
         :expanded="sidebarExpanded"
-        :active-tab="settingsActiveTab"
         @toggle="sidebarExpanded = !sidebarExpanded"
-        @update:active-tab="settingsActiveTab = $event"
       />
       <div class="main-view-stage">
         <RightView>
           <ChatIndex v-if="routeName === 'chat'" />
           <ImageIndex v-else-if="routeName === 'image'" />
           <VideoIndex v-else-if="routeName === 'video'" />
-          <SettingIndex v-else-if="routeName === 'settings'" :active-tab="settingsActiveTab" />
+          <router-view v-else-if="isSettingsRoute" />
 
           <template #footer>
             <AppFooter />
@@ -37,8 +35,6 @@ import SvgIcon from "@/components/SvgIcon.vue";
 import ChatIndex from "./chat/ChatIndex.vue";
 import ImageIndex from "./image/ImageIndex.vue";
 import VideoIndex from "./video/VideoIndex.vue";
-import SettingIndex from "./setting/SettingIndex.vue";
-type SettingTabKey_M = "chat-templates" | "chat-models" | "image-models" | "app";
 
 import menuIcon from "@/assets/svg/menu32.svg";
 
@@ -46,7 +42,7 @@ const sidebarExpanded = ref(true);
 const isMobile = ref(false);
 const route = useRoute();
 const routeName = computed(() => route.name);
-const settingsActiveTab = ref<SettingTabKey_M>("chat-models");
+const isSettingsRoute = computed(() => typeof route.name === "string" && route.name.startsWith("settings"));
 
 let mobileQuery: MediaQueryList | null = null;
 const handleMobileQueryChange = (event: MediaQueryListEvent) => {
