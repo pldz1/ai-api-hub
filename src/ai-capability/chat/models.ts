@@ -194,6 +194,17 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
   {
     name: "qwen3.7-max-2026-05-17",
     chatParamKeys: ["max_tokens", "temperature", "top_p"],
+    messageFormat: "text",
+    providers: [
+      {
+        provider: "DashScope",
+        capabilities: { webSearch: true, imageRead: false },
+      },
+    ],
+  },
+  {
+    name: "qwen3.7-plus",
+    chatParamKeys: ["max_tokens", "temperature", "top_p"],
     messageFormat: "parts",
     providers: [
       {

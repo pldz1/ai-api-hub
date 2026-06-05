@@ -1,5 +1,4 @@
 import MarkdownIt from "markdown-it";
-import type Token from "markdown-it/lib/token.mjs";
 import emoji from "markdown-it-emoji";
 import deflist from "markdown-it-deflist";
 import footnote from "markdown-it-footnote";
@@ -9,17 +8,23 @@ import taskLists from "markdown-it-task-lists";
 import container from "markdown-it-container";
 import toc from "markdown-it-toc-done-right";
 
+type MarkdownToken = {
+  attrIndex(name: string): number;
+  attrPush(attrData: [string, string]): void;
+  attrs: [string, string][];
+};
+
 /**
  * Add external-link behavior to rendered markdown links.
  */
 function addTargetBlankToLinks(markdownIt: MarkdownIt): void {
   const defaultRender =
     markdownIt.renderer.rules.link_open ||
-    function (tokens: Token[], idx: number, options: MarkdownIt.Options, env: unknown, self: MarkdownIt.Renderer) {
+    function (tokens: MarkdownToken[], idx: number, options: MarkdownIt.Options, env: unknown, self: MarkdownIt.Renderer) {
       return self.renderToken(tokens, idx, options);
     };
 
-  markdownIt.renderer.rules.link_open = function (tokens: Token[], idx: number, options: MarkdownIt.Options, env: unknown, self: MarkdownIt.Renderer) {
+  markdownIt.renderer.rules.link_open = function (tokens: MarkdownToken[], idx: number, options: MarkdownIt.Options, env: unknown, self: MarkdownIt.Renderer) {
     // Add target="_blank" to every rendered link.
     const aIndex = tokens[idx].attrIndex("target");
     if (aIndex < 0) {

@@ -114,16 +114,14 @@ const providers = [
     name: "DashScope",
     color: "#ff6a00",
     gradFrom: "rgba(255,106,0,0.06)",
-    models: ["Qwen 3.7 Max", "Qwen-Image-2.0 Pro", "Wan2.7 I2V", "Wan2.7 T2V", "Wan2.7 R2V", "Wan2.7 VideoEdit"],
+    models: ["Qwen 3.7 Max", "Qwen 3.7 Plus", "Qwen-Image-2.0 Pro", "Wan2.7 I2V", "Wan2.7 T2V", "Wan2.7 R2V", "Wan2.7 VideoEdit"],
     icon: qwenIcon,
   },
 ];
 
 const capabilityHighlights = [
-  { icon: "🌊", label: "Streaming SSE" },
   { icon: "🌐", label: "Web Search" },
   { icon: "🔒", label: "100% Local" },
-  { icon: "🎨", label: "11 Themes" },
 ];
 </script>
 

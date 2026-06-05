@@ -1,16 +1,23 @@
 <template>
   <div class="main-view-shell">
-    <button v-if="isMobile && sidebarExpanded" class="main-view-mask" type="button" aria-label="Close sidebar" @click="sidebarExpanded = false"></button>
-    <button v-if="isMobile && !sidebarExpanded" class="sidebar-fab" type="button" aria-label="Open sidebar" @click="sidebarExpanded = true">
+    <button
+      v-if="!isQaRoute && isMobile && sidebarExpanded"
+      class="main-view-mask"
+      type="button"
+      aria-label="Close sidebar"
+      @click="sidebarExpanded = false"
+    ></button>
+    <button v-if="!isQaRoute && isMobile && !sidebarExpanded" class="sidebar-fab" type="button" aria-label="Open sidebar" @click="sidebarExpanded = true">
       <SvgIcon :src="menuIcon" />
     </button>
     <div class="main-view-content">
-      <LeftView :expanded="sidebarExpanded" @toggle="sidebarExpanded = !sidebarExpanded" />
+      <LeftView v-if="!isQaRoute" :expanded="sidebarExpanded" @toggle="sidebarExpanded = !sidebarExpanded" />
       <div class="main-view-stage">
         <RightView>
           <ChatIndex v-if="routeName === 'chat'" />
           <ImageIndex v-else-if="routeName === 'image'" />
           <VideoIndex v-else-if="routeName === 'video'" />
+          <QaIndex v-else-if="routeName === 'qa'" />
           <router-view v-else-if="isSettingsRoute" />
 
           <template #footer>
@@ -32,6 +39,7 @@ import SvgIcon from "@/components/SvgIcon.vue";
 import ChatIndex from "./chat/ChatIndex.vue";
 import ImageIndex from "./image/ImageIndex.vue";
 import VideoIndex from "./video/VideoIndex.vue";
+import QaIndex from "./qa/QaIndex.vue";
 
 import menuIcon from "@/assets/svg/menu32.svg";
 
@@ -40,6 +48,7 @@ const isMobile = ref(false);
 const route = useRoute();
 const routeName = computed(() => route.name);
 const isSettingsRoute = computed(() => typeof route.name === "string" && route.name.startsWith("settings"));
+const isQaRoute = computed(() => routeName.value === "qa");
 
 let mobileQuery: MediaQueryList | null = null;
 const handleMobileQueryChange = (event: MediaQueryListEvent) => {

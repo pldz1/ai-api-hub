@@ -27,6 +27,10 @@
 
       <!-- Selected model details and editor -->
       <section class="settings-detail-content">
+        <div v-if="isChatKind" class="chat-endpoint-notice">
+          <span>{{ t("user.chatModels.endpointNotice") }}</span>
+          <RouterLink class="chat-endpoint-link" to="/qa">{{ t("user.chatModels.endpointNoticeLink") }}</RouterLink>
+        </div>
         <div v-if="isVideoKind" class="video-proxy-notice">
           {{ t("user.videoModels.proxyNotice") }}
         </div>
@@ -59,6 +63,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import { RouterLink } from "vue-router";
 import { useI18n } from "vue-i18n";
 import ModelEditor from "./ModelEditor.vue";
 import copyIcon from "@/assets/svg/copy16.svg";
@@ -85,6 +90,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const selectedIndex = ref(-1);
 
+const isChatKind = computed(() => props.kind === "chat");
 const isImageKind = computed(() => props.kind === "image");
 const isVideoKind = computed(() => props.kind === "video");
 const currentModel = computed(() => {
@@ -351,6 +357,25 @@ watch(
   font-size: 12px;
   line-height: 1.6;
   margin-bottom: 12px;
+}
+
+.chat-endpoint-notice {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid oklch(var(--wa) / 0.32);
+  background: oklch(var(--wa) / 0.1);
+  color: oklch(var(--bc) / 0.78);
+  font-size: 12px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.chat-endpoint-link {
+  margin-left: 8px;
+  color: oklch(var(--p));
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 @media (max-width: 900px) {

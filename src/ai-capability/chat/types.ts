@@ -37,7 +37,7 @@ const chatProviderRegistryConfig = {
     name: "DashScope",
     route: "dashscope",
     connectionFields: ["baseURL"],
-    defaultBaseURL: "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+    defaultBaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
   },
 } as const satisfies Record<string, ChatProviderDefinition>;
 

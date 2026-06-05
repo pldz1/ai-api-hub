@@ -214,14 +214,14 @@ const runtimeTick = ref(Date.now());
 const availableModels = computed<VideoModelConfig[]>(() => store.state.models.video || []);
 const selectedModel = computed<VideoModelConfig | null>(() => availableModels.value[selectedModelIndex.value] || null);
 
-const activeCapabilities = computed(() => getVideoModelCapabilities(selectedModel.value as Record<string, unknown> | null));
+const activeCapabilities = computed(() => getVideoModelCapabilities(selectedModel.value));
 
 const modelGroups = computed(() => {
   const t2v: { model: VideoModelConfig; index: number }[] = [];
   const i2v: { model: VideoModelConfig; index: number }[] = [];
   const r2v: { model: VideoModelConfig; index: number }[] = [];
   availableModels.value.forEach((model, index) => {
-    const type = getVideoModelType(model as Record<string, unknown>);
+    const type = getVideoModelType(model);
     if (type === "r2v") r2v.push({ model, index });
     else if (type === "i2v") i2v.push({ model, index });
     else t2v.push({ model, index });

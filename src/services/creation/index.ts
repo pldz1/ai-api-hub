@@ -1,4 +1,2 @@
-export * from "./conversation";
-export * from "./gallery";
-export * from "./video-conversation";
-export * from "./video-gallery";
+export * from "./image";
+export * from "./video";

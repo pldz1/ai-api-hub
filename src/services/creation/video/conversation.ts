@@ -10,9 +10,9 @@ import {
   getVideoConversationListAPI,
   getVideoConversationMessagesAPI,
   setVideoConversationMessagesAPI,
-} from "./video-api";
-import { pushVideo } from "./video-gallery";
-import { createVideoMessage, emptyVideoUsage, getVideoConversationName, normalizeGeneratedVideos } from "./video-message";
+} from "./api";
+import { pushVideo } from "./gallery";
+import { createVideoMessage, emptyVideoUsage, getVideoConversationName, normalizeGeneratedVideos } from "./message";
 import type { VideoConversationInfo, VideoConversationMessage, VideoTurnRequest, VideoTurnResponse } from "@/types";
 
 // Marker prefix written into VideoPayload.src when the actual data is in IDB.

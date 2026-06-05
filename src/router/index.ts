@@ -30,6 +30,11 @@ const router = createRouter({
       props: true,
     },
     {
+      path: "/qa",
+      name: "qa",
+      component: MainView,
+    },
+    {
       path: "/settings",
       component: MainView,
       children: [

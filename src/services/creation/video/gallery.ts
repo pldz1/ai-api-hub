@@ -1,7 +1,7 @@
 import store from "@/store";
 import { tr } from "@/i18n";
 import { dsAlert, getUuid } from "@/utils";
-import { deleteVideoAPI, getVideoListAPI, pushVideoAPI } from "./video-api";
+import { deleteVideoAPI, getVideoListAPI, pushVideoAPI } from "./api";
 
 export async function getVideoList(): Promise<boolean> {
   const res = await getVideoListAPI();
