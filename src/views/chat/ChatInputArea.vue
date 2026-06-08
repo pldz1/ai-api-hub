@@ -31,9 +31,9 @@
           <!-- Keep the model selector and settings entry point together. -->
           <div class="ccia-right-actions">
             <div class="ccia-model-area">
-              <select v-if="!isModelSelectionReadonly" v-model="selectedModel" class="ccia-model-select">
+              <select v-if="!isModelSelectionReadonly" v-model="selectedModelIndex" class="ccia-model-select">
                 <option disabled :value="null">{{ t("input.selectChatModel") }}</option>
-                <option v-for="m in chatModels" :key="m.name" :value="m">
+                <option v-for="(m, index) in chatModels" :key="`${m.name}-${index}`" :value="index">
                   {{ m.name }}
                 </option>
               </select>
@@ -170,6 +170,17 @@ const activeCapabilities = computed(() => ({
 const readonlyModelName = computed(() => draftSnapshot.value?.displayName || curConversation.value?.modelSnapshot?.displayName || t("input.lockedModel"));
 
 const getModelSelectionKey = (model: ChatModelConfig | null) => [model?.provider, model?.name, model?.model, model?.baseURL].join("|");
+const selectedModelIndex = computed<number | null>({
+  get: () => {
+    if (!selectedModel.value) return null;
+    const selectedKey = getModelSelectionKey(selectedModel.value);
+    const index = chatModels.value.findIndex((model) => getModelSelectionKey(model) === selectedKey);
+    return index >= 0 ? index : null;
+  },
+  set: (index) => {
+    selectedModel.value = typeof index === "number" ? chatModels.value[index] || null : null;
+  },
+});
 
 watch(
   () => chatModels.value,
@@ -479,36 +490,20 @@ watch(
 
   .ccia-model-select,
   .ccia-model-lock {
-    width: 160px;
+    width: 120px;
     height: 32px;
-    padding: 0 4px;
+    padding: 0 4px 0 4px;
     border-radius: 8px;
-    display: flex;
-    align-items: center;
     color: oklch(var(--bc));
     font-size: 16px;
+    background: transparent;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .ccia-model-select {
-    border: 2px solid oklch(var(--bc) / 0.08);
-    appearance: none;
-    padding-right: 30px;
-
-    &:hover:not(:disabled) {
-      border-color: oklch(var(--bc) / 0.16);
-    }
-
-    &:focus {
-      border-color: oklch(var(--p) / 0.42);
-      outline: none;
-    }
-  }
-
   .ccia-model-lock {
-    background: oklch(var(--b2));
+    background: oklch(var(--b2) / 0.5);
   }
 
   .ccia-send-button {

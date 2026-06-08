@@ -958,35 +958,15 @@ onBeforeUnmount(() => {
 .image-model-select {
   height: 32px;
   min-width: 0;
-  max-width: 180px;
-  border: 2px solid oklch(var(--bc) / 0.08);
+  max-width: 120px;
   border-radius: 8px;
-  background:
-    linear-gradient(180deg, oklch(var(--b1) / 0.96), oklch(var(--b2) / 0.94)),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23111827' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
-      no-repeat right 9px center / 12px 12px;
   color: oklch(var(--bc));
   font-size: 16px;
-  padding: 0 30px 0 4px;
-  appearance: none;
-  box-shadow: 0 6px 18px oklch(var(--bc) / 0.06);
-  transition:
-    border-color 0.16s ease,
-    box-shadow 0.16s ease,
-    transform 0.16s ease;
-
-  &:hover:not(:disabled) {
-    border-color: oklch(var(--bc) / 0.16);
-    transform: translateY(-1px);
-  }
-
-  &:focus {
-    border-color: oklch(var(--p) / 0.42);
-    box-shadow:
-      0 0 0 3px oklch(var(--p) / 0.12),
-      0 10px 24px oklch(var(--bc) / 0.08);
-    outline: none;
-  }
+  padding: 0 4px 0 4px;
+  background: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .image-mode-pill {

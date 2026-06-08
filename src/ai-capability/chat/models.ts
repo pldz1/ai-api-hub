@@ -26,7 +26,7 @@ export const chatParamList: Partial<ChatModelParamDef>[] = [
     key: "max_output_tokens",
     label: "max_output_tokens",
     type: "number",
-    defaultValue: 2000,
+    defaultValue: 12800,
     min: 0,
     max: 128000,
     step: 1,

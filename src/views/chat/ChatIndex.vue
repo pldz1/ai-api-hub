@@ -183,7 +183,7 @@ const onStartChat = async (payload: ChatStartPayload) => {
 
   if (!curChatId.value) {
     const messageContent = message.content.find((c) => c.type === "text")?.text || "";
-    const compressedContent = messageContent.length > 16 ? messageContent.slice(0, 16) : messageContent;
+    const compressedContent = messageContent.length > 35 ? messageContent.slice(0, 35) : messageContent;
     const created = await addChat(compressedContent, selectedModel);
     if (!created || !store.state.curChatId) return;
     await router.replace({ name: "chat", params: { cid: store.state.curChatId } });
