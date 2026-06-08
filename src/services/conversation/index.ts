@@ -1,4 +1,5 @@
 export * from "./conversation";
+export * from "./archive";
 export { createChatDrawer } from "./rendering/drawer";
 export type { ChatDrawer } from "./rendering/drawer";
 export { getChatSessionRunner, stopChatSession, removeChatSessionRunner } from "./runtime/session-runner";

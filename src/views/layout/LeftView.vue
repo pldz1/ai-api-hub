@@ -61,11 +61,27 @@
               <span v-if="isExpanded" class="nav-label">{{ t("chat.newVideoCreation") }}</span>
             </button>
           </AppTooltip>
-          <div v-if="isExpanded" class="nav-delete-panel" :class="{ 'is-active': isDeleteMode }">
-            <button class="nav-delete-btn" type="button" @click="toggleDeleteMode">
-              <SvgIcon :src="deleteIcon" class="nav-icon" />
-              <span>{{ isDeleteMode ? t("chat.cancelDeletion") : t("chat.deleteConversations") }}</span>
-            </button>
+          <AppDropdownMenu placement="bottom-start">
+            <template #trigger="{ toggle }">
+              <AppTooltip :text="isExpanded ? '' : t('chat.conversationActions')" placement="right">
+                <button class="nav-item" :class="{ 'is-active': isDeleteMode }" type="button" @click="toggle">
+                  <SvgIcon :src="optionsIcon" class="nav-icon" />
+                  <span v-if="isExpanded" class="nav-label">{{ t("chat.conversationActions") }}</span>
+                </button>
+              </AppTooltip>
+            </template>
+            <template #default="{ close }">
+              <button class="menu-option" type="button" @click="onImportAnyArchiveFromMenu(close)">
+                <SvgIcon class="menu-option-icon" :src="saveIcon" />
+                <span>{{ t("chat.importConversation") }}</span>
+              </button>
+              <button class="menu-option" :class="{ 'is-danger': !isDeleteMode }" type="button" @click="onToggleDeleteModeFromMenu(close)">
+                <SvgIcon class="menu-option-icon" :src="deleteIcon" />
+                <span>{{ isDeleteMode ? t("chat.cancelDeletion") : t("chat.deleteConversations") }}</span>
+              </button>
+            </template>
+          </AppDropdownMenu>
+          <div v-if="isExpanded && isDeleteMode" class="nav-delete-panel is-active">
             <div v-if="isDeleteMode" class="delete-mode-toolbar">
               <button type="button" @click="selectAllConversations">{{ t("chat.all") }}</button>
               <button type="button" @click="clearSelectedConversations">{{ t("chat.clear") }}</button>
@@ -147,6 +163,10 @@
                             </button>
                           </template>
                           <template #default="{ close }">
+                            <button class="menu-option" type="button" @click="onExportChatArchive(item, close)">
+                              <SvgIcon class="menu-option-icon" :src="saveIcon" />
+                              <span>{{ t("chat.exportConversation") }}</span>
+                            </button>
                             <button class="menu-option" type="button" @click="onEditChatName(item, close)">
                               <SvgIcon class="menu-option-icon" :src="editIcon" />
                               <span>{{ t("chat.renameChat") }}</span>
@@ -218,6 +238,10 @@
                             </button>
                           </template>
                           <template #default="{ close }">
+                            <button class="menu-option" type="button" @click="onExportImageArchive(item, close)">
+                              <SvgIcon class="menu-option-icon" :src="saveIcon" />
+                              <span>{{ t("chat.exportImageConversation") }}</span>
+                            </button>
                             <button class="menu-option is-danger" type="button" @click="onDeleteImageConversation(item, close)">
                               <SvgIcon class="menu-option-icon" :src="deleteIcon" />
                               <span>{{ t("chat.deleteImageConversation") }}</span>
@@ -285,6 +309,10 @@
                             </button>
                           </template>
                           <template #default="{ close }">
+                            <button class="menu-option" type="button" @click="onExportVideoArchive(item, close)">
+                              <SvgIcon class="menu-option-icon" :src="saveIcon" />
+                              <span>{{ t("chat.exportVideoConversation") }}</span>
+                            </button>
                             <button class="menu-option is-danger" type="button" @click="onDeleteVideoConversation(item, close)">
                               <SvgIcon class="menu-option-icon" :src="deleteIcon" />
                               <span>{{ t("chat.deleteVideoConversation") }}</span>
@@ -366,13 +394,21 @@
 
 <script setup lang="ts">
 import { useStore } from "vuex";
-import { getChatList, deleteChat, renameChat, resetCurrentChatDraft } from "@/services";
-import { deleteImageConversation, getImageConversationList } from "@/services/creation";
+import { getChatList, deleteChat, renameChat, resetCurrentChatDraft, exportChatConversationArchive, importChatConversationArchive } from "@/services";
+import {
+  deleteImageConversation,
+  getImageConversationList,
+  exportImageConversationArchive,
+  importImageConversationArchive,
+  exportVideoConversationArchive,
+  importVideoConversationArchive,
+} from "@/services/creation";
 import { deleteVideoConversation, getVideoConversationList } from "@/services/creation";
 import { nextTick, ref, computed, onMounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { setAppLocale } from "@/i18n";
+import { dsAlert } from "@/utils";
 import { applyTheme, getStoredTheme } from "@/utils/theme";
 import brandIcon from "@/assets/svg/app18.svg";
 import newIcon from "@/assets/svg/new24.svg";
@@ -383,6 +419,8 @@ import collapseIcon from "@/assets/svg/collapse24.svg";
 import expandIcon from "@/assets/svg/expand24.svg";
 import editIcon from "@/assets/svg/edit24.svg";
 import deleteIcon from "@/assets/svg/delete16.svg";
+import saveIcon from "@/assets/svg/save18.svg";
+import optionsIcon from "@/assets/svg/options24.svg";
 import backIcon from "@/assets/svg/revert32.svg";
 import AppDropdownMenu from "@/components/AppDropdownMenu.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
@@ -619,6 +657,11 @@ const toggleDeleteMode = () => {
   if (!isDeleteMode.value) clearSelectedConversations();
 };
 
+const onToggleDeleteModeFromMenu = (closeMenu: () => void) => {
+  closeMenu?.();
+  toggleDeleteMode();
+};
+
 // Convert the shared native dialog into an awaitable confirmation step.
 // This keeps rename/delete flows linear and prevents service calls from running
 // until the user makes an explicit choice.
@@ -648,6 +691,109 @@ const resolveChatActionConfirmation = (confirmed: boolean) => {
 
   const dialog = chatActionConfirmDialogRef.value;
   if (dialog?.open) dialog.close();
+};
+
+const requestArchiveFile = (accept: string): Promise<File | null> =>
+  new Promise((resolve) => {
+    const input = document.createElement("input");
+    let settled = false;
+    const finish = (file: File | null) => {
+      if (settled) return;
+      settled = true;
+      if (input.parentNode) input.parentNode.removeChild(input);
+      resolve(file);
+    };
+    input.type = "file";
+    input.accept = accept;
+    input.style.display = "none";
+    input.onchange = () => finish(input.files?.[0] || null);
+    document.body.appendChild(input);
+    input.click();
+    window.setTimeout(() => {
+      window.addEventListener("focus", () => window.setTimeout(() => finish(input.files?.[0] || null), 250), { once: true });
+    }, 0);
+  });
+
+const showArchiveError = (error: unknown) => {
+  dsAlert({ type: "error", message: error instanceof Error ? error.message : String(error) });
+};
+
+const readArchiveType = (file: File): Promise<"chat" | "image" | "video"> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const archive = JSON.parse(String(reader.result || "{}")) as { format?: string; type?: string };
+        if (archive.format !== "ai-api-hub.conversation" || !["chat", "image", "video"].includes(archive.type || "")) {
+          reject(new Error("Invalid conversation archive."));
+          return;
+        }
+        resolve(archive.type as "chat" | "image" | "video");
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.onerror = () => reject(reader.error || new Error("Failed to read file."));
+    reader.readAsText(file);
+  });
+
+const onExportChatArchive = async (item: any, closeMenu: () => void) => {
+  closeMenu?.();
+  try {
+    await exportChatConversationArchive(item?.cid || "");
+    dsAlert({ type: "success", message: t("chat.exportConversationSuccess") });
+  } catch (error) {
+    showArchiveError(error);
+  }
+};
+
+const onImportAnyArchive = async () => {
+  const file = await requestArchiveFile(".aihub-chat.json,.aihub-image.json,.aihub-video.json,application/json");
+  if (!file) return;
+  try {
+    const type = await readArchiveType(file);
+    if (type === "chat") {
+      const cid = await importChatConversationArchive(file);
+      await getChatList();
+      await router.push({ name: "chat", params: { cid } });
+    } else if (type === "image") {
+      const iid = await importImageConversationArchive(file);
+      await getImageConversationList();
+      await router.push({ name: "image", params: { iid } });
+    } else {
+      const vid = await importVideoConversationArchive(file);
+      await getVideoConversationList();
+      await router.push({ name: "video", params: { vid } });
+    }
+    dsAlert({ type: "success", message: t("chat.importConversationSuccess") });
+  } catch (error) {
+    showArchiveError(error);
+  }
+};
+
+const onImportAnyArchiveFromMenu = async (closeMenu: () => void) => {
+  closeMenu?.();
+  await onImportAnyArchive();
+};
+
+const onExportImageArchive = async (item: any, closeMenu: () => void) => {
+  closeMenu?.();
+  try {
+    await exportImageConversationArchive(item?.iid || "");
+    dsAlert({ type: "success", message: t("chat.exportConversationSuccess") });
+  } catch (error) {
+    showArchiveError(error);
+  }
+};
+
+const onExportVideoArchive = async (item: any, closeMenu: () => void) => {
+  closeMenu?.();
+  try {
+    await exportVideoConversationArchive(item?.vid || "");
+    dsAlert({ type: "success", message: t("chat.exportConversationSuccess") });
+  } catch (error) {
+    showArchiveError(error);
+  }
 };
 
 // Delete is destructive, so it always asks first. If the deleted chat is open,
@@ -1000,38 +1146,6 @@ $radius-md: 12px;
 
 .nav-delete-panel {
   margin-top: 2px;
-}
-
-.nav-delete-btn {
-  width: 100%;
-  min-height: 32px;
-  padding: 0 12px;
-  border: none;
-  border-radius: $radius-md;
-  background: transparent;
-  color: oklch(var(--bc) / 0.62);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-
-  &:hover {
-    background: oklch(var(--er) / 0.12);
-    color: oklch(var(--er));
-  }
-
-  .nav-icon {
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-  }
-}
-
-.nav-delete-panel.is-active .nav-delete-btn {
-  background: oklch(var(--er) / 0.12);
-  color: oklch(var(--er));
 }
 
 .delete-mode-toolbar {
