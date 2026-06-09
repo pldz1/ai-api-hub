@@ -1,6 +1,14 @@
 <template>
   <section ref="pageRef" class="image-chat-page">
-    <div ref="messageScrollRef" class="image-message-scroll">
+    <MessageTopicList
+      :topics="messageTopics"
+      :active-topic-id="activeTopicId"
+      label="Topics"
+      :style="{ '--topic-bottom-gap': 'var(--image-bottom-gap)' }"
+      @select="scrollToMessage"
+    />
+
+    <div ref="messageScrollRef" class="image-message-scroll" @scroll="onMessageScroll">
       <div v-if="messages.length === 0" class="image-empty-state">
         <div class="image-empty-mark">
           <SvgIcon :src="navImageIcon" />
@@ -10,46 +18,75 @@
       </div>
 
       <div v-else class="image-message-list">
-        <article v-for="message in messages" :key="message.id" class="image-message" :class="[`is-${message.role}`, `is-${message.status}`]">
-          <div class="image-message-body">
-            <div v-if="message.role !== 'user'" class="image-message-meta">
-              <span>{{ message.mode === "edit" ? t("image.modeEdit") : t("image.modeGeneration") }}</span>
-              <span v-if="message.modelName">{{ message.modelName }}</span>
-              <span v-if="getMessageElapsedMs(message) !== null">{{ formatElapsedMs(getMessageElapsedMs(message)!) }}</span>
-            </div>
+        <article
+          v-for="message in messages"
+          :key="message.id"
+          class="image-message"
+          :class="[`is-${message.role}`, `is-${message.status}`]"
+          :ref="(el) => registerMessage(message.id, message.role, el)"
+        >
+          <div
+            class="image-message-body"
+            :class="{
+              'is-collapsible': message.role === 'user' && collapsibleMessageIds.has(message.id),
+              'is-expanded': message.role === 'user' && expandedUserMessageIds.has(message.id),
+            }"
+          >
+            <template v-if="message.role === 'user'">
+              <div class="image-message-content" :ref="(el) => registerMessageContent(message.id, el)">
+                <p v-if="message.prompt" class="image-message-prompt">{{ message.prompt }}</p>
 
-            <p v-if="message.prompt && message.role === 'user'" class="image-message-prompt">{{ message.prompt }}</p>
-
-            <div v-if="message.attachments?.length" class="image-attachment-row">
-              <div
-                v-for="attachment in message.attachments"
-                :key="attachment.id"
-                class="image-attachment"
-                :class="{ clickable: message.role === 'user' }"
-                @click="message.role === 'user' && previewAttachmentImage(attachment.previewUrl)"
-              >
-                <img :src="attachment.previewUrl" :alt="attachment.filename" />
+                <div v-if="message.attachments?.length" class="image-attachment-row">
+                  <div
+                    v-for="attachment in message.attachments"
+                    :key="attachment.id"
+                    class="image-attachment clickable"
+                    @click="previewAttachmentImage(attachment.previewUrl)"
+                  >
+                    <img :src="attachment.previewUrl" :alt="attachment.filename" />
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div v-if="message.status === 'loading'" class="image-loading-card">
-              <div class="image-loading-preview"></div>
-              <span>{{ t("image.processingRequest") }}</span>
-            </div>
+              <button
+                v-if="collapsibleMessageIds.has(message.id)"
+                class="image-message-toggle"
+                :class="{ 'is-expanded': expandedUserMessageIds.has(message.id) }"
+                type="button"
+                :aria-label="expandedUserMessageIds.has(message.id) ? 'Collapse message' : 'Expand message'"
+                :aria-expanded="expandedUserMessageIds.has(message.id)"
+                @click="toggleMessage(message.id)"
+              >
+                <SvgIcon :src="arrowUpIcon" class="image-message-toggle-icon" />
+              </button>
+            </template>
 
-            <div v-if="message.images.length" class="image-output-grid">
-              <figure v-for="image in message.images" :key="image.id" class="image-output-card" @click="openEditDialog(image)">
-                <img :src="image.src" :alt="message.prompt" />
-              </figure>
-            </div>
+            <template v-else>
+              <div class="image-message-meta">
+                <span>{{ message.mode === "edit" ? t("image.modeEdit") : t("image.modeGeneration") }}</span>
+                <span v-if="message.modelName">{{ message.modelName }}</span>
+                <span v-if="getMessageElapsedMs(message) !== null">{{ formatElapsedMs(getMessageElapsedMs(message)!) }}</span>
+              </div>
 
-            <div v-if="message.error" class="image-error-message">{{ message.error }}</div>
+              <div v-if="message.status === 'loading'" class="image-loading-card">
+                <div class="image-loading-preview"></div>
+                <span>{{ t("image.processingRequest") }}</span>
+              </div>
 
-            <div v-if="message.usage" class="image-usage-row">
-              <span>Input {{ message.usage.input_tokens || 0 }}</span>
-              <span>Output {{ message.usage.output_tokens || 0 }}</span>
-              <span>Total {{ message.usage.total_tokens || 0 }}</span>
-            </div>
+              <div v-if="message.images.length" class="image-output-grid">
+                <figure v-for="image in message.images" :key="image.id" class="image-output-card" @click="openEditDialog(image)">
+                  <img :src="image.src" :alt="message.prompt" />
+                </figure>
+              </div>
+
+              <div v-if="message.error" class="image-error-message">{{ message.error }}</div>
+
+              <div v-if="message.usage" class="image-usage-row">
+                <span>Input {{ message.usage.input_tokens || 0 }}</span>
+                <span>Output {{ message.usage.output_tokens || 0 }}</span>
+                <span>Total {{ message.usage.total_tokens || 0 }}</span>
+              </div>
+            </template>
           </div>
         </article>
       </div>
@@ -131,6 +168,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import AppTooltip from "@/components/AppTooltip.vue";
 import ImageModal from "@/components/ImageModal.vue";
+import MessageTopicList from "@/components/MessageTopicList.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import ImageEditDialog from "@/views/image/ImageEditDialog.vue";
 import ImageSettings from "@/views/image/ImageSettings.vue";
@@ -139,7 +177,7 @@ import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import attachIcon from "@/assets/svg/attach24.svg";
 import navImageIcon from "@/assets/svg/navImage24.svg";
 import paramIcon from "@/assets/svg/param24.svg";
-import { addImageConversation, getImageConversationMessages, submitImageMessage } from "@/services/creation";
+import { addImageConversation, getImageConversationMessages, submitImageMessage, useCreationMessageUi } from "@/services/creation";
 import { dsAlert, getUuid, saveToLocal } from "@/utils";
 import type { ImageConversationMessage, ImageInputAttachment, ImagePayload, ImageModelConfig } from "@/types";
 
@@ -174,6 +212,21 @@ const availableModels = computed<ImageModelConfig[]>(() => store.state.models.im
 const selectedModel = computed<ImageModelConfig | null>(() => availableModels.value[selectedModelIndex.value] || null);
 const isCurrentConversationSubmitting = computed(() => Boolean(activeImageRuntime.value?.pending || activeImageRuntime.value?.status === "loading"));
 const isSendDisabled = computed(() => isCurrentConversationSubmitting.value || !prompt.value.trim() || !selectedModel.value);
+const {
+  activeTopicId,
+  collapsibleMessageIds,
+  expandedMessageIds: expandedUserMessageIds,
+  messageTopics,
+  onMessageScroll,
+  refreshMessageUi,
+  registerMessage,
+  registerMessageContent,
+  scrollToMessage,
+  toggleMessage,
+} = useCreationMessageUi({
+  messages,
+  scrollRef: messageScrollRef,
+});
 
 function resizeTextarea() {
   const textarea = textareaRef.value;
@@ -459,8 +512,15 @@ watch(
 watch(
   () => messages.value.length,
   () => {
+    refreshMessageUi();
     if (isNearScrollBottom()) scrollToBottom();
   },
+);
+
+watch(
+  () => messages.value.map((message) => `${message.id}:${message.role}:${message.prompt}:${message.attachments?.length || 0}`).join("|"),
+  refreshMessageUi,
+  { immediate: true },
 );
 
 watch(
@@ -490,6 +550,7 @@ watch(
 
 onMounted(() => {
   nextTick(updateComposerHeight);
+  refreshMessageUi();
   if (window.ResizeObserver && composerRef.value) {
     composerResizeObserver = new ResizeObserver(updateComposerHeight);
     composerResizeObserver.observe(composerRef.value);
@@ -532,9 +593,24 @@ onBeforeUnmount(() => {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: oklch(var(--bc) / 0.24) transparent;
   padding: var(--image-top-gap) var(--image-side-gap) var(--image-bottom-gap);
   box-sizing: border-box;
   contain: layout paint style;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: oklch(var(--bc) / 0.2);
+  }
 }
 
 .image-empty-state {
@@ -634,6 +710,82 @@ onBeforeUnmount(() => {
 .image-message-body {
   min-width: 0;
   padding: 16px 18px;
+}
+
+.image-message.is-user .image-message-body {
+  position: relative;
+  overflow: hidden;
+
+  &.is-collapsible {
+    padding-bottom: 12px;
+
+    &::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: 42px;
+      left: 0;
+      height: 52px;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(241, 241, 240, 0), #f1f1f0 70%);
+    }
+  }
+
+  &.is-expanded::after {
+    display: none;
+  }
+}
+
+.image-message-content {
+  max-height: 200px;
+  overflow: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: oklch(var(--bc) / 0.28) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: oklch(var(--bc) / 0.22);
+  }
+}
+
+.image-message-body.is-expanded .image-message-content {
+  overflow-y: auto;
+}
+
+.image-message-toggle {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 8px 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: oklch(var(--bc) / 0.76);
+  line-height: 1;
+  cursor: pointer;
+
+  :deep(.image-message-toggle-icon) {
+    width: 16px;
+    height: 16px;
+    transform: rotate(180deg);
+  }
+
+  &.is-expanded :deep(.image-message-toggle-icon) {
+    transform: rotate(0deg);
+  }
 }
 
 .image-message-meta,

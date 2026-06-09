@@ -19,33 +19,94 @@
     }
 
     .cmbu-content-area {
+      position: relative;
       display: flex;
       flex-direction: column;
       border-radius: 28px;
       padding: 14px 22px;
+      overflow: hidden;
       background: oklch(var(--b3));
 
-      .cmbu-img-area {
-        width: 100%;
-        display: flex;
-        flex-direction: row;
-        gap: 16px;
-        flex-wrap: wrap;
-        margin-bottom: 8px;
+      &.is-collapsible {
+        padding-bottom: 12px;
 
-        .cmbu-item {
-          height: 80px;
-          width: 80px;
-          object-fit: contain;
-          cursor: zoom-in;
+        &::after {
+          content: "";
+          position: absolute;
+          right: 0;
+          bottom: 42px;
+          left: 0;
+          height: 52px;
+          pointer-events: none;
+          background: linear-gradient(180deg, oklch(var(--b3) / 0), oklch(var(--b3)) 70%);
         }
       }
 
-      .cmbu-content-text {
-        width: 100%;
-        font-size: 16px;
-        line-height: 1.6;
-        word-wrap: break-word;
+      &.is-expanded {
+        &::after {
+          display: none;
+        }
+
+        .cmbu-content-body {
+          overflow-y: auto;
+        }
+      }
+
+      .cmbu-content-body {
+        max-height: 200px;
+        overflow: hidden;
+        scrollbar-width: thin;
+        scrollbar-color: oklch(var(--bc) / 0.28) transparent;
+
+        .cmbu-img-area {
+          width: 100%;
+          display: flex;
+          flex-direction: row;
+          gap: 16px;
+          flex-wrap: wrap;
+          margin-bottom: 8px;
+
+          .cmbu-item {
+            height: 80px;
+            width: 80px;
+            object-fit: contain;
+            cursor: zoom-in;
+          }
+        }
+
+        .cmbu-content-text {
+          width: 100%;
+          font-size: 16px;
+          line-height: 1.6;
+          word-wrap: break-word;
+        }
+      }
+    }
+
+    .cmbu-content-toggle {
+      position: relative;
+      z-index: 1;
+      align-self: flex-end;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      margin: 8px 0 0;
+      padding: 0;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: oklch(var(--bc) / 0.76);
+      line-height: 1;
+      cursor: pointer;
+
+      .cmbu-content-toggle-icon {
+        transform: rotate(180deg);
+      }
+
+      &.is-expanded .cmbu-content-toggle-icon {
+        transform: rotate(0deg);
       }
     }
 

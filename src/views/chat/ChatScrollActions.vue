@@ -42,10 +42,11 @@ defineEmits<{
 .cccd-scroll-actions {
   position: absolute;
   right: 20px;
-  bottom: 40%;
+  bottom: calc(var(--chat-bottom-gap) + 14px);
   display: flex;
   flex-direction: column;
   gap: 8px;
+  z-index: 5;
 }
 
 .cccd-scroll-action {

@@ -1,6 +1,14 @@
 <template>
   <section ref="pageRef" class="video-chat-page">
-    <div ref="messageScrollRef" class="video-message-scroll">
+    <MessageTopicList
+      :topics="messageTopics"
+      :active-topic-id="activeTopicId"
+      label="Topics"
+      :style="{ '--topic-bottom-gap': 'var(--video-bottom-gap)' }"
+      @select="scrollToMessage"
+    />
+
+    <div ref="messageScrollRef" class="video-message-scroll" @scroll="onMessageScroll">
       <div v-if="messages.length === 0" class="video-empty-state">
         <div class="video-empty-mark">
           <SvgIcon :src="navVideoIcon" />
@@ -10,47 +18,77 @@
       </div>
 
       <div v-else class="video-message-list">
-        <article v-for="message in messages" :key="message.id" class="video-message" :class="[`is-${message.role}`, `is-${message.status}`]">
-          <div class="video-message-body">
-            <div v-if="message.role !== 'user'" class="video-message-meta">
-              <span>{{ message.modelName }}</span>
-              <span v-if="message.resolution">{{ message.resolution }}</span>
-              <span v-if="getMessageElapsedMs(message) !== null">{{ formatElapsedMs(getMessageElapsedMs(message)!) }}</span>
-            </div>
+        <article
+          v-for="message in messages"
+          :key="message.id"
+          class="video-message"
+          :class="[`is-${message.role}`, `is-${message.status}`]"
+          :ref="(el) => registerMessage(message.id, message.role, el)"
+        >
+          <div
+            class="video-message-body"
+            :class="{
+              'is-collapsible': message.role === 'user' && collapsibleMessageIds.has(message.id),
+              'is-expanded': message.role === 'user' && expandedUserMessageIds.has(message.id),
+            }"
+          >
+            <template v-if="message.role === 'user'">
+              <div class="video-message-content" :ref="(el) => registerMessageContent(message.id, el)">
+                <p v-if="message.prompt" class="video-message-prompt">{{ message.prompt }}</p>
 
-            <p v-if="message.prompt && message.role === 'user'" class="video-message-prompt">{{ message.prompt }}</p>
-
-            <div v-if="message.attachments?.length" class="video-attachment-row">
-              <div
-                v-for="att in message.attachments"
-                :key="att.id"
-                class="video-attachment"
-                :class="{ clickable: message.role === 'user' && att.content_type?.startsWith('image/') }"
-                @click="message.role === 'user' && att.content_type?.startsWith('image/') && previewAttachmentImage(att.previewUrl)"
-              >
-                <img v-if="att.content_type?.startsWith('image/')" :src="att.previewUrl" :alt="att.filename" />
-                <span v-else class="video-audio-badge">{{ att.filename }}</span>
+                <div v-if="message.attachments?.length" class="video-attachment-row">
+                  <div
+                    v-for="att in message.attachments"
+                    :key="att.id"
+                    class="video-attachment"
+                    :class="{ clickable: att.content_type?.startsWith('image/') }"
+                    @click="att.content_type?.startsWith('image/') && previewAttachmentImage(att.previewUrl)"
+                  >
+                    <img v-if="att.content_type?.startsWith('image/')" :src="att.previewUrl" :alt="att.filename" />
+                    <span v-else class="video-audio-badge">{{ att.filename }}</span>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div v-if="message.status === 'loading'" class="video-loading-card">
-              <div class="video-loading-preview"></div>
-              <span>{{ loadingStatusText }}</span>
-            </div>
+              <button
+                v-if="collapsibleMessageIds.has(message.id)"
+                class="video-message-toggle"
+                :class="{ 'is-expanded': expandedUserMessageIds.has(message.id) }"
+                type="button"
+                :aria-label="expandedUserMessageIds.has(message.id) ? 'Collapse message' : 'Expand message'"
+                :aria-expanded="expandedUserMessageIds.has(message.id)"
+                @click="toggleMessage(message.id)"
+              >
+                <SvgIcon :src="arrowUpIcon" class="video-message-toggle-icon" />
+              </button>
+            </template>
 
-            <div v-if="message.videos.length" class="video-output-grid">
-              <figure v-for="video in message.videos" :key="video.id" class="video-output-card">
-                <video :src="video.src" controls playsinline preload="metadata" />
-              </figure>
-            </div>
+            <template v-else>
+              <div class="video-message-meta">
+                <span>{{ message.modelName }}</span>
+                <span v-if="message.resolution">{{ message.resolution }}</span>
+                <span v-if="getMessageElapsedMs(message) !== null">{{ formatElapsedMs(getMessageElapsedMs(message)!) }}</span>
+              </div>
 
-            <div v-if="message.error" class="video-error-message">{{ message.error }}</div>
+              <div v-if="message.status === 'loading'" class="video-loading-card">
+                <div class="video-loading-preview"></div>
+                <span>{{ loadingStatusText }}</span>
+              </div>
 
-            <div v-if="message.usage" class="video-usage-row">
-              <span>Input {{ message.usage.input_tokens || 0 }}</span>
-              <span>Output {{ message.usage.output_tokens || 0 }}</span>
-              <span>Total {{ message.usage.total_tokens || 0 }}</span>
-            </div>
+              <div v-if="message.videos.length" class="video-output-grid">
+                <figure v-for="video in message.videos" :key="video.id" class="video-output-card">
+                  <video :src="video.src" controls playsinline preload="metadata" />
+                </figure>
+              </div>
+
+              <div v-if="message.error" class="video-error-message">{{ message.error }}</div>
+
+              <div v-if="message.usage" class="video-usage-row">
+                <span>Input {{ message.usage.input_tokens || 0 }}</span>
+                <span>Output {{ message.usage.output_tokens || 0 }}</span>
+                <span>Total {{ message.usage.total_tokens || 0 }}</span>
+              </div>
+            </template>
           </div>
         </article>
       </div>
@@ -170,6 +208,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import AppTooltip from "@/components/AppTooltip.vue";
 import ImageModal from "@/components/ImageModal.vue";
+import MessageTopicList from "@/components/MessageTopicList.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import VideoSettings from "@/views/video/VideoSettings.vue";
 import type { VideoSettingsData } from "@/views/video/VideoSettings.vue";
@@ -178,7 +217,7 @@ import audioIcon from "@/assets/svg/attach24.svg";
 import imageIcon from "@/assets/svg/navImage24.svg";
 import navVideoIcon from "@/assets/svg/navImage24.svg";
 import paramIcon from "@/assets/svg/param24.svg";
-import { addVideoConversation, getVideoConversationMessages, submitVideoMessage } from "@/services/creation";
+import { addVideoConversation, getVideoConversationMessages, submitVideoMessage, useCreationMessageUi } from "@/services/creation";
 import { getVideoModelCapabilities, getVideoModelType } from "@/models";
 import { dsAlert, getUuid } from "@/utils";
 import type { VideoConversationMessage, VideoInputAttachment, VideoModelConfig } from "@/types";
@@ -238,6 +277,21 @@ const loadingStatusText = computed(() => {
 
 const isCurrentConversationSubmitting = computed(() => Boolean(activeVideoRuntime.value?.pending || activeVideoRuntime.value?.status === "loading"));
 const isSendDisabled = computed(() => isCurrentConversationSubmitting.value || !prompt.value.trim() || !selectedModel.value);
+const {
+  activeTopicId,
+  collapsibleMessageIds,
+  expandedMessageIds: expandedUserMessageIds,
+  messageTopics,
+  onMessageScroll,
+  refreshMessageUi,
+  registerMessage,
+  registerMessageContent,
+  scrollToMessage,
+  toggleMessage,
+} = useCreationMessageUi({
+  messages,
+  scrollRef: messageScrollRef,
+});
 
 function resizeTextarea() {
   const textarea = textareaRef.value;
@@ -559,8 +613,15 @@ watch(
 watch(
   () => messages.value.length,
   () => {
+    refreshMessageUi();
     if (isNearScrollBottom()) scrollToBottom();
   },
+);
+
+watch(
+  () => messages.value.map((message) => `${message.id}:${message.role}:${message.prompt}:${message.attachments?.length || 0}`).join("|"),
+  refreshMessageUi,
+  { immediate: true },
 );
 
 watch(
@@ -590,6 +651,7 @@ watch(
 
 onMounted(() => {
   nextTick(updateComposerHeight);
+  refreshMessageUi();
   if (window.ResizeObserver && composerRef.value) {
     composerResizeObserver = new ResizeObserver(updateComposerHeight);
     composerResizeObserver.observe(composerRef.value);
@@ -629,9 +691,24 @@ onBeforeUnmount(() => {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: oklch(var(--bc) / 0.24) transparent;
   padding: var(--video-top-gap) var(--video-side-gap) var(--video-bottom-gap);
   box-sizing: border-box;
   contain: layout paint style;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: oklch(var(--bc) / 0.2);
+  }
 }
 
 .video-empty-state {
@@ -724,6 +801,82 @@ onBeforeUnmount(() => {
 .video-message-body {
   min-width: 0;
   padding: 16px 18px;
+}
+
+.video-message.is-user .video-message-body {
+  position: relative;
+  overflow: hidden;
+
+  &.is-collapsible {
+    padding-bottom: 12px;
+
+    &::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: 42px;
+      left: 0;
+      height: 52px;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(241, 241, 240, 0), #f1f1f0 70%);
+    }
+  }
+
+  &.is-expanded::after {
+    display: none;
+  }
+}
+
+.video-message-content {
+  max-height: 200px;
+  overflow: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: oklch(var(--bc) / 0.28) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: oklch(var(--bc) / 0.22);
+  }
+}
+
+.video-message-body.is-expanded .video-message-content {
+  overflow-y: auto;
+}
+
+.video-message-toggle {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 8px 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: oklch(var(--bc) / 0.76);
+  line-height: 1;
+  cursor: pointer;
+
+  :deep(.video-message-toggle-icon) {
+    width: 16px;
+    height: 16px;
+    transform: rotate(180deg);
+  }
+
+  &.is-expanded :deep(.video-message-toggle-icon) {
+    transform: rotate(0deg);
+  }
 }
 
 .video-message-meta,

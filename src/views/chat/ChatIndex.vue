@@ -2,7 +2,10 @@
   <!-- This view renders the chat message area and input composer. -->
   <section ref="containerRef" class="chat-card-container">
     <!-- Header bar with session status, question-list toggle and panel. -->
-    <ChatHeaderBar :scroll-container="innerRef" :container-el="containerRef" />
+    <ChatHeaderBar
+      :scroll-container="innerRef"
+      :container-el="containerRef"
+    />
 
     <!-- Show starter templates as an empty-state layer above the message surface. -->
     <div v-show="isShowTemplate" class="ccdc-template-layer">
@@ -20,6 +23,15 @@
         @scroll-bottom="scrollMessagesToBottom"
       />
     </div>
+
+    <MessageTopicList
+      v-show="!isShowTemplate"
+      :topics="tocTopics"
+      :active-topic-id="activeTocHeadingId"
+      :label="t('chat.messageOutline')"
+      :style="{ '--topic-bottom-gap': 'var(--chat-bottom-gap)' }"
+      @select="scrollToTocHeading"
+    />
 
     <!-- Keep the chat composer fixed at the bottom of the view. -->
     <div class="cccd-bottom">
@@ -40,6 +52,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import type { ChatModelConfig, ChatPromptMessage } from "@/types";
@@ -50,6 +63,8 @@ import ChatInputArea from "@/views/chat/ChatInputArea.vue";
 import ChatInsTemplate from "@/views/chat/ChatInsTemplate.vue";
 import ChatScrollActions from "@/views/chat/ChatScrollActions.vue";
 import ImageModal from "@/components/ImageModal.vue";
+import MessageTopicList from "@/components/MessageTopicList.vue";
+import { useChatMessageToc } from "@/services/conversation/rendering/use-chat-message-toc";
 
 type ChatStartPayload = {
   message: ChatPromptMessage;
@@ -59,6 +74,7 @@ type ChatStartPayload = {
 const store = useStore();
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const innerRef = ref<HTMLElement | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
 const inputAreaRef = ref<HTMLElement | null>(null);
@@ -68,11 +84,25 @@ let scrollActionsFrame = 0;
 let composerResizeObserver: ResizeObserver | null = null;
 
 const drawer = createChatDrawer();
+const {
+  headings: tocHeadings,
+  activeHeadingId: activeTocHeadingId,
+  refresh: refreshMessageToc,
+  scheduleRefresh: scheduleMessageTocRefresh,
+  scrollToHeading: scrollToTocHeading,
+} = useChatMessageToc(innerRef);
 let activeRunnerChatId: string | null = null;
 let autoScrolledDraftMessageId = "";
 const curChatId = computed<string>(() => store.state.curChatId || "");
 const activeMessages = computed<ChatPromptMessage[]>(() => (curChatId.value ? store.state.chatMessagesById?.[curChatId.value] || [] : []));
 const activeRuntime = computed(() => (curChatId.value ? store.state.chatRuntimeById?.[curChatId.value] || null : null));
+const tocTopics = computed(() =>
+  tocHeadings.value.map((heading) => ({
+    id: heading.id,
+    title: heading.text,
+    level: heading.level,
+  })),
+);
 const routeChatId = computed(() => (typeof route.params.cid === "string" ? route.params.cid : ""));
 const isChatting = computed(() => Boolean(activeRuntime.value?.pending || ["loading", "streaming"].includes(activeRuntime.value?.status)));
 const isModelSelectionReadonly = computed(() => isChatting.value);
@@ -121,6 +151,7 @@ const renderCurrentConversation = async ({ stickToBottom = false, reset = false 
   drawer.renderConversation(activeMessages.value, { reset });
   drawer.syncDraftAssistant(activeRuntime.value);
   await nextTick();
+  refreshMessageToc();
   updateScrollActions();
   if (stickToBottom) scrollMessagesToBottom("auto");
 };
@@ -200,7 +231,10 @@ const onStartChat = async (payload: ChatStartPayload) => {
     const messageId = String(runtime?.draftMessageId || "");
     const createdDraft = drawer.syncDraftAssistant(runtime);
     scrollOnceForDraft(createdDraft, messageId);
-    nextTick(updateScrollActions);
+    nextTick(() => {
+      updateScrollActions();
+      scheduleMessageTocRefresh();
+    });
   };
 
   runner.onDraftUpdate = (content) => {
@@ -208,11 +242,13 @@ const onStartChat = async (payload: ChatStartPayload) => {
     const messageId = runner.getStream().getMessageId();
     const createdDraft = drawer.updateDraftContent(content, messageId, activeRuntime.value?.status === "error");
     scrollOnceForDraft(createdDraft, messageId);
+    scheduleMessageTocRefresh();
   };
 
   runner.onDraftRemove = () => {
     if (!isActiveRunner()) return;
     drawer.removeTempAssistantElem();
+    scheduleMessageTocRefresh();
   };
 
   runner.onMessagePersisted = async () => {
@@ -235,7 +271,10 @@ const onDrawTemplateIns = (messages: ChatPromptMessage[]) => {
 
 onMounted(() => {
   drawer.init(innerRef.value);
-  drawer.onAfterRender = updateScrollActions;
+  drawer.onAfterRender = () => {
+    updateScrollActions();
+    scheduleMessageTocRefresh();
+  };
   drawer.onMessageDeleted = async () => {
     await renderCurrentConversation();
   };

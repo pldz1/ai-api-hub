@@ -1,10 +1,13 @@
 import { renderBlock } from "@/services/markdown/md-render";
+import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import copyIcon from "@/assets/svg/copy16.svg";
 import deleteIcon from "@/assets/svg/delete16.svg";
 import { tr } from "@/i18n";
 import { textToHtml } from "@/utils";
 import { createSvgIcon } from "@/utils/svg-icon";
 import type { ChatPromptContent } from "@/types";
+
+const USER_CONTENT_COLLAPSED_HEIGHT = 200;
 
 export interface MessageElementActions {
   onCopyAssistantMessage?: (mid: string) => void | Promise<void>;
@@ -64,6 +67,36 @@ function createMessageOptions(mid: string, which: ("copy" | "delete")[], actions
   return optionsDiv;
 }
 
+function setupUserContentCollapse(contentAreaDiv: HTMLDivElement, contentBodyDiv: HTMLDivElement) {
+  requestAnimationFrame(() => {
+    if (contentBodyDiv.scrollHeight <= USER_CONTENT_COLLAPSED_HEIGHT) return;
+
+    let expanded = false;
+    const toggleBtn = document.createElement("button");
+    toggleBtn.className = "cmbu-content-toggle";
+    toggleBtn.type = "button";
+
+    const update = () => {
+      contentAreaDiv.classList.toggle("is-expanded", expanded);
+      toggleBtn.classList.toggle("is-expanded", expanded);
+      toggleBtn.setAttribute("aria-label", expanded ? "收起消息" : "展开消息");
+      toggleBtn.setAttribute("aria-expanded", String(expanded));
+      toggleBtn.replaceChildren(createSvgIcon(arrowUpIcon, { className: "cmbu-content-toggle-icon", size: "16px" }));
+    };
+
+    const toggle = () => {
+      expanded = !expanded;
+      if (!expanded) contentBodyDiv.scrollTop = 0;
+      update();
+    };
+
+    toggleBtn.addEventListener("click", toggle);
+    contentAreaDiv.classList.add("is-collapsible");
+    update();
+    contentAreaDiv.appendChild(toggleBtn);
+  });
+}
+
 // -- public element factories --
 
 export function createUserMessageElement(
@@ -81,6 +114,9 @@ export function createUserMessageElement(
 
   const contentAreaDiv = document.createElement("div");
   contentAreaDiv.classList.add("cmbu-content-area");
+
+  const contentBodyDiv = document.createElement("div");
+  contentBodyDiv.classList.add("cmbu-content-body");
 
   const imageAreaEl = document.createElement("div");
   imageAreaEl.classList.add("cmbu-img-area");
@@ -103,11 +139,13 @@ export function createUserMessageElement(
   }
 
   if (content.some((item) => item.type === "image_url")) {
-    contentAreaDiv.appendChild(imageAreaEl);
+    contentBodyDiv.appendChild(imageAreaEl);
   }
 
-  contentAreaDiv.appendChild(textDiv);
+  contentBodyDiv.appendChild(textDiv);
+  contentAreaDiv.appendChild(contentBodyDiv);
   userContentDiv.appendChild(contentAreaDiv);
+  setupUserContentCollapse(contentAreaDiv, contentBodyDiv);
   userContentDiv.appendChild(createMessageOptions(mid, ["delete"], actions));
   userDiv.appendChild(userContentDiv);
   container.appendChild(userDiv);
