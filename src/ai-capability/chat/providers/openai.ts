@@ -113,7 +113,7 @@ function normalizeOpenAIResponsesParams(params: ChatCompletionParams = {}): Json
   }
 
   if (webSearch) {
-    requestParams.tools = [{ type: "web_search_preview" }];
+    requestParams.tools = [{ type: "web_search" }];
   }
 
   return requestParams;
