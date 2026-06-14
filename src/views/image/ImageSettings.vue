@@ -12,7 +12,7 @@
         <div class="ims-setting-item">
           <div class="ims-setting-label">
             <span>{{ t("image.size") }}</span>
-            <AppTooltip :text="'Output image dimensions'" placement="bottom">
+            <AppTooltip :text="t('image.sizeTip')" placement="bottom">
               <SvgIcon class="ims-info-icon" :src="infoIcon" />
             </AppTooltip>
           </div>
@@ -29,7 +29,7 @@
         <div class="ims-setting-item">
           <div class="ims-setting-label">
             <span>{{ t("image.count") }}</span>
-            <AppTooltip :text="'Number of images to generate per request'" placement="bottom">
+            <AppTooltip :text="t('image.countTip')" placement="bottom">
               <SvgIcon class="ims-info-icon" :src="infoIcon" />
             </AppTooltip>
           </div>

@@ -1,43 +1,43 @@
 <template>
   <main class="qa-page">
     <section class="qa-hero">
-      <p class="qa-kicker">README.md quick guide</p>
+      <p class="qa-kicker">{{ t("qa.kicker") }}</p>
       <h1>AI API HUB QA</h1>
-      <p>支持哪些模型、每类 Provider 应该填什么接口，以及 DashScope / DeepSeek 的几个参数注意点。</p>
+      <p>{{ t("qa.heroDescription") }}</p>
       <div class="qa-actions">
-        <RouterLink to="/settings/chat-models">配置 Chat Models</RouterLink>
-        <RouterLink to="/settings/image-models">配置 Image Models</RouterLink>
-        <RouterLink to="/settings/video-models">配置 Video Models</RouterLink>
+        <RouterLink to="/settings/chat-models">{{ t("qa.actions.chatModels") }}</RouterLink>
+        <RouterLink to="/settings/image-models">{{ t("qa.actions.imageModels") }}</RouterLink>
+        <RouterLink to="/settings/video-models">{{ t("qa.actions.videoModels") }}</RouterLink>
       </div>
     </section>
 
     <section class="qa-section">
       <div class="qa-grid">
         <article class="qa-card">
-          <h3>What Models Are We Talking About?</h3>
-          <p>先看模型表。它说明 Chat、Image、Video 三类能力分别支持哪些 Provider，以及是否支持视觉输入、联网搜索、图生图、视频输入。</p>
+          <h3>{{ t("qa.cards.modelsTitle") }}</h3>
+          <p>{{ t("qa.cards.modelsDescription") }}</p>
         </article>
         <article class="qa-card">
-          <h3>How to Use</h3>
-          <p>再看使用流程。核心路径是 Settings -> Chat Models / Image Models / Video Models，填 API Key、Base URL 和模型 ID。</p>
+          <h3>{{ t("qa.cards.useTitle") }}</h3>
+          <p>{{ t("qa.cards.useDescription") }}</p>
         </article>
         <article class="qa-card">
-          <h3>Video Generation Proxy</h3>
-          <p>如果使用 DashScope 视频模型，需要注意浏览器跨域。README.md 里有 Nginx 代理示例，开发环境也有对应代理路径。</p>
+          <h3>{{ t("qa.cards.proxyTitle") }}</h3>
+          <p>{{ t("qa.cards.proxyDescription") }}</p>
         </article>
       </div>
     </section>
 
     <section class="qa-section">
-      <h2>当前支持的模型</h2>
+      <h2>{{ t("qa.supportedModelsTitle") }}</h2>
       <div class="qa-table-wrap">
         <table>
           <thead>
             <tr>
-              <th>类型</th>
-              <th>模型</th>
+              <th>{{ t("qa.table.type") }}</th>
+              <th>{{ t("qa.table.model") }}</th>
               <th>Provider</th>
-              <th>能力</th>
+              <th>{{ t("qa.table.capability") }}</th>
             </tr>
           </thead>
           <tbody>
@@ -53,7 +53,7 @@
     </section>
 
     <section class="qa-section">
-      <h2>Chat 接口怎么填</h2>
+      <h2>{{ t("qa.chatEndpointTitle") }}</h2>
       <div class="endpoint-list">
         <article v-for="item in endpointRows" :key="item.provider" class="endpoint-item">
           <div>
@@ -66,38 +66,38 @@
     </section>
 
     <section class="qa-section">
-      <h2>几个容易配错的点</h2>
+      <h2>{{ t("qa.notesTitle") }}</h2>
       <div class="qa-notes">
         <p>
           <strong>OpenAI / Azure OpenAI:</strong>
-          本项目的 Chat 路由走 Responses API，所以 Base URL 应该是 /responses，不是 /chat/completions。
+          {{ t("qa.notes.openai") }}
         </p>
         <p>
           <strong>DashScope / DeepSeek:</strong>
-          Chat 路由走 Chat Completions API，所以 Base URL 应该是 /chat/completions。
+          {{ t("qa.notes.compatible") }}
         </p>
         <p>
-          <strong>DashScope 视觉:</strong>
-          图片输入要选 qwen-vl-plus 这类 VL 模型。qwen-plus、qwen3.7-max-2026-05-17 这类文本模型不要传 image_url。
+          <strong>{{ t("qa.notes.dashscopeVisionLabel") }}</strong>
+          {{ t("qa.notes.dashscopeVision") }}
         </p>
         <p>
           <strong>DashScope DeepSeek-V4:</strong>
-          reasoning_effort 只适用于 deepseek-v4-pro / deepseek-v4-flash。low、medium、high 会映射为 high；xhigh、max 会映射为 max。
+          {{ t("qa.notes.deepseekV4") }}
         </p>
         <p>
-          <strong>联网搜索:</strong>
-          DashScope 兼容接口使用 enable_search: true。DeepSeek 直连和 OpenAI Responses 的搜索能力由各自 Provider 适配处理。
+          <strong>{{ t("qa.notes.webSearchLabel") }}</strong>
+          {{ t("qa.notes.webSearch") }}
         </p>
       </div>
     </section>
 
     <section class="qa-section">
-      <h2>参考地址</h2>
+      <h2>{{ t("qa.referencesTitle") }}</h2>
       <div class="reference-list">
         <p>README.md</p>
         <p>OpenAI Responses API: https://platform.openai.com/docs/api-reference/responses</p>
         <p>Azure OpenAI Responses API: https://learn.microsoft.com/azure/ai-foundry/openai/how-to/responses</p>
-        <p>DashScope OpenAI 兼容 Chat: https://help.aliyun.com/zh/model-studio/qwen-api-via-openai-chat-completions</p>
+        <p>{{ t("qa.references.dashscopeCompatibleChat") }}: https://help.aliyun.com/zh/model-studio/qwen-api-via-openai-chat-completions</p>
         <p>DeepSeek Chat Completions: https://api-docs.deepseek.com/api/create-chat-completion</p>
       </div>
     </section>
@@ -105,41 +105,45 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { RouterLink } from "vue-router";
 
-const modelRows = [
-  { type: "Chat", model: "gpt-5.5 / gpt-5.4 / gpt-4.1 / gpt-4o", provider: "OpenAI / Azure OpenAI", capability: "视觉输入、联网搜索" },
-  { type: "Chat", model: "deepseek-v4-pro / deepseek-v4-flash", provider: "DeepSeek / DashScope", capability: "文本对话；DashScope 路由支持联网搜索" },
-  { type: "Chat", model: "qwen-plus", provider: "DashScope", capability: "文本对话、联网搜索" },
-  { type: "Chat", model: "qwen-vl-plus", provider: "DashScope", capability: "视觉输入" },
-  { type: "Chat", model: "qwen3.7-max-2026-05-17", provider: "DashScope", capability: "文本对话、联网搜索" },
-  { type: "Image", model: "gpt-image-2", provider: "OpenAI / Azure OpenAI", capability: "文生图、图生图、局部编辑" },
-  { type: "Image", model: "qwen-image-2.0", provider: "DashScope", capability: "文生图、图生图" },
-  { type: "Video", model: "wan2.7-i2v / t2v / r2v / videoedit", provider: "DashScope", capability: "文生视频、图生视频、参考视频、视频编辑" },
-];
+const { t } = useI18n();
 
-const endpointRows = [
+const modelRows = computed(() => [
+  { type: "Chat", model: "gpt-5.5 / gpt-5.4 / gpt-4.1 / gpt-4o", provider: "OpenAI / Azure OpenAI", capability: t("qa.capabilities.visionSearch") },
+  { type: "Chat", model: "deepseek-v4-pro / deepseek-v4-flash", provider: "DeepSeek / DashScope", capability: t("qa.capabilities.textDashscopeSearch") },
+  { type: "Chat", model: "qwen-plus", provider: "DashScope", capability: t("qa.capabilities.textSearch") },
+  { type: "Chat", model: "qwen-vl-plus", provider: "DashScope", capability: t("qa.capabilities.vision") },
+  { type: "Chat", model: "qwen3.7-max-2026-05-17", provider: "DashScope", capability: t("qa.capabilities.textSearch") },
+  { type: "Image", model: "gpt-image-2", provider: "OpenAI / Azure OpenAI", capability: t("qa.capabilities.imageEdit") },
+  { type: "Image", model: "qwen-image-2.0", provider: "DashScope", capability: t("qa.capabilities.image") },
+  { type: "Video", model: "wan2.7-i2v / t2v / r2v / videoedit", provider: "DashScope", capability: t("qa.capabilities.video") },
+]);
+
+const endpointRows = computed(() => [
   {
     provider: "OpenAI",
-    note: "Chat 使用 Responses API。",
+    note: t("qa.endpoints.openai"),
     url: "https://api.openai.com/v1/responses",
   },
   {
     provider: "Azure OpenAI",
-    note: "Chat 使用 Azure OpenAI Responses API。",
+    note: t("qa.endpoints.azure"),
     url: "https://<YOUR-AZURE-PROJECT>.openai.azure.com/openai/v1/responses",
   },
   {
     provider: "DashScope",
-    note: "Chat 使用 OpenAI 兼容 Chat Completions API。",
+    note: t("qa.endpoints.dashscope"),
     url: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
   },
   {
     provider: "DeepSeek",
-    note: "Chat 使用 Chat Completions API。",
+    note: t("qa.endpoints.deepseek"),
     url: "https://api.deepseek.com/chat/completions",
   },
-];
+]);
 </script>
 
 <style lang="scss" scoped>

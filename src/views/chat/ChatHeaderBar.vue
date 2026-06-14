@@ -13,7 +13,7 @@
       <button
         class="chb-nav-btn"
         :class="{ 'is-active': panelOpen }"
-        :aria-label="panelOpen ? 'Close question list' : 'Open question list'"
+        :aria-label="panelOpen ? t('chat.closeQuestionList') : t('chat.openQuestionList')"
         @click="panelOpen = !panelOpen"
       >
         <SvgIcon :src="listIcon" />
@@ -24,8 +24,8 @@
       :open="panelOpen"
       :container-el="containerEl"
       :questions="questionItems"
-      title="对话目录"
-      empty-text="暂无问题"
+      :title="t('chat.questionListTitle')"
+      :empty-text="t('chat.noQuestions')"
       @close="panelOpen = false"
       @select="onSelectQuestion"
     />
@@ -61,7 +61,7 @@ const questionItems = computed<QuestionItem[]>(() => {
         .map((c) => c.text || "")
         .join(" ")
         .slice(0, 80);
-      return { mid: m.mid || "", text: text || "(empty)" };
+      return { mid: m.mid || "", text: text || t("chat.emptyQuestion") };
     });
 });
 

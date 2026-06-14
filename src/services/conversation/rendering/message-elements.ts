@@ -79,7 +79,7 @@ function setupUserContentCollapse(contentAreaDiv: HTMLDivElement, contentBodyDiv
     const update = () => {
       contentAreaDiv.classList.toggle("is-expanded", expanded);
       toggleBtn.classList.toggle("is-expanded", expanded);
-      toggleBtn.setAttribute("aria-label", expanded ? "收起消息" : "展开消息");
+      toggleBtn.setAttribute("aria-label", expanded ? tr("common.collapseMessage") : tr("common.expandMessage"));
       toggleBtn.setAttribute("aria-expanded", String(expanded));
       toggleBtn.replaceChildren(createSvgIcon(arrowUpIcon, { className: "cmbu-content-toggle-icon", size: "16px" }));
     };

@@ -33,10 +33,10 @@ window.copyHandler = function (e: MouseEvent): void {
         }, 2000); // Restore after 2 seconds.
       })
       .catch((err: unknown) => {
-        console.error("复制失败:", err);
+        console.error(tr("markdown.copyFailed"), err);
       });
   } else {
-    console.error("未找到 <code> 元素");
+    console.error(tr("markdown.codeElementNotFound"));
   }
 };
 

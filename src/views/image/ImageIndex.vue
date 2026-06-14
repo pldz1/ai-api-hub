@@ -3,7 +3,7 @@
     <MessageTopicList
       :topics="messageTopics"
       :active-topic-id="activeTopicId"
-      label="Topics"
+      :label="t('image.topics')"
       :style="{ '--topic-bottom-gap': 'var(--image-bottom-gap)' }"
       @select="scrollToMessage"
     />
@@ -53,7 +53,7 @@
                 class="image-message-toggle"
                 :class="{ 'is-expanded': expandedUserMessageIds.has(message.id) }"
                 type="button"
-                :aria-label="expandedUserMessageIds.has(message.id) ? 'Collapse message' : 'Expand message'"
+                :aria-label="expandedUserMessageIds.has(message.id) ? t('common.collapseMessage') : t('common.expandMessage')"
                 :aria-expanded="expandedUserMessageIds.has(message.id)"
                 @click="toggleMessage(message.id)"
               >
@@ -82,9 +82,9 @@
               <div v-if="message.error" class="image-error-message">{{ message.error }}</div>
 
               <div v-if="message.usage" class="image-usage-row">
-                <span>Input {{ message.usage.input_tokens || 0 }}</span>
-                <span>Output {{ message.usage.output_tokens || 0 }}</span>
-                <span>Total {{ message.usage.total_tokens || 0 }}</span>
+                <span>{{ t("image.inputTokens") }} {{ message.usage.input_tokens || 0 }}</span>
+                <span>{{ t("image.outputTokens") }} {{ message.usage.output_tokens || 0 }}</span>
+                <span>{{ t("image.totalTokens") }} {{ message.usage.total_tokens || 0 }}</span>
               </div>
             </template>
           </div>
