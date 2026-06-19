@@ -31,7 +31,7 @@ const chatProviderRegistryConfig = {
     name: "DeepSeek",
     route: "deepseek",
     connectionFields: ["baseURL"],
-    defaultBaseURL: "https://api.deepseek.com/chat/completions",
+    defaultBaseURL: "https://api.deepseek.com/anthropic",
   },
   DashScope: {
     name: "DashScope",

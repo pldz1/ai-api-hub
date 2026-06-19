@@ -168,7 +168,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     providers: [
       {
         provider: "DeepSeek",
-        capabilities: { webSearch: false, imageRead: false },
+        capabilities: { webSearch: true, imageRead: false },
       },
       {
         provider: "DashScope",
@@ -183,7 +183,7 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     providers: [
       {
         provider: "DeepSeek",
-        capabilities: { webSearch: false, imageRead: false },
+        capabilities: { webSearch: true, imageRead: false },
       },
       {
         provider: "DashScope",

@@ -39,7 +39,7 @@ import SvgIcon from "@/components/SvgIcon.vue";
 import ChatIndex from "./chat/ChatIndex.vue";
 import ImageIndex from "./image/ImageIndex.vue";
 import VideoIndex from "./video/VideoIndex.vue";
-import QaIndex from "./qa/QaIndex.vue";
+import QaIndex from "./qa/QAIndex.vue";
 
 import menuIcon from "@/assets/svg/menu32.svg";
 

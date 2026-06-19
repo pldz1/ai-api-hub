@@ -278,7 +278,7 @@ export const languages = {
         duplicate: "复制当前模型",
         emptyDetail: "选择一个对话模型开始编辑，或者先新增一个 ",
         emptyList: "还没有对话模型，先新增一个 ",
-        endpointNotice: "接口提示：OpenAI / Azure OpenAI 使用 /responses；DashScope / DeepSeek 使用 /chat/completions。",
+        endpointNotice: "接口提示：OpenAI / Azure OpenAI 使用 /responses；DashScope 使用 /chat/completions；DeepSeek 推荐使用 https://api.deepseek.com/anthropic。",
         endpointNoticeLink: "查看 QA 说明",
       },
       exportSuccess: "配置已导出 ",
@@ -396,12 +396,14 @@ export const languages = {
       notesTitle: "几个容易配错的点",
       notes: {
         openai: "本项目的 Chat 路由走 Responses API，所以 Base URL 应该是 /responses，不是 /chat/completions。",
-        compatible: "Chat 路由走 Chat Completions API，所以 Base URL 应该是 /chat/completions。",
+        compatible: "DashScope Chat 路由走 OpenAI 兼容 Chat Completions API，所以 Base URL 应该是 /chat/completions。",
+        deepseekAnthropic:
+          "DeepSeek 直连走官方 Anthropic API，推荐 Base URL 固定为 https://api.deepseek.com/anthropic。本项目会自动请求 Messages 路径；不建议改成 /chat/completions，否则官方原生 Web Search 无法按 Anthropic 工具形态工作。",
         dashscopeVisionLabel: "DashScope 视觉:",
         dashscopeVision: "图片输入要选 qwen-vl-plus 这类 VL 模型。qwen-plus、qwen3.7-max-2026-05-17 这类文本模型不要传 image_url。",
-        deepseekV4: "reasoning_effort 只适用于 deepseek-v4-pro / deepseek-v4-flash。low、medium、high 会映射为 high；xhigh、max 会映射为 max。",
+        deepseekV4: "DeepSeek V4 在 Anthropic API 下会把 reasoning_effort 映射为 output_config.effort。low、medium、high 会映射为 high；xhigh、max 会映射为 max。",
         webSearchLabel: "联网搜索:",
-        webSearch: "DashScope 兼容接口使用 enable_search: true。DeepSeek 直连和 OpenAI Responses 的搜索能力由各自 Provider 适配处理。",
+        webSearch: "DashScope 兼容接口使用 enable_search: true。DeepSeek 直连使用 Anthropic Web Search 工具；OpenAI Responses 搜索能力由 OpenAI Provider 适配处理。",
       },
       referencesTitle: "参考地址",
       references: {
@@ -410,6 +412,7 @@ export const languages = {
       capabilities: {
         visionSearch: "视觉输入、联网搜索",
         textDashscopeSearch: "文本对话；DashScope 路由支持联网搜索",
+        textDeepSeekSearch: "文本对话、官方原生联网搜索",
         textSearch: "文本对话、联网搜索",
         vision: "视觉输入",
         imageEdit: "文生图、图生图、局部编辑",
@@ -420,7 +423,7 @@ export const languages = {
         openai: "Chat 使用 Responses API。",
         azure: "Chat 使用 Azure OpenAI Responses API。",
         dashscope: "Chat 使用 OpenAI 兼容 Chat Completions API。",
-        deepseek: "Chat 使用 Chat Completions API。",
+        deepseek: "Chat 使用官方 Anthropic API；Base URL 推荐固定为 https://api.deepseek.com/anthropic。",
       },
     },
   },
@@ -700,7 +703,7 @@ export const languages = {
         duplicate: "Duplicate current",
         emptyDetail: "Choose a chat model to edit, or add a new one first.",
         emptyList: "No chat models yet. Add one to get started.",
-        endpointNotice: "Endpoint note: OpenAI / Azure OpenAI use /responses; DashScope / DeepSeek use /chat/completions.",
+        endpointNotice: "Endpoint note: OpenAI / Azure OpenAI use /responses; DashScope uses /chat/completions; DeepSeek should use https://api.deepseek.com/anthropic.",
         endpointNoticeLink: "Open QA guide",
       },
       exportSuccess: "Settings exported.",
@@ -823,13 +826,16 @@ export const languages = {
       notesTitle: "Common Setup Pitfalls",
       notes: {
         openai: "This app routes Chat through the Responses API, so Base URL should end with /responses, not /chat/completions.",
-        compatible: "Chat uses the Chat Completions API, so Base URL should end with /chat/completions.",
+        compatible: "DashScope Chat uses the OpenAI-compatible Chat Completions API, so Base URL should end with /chat/completions.",
+        deepseekAnthropic:
+          "DeepSeek direct access uses the official Anthropic API. Keep the recommended Base URL as https://api.deepseek.com/anthropic. This app appends the Messages path internally; changing it to /chat/completions is not recommended because native Web Search relies on the Anthropic tool shape.",
         dashscopeVisionLabel: "DashScope vision:",
         dashscopeVision:
           "Use VL models such as qwen-vl-plus for image input. Do not send image_url to text models such as qwen-plus or qwen3.7-max-2026-05-17.",
-        deepseekV4: "reasoning_effort only applies to deepseek-v4-pro / deepseek-v4-flash. low, medium, and high map to high; xhigh and max map to max.",
+        deepseekV4:
+          "For DeepSeek V4 through the Anthropic API, reasoning_effort is mapped to output_config.effort. low, medium, and high map to high; xhigh and max map to max.",
         webSearchLabel: "Web search:",
-        webSearch: "DashScope compatible endpoints use enable_search: true. DeepSeek direct and OpenAI Responses search are adapted by their own providers.",
+        webSearch: "DashScope compatible endpoints use enable_search: true. DeepSeek direct access uses the Anthropic Web Search tool; OpenAI Responses search is adapted by the OpenAI provider.",
       },
       referencesTitle: "References",
       references: {
@@ -838,6 +844,7 @@ export const languages = {
       capabilities: {
         visionSearch: "Vision input, web search",
         textDashscopeSearch: "Text chat; DashScope routing supports web search",
+        textDeepSeekSearch: "Text chat, official native web search",
         textSearch: "Text chat, web search",
         vision: "Vision input",
         imageEdit: "Text-to-image, image-to-image, inpainting",
@@ -848,7 +855,7 @@ export const languages = {
         openai: "Chat uses the Responses API.",
         azure: "Chat uses Azure OpenAI Responses API.",
         dashscope: "Chat uses an OpenAI-compatible Chat Completions API.",
-        deepseek: "Chat uses the Chat Completions API.",
+        deepseek: "Chat uses the official Anthropic API; keep Base URL as https://api.deepseek.com/anthropic.",
       },
     },
   },

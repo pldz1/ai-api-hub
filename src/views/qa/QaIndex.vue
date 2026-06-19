@@ -77,6 +77,10 @@
           {{ t("qa.notes.compatible") }}
         </p>
         <p>
+          <strong>DeepSeek Anthropic:</strong>
+          {{ t("qa.notes.deepseekAnthropic") }}
+        </p>
+        <p>
           <strong>{{ t("qa.notes.dashscopeVisionLabel") }}</strong>
           {{ t("qa.notes.dashscopeVision") }}
         </p>
@@ -98,7 +102,8 @@
         <p>OpenAI Responses API: https://platform.openai.com/docs/api-reference/responses</p>
         <p>Azure OpenAI Responses API: https://learn.microsoft.com/azure/ai-foundry/openai/how-to/responses</p>
         <p>{{ t("qa.references.dashscopeCompatibleChat") }}: https://help.aliyun.com/zh/model-studio/qwen-api-via-openai-chat-completions</p>
-        <p>DeepSeek Chat Completions: https://api-docs.deepseek.com/api/create-chat-completion</p>
+        <p>DeepSeek Anthropic API: https://api-docs.deepseek.com/zh-cn/guides/anthropic_api</p>
+        <p>DeepSeek Claude Code Web Search: https://api-docs.deepseek.com/zh-cn/quick_start/agent_integrations/claude_code</p>
       </div>
     </section>
   </main>
@@ -113,7 +118,7 @@ const { t } = useI18n();
 
 const modelRows = computed(() => [
   { type: "Chat", model: "gpt-5.5 / gpt-5.4 / gpt-4.1 / gpt-4o", provider: "OpenAI / Azure OpenAI", capability: t("qa.capabilities.visionSearch") },
-  { type: "Chat", model: "deepseek-v4-pro / deepseek-v4-flash", provider: "DeepSeek / DashScope", capability: t("qa.capabilities.textDashscopeSearch") },
+  { type: "Chat", model: "deepseek-v4-pro / deepseek-v4-flash", provider: "DeepSeek / DashScope", capability: t("qa.capabilities.textDeepSeekSearch") },
   { type: "Chat", model: "qwen-plus", provider: "DashScope", capability: t("qa.capabilities.textSearch") },
   { type: "Chat", model: "qwen-vl-plus", provider: "DashScope", capability: t("qa.capabilities.vision") },
   { type: "Chat", model: "qwen3.7-max-2026-05-17", provider: "DashScope", capability: t("qa.capabilities.textSearch") },
@@ -141,7 +146,7 @@ const endpointRows = computed(() => [
   {
     provider: "DeepSeek",
     note: t("qa.endpoints.deepseek"),
-    url: "https://api.deepseek.com/chat/completions",
+    url: "https://api.deepseek.com/anthropic",
   },
 ]);
 </script>
