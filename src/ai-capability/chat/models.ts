@@ -213,6 +213,17 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
       },
     ],
   },
+  {
+    name: "glm-5.2",
+    chatParamKeys: ["max_tokens", "temperature", "top_p"],
+    messageFormat: "parts",
+    providers: [
+      {
+        provider: "DashScope",
+        capabilities: { webSearch: true, imageRead: true },
+      },
+    ],
+  },
 ];
 
 export const chatModelTypeList: ChatModelCatalogItem[] = chatModelCatalog;
