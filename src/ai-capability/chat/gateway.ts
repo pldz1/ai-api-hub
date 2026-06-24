@@ -12,6 +12,45 @@ import { createChatExecutor, createChatProviderConfig } from "./providers/execut
 
 type ChatDeltaQueueItem = { delta?: ChatResponseDelta; done?: true };
 
+function formatLocalDateTime(date: Date): string {
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    timeZoneName: "short",
+  }).format(date);
+}
+
+function buildRuntimeSystemContext(params: ChatCompletionParams = {}, date = new Date()): PackedChatMessage {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
+  const lines = [
+    `Runtime context: The current local date/time is ${formatLocalDateTime(date)}.`,
+    `Local time zone: ${timeZone}.`,
+    `UTC timestamp: ${date.toISOString()}.`,
+    "Use this context for questions about today's date or current time.",
+  ];
+
+  if (params.webSearch) {
+    lines.push("When the user asks for current external facts, use web search instead of guessing.");
+  }
+
+  return {
+    role: "system",
+    content: lines.join("\n"),
+  };
+}
+
+function withRuntimeSystemContext(messages: PackedChatMessage[], params: ChatCompletionParams = {}): PackedChatMessage[] {
+  const context = buildRuntimeSystemContext(params);
+  const insertIndex = messages.findIndex((message) => message.role !== "system");
+  if (insertIndex < 0) return [...messages, context];
+  return [...messages.slice(0, insertIndex), context, ...messages.slice(insertIndex)];
+}
+
 function providerResponseToDeltas(response: ChatProviderResponse): ChatResponseDelta[] {
   if (response.flag === false) {
     return [{ kind: "error", message: String(response.content || "") }];
@@ -108,10 +147,12 @@ export class ChatGateway {
       abortController = new AbortController();
       this.abortController = abortController;
       const queue = createChatDeltaQueue();
+      const resolvedParams = this.resolveChatParams(request.params, request.capabilities, model);
+      const runtimeMessages = withRuntimeSystemContext(messages, resolvedParams);
       let completed = false;
 
       void this.executor
-        .chat(messages, this.resolveChatParams(request.params, request.capabilities, model), (response) => queue.pushMany(providerResponseToDeltas(response)), {
+        .chat(runtimeMessages, resolvedParams, (response) => queue.pushMany(providerResponseToDeltas(response)), {
           signal: abortController.signal,
         })
         .then(() => {
