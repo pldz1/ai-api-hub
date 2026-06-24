@@ -93,14 +93,14 @@ const providers = [
     name: "OpenAI",
     color: "#10a37f",
     gradFrom: "rgba(16,163,127,0.06)",
-    models: ["GPT-5.5", "GPT-5.4", "GPT-4.1", "GPT-4o", "GPT-Image-2"],
+    models: ["GPT-5.5-*", "GPT-5.4-*", "GPT-4.1", "GPT-4o", "GPT-Image-2"],
     icon: openaiIcon,
   },
   {
     name: "Azure",
     color: "#0078d4",
     gradFrom: "rgba(0,120,212,0.06)",
-    models: ["GPT-5.5", "GPT-5.4", "GPT-4.1", "GPT-4o", "GPT-Image-2"],
+    models: ["GPT-5.5-*", "GPT-5.4-*", "GPT-4.1", "GPT-4o", "GPT-Image-2"],
     icon: azureIcon,
   },
   {
@@ -114,7 +114,7 @@ const providers = [
     name: "DashScope",
     color: "#ff6a00",
     gradFrom: "rgba(255,106,0,0.06)",
-    models: ["Qwen 3.7 Max", "Qwen 3.7 Plus", "Qwen-Image-2.0 Pro", "Wan2.7 I2V", "Wan2.7 T2V", "Wan2.7 R2V", "Wan2.7 VideoEdit"],
+    models: ["GLM-5.2", "Qwen 3.7 Max", "Qwen 3.7 Plus", "Qwen-Image-2.0 Pro", "Wan2.7 I2V", "Wan2.7 T2V", "Wan2.7 R2V", "Wan2.7 VideoEdit"],
     icon: qwenIcon,
   },
 ];

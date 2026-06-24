@@ -102,6 +102,21 @@ export type ChatModelCatalogItem = {
 
 export const chatModelCatalog: ChatModelCatalogItem[] = [
   {
+    name: "gpt-5.5-pro",
+    chatParamKeys: ["max_output_tokens", "reasoning_effort", "verbosity"],
+    messageFormat: "parts",
+    providers: [
+      {
+        provider: "OpenAI",
+        capabilities: { webSearch: true, imageRead: true },
+      },
+      {
+        provider: "Azure OpenAI",
+        capabilities: { webSearch: true, imageRead: true },
+      },
+    ],
+  },
+  {
     name: "gpt-5.5",
     chatParamKeys: ["max_output_tokens", "reasoning_effort", "verbosity"],
     messageFormat: "parts",
@@ -117,7 +132,52 @@ export const chatModelCatalog: ChatModelCatalogItem[] = [
     ],
   },
   {
+    name: "gpt-5.4-pro",
+    chatParamKeys: ["max_output_tokens", "reasoning_effort", "verbosity"],
+    messageFormat: "parts",
+    providers: [
+      {
+        provider: "OpenAI",
+        capabilities: { webSearch: true, imageRead: true },
+      },
+      {
+        provider: "Azure OpenAI",
+        capabilities: { webSearch: true, imageRead: true },
+      },
+    ],
+  },
+  {
     name: "gpt-5.4",
+    chatParamKeys: ["max_output_tokens", "reasoning_effort", "verbosity"],
+    messageFormat: "parts",
+    providers: [
+      {
+        provider: "OpenAI",
+        capabilities: { webSearch: true, imageRead: true },
+      },
+      {
+        provider: "Azure OpenAI",
+        capabilities: { webSearch: true, imageRead: true },
+      },
+    ],
+  },
+  {
+    name: "gpt-5.4-mini",
+    chatParamKeys: ["max_output_tokens", "reasoning_effort", "verbosity"],
+    messageFormat: "parts",
+    providers: [
+      {
+        provider: "OpenAI",
+        capabilities: { webSearch: true, imageRead: true },
+      },
+      {
+        provider: "Azure OpenAI",
+        capabilities: { webSearch: true, imageRead: true },
+      },
+    ],
+  },
+  {
+    name: "gpt-5.4-nano",
     chatParamKeys: ["max_output_tokens", "reasoning_effort", "verbosity"],
     messageFormat: "parts",
     providers: [
