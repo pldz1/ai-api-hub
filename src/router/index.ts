@@ -1,9 +1,6 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from "vue-router";
 import HomePage from "@/views/HomePage.vue";
 import MainView from "@/views/MainView.vue";
-import ChatIndex from "@/views/chat/ChatIndex.vue";
-import ImageIndex from "@/views/image/ImageIndex.vue";
-import VideoIndex from "@/views/video/VideoIndex.vue";
 import QAIndex from "@/views/qa/QAIndex.vue";
 import SettingIndex from "@/views/setting/SettingIndex.vue";
 
@@ -15,39 +12,21 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: "/chat/:cid?",
+    name: "chat",
     component: MainView,
-    children: [
-      {
-        path: "",
-        name: "chat",
-        component: ChatIndex,
-        props: true,
-      },
-    ],
+    props: true,
   },
   {
     path: "/image/:iid?",
+    name: "image",
     component: MainView,
-    children: [
-      {
-        path: "",
-        name: "image",
-        component: ImageIndex,
-        props: true,
-      },
-    ],
+    props: true,
   },
   {
     path: "/video/:vid?",
+    name: "video",
     component: MainView,
-    children: [
-      {
-        path: "",
-        name: "video",
-        component: VideoIndex,
-        props: true,
-      },
-    ],
+    props: true,
   },
   {
     path: "/qa",
