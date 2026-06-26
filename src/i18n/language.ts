@@ -192,6 +192,7 @@ export const languages = {
       browserModeTitle: "零服务器存储",
       description: "统一的聊天与图像生成前端，支持 OpenAI、Azure、DeepSeek 和 DashScope。完全运行在你的浏览器中，零遥测。",
       loginAction: "进入工作区",
+      qaAction: "查看 README / QA",
       signInLabel: "工作区",
       signInTitle: "立即开始",
       title: "本地运行的\nAI API 聚合平台",
@@ -617,6 +618,7 @@ export const languages = {
       description:
         "A unified chat and image generation frontend for OpenAI, Azure, DeepSeek, and DashScope. Running entirely in your browser with zero telemetry.",
       loginAction: "Enter Workspace",
+      qaAction: "Open README / QA",
       signInLabel: "Workspace",
       signInTitle: "Get Started",
       title: "A local-first\nAI API hub",

@@ -14,8 +14,11 @@
           <p class="home-copy">{{ t("login.description") }}</p>
         </div>
 
-        <!-- Mobile-only CTA button -->
-        <button class="mobile-btn" @click="onStart">{{ t("login.loginAction") }}</button>
+        <!-- Mobile-only CTA buttons -->
+        <div class="mobile-actions">
+          <button class="mobile-btn" @click="onStart">{{ t("login.loginAction") }}</button>
+          <button class="mobile-link-btn" @click="onOpenQa">{{ t("login.qaAction") }}</button>
+        </div>
 
         <!-- 2×2 provider grid -->
         <div class="prov-grid">
@@ -60,9 +63,14 @@
               </div>
             </div>
           </div>
-          <button class="sign-button" @click="onStart">
-            <span>{{ t("login.loginAction") }}</span>
-          </button>
+          <div class="sign-actions">
+            <button class="sign-button" @click="onStart">
+              <span>{{ t("login.loginAction") }}</span>
+            </button>
+            <button class="sign-link-button" @click="onOpenQa">
+              <span>{{ t("login.qaAction") }}</span>
+            </button>
+          </div>
         </div>
       </section>
     </div>
@@ -86,6 +94,10 @@ const { t } = useI18n();
 
 const onStart = async () => {
   router.push({ path: "/chat" });
+};
+
+const onOpenQa = async () => {
+  router.push({ path: "/qa" });
 };
 
 const providers = [
@@ -144,7 +156,6 @@ const capabilityHighlights = [
 .home-shell {
   position: relative;
   width: min(1160px, 100%);
-  min-height: 640px;
   max-height: calc(100dvh - 56px);
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(300px, 370px);
@@ -191,13 +202,15 @@ const capabilityHighlights = [
 }
 
 .home-title {
-  max-width: 560px;
-  font-size: clamp(34px, 4.5vw, 52px);
-  line-height: 1.1;
+  max-width: none;
+  font-size: clamp(30px, 3.45vw, 42px);
+  line-height: 1.12;
   font-weight: 850;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   color: oklch(var(--bc));
   margin: 0;
+  white-space: nowrap;
+  word-break: keep-all;
 }
 
 .home-copy {
@@ -293,8 +306,13 @@ const capabilityHighlights = [
   }
 }
 
-.mobile-btn {
+.mobile-actions {
   display: none;
+  width: 100%;
+  gap: 6px;
+}
+
+.mobile-btn {
   height: 50px;
   width: 100%;
   border-radius: 13px;
@@ -316,6 +334,18 @@ const capabilityHighlights = [
   &:active {
     transform: translateY(0);
   }
+}
+
+.mobile-link-btn {
+  height: 42px;
+  width: 100%;
+  border-radius: 11px;
+  border: 1px solid oklch(var(--bc) / 0.08);
+  background: oklch(var(--b1) / 0.54);
+  color: oklch(var(--bc) / 0.58);
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
 }
 
 .home-updated {
@@ -436,6 +466,11 @@ const capabilityHighlights = [
   flex-shrink: 0;
 }
 
+.sign-actions {
+  display: grid;
+  gap: 6px;
+}
+
 /* ── Button ── */
 .sign-button {
   height: 50px;
@@ -464,6 +499,21 @@ const capabilityHighlights = [
   }
 }
 
+.sign-link-button {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid oklch(var(--bc) / 0.06);
+  background: oklch(var(--b1) / 0.5);
+  color: oklch(var(--bc) / 0.58);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
 /* ── Responsive ── */
 @media (max-width: 1024px) {
   .home {
@@ -489,8 +539,8 @@ const capabilityHighlights = [
   .home-right {
     display: none;
   }
-  .mobile-btn {
-    display: block;
+  .mobile-actions {
+    display: grid;
   }
   .home-updated {
     display: none;
@@ -507,6 +557,9 @@ const capabilityHighlights = [
   .home-left {
     padding: 26px 14px 16px;
     gap: 20px;
+  }
+  .home-title {
+    font-size: clamp(21px, 6.4vw, 28px);
   }
 }
 </style>
