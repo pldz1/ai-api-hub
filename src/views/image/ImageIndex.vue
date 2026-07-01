@@ -129,12 +129,13 @@
               </button>
             </AppTooltip>
 
-            <select v-model="selectedModelIndex" class="image-model-select" :disabled="isCurrentConversationSubmitting || availableModels.length === 0">
-              <option :value="-1" disabled>{{ availableModels.length ? t("image.selectModel") : t("image.imageModelNotConfigured") }}</option>
-              <option v-for="(model, index) in availableModels" :key="`${model.name}-${index}`" :value="index">
-                {{ model.name || model.model }}
-              </option>
-            </select>
+            <AppSelect
+              v-model="selectedModelIndex"
+              class="image-model-select"
+              :options="imageModelOptions"
+              :placeholder="availableModels.length ? t('image.selectModel') : t('image.imageModelNotConfigured')"
+              :disabled="isCurrentConversationSubmitting || availableModels.length === 0"
+            />
 
             <AppTooltip :text="t('tooltip.modelSettings')" placement="top">
               <button class="image-settings-button" type="button" @click="onShowModelSettings">
@@ -166,6 +167,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
+import AppSelect from "@/components/AppSelect.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
 import ImageModal from "@/components/ImageModal.vue";
 import MessageTopicList from "@/components/MessageTopicList.vue";
@@ -209,6 +211,12 @@ const activeImageRuntime = computed(() => (routeImageId.value ? store.state.imag
 const runtimeTick = ref(Date.now());
 const mode = computed(() => (attachments.value.length > 0 ? "edit" : "generation"));
 const availableModels = computed<ImageModelConfig[]>(() => store.state.models.image || []);
+const imageModelOptions = computed(() =>
+  availableModels.value.map((model, index) => ({
+    label: model.name || model.model,
+    value: index,
+  })),
+);
 const selectedModel = computed<ImageModelConfig | null>(() => availableModels.value[selectedModelIndex.value] || null);
 const isCurrentConversationSubmitting = computed(() => Boolean(activeImageRuntime.value?.pending || activeImageRuntime.value?.status === "loading"));
 const isSendDisabled = computed(() => isCurrentConversationSubmitting.value || !prompt.value.trim() || !selectedModel.value);
@@ -1108,17 +1116,34 @@ onBeforeUnmount(() => {
 }
 
 .image-model-select {
-  height: 32px;
   min-width: 0;
   max-width: 120px;
-  border-radius: 8px;
-  color: oklch(var(--bc));
-  font-size: 16px;
-  padding: 0 4px 0 4px;
-  background: transparent;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+
+  :deep(.app-select-control) {
+    min-height: 32px;
+    height: 32px;
+    padding: 0 28px 0 4px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    font-size: 16px;
+  }
+
+  :deep(.app-select-button-label) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  :deep(.app-select-trigger) {
+    right: 2px;
+    width: 24px;
+    height: 24px;
+  }
+
+  :deep(.app-select-menu) {
+    min-width: 220px;
+  }
 }
 
 .image-mode-pill {
@@ -1186,6 +1211,10 @@ onBeforeUnmount(() => {
   .image-model-select {
     flex: 1 1 auto;
     max-width: none;
+
+    :deep(.app-select-control) {
+      font-size: 14px;
+    }
   }
 
   .image-right-actions {

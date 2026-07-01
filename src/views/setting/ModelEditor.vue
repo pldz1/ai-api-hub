@@ -12,17 +12,19 @@
         <!-- Shared model selector -->
         <label class="model-form-field">
           <span>{{ t("user.modelCard.fields.model") }}</span>
-          <select v-model="localModel.model" class="model-select model-select-bordered w-full">
-            <option v-for="modelName in availableModelOptions" :key="modelName" :value="modelName">{{ modelName }}</option>
-          </select>
+          <AppSelect
+            v-model="localModel.model"
+            :options="modelSelectOptions"
+            searchable
+            allow-custom-value
+            empty-text="No matching models"
+          />
         </label>
 
         <!-- Provider selector changes the required connection fields below -->
         <label class="model-form-field">
           <span>{{ t("user.modelCard.fields.provider") }}</span>
-          <select v-model="localModel.provider" class="model-select model-select-bordered w-full">
-            <option v-for="ai in availableModelProviderList" :key="getProviderValue(ai)" :value="getProviderValue(ai)">{{ getProviderLabel(ai) }}</option>
-          </select>
+          <AppSelect v-model="localModel.provider" :options="providerSelectOptions" />
         </label>
 
         <!-- OpenAI-style base URL -->
@@ -55,7 +57,7 @@
     </section>
 
     <!-- Chat model capability preview -->
-    <section v-if="!isImageModel && !isVideoModel" class="model-form-section">
+    <section v-if="isChatModel" class="model-form-section">
       <div class="model-section-head">
         <h4>{{ t("user.modelCard.capabilitiesTitle") }}</h4>
         <p>{{ t("user.modelCard.capabilitiesDescription") }}</p>
@@ -75,6 +77,7 @@
 import { computed, reactive, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import copyIcon from "@/assets/svg/copy16.svg";
+import AppSelect from "@/components/AppSelect.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import {
   chatDisplayedCapabilityKeys,
@@ -138,6 +141,7 @@ let lastModelSnapshot = "";
 
 const isImageModel = computed(() => props.kind === "image");
 const isVideoModel = computed(() => props.kind === "video");
+const isChatModel = computed(() => !isImageModel.value && !isVideoModel.value);
 const usesBaseURL = computed(() =>
   isVideoModel.value
     ? videoProviderUsesField(localModel.provider, "baseURL")
@@ -156,6 +160,7 @@ const availableModelOptions = computed(() => {
 
   return options;
 });
+const modelSelectOptions = computed(() => availableModelOptions.value.map((item) => ({ label: item, value: item })));
 
 const availableModelProviderList = computed(() => {
   // Limit providers to combinations that the request builders can route correctly.
@@ -170,6 +175,12 @@ const availableModelProviderList = computed(() => {
   const allowedProviders = new Set(getChatProvidersForModel(localModel.model));
   return chatProviderKeys.filter((item) => allowedProviders.has(item));
 });
+const providerSelectOptions = computed(() =>
+  availableModelProviderList.value.map((item) => ({
+    label: getProviderLabel(item),
+    value: getProviderValue(item),
+  })),
+);
 
 const capabilityLabelKeys: Record<string, string> = {
   webSearch: "input.capabilities.webSearch",
@@ -183,6 +194,7 @@ const chatCapabilityRows = computed(() => {
     supported: supported[key],
   }));
 });
+
 function createEmptyModelEditorState(): ModelEditorState {
   return {
     ...structuredClone(defaultChatModelEditorState),
@@ -400,28 +412,6 @@ watch(
   }
 }
 
-.model-select {
-  width: 100%;
-  min-height: 46px;
-  padding: 0 38px 0 14px;
-  border-radius: 12px;
-  border: 1px solid oklch(var(--bc) / 0.1);
-  background: oklch(var(--b1) / 0.98)
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='currentColor' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
-    no-repeat right 12px center / 12px 12px;
-  color: oklch(var(--bc));
-  appearance: none;
-
-  &:hover {
-    border-color: oklch(var(--bc) / 0.18);
-  }
-
-  &:focus {
-    outline: none;
-    border-color: oklch(var(--p) / 0.42);
-  }
-}
-
 .model-form-field-span {
   grid-column: 1 / -1;
 }
@@ -553,11 +543,6 @@ watch(
       font-size: 11px;
       line-height: 1.55;
     }
-  }
-
-  .model-select {
-    min-height: 44px;
-    padding-left: 14px;
   }
 
   .model-key-input {

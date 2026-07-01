@@ -1,5 +1,6 @@
 import { defaultModelCapabilities } from "@/constants";
-import { createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
+import { createConversationModelSnapshot, getChatModelCapabilities, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
+import { findChatModelCatalogItem } from "@/ai-capability/chat";
 
 const emptyTokenUsage = () => ({
   input_tokens: 0,
@@ -20,6 +21,10 @@ function normalizeTokenUsage(data: Record<string, unknown> = {}) {
 }
 
 function createInputCapabilities(_conversation = null, _fallbackModel = null) {
+  const model = _fallbackModel;
+  if (model && !findChatModelCatalogItem(model.model, model.provider)) {
+    return { ...getChatModelCapabilities(model) };
+  }
   return { ...defaultModelCapabilities };
 }
 

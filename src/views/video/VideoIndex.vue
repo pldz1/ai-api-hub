@@ -150,33 +150,13 @@
 
         <div class="video-composer-actions">
           <div class="video-left-actions">
-            <select v-model="selectedModelIndex" class="video-model-select" :disabled="isCurrentConversationSubmitting || availableModels.length === 0">
-              <option :value="-1" disabled>
-                {{ availableModels.length ? t("video.selectModel") : t("video.videoModelNotConfigured") }}
-              </option>
-              <template v-if="modelGroups.t2v.length || modelGroups.i2v.length || modelGroups.r2v.length">
-                <optgroup v-if="modelGroups.t2v.length" :label="t('video.modelType.t2v')">
-                  <option v-for="{ model, index } in modelGroups.t2v" :key="`t2v-${index}`" :value="index">
-                    {{ model.name || model.model }}
-                  </option>
-                </optgroup>
-                <optgroup v-if="modelGroups.i2v.length" :label="t('video.modelType.i2v')">
-                  <option v-for="{ model, index } in modelGroups.i2v" :key="`i2v-${index}`" :value="index">
-                    {{ model.name || model.model }}
-                  </option>
-                </optgroup>
-                <optgroup v-if="modelGroups.r2v.length" :label="t('video.modelType.r2v')">
-                  <option v-for="{ model, index } in modelGroups.r2v" :key="`r2v-${index}`" :value="index">
-                    {{ model.name || model.model }}
-                  </option>
-                </optgroup>
-              </template>
-              <template v-else>
-                <option v-for="(model, index) in availableModels" :key="`${model.name}-${index}`" :value="index">
-                  {{ model.name || model.model }}
-                </option>
-              </template>
-            </select>
+            <AppSelect
+              v-model="selectedModelIndex"
+              class="video-model-select"
+              :options="videoModelOptions"
+              :placeholder="availableModels.length ? t('video.selectModel') : t('video.videoModelNotConfigured')"
+              :disabled="isCurrentConversationSubmitting || availableModels.length === 0"
+            />
 
             <AppTooltip :text="t('tooltip.modelSettings')" placement="top">
               <button class="video-settings-button" type="button" @click="onShowModelSettings">
@@ -206,6 +186,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
+import AppSelect from "@/components/AppSelect.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
 import ImageModal from "@/components/ImageModal.vue";
 import MessageTopicList from "@/components/MessageTopicList.vue";
@@ -266,6 +247,20 @@ const modelGroups = computed(() => {
     else t2v.push({ model, index });
   });
   return { t2v, i2v, r2v };
+});
+const videoModelOptions = computed(() => {
+  const hasGroups = modelGroups.value.t2v.length || modelGroups.value.i2v.length || modelGroups.value.r2v.length;
+  if (!hasGroups) {
+    return availableModels.value.map((model, index) => ({
+      label: model.name || model.model,
+      value: index,
+    }));
+  }
+  return [
+    ...modelGroups.value.t2v.map(({ model, index }) => ({ label: model.name || model.model, value: index, group: t("video.modelType.t2v") })),
+    ...modelGroups.value.i2v.map(({ model, index }) => ({ label: model.name || model.model, value: index, group: t("video.modelType.i2v") })),
+    ...modelGroups.value.r2v.map(({ model, index }) => ({ label: model.name || model.model, value: index, group: t("video.modelType.r2v") })),
+  ];
 });
 
 const loadingStatusText = computed(() => {
@@ -1188,17 +1183,34 @@ onBeforeUnmount(() => {
 }
 
 .video-model-select {
-  height: 32px;
   min-width: 0;
   max-width: 120px;
-  border-radius: 8px;
-  color: oklch(var(--bc));
-  font-size: 16px;
-  padding: 0 4px 0 4px;
-  background: transparent;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+
+  :deep(.app-select-control) {
+    min-height: 32px;
+    height: 32px;
+    padding: 0 28px 0 4px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    font-size: 16px;
+  }
+
+  :deep(.app-select-button-label) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  :deep(.app-select-trigger) {
+    right: 2px;
+    width: 24px;
+    height: 24px;
+  }
+
+  :deep(.app-select-menu) {
+    min-width: 220px;
+  }
 }
 
 .video-file-input {
@@ -1216,6 +1228,12 @@ onBeforeUnmount(() => {
   .video-composer {
     border-radius: 28px;
     padding: 12px;
+  }
+
+  .video-model-select {
+    :deep(.app-select-control) {
+      font-size: 14px;
+    }
   }
   .video-media-slots {
     flex-direction: column;

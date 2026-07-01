@@ -59,29 +59,20 @@ export function getChatProvidersForModel(model = ""): ChatModelProvider[] {
   return catalogItem.providers.map((itemProvider) => itemProvider.provider);
 }
 
-function mergeChatCapabilities(capabilitiesList: Partial<ChatModelCapabilities>[]): ChatModelCapabilities {
-  return capabilitiesList.reduce<ChatModelCapabilities>(
-    (merged, capabilities) => ({
-      imageRead: Boolean(merged.imageRead || capabilities.imageRead),
-      webSearch: Boolean(merged.webSearch || capabilities.webSearch),
-    }),
-    { ...defaultModelCapabilities },
-  );
-}
-
 export function getChatModelCapabilities(model: LooseModelConfig | string | null | undefined = null): ChatModelCapabilities {
   const modelId = typeof model === "string" ? model : model?.model || "";
   const modelProvider = typeof model === "string" ? null : isChatModelProvider(model?.provider) ? model.provider : null;
   const catalogCapabilities = findChatModelCatalogProvider(modelId, modelProvider)?.capabilities;
-  const mergedCapabilities = mergeChatCapabilities(catalogCapabilities ? [catalogCapabilities] : []);
-  return normalizeModelCapabilities(mergedCapabilities, { ...defaultModelCapabilities, ...mergedCapabilities });
+  if (!catalogCapabilities) return { webSearch: true, imageRead: true };
+  return normalizeModelCapabilities(catalogCapabilities, { ...defaultModelCapabilities, ...catalogCapabilities });
 }
 
 export function getChatMessageFormat(model: LooseModelConfig | string | null | undefined = null): "text" | "parts" {
   const modelId = typeof model === "string" ? model : model?.model || "";
   const provider = typeof model === "string" ? null : isChatModelProvider(model?.provider) ? model.provider : null;
   const catalogFormat = findChatModelCatalogItem(modelId, provider)?.messageFormat;
-  return catalogFormat || "parts";
+  if (!catalogFormat) return "parts";
+  return catalogFormat;
 }
 
 /**

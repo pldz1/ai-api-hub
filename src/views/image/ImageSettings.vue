@@ -17,11 +17,7 @@
             </AppTooltip>
           </div>
           <div class="ims-setting-content">
-            <select v-model="localSettings.size" class="ims-select">
-              <option v-for="item in availableSizes" :key="item" :value="item">
-                {{ item }}
-              </option>
-            </select>
+            <AppSelect v-model="selectedSize" class="ims-select" :options="sizeOptions" />
           </div>
         </div>
 
@@ -69,6 +65,7 @@ import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import infoIcon from "@/assets/svg/info24.svg";
 import closeIcon from "@/assets/svg/error24.svg";
+import AppSelect from "@/components/AppSelect.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import { getImageModelSizes, resolveImageParamDefs } from "@/models";
@@ -95,6 +92,13 @@ const dialogRef = ref<HTMLDialogElement | null>(null);
 const activeParamDefs = computed<ImageModelParamDef[]>(() => resolveImageParamDefs(props.model || undefined));
 
 const availableSizes = computed<string[]>(() => getImageModelSizes(props.model || undefined));
+const sizeOptions = computed(() => availableSizes.value.map((item) => ({ label: item, value: item })));
+const selectedSize = computed({
+  get: () => String(localSettings.size || availableSizes.value[0] || "1024x1024"),
+  set: (value: string | number | null) => {
+    localSettings.size = String(value || availableSizes.value[0] || "1024x1024");
+  },
+});
 
 const localSettings = reactive<Record<string, unknown>>({ size: "1024x1024", n: 1 });
 
@@ -215,18 +219,12 @@ defineExpose({ openDialog });
   .ims-select {
     width: 100%;
     max-width: 220px;
-    height: 32px;
-    border: 2px solid oklch(var(--bc) / 0.08);
-    border-radius: 8px;
-    background: oklch(var(--b1));
-    color: oklch(var(--bc));
-    font-size: 14px;
-    padding: 0 30px 0 8px;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23111827' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 9px center;
-    background-size: 12px 12px;
+
+    :deep(.app-select-control) {
+      min-height: 32px;
+      height: 32px;
+      font-size: 14px;
+    }
   }
 }
 

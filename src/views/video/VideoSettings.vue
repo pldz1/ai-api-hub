@@ -17,9 +17,7 @@
             </AppTooltip>
           </div>
           <div class="vms-setting-content">
-            <select v-model="localSettings.resolution" class="vms-select">
-              <option v-for="item in availableResolutions" :key="item" :value="item">{{ item }}</option>
-            </select>
+            <AppSelect v-model="localSettings.resolution" class="vms-select" :options="resolutionOptions" />
           </div>
         </div>
 
@@ -64,6 +62,7 @@ import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import infoIcon from "@/assets/svg/info24.svg";
 import closeIcon from "@/assets/svg/error24.svg";
+import AppSelect from "@/components/AppSelect.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import { getVideoModelResolutions, resolveVideoParamDefs } from "@/models";
@@ -93,6 +92,7 @@ const localSettings = reactive<VideoSettingsData>({
 });
 
 const availableResolutions = computed(() => getVideoModelResolutions(props.model as unknown as Record<string, unknown> | null));
+const resolutionOptions = computed(() => availableResolutions.value.map((item) => ({ label: item, value: item })));
 
 const activeParamDefs = computed(() =>
   resolveVideoParamDefs(props.model as unknown as Record<string, unknown> | null).filter(
@@ -206,18 +206,12 @@ defineExpose({ openDialog });
   .vms-select {
     width: 100%;
     max-width: 220px;
-    height: 32px;
-    border: 2px solid oklch(var(--bc) / 0.08);
-    border-radius: 8px;
-    background: oklch(var(--b1));
-    color: oklch(var(--bc));
-    font-size: 14px;
-    padding: 0 30px 0 8px;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%23111827' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 9px center;
-    background-size: 12px 12px;
+
+    :deep(.app-select-control) {
+      min-height: 32px;
+      height: 32px;
+      font-size: 14px;
+    }
   }
 }
 

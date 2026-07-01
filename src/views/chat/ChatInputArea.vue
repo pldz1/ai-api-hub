@@ -31,12 +31,14 @@
           <!-- Keep the model selector and settings entry point together. -->
           <div class="ccia-right-actions">
             <div class="ccia-model-area">
-              <select v-if="!isModelSelectionReadonly" v-model="selectedModelIndex" class="ccia-model-select">
-                <option disabled :value="null">{{ t("input.selectChatModel") }}</option>
-                <option v-for="(m, index) in chatModels" :key="`${m.name}-${index}`" :value="index">
-                  {{ m.name }}
-                </option>
-              </select>
+              <AppSelect
+                v-if="!isModelSelectionReadonly"
+                v-model="selectedModelIndex"
+                class="ccia-model-select"
+                :options="chatModelOptions"
+                :placeholder="t('input.selectChatModel')"
+                :disabled="chatModels.length === 0"
+              />
               <div v-else class="ccia-model-lock">
                 <AppTooltip :text="t('tooltip.cannotEditModel')" placement="top">
                   {{ readonlyModelName }}
@@ -97,6 +99,7 @@ import paramIcon from "@/assets/svg/param24.svg";
 import pauseIcon from "@/assets/svg/pause32.svg";
 import webIcon from "@/assets/svg/web24.svg";
 import { defaultModelCapabilities } from "@/constants";
+import AppSelect from "@/components/AppSelect.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import { createConversationModelSnapshot, getChatModelCapabilities, mergeChatSettingsWithModel, getModelFromSnapshot } from "@/models";
@@ -151,6 +154,12 @@ const inputImages = ref<ChatInputImage[]>([]);
 const store = useStore();
 const { t } = useI18n();
 const chatModels = computed<ChatModelConfig[]>(() => store.state.models.chat || []);
+const chatModelOptions = computed(() =>
+  chatModels.value.map((model, index) => ({
+    label: model.name,
+    value: index,
+  })),
+);
 const curChatId = computed<string>(() => store.state.curChatId || "");
 const curConversation = computed(() => store.state.curConversation);
 const inputCapabilities = computed<Record<string, boolean>>(() => store.state.inputCapabilities || {});
@@ -169,12 +178,12 @@ const activeCapabilities = computed(() => ({
 }));
 const readonlyModelName = computed(() => draftSnapshot.value?.displayName || curConversation.value?.modelSnapshot?.displayName || t("input.lockedModel"));
 
-const getModelSelectionKey = (model: ChatModelConfig | null) => [model?.provider, model?.name, model?.model, model?.baseURL].join("|");
+const getModelIdentityKey = (model: ChatModelConfig | null) => [model?.provider, model?.name, model?.model, model?.baseURL].join("|");
 const selectedModelIndex = computed<number | null>({
   get: () => {
     if (!selectedModel.value) return null;
-    const selectedKey = getModelSelectionKey(selectedModel.value);
-    const index = chatModels.value.findIndex((model) => getModelSelectionKey(model) === selectedKey);
+    const selectedKey = getModelIdentityKey(selectedModel.value);
+    const index = chatModels.value.findIndex((model) => getModelIdentityKey(model) === selectedKey);
     return index >= 0 ? index : null;
   },
   set: (index) => {
@@ -185,7 +194,19 @@ const selectedModelIndex = computed<number | null>({
 watch(
   () => chatModels.value,
   (models) => {
-    if (!selectedModel.value && models.length > 0) selectedModel.value = models[0];
+    if (models.length === 0) {
+      selectedModel.value = null;
+      return;
+    }
+
+    if (!selectedModel.value) {
+      selectedModel.value = models[0];
+      return;
+    }
+
+    const selectedKey = getModelIdentityKey(selectedModel.value);
+    const matchedModel = models.find((model) => getModelIdentityKey(model) === selectedKey) || null;
+    if (matchedModel && matchedModel !== selectedModel.value) selectedModel.value = matchedModel;
   },
   { deep: true, immediate: true },
 );
@@ -197,7 +218,7 @@ watch(
 
     await store.dispatch("setCurChatModel", model);
 
-    if (!previousModel || getModelSelectionKey(previousModel) !== getModelSelectionKey(model)) {
+    if (!previousModel || getModelIdentityKey(previousModel) !== getModelIdentityKey(model)) {
       if (curChatId.value) {
         await store.dispatch("setCurConversationModel", model);
       }
@@ -217,7 +238,7 @@ watch(
   () => curConversation.value?.modelSnapshot,
   (snapshot) => {
     const model = getModelFromSnapshot(snapshot);
-    if (!model || getModelSelectionKey(selectedModel.value) === getModelSelectionKey(model)) return;
+    if (!model || getModelIdentityKey(selectedModel.value) === getModelIdentityKey(model)) return;
     selectedModel.value = model;
   },
   { immediate: true },
@@ -249,7 +270,7 @@ const onSendInputData = async () => {
 
   if (curChatId.value) {
     const currentConversationModel = getModelFromSnapshot(curConversation.value?.modelSnapshot);
-    if (getModelSelectionKey(currentConversationModel) !== getModelSelectionKey(selectedModel.value)) {
+    if (getModelIdentityKey(currentConversationModel) !== getModelIdentityKey(selectedModel.value)) {
       await store.dispatch("setCurConversationModel", selectedModel.value);
     }
     await setChatSettings(curChatId.value);
@@ -497,6 +518,37 @@ watch(
     color: oklch(var(--bc));
     font-size: 16px;
     background: transparent;
+  }
+
+  .ccia-model-select {
+    :deep(.app-select-control) {
+      min-height: 32px;
+      height: 32px;
+      padding: 0 28px 0 4px;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      font-size: 16px;
+    }
+
+    :deep(.app-select-button-label) {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    :deep(.app-select-trigger) {
+      right: 2px;
+      width: 24px;
+      height: 24px;
+    }
+
+    :deep(.app-select-menu) {
+      min-width: 180px;
+    }
+  }
+
+  .ccia-model-lock {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -614,6 +666,12 @@ watch(
     .ccia-model-lock {
       max-width: 120px;
       font-size: 13px;
+    }
+
+    .ccia-model-select {
+      :deep(.app-select-control) {
+        font-size: 13px;
+      }
     }
 
     .ccia-capability-row {
