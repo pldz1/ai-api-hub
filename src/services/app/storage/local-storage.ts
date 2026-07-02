@@ -11,7 +11,16 @@ import type {
   VideoConversationListItem,
   VideoDataItem,
 } from "@/types";
-import { setImageSource, getImageSource, deleteImageSource, setVideoSource, getVideoSource, deleteVideoSource, urlToDataUrl } from "./indexeddb";
+import {
+  setImageSource,
+  getImageSource,
+  deleteImageSource,
+  setVideoSource,
+  getVideoSource,
+  deleteVideoSource,
+  deleteChatFileSource,
+  urlToDataUrl,
+} from "./indexeddb";
 
 const STORAGE_KEY = "ai-api-hub.local-storage.v2";
 
@@ -151,6 +160,23 @@ function normalizeStoredVideoRecords(items: unknown[] = []): StoredVideoRecord[]
   });
 
   return records.filter((item): item is StoredVideoRecord => Boolean(item));
+}
+
+function collectChatAttachmentIds(messages: StoredChatMessage[]): string[] {
+  const ids = new Set<string>();
+
+  messages.forEach((record) => {
+    try {
+      const message = JSON.parse(record.message) as { attachments?: Array<{ id?: string }> } | null;
+      (message?.attachments || []).forEach((attachment) => {
+        if (attachment?.id) ids.add(attachment.id);
+      });
+    } catch {
+      // Ignore malformed records while cleaning up attachment blobs.
+    }
+  });
+
+  return [...ids];
 }
 
 function readStorageState(): LocalStorageState {
@@ -293,8 +319,12 @@ async function handleDeleteChat(body: RequestBody): Promise<ApiResponse<null>> {
   const state = readStorageState();
   const cid = asString(body.cid);
   if (!cid) return fail("Chat id is required.");
+  const chat = findChat(state, cid);
+  if (!chat) return fail("Chat not found.");
+
   state.chats = state.chats.filter((item) => item.cid !== cid);
   writeStorageState(state);
+  void Promise.allSettled(collectChatAttachmentIds(chat.messages || []).map((attachmentId) => deleteChatFileSource(attachmentId)));
   return ok(null);
 }
 
@@ -344,8 +374,12 @@ async function handleDeleteMessage(body: RequestBody): Promise<ApiResponse<null>
   const chat = findChat(state, cid);
   if (!chat) return fail("Chat not found.");
 
+  const targetMessage = chat.messages.find((item) => item.mid === mid);
   chat.messages = chat.messages.filter((item) => item.mid !== mid);
   writeStorageState(state);
+  if (targetMessage) {
+    void Promise.allSettled(collectChatAttachmentIds([targetMessage]).map((attachmentId) => deleteChatFileSource(attachmentId)));
+  }
   return ok(null);
 }
 

@@ -1,8 +1,10 @@
 import store from "@/store/index";
-import { dsAlert, getUuid } from "@/utils";
+import { dsAlert, getUuid, saveBlobToLocal, saveTextToLocal } from "@/utils";
 import { tr } from "@/i18n";
 import type { ChatPromptMessage } from "@/types";
+import { getChatFileSource, deleteChatFileSource } from "@/services/app/storage";
 import { deleteMessage as deleteChatMessage } from "../conversation";
+import { buildChatAttachmentDownloadFilename } from "../chat-files";
 import { renderAssistantDraft } from "./message-renderer";
 import type { StreamDraft } from "./stream-state";
 import {
@@ -50,6 +52,19 @@ export function createChatDrawer(): ChatDrawer {
       await store.dispatch("setModalImage", url);
       (document.getElementById("global_image_preview_modal") as HTMLDialogElement | null)?.showModal();
     },
+    onPreviewAttachment: async (attachment) => {
+      await store.dispatch("setModalChatAttachment", attachment);
+      (document.getElementById("global_chat_file_preview_modal") as HTMLDialogElement | null)?.showModal();
+    },
+    onDownloadAttachment: async (attachment) => {
+      const source = await getChatFileSource(attachment.id);
+      const success = source
+        ? await saveBlobToLocal(source, buildChatAttachmentDownloadFilename(attachment, true))
+        : await saveTextToLocal(attachment.text, buildChatAttachmentDownloadFilename(attachment, false));
+      if (!success) {
+        dsAlert({ type: "error", message: tr("toast.fileDownloadFailed") });
+      }
+    },
     onCopyAssistantMessage: async (mid) => {
       const idx = findMessageIndex(container!, mid);
       if (idx < 0) {
@@ -83,7 +98,7 @@ export function createChatDrawer(): ChatDrawer {
     if (!container) return null;
 
     if (message.role === "user") {
-      return createUserMessageElement(container, message.content, message.mid, actions);
+      return createUserMessageElement(container, message, actions);
     }
     if (message.role === "assistant") {
       return createAssistantMessageElement(
@@ -137,9 +152,11 @@ export function createChatDrawer(): ChatDrawer {
       dsAlert({ type: "error", message: tr("toast.invalidMessage") });
       return;
     }
+    const msg = store.state.messages[idx];
     await store.dispatch("spliceMessages", idx);
     getMessageElement(mid)?.remove();
     await deleteChatMessage(store.state.curChatId, mid);
+    void Promise.allSettled((msg.attachments || []).map((attachment) => deleteChatFileSource(attachment.id)));
     await _onMessageDeleted?.();
   }
 

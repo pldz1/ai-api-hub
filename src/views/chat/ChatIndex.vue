@@ -48,6 +48,8 @@
   </section>
   <!-- Click image to view -->
   <ImageModal />
+  <!-- Click a file attachment to view extracted content -->
+  <ChatFileModal />
 </template>
 
 <script setup lang="ts">
@@ -61,6 +63,7 @@ import { createChatDrawer, addChat, getAllMessage, getChatSettings, getChatSessi
 import ChatHeaderBar from "@/views/chat/ChatHeaderBar.vue";
 import ChatInputArea from "@/views/chat/ChatInputArea.vue";
 import ChatInsTemplate from "@/views/chat/ChatInsTemplate.vue";
+import ChatFileModal from "@/views/chat/ChatFileModal.vue";
 import ChatScrollActions from "@/views/chat/ChatScrollActions.vue";
 import ImageModal from "@/components/ImageModal.vue";
 import MessageTopicList from "@/components/MessageTopicList.vue";

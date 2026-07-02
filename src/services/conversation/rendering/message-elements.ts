@@ -5,7 +5,8 @@ import deleteIcon from "@/assets/svg/delete16.svg";
 import { tr } from "@/i18n";
 import { textToHtml } from "@/utils";
 import { createSvgIcon } from "@/utils/svg-icon";
-import type { ChatPromptContent } from "@/types";
+import type { ChatPromptContent, ChatPromptMessage, ChatMessageAttachment } from "@/types";
+import { formatChatFileSize } from "../chat-files";
 
 const USER_CONTENT_COLLAPSED_HEIGHT = 200;
 
@@ -13,6 +14,8 @@ export interface MessageElementActions {
   onCopyAssistantMessage?: (mid: string) => void | Promise<void>;
   onDeleteMessage?: (mid: string) => void | Promise<void>;
   onPreviewImage?: (url: string) => void | Promise<void>;
+  onPreviewAttachment?: (attachment: ChatMessageAttachment) => void | Promise<void>;
+  onDownloadAttachment?: (attachment: ChatMessageAttachment) => void | Promise<void>;
 }
 
 // -- helpers --
@@ -48,6 +51,19 @@ function createIconButton(icon: string, tip: string): HTMLDivElement {
   return button;
 }
 
+function createAttachmentActionButton(label: string, tip: string, onClick: () => void | Promise<void>): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "cmbu-file-action tooltip tooltip-top";
+  button.dataset.tip = tip;
+  button.textContent = label;
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    void onClick();
+  });
+  return button;
+}
+
 function createMessageOptions(mid: string, which: ("copy" | "delete")[], actions: MessageElementActions): HTMLDivElement {
   const optionsDiv = document.createElement("div");
   optionsDiv.classList.add(which.includes("copy") ? "cmba-options" : "cmbu-options");
@@ -65,6 +81,62 @@ function createMessageOptions(mid: string, which: ("copy" | "delete")[], actions
   }
 
   return optionsDiv;
+}
+
+function createFileAttachmentElement(attachment: ChatMessageAttachment, actions: MessageElementActions): HTMLDivElement {
+  const item = document.createElement("div");
+  item.className = "cmbu-file-item";
+
+  const badge = document.createElement("div");
+  badge.className = "cmbu-file-kind";
+  badge.textContent = attachment.kindLabel || "FILE";
+
+  const body = document.createElement("div");
+  body.className = "cmbu-file-card";
+
+  const name = document.createElement("div");
+  name.className = "cmbu-file-name";
+  name.textContent = attachment.name;
+
+  const meta = document.createElement("div");
+  meta.className = "cmbu-file-meta";
+  meta.textContent = `${attachment.contentType || "text/plain"} · ${formatChatFileSize(attachment.size)}`;
+
+  const actionRow = document.createElement("div");
+  actionRow.className = "cmbu-file-actions";
+
+  if (actions.onPreviewAttachment) {
+    actionRow.appendChild(createAttachmentActionButton(tr("common.preview"), tr("tooltip.previewAttachment"), () => actions.onPreviewAttachment?.(attachment)));
+  }
+
+  if (actions.onDownloadAttachment) {
+    actionRow.appendChild(createAttachmentActionButton(tr("common.download"), tr("tooltip.downloadAttachment"), () =>
+      actions.onDownloadAttachment?.(attachment),
+    ));
+  }
+
+  body.appendChild(name);
+  body.appendChild(meta);
+  if (actionRow.childNodes.length) {
+    body.appendChild(actionRow);
+  }
+  if (attachment.truncated) {
+    const note = document.createElement("div");
+    note.className = "cmbu-file-note";
+    note.textContent = tr("toast.fileContentTruncated");
+    body.appendChild(note);
+  }
+
+  item.appendChild(badge);
+  item.appendChild(body);
+  return item;
+}
+
+function createFileAttachmentArea(attachments: ChatMessageAttachment[], actions: MessageElementActions): HTMLDivElement {
+  const area = document.createElement("div");
+  area.className = "cmbu-file-area";
+  attachments.forEach((attachment) => area.appendChild(createFileAttachmentElement(attachment, actions)));
+  return area;
 }
 
 function setupUserContentCollapse(contentAreaDiv: HTMLDivElement, contentBodyDiv: HTMLDivElement) {
@@ -101,13 +173,12 @@ function setupUserContentCollapse(contentAreaDiv: HTMLDivElement, contentBodyDiv
 
 export function createUserMessageElement(
   container: HTMLElement,
-  content: ChatPromptContent[],
-  mid: string,
+  message: ChatPromptMessage,
   actions: MessageElementActions,
 ): HTMLDivElement | null {
   const userDiv = document.createElement("div");
   userDiv.classList.add("chat-md-bubble-user");
-  userDiv.id = mid;
+  userDiv.id = message.mid || "";
 
   const userContentDiv = document.createElement("div");
   userContentDiv.classList.add("cmbu-user-content");
@@ -124,6 +195,7 @@ export function createUserMessageElement(
   const textDiv = document.createElement("div");
   textDiv.classList.add("cmbu-content-text");
 
+  const content = message.content || [];
   for (const prompt of content) {
     if (prompt.type === "text") {
       textDiv.innerHTML = textToHtml(prompt.text);
@@ -138,15 +210,21 @@ export function createUserMessageElement(
     }
   }
 
+  if (message.attachments?.length) {
+    contentBodyDiv.appendChild(createFileAttachmentArea(message.attachments, actions));
+  }
+
   if (content.some((item) => item.type === "image_url")) {
     contentBodyDiv.appendChild(imageAreaEl);
   }
 
-  contentBodyDiv.appendChild(textDiv);
+  if (content.some((item) => item.type === "text")) {
+    contentBodyDiv.appendChild(textDiv);
+  }
   contentAreaDiv.appendChild(contentBodyDiv);
   userContentDiv.appendChild(contentAreaDiv);
   setupUserContentCollapse(contentAreaDiv, contentBodyDiv);
-  userContentDiv.appendChild(createMessageOptions(mid, ["delete"], actions));
+  userContentDiv.appendChild(createMessageOptions(message.mid || "", ["delete"], actions));
   userDiv.appendChild(userContentDiv);
   container.appendChild(userDiv);
 

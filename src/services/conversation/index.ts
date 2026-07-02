@@ -1,4 +1,5 @@
 export * from "./conversation";
+export * from "./chat-files";
 export * from "./archive";
 export { createChatDrawer } from "./rendering/drawer";
 export type { ChatDrawer } from "./rendering/drawer";

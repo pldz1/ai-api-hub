@@ -26,6 +26,28 @@ export async function copyToClipboard(imgElement) {
   }
 }
 
+function downloadBlob(blob, filename = "file.bin") {
+  try {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    return true;
+  } catch (error) {
+    console.error("Failed to download file locally:", error);
+    return false;
+  }
+}
+
+export async function saveBlobToLocal(blob, filename = "file.bin") {
+  return downloadBlob(blob, filename);
+}
+
 /** Save one rendered image element to a local PNG file. */
 export async function saveToLocal(imgElement, filename = "image.png") {
   const canvas = document.createElement("canvas");
@@ -42,19 +64,11 @@ export async function saveToLocal(imgElement, filename = "image.png") {
     return false;
   }
 
-  try {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
+  return downloadBlob(blob, filename);
+}
 
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    return true;
-  } catch (error) {
-    console.error("Failed to save image locally:", error);
-    return false;
-  }
+/** Save plain text content to a local file. */
+export async function saveTextToLocal(text, filename = "file.txt", type = "text/plain;charset=utf-8") {
+  const blob = new Blob([String(text || "")], { type });
+  return downloadBlob(blob, filename);
 }

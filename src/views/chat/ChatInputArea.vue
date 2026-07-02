@@ -4,6 +4,22 @@
     <!-- Wrap the editable prompt area and action controls in a single composer card. -->
     <div class="ccia-input-card" :class="{ 'is-home': props.isHome }">
       <div class="ccia-input-area">
+        <!-- Preview uploaded files before sending the message. -->
+        <div v-if="inputFiles.length" class="ccia-files-area">
+          <div v-for="file in inputFiles" :key="file.id" class="ccia-file-item">
+            <div class="ccia-file-card" :title="file.name">
+              <div class="ccia-file-name">{{ file.name }}</div>
+              <div class="ccia-file-meta">
+                <span>{{ file.kindLabel }}</span>
+                <span>{{ formatChatFileSize(file.size) }}</span>
+                <span>{{ file.contentType || "text/plain" }}</span>
+              </div>
+              <div v-if="file.truncated" class="ccia-file-note">{{ t("toast.fileContentTruncated") }}</div>
+            </div>
+            <button class="ccia-remove-button ccia-file-remove-button" type="button" :aria-label="t('tooltip.removeAttachment')" @click.stop="removeInputFile(file.id)">×</button>
+          </div>
+        </div>
+
         <!-- Preview uploaded images before sending the message. -->
         <div v-if="inputImages.length" class="ccia-imgs-area">
           <div v-for="image in inputImages" :key="image.id" class="ccia-item">
@@ -54,6 +70,12 @@
 
           <!-- Surface per-turn capabilities and the send or stop trigger. -->
           <div class="ccia-left-actions">
+            <AppTooltip :text="t('tooltip.uploadFile')" placement="top">
+              <button class="ccia-capability-chip" type="button" @click="openFilePicker">
+                <SvgIcon class="ccia-capability-icon" :src="attachIcon" />
+                <span>{{ t("input.capabilities.fileContext") }}</span>
+              </button>
+            </AppTooltip>
             <AppTooltip v-if="supportedCapabilities.imageRead" :text="t('tooltip.uploadImage')" placement="top">
               <button class="ccia-capability-chip" type="button" @click="openImageFilePicker">
                 <SvgIcon class="ccia-capability-icon" :src="attachIcon" />
@@ -82,6 +104,7 @@
     </div>
 
     <input ref="imageFileInputRef" class="ccia-file-input" type="file" accept="image/*" multiple @change="onImageFileChange" />
+    <input ref="chatFileInputRef" class="ccia-file-input" type="file" :accept="chatFileAccept" multiple @change="onChatFileChange" />
   </div>
 
   <!-- Mount the model settings dialog next to the composer for local control. -->
@@ -104,6 +127,14 @@ import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import { createConversationModelSnapshot, getChatModelCapabilities, mergeChatSettingsWithModel, getModelFromSnapshot } from "@/models";
 import { packUserMsg, setChatSettings } from "@/services";
+import { setChatFileSource, deleteChatFileSource } from "@/services/app/storage";
+import {
+  CHAT_INPUT_FILE_MAX_MB,
+  formatChatFileSize,
+  getChatInputFileAccept,
+  parseChatInputFile,
+  type ChatInputAttachment,
+} from "@/services/conversation/chat-files";
 import { dsAlert, getUuid } from "@/utils";
 import ChatSettings from "@/views/chat/ChatSettings.vue";
 
@@ -149,7 +180,9 @@ const cciaTextareaRef = ref<HTMLTextAreaElement | null>(null);
 
 const chatSettingsRef = ref<ChatSettingsExpose | null>(null);
 const imageFileInputRef = ref<HTMLInputElement | null>(null);
+const chatFileInputRef = ref<HTMLInputElement | null>(null);
 const inputImages = ref<ChatInputImage[]>([]);
+const inputFiles = ref<ChatInputAttachment[]>([]);
 
 const store = useStore();
 const { t } = useI18n();
@@ -176,6 +209,7 @@ const activeCapabilities = computed(() => ({
   imageRead: supportedCapabilities.value.imageRead,
   webSearch: Boolean(supportedCapabilities.value.webSearch && inputCapabilities.value.webSearch),
 }));
+const chatFileAccept = getChatInputFileAccept();
 const readonlyModelName = computed(() => draftSnapshot.value?.displayName || curConversation.value?.modelSnapshot?.displayName || t("input.lockedModel"));
 
 const getModelIdentityKey = (model: ChatModelConfig | null) => [model?.provider, model?.name, model?.model, model?.baseURL].join("|");
@@ -277,9 +311,10 @@ const onSendInputData = async () => {
   }
 
   const imageUrls = inputImages.value.map((item) => item.src);
-  const data = packUserMsg(imageUrls, inputText.value, activeCapabilities.value.imageRead);
+  const data = packUserMsg(imageUrls, inputText.value, activeCapabilities.value.imageRead, inputFiles.value);
   inputText.value = "";
   inputImages.value = [];
+  inputFiles.value = [];
   emit("on-start", {
     message: {
       ...data,
@@ -333,6 +368,45 @@ const debounce = (fn: Function, delay: number, immediate: boolean = false) => {
    batched at most every 50ms so rapid typing stays responsive. */
 const debounceInputText = debounce(onInputText, 50, true);
 
+const readFileAsChatAttachment = async (file: File): Promise<ChatInputAttachment | null> => {
+  const fileSizeMB = file.size / (1024 * 1024);
+  if (fileSizeMB > CHAT_INPUT_FILE_MAX_MB) {
+    dsAlert({ type: "error", message: t("toast.fileTooLarge", { max: CHAT_INPUT_FILE_MAX_MB }) });
+    return null;
+  }
+
+  try {
+    const attachment = await parseChatInputFile(file);
+    if (!attachment) {
+      dsAlert({ type: "error", message: t("toast.fileUnsupported") });
+      return null;
+    }
+
+    const nextAttachment = {
+      ...attachment,
+      id: getUuid("chatfile"),
+    };
+    await setChatFileSource(nextAttachment.id, file);
+    return nextAttachment;
+  } catch (error) {
+    console.error("Failed to read chat file:", error);
+    dsAlert({
+      type: "error",
+      message: t("toast.fileParseFailed", { error: String(error instanceof Error ? error.message : error || "") }),
+    });
+    return null;
+  }
+};
+
+async function addChatFiles(files: FileList | File[]) {
+  const nextFiles: ChatInputAttachment[] = [];
+  for (const file of Array.from(files)) {
+    const attachment = await readFileAsChatAttachment(file);
+    if (attachment) nextFiles.push(attachment);
+  }
+  inputFiles.value = [...inputFiles.value, ...nextFiles];
+}
+
 const onEnterKeydown = async (event: KeyboardEvent) => {
   if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
@@ -379,6 +453,10 @@ function readFileAsInputImage(file: File): Promise<ChatInputImage | null> {
   });
 }
 
+function openFilePicker() {
+  chatFileInputRef.value?.click();
+}
+
 async function addImageFiles(files: FileList | File[]) {
   if (!supportedCapabilities.value.imageRead) return;
   const nextImages = await Promise.all(Array.from(files).map((file) => readFileAsInputImage(file)));
@@ -397,6 +475,12 @@ async function onImageFileChange(event: Event) {
     return;
   }
   if (target.files?.length) await addImageFiles(target.files);
+  target.value = "";
+}
+
+async function onChatFileChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (target.files?.length) await addChatFiles(target.files);
   target.value = "";
 }
 
@@ -422,6 +506,11 @@ function removeInputImage(id: string) {
   inputImages.value = inputImages.value.filter((item) => item.id !== id);
 }
 
+function removeInputFile(id: string) {
+  void deleteChatFileSource(id);
+  inputFiles.value = inputFiles.value.filter((item) => item.id !== id);
+}
+
 /* ---- global shortcut: Ctrl+/ → focus the chat input ---- */
 function onGlobalKeydown(e: KeyboardEvent) {
   const mod = e.ctrlKey || e.metaKey;
@@ -442,6 +531,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener("keydown", onGlobalKeydown);
+  void Promise.allSettled(inputFiles.value.map((file) => deleteChatFileSource(file.id)));
 });
 
 watch(
@@ -475,6 +565,104 @@ watch(
     width: 100%;
     display: flex;
     flex-direction: column;
+  }
+
+  .ccia-files-area {
+    display: flex;
+    gap: 10px;
+    max-width: 100%;
+    margin-bottom: 8px;
+    overflow-y: hidden;
+    overflow-x: auto;
+    padding: 0 4px 2px 8px;
+
+    .ccia-file-item {
+      position: relative;
+      width: 184px;
+      height: 72px;
+      flex: 0 0 auto;
+    }
+
+    .ccia-file-card {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      z-index: 1;
+      border: 1px solid oklch(var(--bc) / 0.08);
+      border-radius: 10px;
+      background: linear-gradient(180deg, oklch(var(--b1)) 0%, oklch(var(--b1) / 0.92) 100%);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      overflow: hidden;
+    }
+
+    .ccia-file-name {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ccia-file-meta {
+      display: flex;
+      gap: 8px;
+      font-size: 11px;
+      color: oklch(var(--bc) / 0.72);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ccia-file-note {
+      font-size: 11px;
+      line-height: 1.3;
+      color: oklch(var(--wa));
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ccia-file-remove-button {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      z-index: 2;
+      width: 20px;
+      height: 20px;
+      border: none;
+      border-radius: 999px;
+      background: oklch(var(--bc) / 0.72);
+      color: oklch(var(--nc));
+      font-size: 14px;
+      line-height: 18px;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.9);
+      transition:
+        opacity 0.15s ease,
+        transform 0.15s ease;
+    }
+
+    .ccia-file-item:hover .ccia-file-remove-button,
+    .ccia-file-item:focus-within .ccia-file-remove-button {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1);
+    }
+
+    @media (hover: none), (pointer: coarse) {
+      .ccia-file-remove-button {
+        opacity: 1;
+        pointer-events: auto;
+        transform: scale(1);
+      }
+    }
   }
 
   .ccia-shell {
@@ -750,6 +938,7 @@ watch(
     line-height: 18px;
     cursor: pointer;
   }
+
 }
 
 .ccia-imgs-area::-webkit-scrollbar {

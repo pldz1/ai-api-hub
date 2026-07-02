@@ -72,6 +72,19 @@ export interface ChatModelConfig {
   model: string;
 }
 
+export type ChatMessageAttachmentKind = "text" | "pdf" | "docx" | "xlsx";
+
+export interface ChatMessageAttachment {
+  id: string;
+  name: string;
+  contentType: string;
+  size: number;
+  text: string;
+  truncated: boolean;
+  kind: ChatMessageAttachmentKind;
+  kindLabel: string;
+}
+
 // ============================================================================
 // Parameter definitions (model-level, not app-level)
 // ============================================================================
@@ -103,6 +116,7 @@ export interface ChatPromptMessage {
   mid?: string;
   reasoning_content?: string;
   token_usage?: TokenUsage | null;
+  attachments?: ChatMessageAttachment[];
   meta?: {
     isContextBlocked?: boolean;
     usedCapabilities?: Partial<ChatModelCapabilities>;

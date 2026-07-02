@@ -77,6 +77,7 @@ const mutations = {
   SET_VIDEO_RUNTIME: createStateMutation("setVideoRuntime"),
   RESET_VIDEO_RUNTIME: createStateMutation("resetVideoRuntime"),
   SET_MODAL_IMAGE: createStateMutation("setModalImage"),
+  SET_MODAL_CHAT_ATTACHMENT: createStateMutation("setModalChatAttachment"),
 };
 
 function createCommitAction(type) {
@@ -132,6 +133,7 @@ const passthroughActions = {
   setVideoRuntime: "SET_VIDEO_RUNTIME",
   resetVideoRuntime: "RESET_VIDEO_RUNTIME",
   setModalImage: "SET_MODAL_IMAGE",
+  setModalChatAttachment: "SET_MODAL_CHAT_ATTACHMENT",
 };
 
 const actions = {

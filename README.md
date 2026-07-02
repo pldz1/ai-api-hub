@@ -49,6 +49,7 @@ This is why you're here, right? Here's the current lineup:
 - 🌊 **Streaming (SSE)** — Real-time typewriter responses with abort support. Impatient? Hit stop anytime
 - 🎨 **Image Generation & Editing** — Text-to-image, image-to-image, plus a built-in brush mask editor for surgical edits
 - 🌐 **Web Search** — Supported models can search the web mid-conversation. Yes, just like that other chatbot
+- 📎 **Chat File Attachments** — Upload text, PDF, DOCX, and XLSX files into chat; they render as attachment cards, stay available for preview/download, and round-trip through conversation export/import
 - 📋 **Prompt Templates** — Write once, reuse forever. Stop copy-pasting system instructions like a caveman
 - 💬 **Conversation Management** — Create, rename, delete, batch operations. Sidebar shows live runtime status per session
 - 📊 **Token Tracking** — Input/output tokens per turn, normalized across providers. Know where your credits are going

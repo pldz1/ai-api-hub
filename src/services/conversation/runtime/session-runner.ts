@@ -5,6 +5,7 @@ import { getUuid } from "@/utils";
 import { tr } from "@/i18n";
 import type { ChatModelConfig, ChatPromptContent, ChatPromptMessage, ChatResponseDelta, PackedChatMessage } from "@/types";
 import { addMessage } from "../conversation";
+import { composeChatPromptText } from "../chat-files";
 import { createStreamState, type StreamState, type StreamDraft } from "../rendering/stream-state";
 
 type ChatRuntimeStatus = "idle" | "loading" | "streaming" | "success" | "error" | "stopped";
@@ -24,13 +25,27 @@ function packChatMessages(messages: ChatPromptMessage[], chatId: string, model: 
   if (getChatMessageFormat(model) === "text") {
     return combinedMessages.map((entry) => ({
       role: entry.role,
-      content: entry.content[0]?.type === "text" ? entry.content[0].text : "",
+      content:
+        entry.role === "user" && entry.attachments?.length
+          ? composeChatPromptText(entry.content[0]?.type === "text" ? entry.content[0].text : "", entry.attachments)
+          : entry.content[0]?.type === "text"
+            ? entry.content[0].text
+            : "",
     }));
   }
 
   return combinedMessages.map((entry) => ({
     role: entry.role,
-    content: entry.content as ChatPromptContent[],
+    content:
+      entry.role === "user" && entry.attachments?.length
+        ? [
+            {
+              type: "text",
+              text: composeChatPromptText(entry.content[0]?.type === "text" ? entry.content[0].text : "", entry.attachments),
+            },
+            ...(entry.content as ChatPromptContent[]).filter((part) => part.type === "image_url"),
+          ]
+        : (entry.content as ChatPromptContent[]),
   }));
 }
 

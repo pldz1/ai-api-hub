@@ -4,6 +4,7 @@ export type {
   ChatMessageFormat,
   ChatPromptContent,
   ChatPromptMessage,
+  ChatMessageAttachment,
   ChatRequest,
   ChatModelConfig,
   ChatModelCapabilities,
