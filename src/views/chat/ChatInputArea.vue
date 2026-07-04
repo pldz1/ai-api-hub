@@ -54,6 +54,7 @@
                 :options="chatModelOptions"
                 :placeholder="t('input.selectChatModel')"
                 :disabled="chatModels.length === 0"
+                borderless
               />
               <div v-else class="ccia-model-lock">
                 <AppTooltip :text="t('tooltip.cannotEditModel')" placement="top">
@@ -73,13 +74,13 @@
             <AppTooltip :text="t('tooltip.uploadFile')" placement="top">
               <button class="ccia-capability-chip" type="button" @click="openFilePicker">
                 <SvgIcon class="ccia-capability-icon" :src="attachIcon" />
-                <span>{{ t("input.capabilities.fileContext") }}</span>
+                <span class="ccia-capability-label">{{ t("input.capabilities.fileContext") }}</span>
               </button>
             </AppTooltip>
             <AppTooltip v-if="supportedCapabilities.imageRead" :text="t('tooltip.uploadImage')" placement="top">
               <button class="ccia-capability-chip" type="button" @click="openImageFilePicker">
                 <SvgIcon class="ccia-capability-icon" :src="attachIcon" />
-                <span>{{ t("input.capabilities.imageRead") }}</span>
+                <span class="ccia-capability-label">{{ t("input.capabilities.imageRead") }}</span>
               </button>
             </AppTooltip>
             <AppTooltip v-if="supportedCapabilities.webSearch" :text="t('input.capabilities.webSearch')" placement="top">
@@ -90,7 +91,7 @@
                 @click="onToggleCapability('webSearch', !inputCapabilities.webSearch)"
               >
                 <SvgIcon class="ccia-capability-icon" :src="webIcon" />
-                <span>{{ t("input.capabilities.webSearch") }}</span>
+                <span class="ccia-capability-label">{{ t("input.capabilities.webSearch") }}</span>
               </button>
             </AppTooltip>
             <AppTooltip :text="t('tooltip.sendOrStop')" placement="top">
@@ -713,10 +714,20 @@ watch(
       min-height: 32px;
       height: 32px;
       padding: 0 28px 0 4px;
-      border: 0;
+      border: 0 !important;
+      outline: 0;
       background: transparent;
       box-shadow: none;
       font-size: 16px;
+    }
+
+    :deep(.app-select-control:hover),
+    :deep(.app-select-control:focus),
+    :deep(.app-select-control:focus-visible) {
+      border: 0 !important;
+      outline: 0;
+      background: oklch(var(--b2) / 0.36);
+      box-shadow: none;
     }
 
     :deep(.app-select-button-label) {
@@ -864,21 +875,50 @@ watch(
 
     .ccia-capability-row {
       padding: 8px 0 0;
-      gap: 6px;
+      gap: 8px;
+      align-items: center;
+      flex-direction: row;
+      flex-wrap: nowrap;
       justify-content: space-between;
-      flex-wrap: wrap;
     }
 
     .ccia-right-actions,
     .ccia-left-actions {
       gap: 6px;
-      flex-wrap: wrap;
+      width: auto;
+      min-width: 0;
+    }
+
+    .ccia-right-actions {
+      justify-content: flex-start;
+      flex-wrap: nowrap;
+    }
+
+    .ccia-left-actions {
+      margin-left: auto;
+      justify-content: flex-start;
+      flex-wrap: nowrap;
+    }
+
+    .ccia-left-actions :deep(.app-tooltip-host:last-child) {
+      margin-left: 2px;
     }
 
     .ccia-capability-chip {
+      width: 28px;
       height: 26px;
-      padding: 0 8px;
+      justify-content: center;
+      padding: 0;
       font-size: 11px;
+    }
+
+    .ccia-capability-icon {
+      width: 15px;
+      height: 15px;
+    }
+
+    .ccia-capability-label {
+      display: none;
     }
 
     .ccia-send-button {

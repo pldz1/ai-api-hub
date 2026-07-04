@@ -93,67 +93,54 @@
     </div>
 
     <div class="image-composer-wrap">
-      <div ref="composerRef" class="image-composer" :class="{ 'has-images': attachments.length > 0 }" @paste="onPaste">
-        <div v-if="attachments.length" class="image-input-preview-row">
-          <div v-for="attachment in attachments" :key="attachment.id" class="image-input-preview">
-            <button
-              class="image-input-preview-button"
-              type="button"
-              :aria-label="attachment.id === attachments[0]?.id ? t('image.openMaskEditor') : t('image.viewMask')"
-              @click="attachment.id === attachments[0]?.id && openEditDialog()"
-            >
-              <img :src="attachment.previewUrl" :alt="attachment.filename" />
-              <span v-if="attachment.id === attachments[0]?.id" class="image-input-edit">
-                {{ hasEditedMask ? t("image.maskEdited") : t("image.maskLabel") }}
-              </span>
-            </button>
-            <button class="image-input-remove" type="button" :aria-label="t('image.removeImage')" @click.stop="removeAttachment(attachment.id)">×</button>
-          </div>
-        </div>
-
-        <textarea
-          ref="textareaRef"
-          v-model="prompt"
-          class="image-prompt-input"
-          :placeholder="mode === 'edit' ? t('image.editPromptPlaceholderShort') : t('image.generatePromptPlaceholderShort')"
-          rows="1"
-          @input="resizeTextarea"
-          @keydown.enter="onEnter"
-        ></textarea>
-
-        <div class="image-composer-actions">
-          <div class="image-left-actions">
-            <AppTooltip :text="t('tooltip.uploadImage')">
-              <button class="image-icon-button" type="button" @click="openFilePicker">
-                <SvgIcon :src="attachIcon" />
+      <CreationComposer
+        ref="composerRef"
+        v-model="prompt"
+        v-model:model-index="selectedModelIndex"
+        :root-class="['image-composer', { 'has-images': attachments.length > 0 }]"
+        :model-options="imageModelOptions"
+        :model-placeholder="availableModels.length ? t('image.selectModel') : t('image.imageModelNotConfigured')"
+        :model-disabled="isCurrentConversationSubmitting || availableModels.length === 0"
+        :placeholder="mode === 'edit' ? t('image.editPromptPlaceholderShort') : t('image.generatePromptPlaceholderShort')"
+        :send-disabled="isSendDisabled"
+        :settings-tooltip="t('tooltip.modelSettings')"
+        @paste="onPaste"
+        @send="send"
+        @settings="onShowModelSettings"
+      >
+        <template #media>
+          <div v-if="attachments.length" class="image-input-preview-row">
+            <div v-for="attachment in attachments" :key="attachment.id" class="image-input-preview">
+              <button
+                class="image-input-preview-button"
+                type="button"
+                :aria-label="attachment.id === attachments[0]?.id ? t('image.openMaskEditor') : t('image.viewMask')"
+                @click="attachment.id === attachments[0]?.id && openEditDialog()"
+              >
+                <img :src="attachment.previewUrl" :alt="attachment.filename" />
+                <span v-if="attachment.id === attachments[0]?.id" class="image-input-edit">
+                  {{ hasEditedMask ? t("image.maskEdited") : t("image.maskLabel") }}
+                </span>
               </button>
-            </AppTooltip>
-
-            <AppSelect
-              v-model="selectedModelIndex"
-              class="image-model-select"
-              :options="imageModelOptions"
-              :placeholder="availableModels.length ? t('image.selectModel') : t('image.imageModelNotConfigured')"
-              :disabled="isCurrentConversationSubmitting || availableModels.length === 0"
-            />
-
-            <AppTooltip :text="t('tooltip.modelSettings')" placement="top">
-              <button class="image-settings-button" type="button" @click="onShowModelSettings">
-                <SvgIcon :src="paramIcon" />
-              </button>
-            </AppTooltip>
+              <button class="image-input-remove" type="button" :aria-label="t('image.removeImage')" @click.stop="removeAttachment(attachment.id)">×</button>
+            </div>
           </div>
+        </template>
 
-          <div class="image-right-actions">
-            <span class="image-mode-pill" :class="{ edit: mode === 'edit' }">
-              {{ mode === "edit" ? t("image.modeEdit") : t("image.modeGeneration") }}
-            </span>
-            <button class="image-send-button" type="button" :disabled="isSendDisabled" @click="send">
-              <SvgIcon :src="arrowUpIcon" />
+        <template #left-actions>
+          <AppTooltip :text="t('tooltip.uploadImage')">
+            <button class="image-icon-button" type="button" @click="openFilePicker">
+              <SvgIcon :src="attachIcon" />
             </button>
-          </div>
-        </div>
-      </div>
+          </AppTooltip>
+        </template>
+
+        <template #right-actions-extra>
+          <span class="image-mode-pill" :class="{ edit: mode === 'edit' }">
+            {{ mode === "edit" ? t("image.modeEdit") : t("image.modeGeneration") }}
+          </span>
+        </template>
+      </CreationComposer>
       <input ref="fileInputRef" class="image-file-input" type="file" accept="image/*" multiple @change="onFileChange" />
     </div>
     <ImageEditDialog ref="imageEditDialogRef" @apply="applyBrushEdit" @close="focusPromptInput" />
@@ -167,8 +154,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
-import AppSelect from "@/components/AppSelect.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
+import CreationComposer from "@/components/CreationComposer.vue";
 import ImageModal from "@/components/ImageModal.vue";
 import MessageTopicList from "@/components/MessageTopicList.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
@@ -178,12 +165,16 @@ import type { ImageSettingsData } from "@/views/image/ImageSettings.vue";
 import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import attachIcon from "@/assets/svg/attach24.svg";
 import navImageIcon from "@/assets/svg/navImage24.svg";
-import paramIcon from "@/assets/svg/param24.svg";
 import { addImageConversation, getImageConversationMessages, submitImageMessage, useCreationMessageUi } from "@/services/creation";
 import { dsAlert, getUuid, saveToLocal } from "@/utils";
 import type { ImageConversationMessage, ImageInputAttachment, ImagePayload, ImageModelConfig } from "@/types";
 
 const MAX_IMAGE_MB = 20;
+type CreationComposerRef = {
+  focus: () => void;
+  getElement: () => HTMLElement | null;
+  resizeTextarea: () => void;
+};
 
 const store = useStore();
 const route = useRoute();
@@ -194,11 +185,10 @@ const selectedModelIndex = ref(-1);
 const attachments = ref<ImageInputAttachment[]>([]);
 const isSubmitting = ref(false);
 const hasEditedMask = ref(false);
-const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const messageScrollRef = ref<HTMLElement | null>(null);
 const pageRef = ref<HTMLElement | null>(null);
-const composerRef = ref<HTMLElement | null>(null);
+const composerRef = ref<CreationComposerRef | null>(null);
 const imageEditDialogRef = ref<{ open: (image: ImageInputAttachment) => void } | null>(null);
 const imageSettingsRef = ref<{ openDialog: () => void } | null>(null);
 const imageSettings = ref<ImageSettingsData>({ size: "1024x1024", n: 1 });
@@ -236,16 +226,9 @@ const {
   scrollRef: messageScrollRef,
 });
 
-function resizeTextarea() {
-  const textarea = textareaRef.value;
-  if (!textarea) return;
-  textarea.style.height = "auto";
-  textarea.style.height = `${Math.min(textarea.scrollHeight, 180)}px`;
-}
-
 function updateComposerHeight() {
   const page = pageRef.value;
-  const composer = composerRef.value;
+  const composer = composerRef.value?.getElement();
   if (!page || !composer) return;
   const height = Math.ceil(composer.getBoundingClientRect().height);
   if (height > 0) page.style.setProperty("--image-composer-height", `${height}px`);
@@ -389,7 +372,7 @@ function applyBrushEdit(payload: { image: ImageInputAttachment; mask: ImageInput
 }
 
 function focusPromptInput() {
-  nextTick(() => textareaRef.value?.focus());
+  nextTick(() => composerRef.value?.focus());
 }
 
 function onShowModelSettings() {
@@ -432,7 +415,7 @@ async function send() {
   prompt.value = "";
   attachments.value = [];
   hasEditedMask.value = false;
-  nextTick(() => resizeTextarea());
+  nextTick(() => composerRef.value?.resizeTextarea());
 
   if (!routeImageId.value) {
     const created = await addImageConversation(currentPrompt.slice(0, 28));
@@ -463,13 +446,6 @@ async function send() {
   scrollToBottom();
 }
 
-function onEnter(event: KeyboardEvent) {
-  if (event.key === "Enter" && !event.shiftKey) {
-    event.preventDefault();
-    send();
-  }
-}
-
 watch(
   () => routeImageId.value,
   async (id) => {
@@ -480,7 +456,7 @@ watch(
       prompt.value = "";
       attachments.value = [];
       hasEditedMask.value = false;
-      resizeTextarea();
+      composerRef.value?.resizeTextarea();
     } else if (store.state.imageLoadedById?.[id]) {
       await store.dispatch("setCurImageConversationId", id);
     } else {
@@ -559,9 +535,10 @@ watch(
 onMounted(() => {
   nextTick(updateComposerHeight);
   refreshMessageUi();
-  if (window.ResizeObserver && composerRef.value) {
+  const composer = composerRef.value?.getElement();
+  if (window.ResizeObserver && composer) {
     composerResizeObserver = new ResizeObserver(updateComposerHeight);
-    composerResizeObserver.observe(composerRef.value);
+    composerResizeObserver.observe(composer);
   }
 });
 
@@ -953,20 +930,6 @@ onBeforeUnmount(() => {
   background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.8) 46%, oklch(var(--b1)) 82%, oklch(var(--b1)) 100%);
 }
 
-.image-composer {
-  position: relative;
-  z-index: 1;
-  width: min(100%, 742px);
-  pointer-events: auto;
-  max-height: min(68vh, 620px);
-  overflow-y: auto;
-  padding: 14px 18px 12px;
-  border: 1px solid oklch(var(--bc) / 0.27);
-  border-radius: 42px;
-  background: oklch(var(--b1) / 0.96);
-  contain: layout paint;
-}
-
 .image-input-preview-row {
   display: flex;
   gap: 8px;
@@ -1030,38 +993,7 @@ onBeforeUnmount(() => {
   }
 }
 
-.image-prompt-input {
-  width: 100%;
-  min-height: 36px;
-  max-height: 188px;
-  padding: 8px 0 6px;
-  border: none;
-  outline: none;
-  resize: none;
-  background: transparent;
-  color: oklch(var(--bc));
-  font-size: 16px;
-  line-height: 1.5;
-}
-
-.image-composer-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding-top: 2px;
-}
-
-.image-left-actions,
-.image-right-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.image-icon-button,
-.image-send-button {
+.image-icon-button {
   width: 38px;
   height: 38px;
   display: inline-flex;
@@ -1069,81 +1001,8 @@ onBeforeUnmount(() => {
   justify-content: center;
   border: none;
   border-radius: 50%;
-}
-
-.image-icon-button {
   background: oklch(var(--b2));
   color: oklch(var(--bc));
-}
-
-.image-settings-button {
-  width: 24px;
-  height: 24px;
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: oklch(var(--bc) / 0.6);
-  cursor: pointer;
-
-  &:hover {
-    color: oklch(var(--bc));
-  }
-
-  :deep(.svg-icon) {
-    width: 18px;
-    height: 18px;
-  }
-}
-
-.image-send-button {
-  background-color: oklch(var(--n));
-  color: oklch(var(--nc));
-  box-shadow: 0 8px 20px oklch(var(--bc) / 0.16);
-
-  &:disabled {
-    opacity: 0.36;
-    cursor: not-allowed;
-  }
-
-  :deep(.svg-icon) {
-    width: 20px;
-    height: 20px;
-  }
-}
-
-.image-model-select {
-  min-width: 0;
-  max-width: 120px;
-
-  :deep(.app-select-control) {
-    min-height: 32px;
-    height: 32px;
-    padding: 0 28px 0 4px;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-    font-size: 16px;
-  }
-
-  :deep(.app-select-button-label) {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  :deep(.app-select-trigger) {
-    right: 2px;
-    width: 24px;
-    height: 24px;
-  }
-
-  :deep(.app-select-menu) {
-    min-width: 220px;
-  }
 }
 
 .image-mode-pill {
@@ -1190,39 +1049,22 @@ onBeforeUnmount(() => {
 
   .image-composer {
     width: 100%;
-    border-radius: 28px;
-    padding: 12px;
+    border-radius: 24px;
+    padding: 12px 14px;
   }
 
   .image-input-preview-row {
     padding-left: 0;
   }
-
-  .image-composer-actions {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .image-left-actions,
-  .image-right-actions {
-    width: 100%;
-  }
-
-  .image-model-select {
-    flex: 1 1 auto;
-    max-width: none;
-
-    :deep(.app-select-control) {
-      font-size: 14px;
-    }
-  }
-
-  .image-right-actions {
-    justify-content: space-between;
-  }
 }
 
 @media (max-width: 640px) {
+  .image-mode-pill {
+    height: 26px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
   .image-chat-page {
     --image-side-gap: 12px;
     --image-top-gap: 60px;

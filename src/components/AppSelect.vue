@@ -2,13 +2,20 @@
   <div
     ref="rootRef"
     class="app-select"
-    :class="{ 'app-select-open': open, 'app-select-searchable': searchable, 'app-select-disabled': disabled, 'app-select-open-upward': openDirection === 'up' }"
+    :class="{
+      'app-select-open': open,
+      'app-select-searchable': searchable,
+      'app-select-disabled': disabled,
+      'app-select-open-upward': openDirection === 'up',
+      'app-select-borderless': borderless,
+    }"
   >
     <input
       v-if="searchable"
       :value="searchText"
       type="text"
-      class="input input-bordered w-full app-select-control app-select-input"
+      class="input w-full app-select-control app-select-input"
+      :class="{ 'input-bordered': !borderless }"
       :placeholder="placeholder"
       :disabled="disabled"
       autocomplete="off"
@@ -22,7 +29,8 @@
     <button
       v-else
       type="button"
-      class="input input-bordered w-full app-select-control app-select-button"
+      class="input w-full app-select-control app-select-button"
+      :class="{ 'input-bordered': !borderless }"
       :aria-expanded="open"
       :disabled="disabled"
       @click="toggleMenu"
@@ -46,7 +54,7 @@
     </button>
   </div>
   <Teleport to="body">
-    <div v-if="open" ref="menuRef" class="app-select-menu" :style="menuStyle">
+    <div v-if="open" ref="menuRef" class="app-select-menu" :class="menuClass" :style="menuStyle">
       <template v-if="flattenedOptions.length > 0">
         <template v-for="item in flattenedOptions" :key="item.key">
           <div v-if="item.type === 'group'" class="app-select-group">
@@ -93,6 +101,8 @@ const props = withDefaults(
     allowCustomValue?: boolean;
     emptyText?: string;
     disabled?: boolean;
+    menuClass?: string;
+    borderless?: boolean;
   }>(),
   {
     placeholder: "",
@@ -100,6 +110,8 @@ const props = withDefaults(
     allowCustomValue: false,
     emptyText: "No options",
     disabled: false,
+    menuClass: "",
+    borderless: false,
   },
 );
 
@@ -343,6 +355,21 @@ watch(
 .app-select-control {
   min-height: 46px;
   padding-right: 3rem;
+}
+
+.app-select-borderless .app-select-control {
+  border-color: transparent !important;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-select-borderless .app-select-control:hover,
+.app-select-borderless .app-select-control:focus,
+.app-select-borderless .app-select-control:focus-visible {
+  border-color: transparent !important;
+  outline: 0;
+  box-shadow: none;
 }
 
 .app-select-button {

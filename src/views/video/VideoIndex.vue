@@ -95,83 +95,65 @@
     </div>
 
     <div class="video-composer-wrap">
-      <div ref="composerRef" class="video-composer" :class="{ 'has-media': firstFrame || lastFrame || drivingAudio }" @paste="onPaste">
-        <!-- Media slots: shown/hidden based on model capabilities -->
-        <div v-if="activeCapabilities.imageInput || activeCapabilities.audioInput" class="video-media-slots">
-          <!-- First frame slot (image-to-video / reference-to-video) -->
-          <div v-if="activeCapabilities.imageInput" class="video-media-slot" :class="{ filled: !!firstFrame }" @click="openFirstFramePicker">
-            <div v-if="firstFrame" class="video-media-preview">
-              <img :src="firstFrame.previewUrl" :alt="firstFrame.filename" />
-              <button class="video-media-remove" type="button" :aria-label="t('video.removeAttachment')" @click.stop="firstFrame = null">×</button>
-              <span class="video-media-tag">{{ t("video.firstFrame") }}</span>
+      <CreationComposer
+        ref="composerRef"
+        v-model="prompt"
+        v-model:model-index="selectedModelIndex"
+        :root-class="['video-composer', { 'has-media': Boolean(firstFrame || lastFrame || drivingAudio) }]"
+        :model-options="videoModelOptions"
+        :model-placeholder="availableModels.length ? t('video.selectModel') : t('video.videoModelNotConfigured')"
+        :model-disabled="isCurrentConversationSubmitting || availableModels.length === 0"
+        :placeholder="t('video.generatePromptPlaceholder')"
+        :send-disabled="isSendDisabled"
+        :settings-tooltip="t('tooltip.modelSettings')"
+        @paste="onPaste"
+        @send="send"
+        @settings="onShowModelSettings"
+      >
+        <template #media>
+          <!-- Media slots: shown/hidden based on model capabilities -->
+          <div v-if="activeCapabilities.imageInput || activeCapabilities.audioInput" class="video-media-slots">
+            <!-- First frame slot (image-to-video / reference-to-video) -->
+            <div v-if="activeCapabilities.imageInput" class="video-media-slot" :class="{ filled: !!firstFrame }" @click="openFirstFramePicker">
+              <div v-if="firstFrame" class="video-media-preview">
+                <img :src="firstFrame.previewUrl" :alt="firstFrame.filename" />
+                <button class="video-media-remove" type="button" :aria-label="t('video.removeAttachment')" @click.stop="firstFrame = null">×</button>
+                <span class="video-media-tag">{{ t("video.firstFrame") }}</span>
+              </div>
+              <div v-else class="video-media-empty">
+                <SvgIcon :src="imageIcon" class="video-media-empty-icon" />
+                <span>{{ t("video.firstFrameHint") }}</span>
+              </div>
             </div>
-            <div v-else class="video-media-empty">
-              <SvgIcon :src="imageIcon" class="video-media-empty-icon" />
-              <span>{{ t("video.firstFrameHint") }}</span>
+
+            <!-- Last frame slot (image-to-video / reference-to-video) -->
+            <div v-if="activeCapabilities.imageInput" class="video-media-slot" :class="{ filled: !!lastFrame }" @click="openLastFramePicker">
+              <div v-if="lastFrame" class="video-media-preview">
+                <img :src="lastFrame.previewUrl" :alt="lastFrame.filename" />
+                <button class="video-media-remove" type="button" :aria-label="t('video.removeAttachment')" @click.stop="lastFrame = null">×</button>
+                <span class="video-media-tag">{{ t("video.lastFrame") }}</span>
+              </div>
+              <div v-else class="video-media-empty">
+                <SvgIcon :src="imageIcon" class="video-media-empty-icon" />
+                <span>{{ t("video.lastFrameHint") }}</span>
+              </div>
+            </div>
+
+            <!-- Driving audio slot -->
+            <div v-if="activeCapabilities.audioInput" class="video-media-slot" :class="{ filled: !!drivingAudio }" @click="openAudioPicker">
+              <div v-if="drivingAudio" class="video-media-preview">
+                <span class="video-media-audio-name">{{ drivingAudio.filename }}</span>
+                <button class="video-media-remove" type="button" :aria-label="t('video.removeAttachment')" @click.stop="drivingAudio = null">×</button>
+                <span class="video-media-tag">{{ t("video.drivingAudio") }}</span>
+              </div>
+              <div v-else class="video-media-empty">
+                <SvgIcon :src="audioIcon" class="video-media-empty-icon" />
+                <span>{{ t("video.drivingAudioHint") }}</span>
+              </div>
             </div>
           </div>
-
-          <!-- Last frame slot (image-to-video / reference-to-video) -->
-          <div v-if="activeCapabilities.imageInput" class="video-media-slot" :class="{ filled: !!lastFrame }" @click="openLastFramePicker">
-            <div v-if="lastFrame" class="video-media-preview">
-              <img :src="lastFrame.previewUrl" :alt="lastFrame.filename" />
-              <button class="video-media-remove" type="button" :aria-label="t('video.removeAttachment')" @click.stop="lastFrame = null">×</button>
-              <span class="video-media-tag">{{ t("video.lastFrame") }}</span>
-            </div>
-            <div v-else class="video-media-empty">
-              <SvgIcon :src="imageIcon" class="video-media-empty-icon" />
-              <span>{{ t("video.lastFrameHint") }}</span>
-            </div>
-          </div>
-
-          <!-- Driving audio slot -->
-          <div v-if="activeCapabilities.audioInput" class="video-media-slot" :class="{ filled: !!drivingAudio }" @click="openAudioPicker">
-            <div v-if="drivingAudio" class="video-media-preview">
-              <span class="video-media-audio-name">{{ drivingAudio.filename }}</span>
-              <button class="video-media-remove" type="button" :aria-label="t('video.removeAttachment')" @click.stop="drivingAudio = null">×</button>
-              <span class="video-media-tag">{{ t("video.drivingAudio") }}</span>
-            </div>
-            <div v-else class="video-media-empty">
-              <SvgIcon :src="audioIcon" class="video-media-empty-icon" />
-              <span>{{ t("video.drivingAudioHint") }}</span>
-            </div>
-          </div>
-        </div>
-
-        <textarea
-          ref="textareaRef"
-          v-model="prompt"
-          class="video-prompt-input"
-          :placeholder="t('video.generatePromptPlaceholder')"
-          rows="1"
-          @input="resizeTextarea"
-          @keydown.enter="onEnter"
-        ></textarea>
-
-        <div class="video-composer-actions">
-          <div class="video-left-actions">
-            <AppSelect
-              v-model="selectedModelIndex"
-              class="video-model-select"
-              :options="videoModelOptions"
-              :placeholder="availableModels.length ? t('video.selectModel') : t('video.videoModelNotConfigured')"
-              :disabled="isCurrentConversationSubmitting || availableModels.length === 0"
-            />
-
-            <AppTooltip :text="t('tooltip.modelSettings')" placement="top">
-              <button class="video-settings-button" type="button" @click="onShowModelSettings">
-                <SvgIcon :src="paramIcon" />
-              </button>
-            </AppTooltip>
-          </div>
-
-          <div class="video-right-actions">
-            <button class="video-send-button" type="button" :disabled="isSendDisabled" @click="send">
-              <SvgIcon :src="arrowUpIcon" />
-            </button>
-          </div>
-        </div>
-      </div>
+        </template>
+      </CreationComposer>
       <input ref="firstFrameInputRef" class="video-file-input" type="file" accept="image/*" @change="onFirstFrameChange" />
       <input ref="lastFrameInputRef" class="video-file-input" type="file" accept="image/*" @change="onLastFrameChange" />
       <input ref="audioInputRef" class="video-file-input" type="file" accept="audio/*" @change="onAudioFileChange" />
@@ -186,8 +168,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
-import AppSelect from "@/components/AppSelect.vue";
-import AppTooltip from "@/components/AppTooltip.vue";
+import CreationComposer from "@/components/CreationComposer.vue";
 import ImageModal from "@/components/ImageModal.vue";
 import MessageTopicList from "@/components/MessageTopicList.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
@@ -197,13 +178,17 @@ import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import audioIcon from "@/assets/svg/attach24.svg";
 import imageIcon from "@/assets/svg/navImage24.svg";
 import navVideoIcon from "@/assets/svg/navImage24.svg";
-import paramIcon from "@/assets/svg/param24.svg";
 import { addVideoConversation, getVideoConversationMessages, submitVideoMessage, useCreationMessageUi } from "@/services/creation";
 import { getVideoModelCapabilities, getVideoModelType } from "@/models";
 import { dsAlert, getUuid } from "@/utils";
 import type { VideoConversationMessage, VideoInputAttachment, VideoModelConfig } from "@/types";
 
 const MAX_MEDIA_MB = 20;
+type CreationComposerRef = {
+  focus: () => void;
+  getElement: () => HTMLElement | null;
+  resizeTextarea: () => void;
+};
 
 const store = useStore();
 const route = useRoute();
@@ -215,13 +200,12 @@ const firstFrame = ref<VideoInputAttachment | null>(null);
 const lastFrame = ref<VideoInputAttachment | null>(null);
 const drivingAudio = ref<VideoInputAttachment | null>(null);
 const isSubmitting = ref(false);
-const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const firstFrameInputRef = ref<HTMLInputElement | null>(null);
 const lastFrameInputRef = ref<HTMLInputElement | null>(null);
 const audioInputRef = ref<HTMLInputElement | null>(null);
 const messageScrollRef = ref<HTMLElement | null>(null);
 const pageRef = ref<HTMLElement | null>(null);
-const composerRef = ref<HTMLElement | null>(null);
+const composerRef = ref<CreationComposerRef | null>(null);
 const videoSettingsRef = ref<{ openDialog: () => void } | null>(null);
 const videoSettings = ref<VideoSettingsData>({ resolution: "720P", duration: 5 });
 let runtimeTimer: number | null = null;
@@ -288,16 +272,9 @@ const {
   scrollRef: messageScrollRef,
 });
 
-function resizeTextarea() {
-  const textarea = textareaRef.value;
-  if (!textarea) return;
-  textarea.style.height = "auto";
-  textarea.style.height = `${Math.min(textarea.scrollHeight, 180)}px`;
-}
-
 function updateComposerHeight() {
   const page = pageRef.value;
-  const composer = composerRef.value;
+  const composer = composerRef.value?.getElement();
   if (!page || !composer) return;
   const height = Math.ceil(composer.getBoundingClientRect().height);
   if (height > 0) page.style.setProperty("--video-composer-height", `${height}px`);
@@ -475,7 +452,7 @@ async function onPaste(event: ClipboardEvent) {
 }
 
 function focusPromptInput() {
-  nextTick(() => textareaRef.value?.focus());
+  nextTick(() => composerRef.value?.focus());
 }
 
 function onShowModelSettings() {
@@ -531,7 +508,7 @@ async function send() {
   firstFrame.value = null;
   lastFrame.value = null;
   drivingAudio.value = null;
-  nextTick(() => resizeTextarea());
+  nextTick(() => composerRef.value?.resizeTextarea());
 
   if (!routeVideoId.value) {
     const created = await addVideoConversation(currentPrompt.slice(0, 28));
@@ -562,13 +539,6 @@ async function send() {
   scrollToBottom();
 }
 
-function onEnter(event: KeyboardEvent) {
-  if (event.key === "Enter" && !event.shiftKey) {
-    event.preventDefault();
-    send();
-  }
-}
-
 watch(
   () => routeVideoId.value,
   async (id) => {
@@ -580,7 +550,7 @@ watch(
       firstFrame.value = null;
       lastFrame.value = null;
       drivingAudio.value = null;
-      resizeTextarea();
+      composerRef.value?.resizeTextarea();
     } else if (store.state.videoLoadedById?.[id]) {
       await store.dispatch("setCurVideoConversationId", id);
     } else {
@@ -647,9 +617,10 @@ watch(
 onMounted(() => {
   nextTick(updateComposerHeight);
   refreshMessageUi();
-  if (window.ResizeObserver && composerRef.value) {
+  const composer = composerRef.value?.getElement();
+  if (window.ResizeObserver && composer) {
     composerResizeObserver = new ResizeObserver(updateComposerHeight);
-    composerResizeObserver.observe(composerRef.value);
+    composerResizeObserver.observe(composer);
   }
 });
 
@@ -998,19 +969,6 @@ onBeforeUnmount(() => {
   }
 }
 
-.video-composer {
-  position: relative;
-  z-index: 1;
-  width: min(100%, 742px);
-  pointer-events: auto;
-  max-height: min(68vh, 620px);
-  overflow-y: auto;
-  padding: 14px 18px 12px;
-  border: 1px solid oklch(var(--bc) / 0.27);
-  border-radius: 42px;
-  background: oklch(var(--b1) / 0.96);
-}
-
 /* ---- media slots ---- */
 .video-media-slots {
   display: flex;
@@ -1111,108 +1069,6 @@ onBeforeUnmount(() => {
   box-shadow: 0 1px 3px oklch(var(--bc) / 0.12);
 }
 
-.video-prompt-input {
-  width: 100%;
-  min-height: 36px;
-  max-height: 188px;
-  padding: 8px 0 6px;
-  border: none;
-  outline: none;
-  resize: none;
-  background: transparent;
-  color: oklch(var(--bc));
-  font-size: 16px;
-  line-height: 1.5;
-}
-
-.video-composer-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding-top: 2px;
-}
-.video-left-actions,
-.video-right-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.video-send-button {
-  width: 38px;
-  height: 38px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 50%;
-  background-color: oklch(var(--n));
-  color: oklch(var(--nc));
-  box-shadow: 0 8px 20px oklch(var(--bc) / 0.16);
-  &:disabled {
-    opacity: 0.36;
-    cursor: not-allowed;
-  }
-  :deep(.svg-icon) {
-    width: 20px;
-    height: 20px;
-  }
-}
-
-.video-settings-button {
-  width: 24px;
-  height: 24px;
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: oklch(var(--bc) / 0.6);
-  cursor: pointer;
-  &:hover {
-    color: oklch(var(--bc));
-  }
-  :deep(.svg-icon) {
-    width: 18px;
-    height: 18px;
-  }
-}
-
-.video-model-select {
-  min-width: 0;
-  max-width: 120px;
-
-  :deep(.app-select-control) {
-    min-height: 32px;
-    height: 32px;
-    padding: 0 28px 0 4px;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-    font-size: 16px;
-  }
-
-  :deep(.app-select-button-label) {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  :deep(.app-select-trigger) {
-    right: 2px;
-    width: 24px;
-    height: 24px;
-  }
-
-  :deep(.app-select-menu) {
-    min-width: 220px;
-  }
-}
-
 .video-file-input {
   display: none;
 }
@@ -1224,16 +1080,6 @@ onBeforeUnmount(() => {
     --video-composer-bottom: max(12px, env(safe-area-inset-bottom));
     --video-composer-shell-gap: 6px;
     --video-scroll-tail-gap: 26px;
-  }
-  .video-composer {
-    border-radius: 28px;
-    padding: 12px;
-  }
-
-  .video-model-select {
-    :deep(.app-select-control) {
-      font-size: 14px;
-    }
   }
   .video-media-slots {
     flex-direction: column;
