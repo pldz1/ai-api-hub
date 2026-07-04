@@ -2,11 +2,11 @@ import { renderBlock } from "@/services/markdown/md-render";
 import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import copyIcon from "@/assets/svg/copy16.svg";
 import deleteIcon from "@/assets/svg/delete16.svg";
+import saveIcon from "@/assets/svg/save18.svg";
 import { tr } from "@/i18n";
 import { textToHtml } from "@/utils";
 import { createSvgIcon } from "@/utils/svg-icon";
 import type { ChatPromptContent, ChatPromptMessage, ChatMessageAttachment } from "@/types";
-import { formatChatFileSize } from "../chat-files";
 
 const USER_CONTENT_COLLAPSED_HEIGHT = 200;
 
@@ -51,12 +51,13 @@ function createIconButton(icon: string, tip: string): HTMLDivElement {
   return button;
 }
 
-function createAttachmentActionButton(label: string, tip: string, onClick: () => void | Promise<void>): HTMLButtonElement {
+function createAttachmentActionButton(icon: string, tip: string, onClick: () => void | Promise<void>): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "cmbu-file-action tooltip tooltip-top";
   button.dataset.tip = tip;
-  button.textContent = label;
+  button.setAttribute("aria-label", tip);
+  button.appendChild(createSvgIcon(icon, { size: "18px" }));
   button.addEventListener("click", (event) => {
     event.stopPropagation();
     void onClick();
@@ -89,46 +90,28 @@ function createFileAttachmentElement(attachment: ChatMessageAttachment, actions:
 
   const badge = document.createElement("div");
   badge.className = "cmbu-file-kind";
-  badge.textContent = attachment.kindLabel || "FILE";
+  badge.textContent = String(attachment.kindLabel || "FILE").toUpperCase();
 
-  const body = document.createElement("div");
+  const body = actions.onPreviewAttachment ? document.createElement("button") : document.createElement("div");
   body.className = "cmbu-file-card";
+  if (body instanceof HTMLButtonElement) {
+    body.type = "button";
+    body.setAttribute("aria-label", tr("tooltip.previewAttachment"));
+    body.addEventListener("click", () => {
+      void actions.onPreviewAttachment?.(attachment);
+    });
+  }
 
   const name = document.createElement("div");
-  name.className = "cmbu-file-name";
+  name.className = "cmbu-file-label";
   name.textContent = attachment.name;
-
-  const meta = document.createElement("div");
-  meta.className = "cmbu-file-meta";
-  meta.textContent = `${attachment.contentType || "text/plain"} · ${formatChatFileSize(attachment.size)}`;
-
-  const actionRow = document.createElement("div");
-  actionRow.className = "cmbu-file-actions";
-
-  if (actions.onPreviewAttachment) {
-    actionRow.appendChild(createAttachmentActionButton(tr("common.preview"), tr("tooltip.previewAttachment"), () => actions.onPreviewAttachment?.(attachment)));
-  }
-
-  if (actions.onDownloadAttachment) {
-    actionRow.appendChild(createAttachmentActionButton(tr("common.download"), tr("tooltip.downloadAttachment"), () =>
-      actions.onDownloadAttachment?.(attachment),
-    ));
-  }
-
   body.appendChild(name);
-  body.appendChild(meta);
-  if (actionRow.childNodes.length) {
-    body.appendChild(actionRow);
-  }
-  if (attachment.truncated) {
-    const note = document.createElement("div");
-    note.className = "cmbu-file-note";
-    note.textContent = tr("toast.fileContentTruncated");
-    body.appendChild(note);
-  }
 
   item.appendChild(badge);
   item.appendChild(body);
+  if (actions.onDownloadAttachment) {
+    item.appendChild(createAttachmentActionButton(saveIcon, tr("tooltip.downloadAttachment"), () => actions.onDownloadAttachment?.(attachment)));
+  }
   return item;
 }
 
@@ -171,11 +154,7 @@ function setupUserContentCollapse(contentAreaDiv: HTMLDivElement, contentBodyDiv
 
 // -- public element factories --
 
-export function createUserMessageElement(
-  container: HTMLElement,
-  message: ChatPromptMessage,
-  actions: MessageElementActions,
-): HTMLDivElement | null {
+export function createUserMessageElement(container: HTMLElement, message: ChatPromptMessage, actions: MessageElementActions): HTMLDivElement | null {
   const userDiv = document.createElement("div");
   userDiv.classList.add("chat-md-bubble-user");
   userDiv.id = message.mid || "";

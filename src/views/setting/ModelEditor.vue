@@ -12,13 +12,7 @@
         <!-- Shared model selector -->
         <label class="model-form-field">
           <span>{{ t("user.modelCard.fields.model") }}</span>
-          <AppSelect
-            v-model="localModel.model"
-            :options="modelSelectOptions"
-            searchable
-            allow-custom-value
-            empty-text="No matching models"
-          />
+          <AppSelect v-model="localModel.model" :options="modelSelectOptions" searchable allow-custom-value empty-text="No matching models" />
         </label>
 
         <!-- Provider selector changes the required connection fields below -->

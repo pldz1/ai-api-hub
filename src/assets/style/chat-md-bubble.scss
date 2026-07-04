@@ -61,98 +61,101 @@
         .cmbu-file-area {
           display: flex;
           flex-direction: column;
-          gap: 10px;
-          margin-bottom: 10px;
+          gap: 8px;
+          margin-bottom: 8px;
 
           .cmbu-file-item {
             display: flex;
-            gap: 10px;
             align-items: stretch;
-            width: min(100%, 300px);
+            width: min(100%, 404px);
             min-width: 0;
-            min-height: 92px;
+            border-radius: 14px;
+            border: 1px solid oklch(var(--bc) / 0.08);
+            background: oklch(var(--b1) / 0.94);
+            overflow: hidden;
           }
 
           .cmbu-file-kind {
             flex: 0 0 auto;
-            width: 52px;
+            width: 72px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 16px;
-            background: linear-gradient(180deg, oklch(var(--p) / 0.18), oklch(var(--p) / 0.08));
-            border: 1px solid oklch(var(--p) / 0.16);
-            color: oklch(var(--p));
-            font-weight: 700;
+            background: oklch(var(--b2) / 0.78);
+            color: oklch(var(--bc) / 0.62);
             font-size: 12px;
-            letter-spacing: 0.06em;
+            font-weight: 700;
+            letter-spacing: 0.08em;
           }
 
           .cmbu-file-card {
             min-width: 0;
             flex: 1 1 auto;
-            border-radius: 16px;
-            padding: 9px 12px 8px;
-            border: 1px solid oklch(var(--bc) / 0.08);
-            background: linear-gradient(180deg, oklch(var(--b1)) 0%, oklch(var(--b2) / 0.56) 100%);
-            box-shadow:
-              inset 0 1px 0 oklch(var(--bc) / 0.05),
-              0 1px 2px oklch(var(--bc) / 0.04);
-            overflow: hidden;
+            padding: 10px 14px;
+            border: 0;
+            background: transparent;
             display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            text-align: left;
+            appearance: none;
+            cursor: default;
+            transition:
+              background-color 0.18s ease,
+              color 0.18s ease;
           }
 
-          .cmbu-file-actions {
-            display: flex;
-            flex-wrap: nowrap;
-            gap: 6px;
-            margin-top: 8px;
-          }
-
-          .cmbu-file-action {
-            height: 24px;
-            padding: 0 10px;
-            border: 1px solid oklch(var(--bc) / 0.08);
-            border-radius: 999px;
-            background: oklch(var(--b2));
-            color: oklch(var(--bc) / 0.8);
-            font-size: 12px;
-            line-height: 1;
+          button.cmbu-file-card {
             cursor: pointer;
 
             &:hover,
-            &:active {
-              background: oklch(var(--b3));
+            &:focus-visible {
+              background: oklch(var(--b2) / 0.6);
+              outline: none;
             }
           }
 
-          .cmbu-file-name {
-            font-size: 15px;
-            font-weight: 700;
-            line-height: 1.35;
+          .cmbu-file-item:hover {
+            .cmbu-file-kind {
+              background: oklch(var(--b2));
+              color: oklch(var(--bc) / 0.74);
+            }
+
+            button.cmbu-file-card {
+              background: oklch(var(--b2) / 0.45);
+            }
+          }
+
+          .cmbu-file-action {
+            flex: 0 0 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: 0;
+            border-left: 1px solid oklch(var(--bc) / 0.08);
+            background: oklch(var(--b1) / 0.72);
+            color: oklch(var(--bc) / 0.62);
+            cursor: pointer;
+            transition:
+              background-color 0.18s ease,
+              color 0.18s ease;
+
+            &:hover,
+            &:active,
+            &:focus-visible {
+              background: oklch(var(--b2));
+              color: oklch(var(--bc));
+              outline: none;
+            }
+          }
+
+          .cmbu-file-label {
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.2;
             color: oklch(var(--bc));
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-          }
-
-          .cmbu-file-meta {
-            margin-top: 3px;
-            font-size: 12px;
-            line-height: 1.4;
-            color: oklch(var(--bc) / 0.68);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-          }
-
-          .cmbu-file-note {
-            margin-top: 5px;
-            font-size: 12px;
-            line-height: 1.4;
-            color: oklch(var(--wa));
           }
         }
 
@@ -440,47 +443,35 @@
         padding: 10px 14px;
       }
 
-    .cmbu-content-area .cmbu-content-text {
-      font-size: 14px;
-      line-height: 1.5;
-    }
+      .cmbu-content-area .cmbu-content-text {
+        font-size: 14px;
+        line-height: 1.5;
+      }
 
       .cmbu-file-area {
         gap: 8px;
 
         .cmbu-file-item {
-          gap: 8px;
-          width: min(100%, 280px);
-          min-height: 88px;
+          width: min(100%, 100%);
         }
 
-      .cmbu-file-kind {
-        width: 46px;
-        border-radius: 14px;
-        font-size: 11px;
-      }
+        .cmbu-file-kind {
+          width: 62px;
+        }
 
         .cmbu-file-card {
-          border-radius: 14px;
-          padding: 9px 10px;
+          padding: 8px 10px;
         }
 
-        .cmbu-file-actions {
-          gap: 5px;
-          margin-top: 7px;
+        .cmbu-file-action {
+          flex-basis: 46px;
         }
 
-      .cmbu-file-action {
-        height: 22px;
-        padding: 0 8px;
-        font-size: 11px;
-      }
-
-      .cmbu-file-name {
-        font-size: 14px;
+        .cmbu-file-label {
+          font-size: 12px;
+        }
       }
     }
-  }
   }
 
   .chat-md-bubble-assistant {

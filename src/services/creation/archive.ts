@@ -1,16 +1,8 @@
 import store from "@/store";
 import { getUuid } from "@/utils";
 import { getImageSource, getVideoSource, setImageSource, setVideoSource } from "@/services/app/storage";
-import {
-  addImageConversationAPI,
-  getImageConversationMessagesAPI,
-  setImageConversationMessagesAPI,
-} from "./image/api";
-import {
-  addVideoConversationAPI,
-  getVideoConversationMessagesAPI,
-  setVideoConversationMessagesAPI,
-} from "./video/api";
+import { addImageConversationAPI, getImageConversationMessagesAPI, setImageConversationMessagesAPI } from "./image/api";
+import { addVideoConversationAPI, getVideoConversationMessagesAPI, setVideoConversationMessagesAPI } from "./video/api";
 import type { ImageConversationMessage, ImageInputAttachment, ImagePayload, VideoConversationMessage, VideoInputAttachment, VideoPayload } from "@/types";
 
 const ARCHIVE_FORMAT = "ai-api-hub.conversation";
@@ -33,7 +25,10 @@ type ImageConversationArchive = CreationConversationArchive<"image", ImageConver
 type VideoConversationArchive = CreationConversationArchive<"video", VideoConversationMessage>;
 
 function safeFilename(value: string, fallback: string): string {
-  const name = value.trim().replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ");
+  const name = value
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, " ");
   return (name || fallback).slice(0, 80);
 }
 

@@ -139,11 +139,17 @@ export function formatChatFileSize(bytes: number): string {
 }
 
 function normalizeFileName(name: string): string {
-  return String(name || "file").replace(/\s+/g, " ").trim() || "file";
+  return (
+    String(name || "file")
+      .replace(/\s+/g, " ")
+      .trim() || "file"
+  );
 }
 
 function normalizeTextContent(text: string): string {
-  return String(text || "").replace(/\u0000/g, "").replace(/\r\n/g, "\n");
+  return String(text || "")
+    .replace(/\u0000/g, "")
+    .replace(/\r\n/g, "\n");
 }
 
 function getFileExtension(fileName: string): string {
@@ -265,7 +271,11 @@ function collectPdfPageText(pageText: { items?: Array<{ str?: string; hasEOL?: b
     parts.push(item?.hasEOL ? "\n" : " ");
   });
 
-  return parts.join("").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  return parts
+    .join("")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 async function extractPdfText(file: File): Promise<{ text: string; truncated: boolean }> {

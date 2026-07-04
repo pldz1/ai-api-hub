@@ -56,12 +56,7 @@ function createChatSettingsPayload(
 // ===== message builder =====
 
 /** Pack a user message from the chat input state. */
-export function packUserMsg(
-  imageUrls: string[],
-  text: string,
-  allowImages = true,
-  attachments: ChatMessageAttachment[] = [],
-): ChatPromptMessage {
+export function packUserMsg(imageUrls: string[], text: string, allowImages = true, attachments: ChatMessageAttachment[] = []): ChatPromptMessage {
   const res: ChatPromptMessage = { role: "user", content: [{ type: "text", text }] };
   if (attachments.length) {
     res.attachments = attachments.map((attachment) => ({ ...attachment }));

@@ -10,9 +10,6 @@
 
     <div ref="messageScrollRef" class="video-message-scroll" @scroll="onMessageScroll">
       <div v-if="messages.length === 0" class="video-empty-state">
-        <div class="video-empty-mark">
-          <SvgIcon :src="navVideoIcon" />
-        </div>
         <h1>{{ t("video.workspaceTitle") }}</h1>
         <p>{{ t("video.workspaceDescription") }}</p>
       </div>
@@ -177,7 +174,6 @@ import type { VideoSettingsData } from "@/views/video/VideoSettings.vue";
 import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import audioIcon from "@/assets/svg/attach24.svg";
 import imageIcon from "@/assets/svg/navImage24.svg";
-import navVideoIcon from "@/assets/svg/navImage24.svg";
 import { addVideoConversation, getVideoConversationMessages, submitVideoMessage, useCreationMessageUi } from "@/services/creation";
 import { getVideoModelCapabilities, getVideoModelType } from "@/models";
 import { dsAlert, getUuid } from "@/utils";
@@ -722,19 +718,6 @@ onBeforeUnmount(() => {
     width: min(520px, 100%);
     margin: 0;
     line-height: 1.7;
-  }
-}
-
-.video-empty-mark {
-  width: 74px;
-  height: 74px;
-  display: grid;
-  place-items: center;
-  border-radius: 24px;
-  background: #f3f4f6;
-  :deep(.svg-icon) {
-    width: 34px;
-    height: 34px;
   }
 }
 

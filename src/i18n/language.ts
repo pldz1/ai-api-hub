@@ -176,7 +176,7 @@ export const languages = {
       capabilities: {
         fileContext: "文件",
         imageRead: "图片",
-        webSearch: "联网",
+        webSearch: "搜索",
       },
       chatPlaceholder: "请输入对话内容",
       lockedModel: "当前模型",
@@ -292,7 +292,8 @@ export const languages = {
         duplicate: "复制当前模型",
         emptyDetail: "选择一个对话模型开始编辑，或者先新增一个 ",
         emptyList: "还没有对话模型，先新增一个 ",
-        endpointNotice: "接口提示：OpenAI / Azure OpenAI 使用 /responses；DashScope 使用 /chat/completions；DeepSeek 推荐使用 https://api.deepseek.com/anthropic。",
+        endpointNotice:
+          "接口提示：OpenAI / Azure OpenAI 使用 /responses；DashScope 使用 /chat/completions；DeepSeek 推荐使用 https://api.deepseek.com/anthropic。",
         endpointNoticeLink: "查看 QA 说明",
       },
       exportSuccess: "配置已导出 ",
@@ -415,9 +416,11 @@ export const languages = {
           "DeepSeek 直连走官方 Anthropic API，推荐 Base URL 固定为 https://api.deepseek.com/anthropic。本项目会自动请求 Messages 路径；不建议改成 /chat/completions，否则官方原生 Web Search 无法按 Anthropic 工具形态工作。",
         dashscopeVisionLabel: "DashScope 视觉:",
         dashscopeVision: "图片输入要选 qwen-vl-plus 这类 VL 模型。qwen-plus、qwen3.7-max-2026-05-17 这类文本模型不要传 image_url。",
-        deepseekV4: "DeepSeek V4 在 Anthropic API 下会把 reasoning_effort 映射为 output_config.effort。low、medium、high 会映射为 high；xhigh、max 会映射为 max。",
+        deepseekV4:
+          "DeepSeek V4 在 Anthropic API 下会把 reasoning_effort 映射为 output_config.effort。low、medium、high 会映射为 high；xhigh、max 会映射为 max。",
         webSearchLabel: "联网搜索:",
-        webSearch: "DashScope 兼容接口使用 enable_search: true。DeepSeek 直连使用 Anthropic Web Search 工具；OpenAI Responses 搜索能力由 OpenAI Provider 适配处理。",
+        webSearch:
+          "DashScope 兼容接口使用 enable_search: true。DeepSeek 直连使用 Anthropic Web Search 工具；OpenAI Responses 搜索能力由 OpenAI Provider 适配处理。",
       },
       referencesTitle: "参考地址",
       references: {
@@ -578,7 +581,7 @@ export const languages = {
     },
     video: {
       workspaceTitle: "Video Workspace",
-      workspaceDescription: "Generate AI videos from text and a starting image",
+      workspaceDescription: "Create AI Videos from Text, Images, or References",
       generatePromptPlaceholder: "Describe the video you want to generate",
       selectModel: "Choose a video model",
       videoModelNotConfigured: "No video model configured",
@@ -614,7 +617,7 @@ export const languages = {
       capabilities: {
         fileContext: "File",
         imageRead: "Image",
-        webSearch: "WebSearch",
+        webSearch: "Search",
       },
       chatPlaceholder: "Type your message",
       lockedModel: "Current model",
@@ -731,7 +734,8 @@ export const languages = {
         duplicate: "Duplicate current",
         emptyDetail: "Choose a chat model to edit, or add a new one first.",
         emptyList: "No chat models yet. Add one to get started.",
-        endpointNotice: "Endpoint note: OpenAI / Azure OpenAI use /responses; DashScope uses /chat/completions; DeepSeek should use https://api.deepseek.com/anthropic.",
+        endpointNotice:
+          "Endpoint note: OpenAI / Azure OpenAI use /responses; DashScope uses /chat/completions; DeepSeek should use https://api.deepseek.com/anthropic.",
         endpointNoticeLink: "Open QA guide",
       },
       exportSuccess: "Settings exported.",
@@ -863,7 +867,8 @@ export const languages = {
         deepseekV4:
           "For DeepSeek V4 through the Anthropic API, reasoning_effort is mapped to output_config.effort. low, medium, and high map to high; xhigh and max map to max.",
         webSearchLabel: "Web search:",
-        webSearch: "DashScope compatible endpoints use enable_search: true. DeepSeek direct access uses the Anthropic Web Search tool; OpenAI Responses search is adapted by the OpenAI provider.",
+        webSearch:
+          "DashScope compatible endpoints use enable_search: true. DeepSeek direct access uses the Anthropic Web Search tool; OpenAI Responses search is adapted by the OpenAI provider.",
       },
       referencesTitle: "References",
       references: {

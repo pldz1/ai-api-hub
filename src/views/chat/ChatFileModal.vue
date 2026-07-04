@@ -11,14 +11,9 @@
           </div>
         </div>
 
-        <div class="cfp-toolbar-actions">
-          <button class="btn btn-sm btn-ghost" type="button" @click="downloadAttachment">
-            {{ t("common.download") }}
-          </button>
-          <button class="btn btn-sm btn-ghost" type="button" @click="close">
-            {{ t("common.close") }}
-          </button>
-        </div>
+        <button class="cfp-close" type="button" :aria-label="t('common.close')" @click="close">
+          <img class="cfp-close-icon" :src="closeIcon" alt="" />
+        </button>
       </header>
 
       <div v-if="attachment?.truncated" class="cfp-note">
@@ -38,9 +33,8 @@
 import { computed, ref } from "vue";
 import { useStore } from "vuex";
 import { useI18n } from "vue-i18n";
-import { dsAlert, saveBlobToLocal, saveTextToLocal } from "@/utils";
-import { buildChatAttachmentDownloadFilename, formatChatFileSize } from "@/services";
-import { getChatFileSource } from "@/services/app/storage";
+import { formatChatFileSize } from "@/services";
+import closeIcon from "@/assets/svg/close16.svg";
 
 const dialogRef = ref<HTMLDialogElement | null>(null);
 const store = useStore();
@@ -50,18 +44,6 @@ const attachment = computed(() => store.state.modalChatAttachment);
 function close() {
   dialogRef.value?.close();
   store.dispatch("setModalChatAttachment", null);
-}
-
-async function downloadAttachment() {
-  if (!attachment.value) return;
-
-  const source = await getChatFileSource(attachment.value.id);
-  const success = source
-    ? await saveBlobToLocal(source, buildChatAttachmentDownloadFilename(attachment.value, true))
-    : await saveTextToLocal(attachment.value.text, buildChatAttachmentDownloadFilename(attachment.value, false));
-  if (!success) {
-    dsAlert({ type: "error", message: t("toast.fileDownloadFailed") });
-  }
 }
 
 function onDialogClick(event: MouseEvent) {
@@ -112,10 +94,36 @@ function onDialogClick(event: MouseEvent) {
     color: oklch(var(--bc) / 0.72);
   }
 
-  .cfp-toolbar-actions {
+  .cfp-close {
     flex: 0 0 auto;
-    display: flex;
-    gap: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: oklch(var(--bc) / 0.64);
+    cursor: pointer;
+    transition:
+      background-color 0.18s ease,
+      color 0.18s ease;
+
+    &:hover,
+    &:focus-visible {
+      background: oklch(var(--b2));
+      color: oklch(var(--bc));
+      outline: none;
+    }
+  }
+
+  .cfp-close-icon {
+    display: block;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
   }
 
   .cfp-note {

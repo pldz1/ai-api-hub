@@ -2,6 +2,8 @@
 
 > One interface, every model. Your API keys, your data, your rules.
 
+Last reviewed: `2026-07-04`
+
 **AI API HUB** is a unified chat & image generation frontend for multiple AI providers, running entirely in your browser—no backend, no telemetry, just you and the models having a conversation.
 
 ---
@@ -46,17 +48,17 @@ This is why you're here, right? Here's the current lineup:
 ## ✨ Features
 
 - 🔌 **Multi-Provider Aggregation** — One UI for OpenAI, Azure, DeepSeek, and DashScope.
-- 🌊 **Streaming (SSE)** — Real-time typewriter responses with abort support. Impatient? Hit stop anytime
-- 🎨 **Image Generation & Editing** — Text-to-image, image-to-image, plus a built-in brush mask editor for surgical edits
-- 🌐 **Web Search** — Supported models can search the web mid-conversation. Yes, just like that other chatbot
-- 📎 **Chat File Attachments** — Upload text, PDF, DOCX, and XLSX files into chat; they render as attachment cards, stay available for preview/download, and round-trip through conversation export/import
-- 📋 **Prompt Templates** — Write once, reuse forever. Stop copy-pasting system instructions like a caveman
-- 💬 **Conversation Management** — Create, rename, delete, batch operations. Sidebar shows live runtime status per session
-- 📊 **Token Tracking** — Input/output tokens per turn, normalized across providers. Know where your credits are going
-- 🎨 **11 Themes** — Light · Dark · Cupcake · Acid · Lemonade · Night · Coffee · Winter · Dim · Nord · Sunset
-- 🌍 **i18n** — English & Simplified Chinese, auto-detected from your browser. Switch anytime
-- 📦 **Config Import/Export** — URL query params, file upload, or paste JSON. One-click export to back everything up
-- 🔒 **100% Local** — All data lives in `localStorage` + `IndexedDB`. No server, no accounts, your keys stay yours
+- 🌊 **Streaming (SSE)** — Real-time typewriter responses with abort support. Impatient? Hit stop anytime.
+- 🎨 **Image Generation & Editing** — Text-to-image, image-to-image, plus a built-in brush mask editor for surgical edits.
+- 🌐 **Web Search** — Supported models can search the web mid-conversation. Yes, just like that other chatbot.
+- 📎 **Chat File Attachments** — Upload text, PDF, DOCX, and XLSX files into chat; they render as compact attachment cards, support inline preview plus direct download, and round-trip through conversation export/import.
+- 📋 **Prompt Templates** — Write once, reuse forever. Stop copy-pasting system instructions like a caveman.
+- 💬 **Conversation Management** — Create, rename, delete, batch operations. Sidebar shows live runtime status per session.
+- 📊 **Token Tracking** — Input/output tokens per turn, normalized across providers. Know where your credits are going.
+- 🎨 **11 Themes** — Light · Dark · Cupcake · Acid · Lemonade · Night · Coffee · Winter · Dim · Nord · Sunset.
+- 🌍 **i18n** — English & Simplified Chinese, auto-detected from your browser. Switch anytime.
+- 📦 **Config Import/Export** — URL query params, file upload, or paste JSON. One-click export to back everything up.
+- 🔒 **100% Local** — All data lives in `localStorage` + `IndexedDB`. No server, no accounts, your keys stay yours.
 
 ---
 
@@ -80,20 +82,20 @@ This is why you're here, right? Here's the current lineup:
 
 ### Prerequisites
 
-- Node.js ≥ 18
-- npm ≥ 9
+- Node.js >= 18
+- npm >= 9
 
 ### Quick Start
 
 ```bash
 npm install        # Install dependencies
-npm run dev        # Start dev server → http://127.0.0.1:20090
+npm run dev        # Start dev server -> http://127.0.0.1:20090
 ```
 
 ### Other Commands
 
 ```bash
-npm run build      # Production build → dist/
+npm run build      # Production build -> dist/
 npm run preview    # Preview production build
 npm run typecheck  # TypeScript type check
 ```
@@ -102,16 +104,16 @@ npm run typecheck  # TypeScript type check
 
 ## 🎮 How to Use
 
-1. Open the app, click **"Enter Workspace"**
-2. Go to **Settings → Chat Models**, plug in your API key and endpoint
-3. Create a new conversation, start chatting!
-4. Want images? Add an image model in **Settings → Image Models**, then switch to the **Image** tab
+1. Open the app, click **"Enter Workspace"**.
+2. Go to **Settings -> Chat Models**, plug in your API key and endpoint.
+3. Create a new conversation and start chatting.
+4. Want images? Add an image model in **Settings -> Image Models**, then switch to the **Image** tab.
 
 ### 🔗 URL-Based Config Import
 
 Encode your config as Base64 JSON or host it somewhere, then pass it as a URL param—perfect for incognito mode:
 
-```
+```txt
 http://127.0.0.1:20090/#/?config=BASE64_ENCODED_JSON
 http://127.0.0.1:20090/#/?config=https://example.com/my-config.json
 ```
@@ -120,21 +122,21 @@ http://127.0.0.1:20090/#/?config=https://example.com/my-config.json
 
 ## 📁 Project Structure
 
-```
+```txt
 src/
 ├── ai-capability/        # AI provider abstraction layer (Template Method pattern)
 │   ├── common/           # Shared: BaseChatClient, BaseImageClient, SSE transport, usage
 │   ├── chat/             # Chat capability
 │   │   ├── providers/    #   Clients: OpenAI, Azure, DeepSeek, DashScope
-│   │   ├── executor.ts   #   Route → factory → ChatExecutor
+│   │   ├── executor.ts   #   Route -> factory -> ChatExecutor
 │   │   └── gateway.ts    #   Public API (chat, streaming, abort)
 │   ├── image/            # Image capability
 │   │   ├── providers/    #   Clients: OpenAI, Azure, DashScope
-│   │   ├── executor.ts   #   Route → factory → ImageExecutor
+│   │   ├── executor.ts   #   Route -> factory -> ImageExecutor
 │   │   └── gateway.ts    #   Public API (generate, edit)
 │   └── video/            # Video capability
 │       ├── providers/    #   Clients: DashScope
-│       ├── executor.ts   #   Route → factory → VideoExecutor
+│       ├── executor.ts   #   Route -> factory -> VideoExecutor
 │       └── gateway.ts    #   Public API (generate video)
 ├── components/           # Reusable Vue components
 ├── constants/            # App metadata, model catalog, parameter presets
@@ -149,32 +151,32 @@ src/
 
 ---
 
-## ⚠️⚠️⚠️ Video Generation Supported by Nginx Proxy.
+## ⚠️ Video Generation Supported by Nginx Proxy
 
 Add the DashScope reverse proxy inside the same `server` block and scope it under the `/io/llm/` route only. Requests to `/io/llm/ai-api-hub-dashscope-proxy/` will be forwarded to `https://dashscope.aliyuncs.com/`, while the `/io/llm/` SPA will continue to be served from `/usr/share/nginx/templates/ai-api-hub/`. Make sure the proxy `location` is placed before the static `/io/llm/` location so Nginx matches the proxy rule first. In the frontend, use `/io/llm/ai-api-hub-dashscope-proxy/...` as the API base path instead of `/ai-api-hub-dashscope-proxy/...`. This keeps the DashScope proxy limited to the LLM demo route and prevents it from affecting other site paths.
 
-The nginx configuration shall like this:
+The nginx configuration should look like this:
 
-```txt
-    location ^~ /io/llm/ai-api-hub-dashscope-proxy/ {
-        proxy_pass https://dashscope.aliyuncs.com/;
+```nginx
+location ^~ /io/llm/ai-api-hub-dashscope-proxy/ {
+    proxy_pass https://dashscope.aliyuncs.com/;
 
-        proxy_http_version 1.1;
-        proxy_ssl_server_name on;
+    proxy_http_version 1.1;
+    proxy_ssl_server_name on;
 
-        proxy_set_header Host dashscope.aliyuncs.com;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Host dashscope.aliyuncs.com;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
-        # Proxy Authorization、X-DashScope-Async...
-        proxy_pass_request_headers on;
+    # Proxy Authorization, X-DashScope-Async...
+    proxy_pass_request_headers on;
 
-        # If support stram output.
-        proxy_buffering off;
-        proxy_cache off;
-        proxy_read_timeout 300s;
-        proxy_send_timeout 300s;
-    }
+    # If support stream output.
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+}
 ```
 
 ---

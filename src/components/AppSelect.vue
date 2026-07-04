@@ -88,9 +88,7 @@ export type AppSelectOption = {
 };
 
 type AppSelectValue = string | number | null;
-type AppSelectMenuItem =
-  | { type: "group"; key: string; label: string }
-  | { type: "option"; key: string; option: AppSelectOption; optionIndex: number };
+type AppSelectMenuItem = { type: "group"; key: string; label: string } | { type: "option"; key: string; option: AppSelectOption; optionIndex: number };
 
 const props = withDefaults(
   defineProps<{

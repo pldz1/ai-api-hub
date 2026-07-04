@@ -16,7 +16,14 @@
               </div>
               <div v-if="file.truncated" class="ccia-file-note">{{ t("toast.fileContentTruncated") }}</div>
             </div>
-            <button class="ccia-remove-button ccia-file-remove-button" type="button" :aria-label="t('tooltip.removeAttachment')" @click.stop="removeInputFile(file.id)">×</button>
+            <button
+              class="ccia-remove-button ccia-file-remove-button"
+              type="button"
+              :aria-label="t('tooltip.removeAttachment')"
+              @click.stop="removeInputFile(file.id)"
+            >
+              ×
+            </button>
           </div>
         </div>
 
@@ -79,7 +86,7 @@
             </AppTooltip>
             <AppTooltip v-if="supportedCapabilities.imageRead" :text="t('tooltip.uploadImage')" placement="top">
               <button class="ccia-capability-chip" type="button" @click="openImageFilePicker">
-                <SvgIcon class="ccia-capability-icon" :src="attachIcon" />
+                <SvgIcon class="ccia-capability-icon" :src="imageIcon" />
                 <span class="ccia-capability-label">{{ t("input.capabilities.imageRead") }}</span>
               </button>
             </AppTooltip>
@@ -118,6 +125,7 @@ import { useI18n } from "vue-i18n";
 import { useStore } from "vuex";
 import type { ChatModelConfig, ChatPromptMessage } from "@/types";
 import attachIcon from "@/assets/svg/attach24.svg";
+import imageIcon from "@/assets/svg/navImage24.svg";
 import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import paramIcon from "@/assets/svg/param24.svg";
 import pauseIcon from "@/assets/svg/pause32.svg";
@@ -978,7 +986,6 @@ watch(
     line-height: 18px;
     cursor: pointer;
   }
-
 }
 
 .ccia-imgs-area::-webkit-scrollbar {

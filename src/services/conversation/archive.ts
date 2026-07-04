@@ -26,7 +26,10 @@ interface ChatConversationArchive {
 }
 
 function safeFilename(value: string, fallback: string): string {
-  const name = value.trim().replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ");
+  const name = value
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, " ");
   return (name || fallback).slice(0, 80);
 }
 

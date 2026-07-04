@@ -10,9 +10,6 @@
 
     <div ref="messageScrollRef" class="image-message-scroll" @scroll="onMessageScroll">
       <div v-if="messages.length === 0" class="image-empty-state">
-        <div class="image-empty-mark">
-          <SvgIcon :src="navImageIcon" />
-        </div>
         <h1>{{ t("image.workspaceTitle") }}</h1>
         <p>{{ t("image.workspaceDescription") }}</p>
       </div>
@@ -164,7 +161,6 @@ import ImageSettings from "@/views/image/ImageSettings.vue";
 import type { ImageSettingsData } from "@/views/image/ImageSettings.vue";
 import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import attachIcon from "@/assets/svg/attach24.svg";
-import navImageIcon from "@/assets/svg/navImage24.svg";
 import { addImageConversation, getImageConversationMessages, submitImageMessage, useCreationMessageUi } from "@/services/creation";
 import { dsAlert, getUuid, saveToLocal } from "@/utils";
 import type { ImageConversationMessage, ImageInputAttachment, ImagePayload, ImageModelConfig } from "@/types";
@@ -644,21 +640,6 @@ onBeforeUnmount(() => {
     width: min(520px, 100%);
     margin: 0;
     line-height: 1.7;
-  }
-}
-
-.image-empty-mark {
-  position: relative;
-  width: 74px;
-  height: 74px;
-  display: grid;
-  place-items: center;
-  border-radius: 24px;
-  background: #f3f4f6;
-
-  :deep(.svg-icon) {
-    width: 34px;
-    height: 34px;
   }
 }
 

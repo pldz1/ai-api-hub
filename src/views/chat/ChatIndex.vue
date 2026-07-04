@@ -2,10 +2,7 @@
   <!-- This view renders the chat message area and input composer. -->
   <section ref="containerRef" class="chat-card-container">
     <!-- Header bar with session status, question-list toggle and panel. -->
-    <ChatHeaderBar
-      :scroll-container="innerRef"
-      :container-el="containerRef"
-    />
+    <ChatHeaderBar :scroll-container="innerRef" :container-el="containerRef" />
 
     <!-- Show starter templates as an empty-state layer above the message surface. -->
     <div v-show="isShowTemplate" class="ccdc-template-layer">
