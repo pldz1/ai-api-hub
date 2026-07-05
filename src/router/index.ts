@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from "vue-router";
 import HomePage from "@/views/HomePage.vue";
 import MainView from "@/views/MainView.vue";
+import AssetsIndex from "@/views/assets/AssetsIndex.vue";
 import QAIndex from "@/views/qa/QAIndex.vue";
 import SettingIndex from "@/views/setting/SettingIndex.vue";
 
@@ -27,6 +28,17 @@ const routes: RouteRecordRaw[] = [
     name: "video",
     component: MainView,
     props: true,
+  },
+  {
+    path: "/assets",
+    component: MainView,
+    children: [
+      {
+        path: "",
+        name: "assets",
+        component: AssetsIndex,
+      },
+    ],
   },
   {
     path: "/qa",

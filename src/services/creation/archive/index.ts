@@ -1,8 +1,8 @@
 import store from "@/store";
 import { getUuid } from "@/utils";
 import { getImageSource, getVideoSource, setImageSource, setVideoSource } from "@/services/app/storage";
-import { addImageConversationAPI, getImageConversationMessagesAPI, setImageConversationMessagesAPI } from "./image/api";
-import { addVideoConversationAPI, getVideoConversationMessagesAPI, setVideoConversationMessagesAPI } from "./video/api";
+import { addImageConversationAPI, getImageConversationMessagesAPI, setImageConversationMessagesAPI } from "../image/api";
+import { addVideoConversationAPI, getVideoConversationMessagesAPI, setVideoConversationMessagesAPI } from "../video/api";
 import type { ImageConversationMessage, ImageInputAttachment, ImagePayload, VideoConversationMessage, VideoInputAttachment, VideoPayload } from "@/types";
 
 const ARCHIVE_FORMAT = "ai-api-hub.conversation";

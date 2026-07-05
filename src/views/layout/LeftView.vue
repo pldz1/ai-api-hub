@@ -61,6 +61,12 @@
               <span v-if="isExpanded" class="nav-label">{{ t("chat.newVideoCreation") }}</span>
             </button>
           </AppTooltip>
+          <AppTooltip :text="isExpanded ? '' : 'Assets'" placement="right">
+            <button class="nav-item" :class="{ 'is-active': isAssetsRoute }" type="button" @click="router.push({ name: 'assets' })">
+              <SvgIcon :src="assetsIcon" class="nav-icon" />
+              <span v-if="isExpanded" class="nav-label">Assets</span>
+            </button>
+          </AppTooltip>
           <AppDropdownMenu placement="bottom-start">
             <template #trigger="{ toggle }">
               <AppTooltip :text="isExpanded ? '' : t('chat.conversationActions')" placement="right">
@@ -414,6 +420,7 @@ import brandIcon from "@/assets/svg/app18.svg";
 import newIcon from "@/assets/svg/new24.svg";
 import settingIcon from "@/assets/svg/setting24.svg";
 import libraryIcon from "@/assets/svg/navImage24.svg";
+import assetsIcon from "@/assets/svg/assets32.svg";
 import videoIcon from "@/assets/svg/video24.svg";
 import collapseIcon from "@/assets/svg/collapse24.svg";
 import expandIcon from "@/assets/svg/expand24.svg";
@@ -474,6 +481,7 @@ const activeRouteVideoId = computed(() => (route.name === "video" && typeof rout
 const isChatDraftRoute = computed(() => route.name === "chat" && !activeRouteChatId.value);
 const isImageDraftRoute = computed(() => route.name === "image" && !activeRouteImageId.value);
 const isVideoDraftRoute = computed(() => route.name === "video" && !activeRouteVideoId.value);
+const isAssetsRoute = computed(() => route.name === "assets");
 const isSettingsRoute = computed(() => typeof route.name === "string" && route.name.startsWith("settings"));
 
 const activeSettingsTab = computed<SettingTabKey_L>(() => {
