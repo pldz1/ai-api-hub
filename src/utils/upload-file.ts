@@ -1,7 +1,7 @@
 // @ts-nocheck
 import deleteIcon from "@/assets/svg/delete32.svg";
 import { tr } from "@/i18n";
-import { dsAlert } from "@/utils/daisy-ui-alert";
+import { dsAlert } from "@/utils/app-alert";
 import { createSvgIcon } from "@/utils/svg-icon";
 
 const GlobalInputUploadEl = "global-file-upload-input";

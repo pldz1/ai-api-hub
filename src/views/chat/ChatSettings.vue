@@ -4,11 +4,11 @@
     <div class="modal-box">
       <!-- Close and persist the edited settings when leaving the dialog. -->
       <form method="dialog">
-        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" type="button" @click="handleClose">
+        <button class="btn btn-sm btn-circle btn-ghost dialog-close-button" type="button" @click="handleClose">
           <SvgIcon :src="closeIcon" style="width: 24px; height: 24px"></SvgIcon>
         </button>
       </form>
-      <h3 class="text-lg font-bold">{{ t("chat.settingsTitle") }}</h3>
+      <h3 class="settings-dialog-title">{{ t("chat.settingsTitle") }}</h3>
       <div class="gcms-container">
         <!-- Edit the system instruction that seeds the conversation context. -->
         <div class="gcms-setting-item">
@@ -187,6 +187,7 @@ defineExpose({
   overflow: hidden;
 
   .modal-box {
+    position: relative;
     width: min(664px, calc(100vw - 24px));
     max-width: none;
     max-height: min(88dvh, 760px);
@@ -195,6 +196,19 @@ defineExpose({
     flex-direction: column;
     gap: 12px;
     overflow: hidden;
+  }
+
+  .dialog-close-button {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+
+  .settings-dialog-title {
+    font-size: 1.125rem;
+    line-height: 1.5;
+    font-weight: 700;
+    color: oklch(var(--bc));
   }
 
   .gcms-container {

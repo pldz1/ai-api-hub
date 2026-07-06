@@ -681,8 +681,40 @@ watch(
   }
 
   .ccia-model-setting-button {
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: oklch(var(--bc) / 0.66);
+    cursor: pointer;
+    transition:
+      background-color 0.16s ease,
+      color 0.16s ease,
+      transform 0.16s ease;
+
+    &:hover {
+      background: oklch(var(--b2) / 0.72);
+      color: oklch(var(--bc));
+    }
+
+    &:active {
+      transform: scale(0.96);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px oklch(var(--p) / 0.12);
+    }
+
+    :deep(.svg-icon) {
+      width: 20px;
+      height: 20px;
+    }
   }
 
   .ccia-custom-textarea {

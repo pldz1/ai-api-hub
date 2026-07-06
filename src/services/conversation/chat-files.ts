@@ -1,6 +1,14 @@
 import type { ChatMessageAttachment } from "@/types";
 
 type ChatInputFileKind = "text" | "pdf" | "docx" | "xlsx";
+type PdfPageText = { items?: Array<{ str?: string; hasEOL?: boolean }> };
+type PdfPage = { getTextContent: (options?: { disableNormalization?: boolean }) => Promise<PdfPageText> };
+type PdfDocument = { numPages: number; getPage: (pageNumber: number) => Promise<PdfPage> };
+type PdfJsModule = {
+  version: string;
+  GlobalWorkerOptions?: { workerSrc: string };
+  getDocument: (options: { data: Uint8Array }) => { promise: Promise<PdfDocument> };
+};
 
 export type ChatInputAttachment = ChatMessageAttachment;
 
@@ -114,9 +122,11 @@ const CHAT_FILE_KIND_LABELS: Record<ChatInputFileKind, string> = {
 };
 
 let pdfWorkerConfigured = false;
-let pdfModulePromise: Promise<typeof import("pdfjs-dist")> | null = null;
+let pdfModulePromise: Promise<PdfJsModule> | null = null;
 let mammothModulePromise: Promise<typeof import("mammoth")> | null = null;
 let xlsxModulePromise: Promise<typeof import("xlsx")> | null = null;
+const PDFJS_CDN_VERSION = "5.4.624";
+const PDFJS_CDN_BASE = `https://registry.npmmirror.com/pdfjs-dist/${PDFJS_CDN_VERSION}/files/build`;
 
 export function getChatInputFileAccept(): string {
   return CHAT_INPUT_FILE_ACCEPT_PARTS;
@@ -230,14 +240,14 @@ async function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
   });
 }
 
-async function loadPdfModule(): Promise<typeof import("pdfjs-dist")> {
+async function loadPdfModule(): Promise<PdfJsModule> {
   if (!pdfModulePromise) {
-    pdfModulePromise = import("pdfjs-dist");
+    pdfModulePromise = import(/* @vite-ignore */ `${PDFJS_CDN_BASE}/pdf.mjs`) as Promise<PdfJsModule>;
   }
 
   const module = await pdfModulePromise;
   if (!pdfWorkerConfigured && typeof window !== "undefined" && module.GlobalWorkerOptions) {
-    module.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
+    module.GlobalWorkerOptions.workerSrc = `${PDFJS_CDN_BASE}/pdf.worker.min.mjs`;
     pdfWorkerConfigured = true;
   }
 

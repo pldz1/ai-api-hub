@@ -1,0 +1,318 @@
+.btn {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 0.65rem;
+  padding: 0.5rem 0.9rem;
+  background: oklch(var(--b2));
+  color: oklch(var(--bc));
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.btn:hover {
+  background: oklch(var(--b3));
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px oklch(var(--p) / 0.18);
+}
+
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  border-color: oklch(var(--p));
+  background: oklch(var(--p));
+  color: oklch(var(--pc));
+}
+
+.btn-primary:hover {
+  background: oklch(var(--p) / 0.9);
+}
+
+.btn-neutral {
+  border-color: oklch(var(--n));
+  background: oklch(var(--n));
+  color: oklch(var(--nc));
+}
+
+.btn-error {
+  border-color: oklch(var(--er) / 0.28);
+  background: oklch(var(--er) / 0.14);
+  color: oklch(var(--er));
+}
+
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: oklch(var(--bc) / 0.78);
+  box-shadow: none;
+}
+
+.btn-ghost:hover {
+  background: oklch(var(--bc) / 0.08);
+  color: oklch(var(--bc));
+}
+
+.btn-outline {
+  border-color: oklch(var(--bc) / 0.16);
+  background: transparent;
+  color: oklch(var(--bc));
+}
+
+.btn-sm {
+  min-height: 2rem;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+
+.btn-circle {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  border-radius: 999px;
+  padding: 0;
+}
+
+.btn-circle.btn-sm {
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  min-height: 2rem;
+}
+
+.input,
+.textarea,
+.select {
+  width: auto;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  background: oklch(var(--b1));
+  color: oklch(var(--bc));
+  font-size: 0.875rem;
+  line-height: 1.4;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.input,
+.select {
+  height: 2.5rem;
+  padding: 0 0.75rem;
+}
+
+.textarea {
+  min-height: 5rem;
+  padding: 0.7rem 0.8rem;
+  resize: vertical;
+}
+
+.input-bordered,
+.textarea-bordered,
+.select-bordered {
+  border-color: oklch(var(--bc) / 0.14);
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus,
+.input:focus-within {
+  outline: none;
+  border-color: oklch(var(--p) / 0.38);
+  box-shadow: 0 0 0 3px oklch(var(--p) / 0.12);
+}
+
+.input:disabled,
+.textarea:disabled,
+.select:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.input-error,
+.textarea-error,
+.select-error {
+  border-color: oklch(var(--er) / 0.52);
+}
+
+.range {
+  width: 100%;
+  height: 1.5rem;
+  accent-color: oklch(var(--p));
+  cursor: pointer;
+}
+
+.range-xs {
+  height: 1rem;
+}
+
+.toggle {
+  position: relative;
+  width: 2.75rem;
+  height: 1.5rem;
+  flex: 0 0 auto;
+  appearance: none;
+  border: 1px solid oklch(var(--bc) / 0.14);
+  border-radius: 999px;
+  background: oklch(var(--bc) / 0.16);
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.toggle::before {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(1.5rem - 6px);
+  height: calc(1.5rem - 6px);
+  border-radius: 999px;
+  background: oklch(var(--b1));
+  box-shadow: 0 1px 3px oklch(var(--bc) / 0.24);
+  content: "";
+  transition: transform 0.18s ease;
+}
+
+.toggle:checked {
+  border-color: oklch(var(--p));
+  background: oklch(var(--p));
+}
+
+.toggle:checked::before {
+  transform: translateX(1.25rem);
+}
+
+.toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px oklch(var(--p) / 0.16);
+}
+
+.checkbox {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+  accent-color: oklch(var(--p));
+  cursor: pointer;
+}
+
+.checkbox-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 1rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  overflow: auto;
+}
+
+.modal::backdrop {
+  background: oklch(var(--bc) / 0.24);
+}
+
+.modal[open] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-box {
+  position: relative;
+  width: min(32rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  border-radius: 1rem;
+  background: oklch(var(--b1));
+  color: oklch(var(--bc));
+  box-shadow: 0 24px 80px oklch(var(--bc) / 0.24);
+}
+
+.modal-action {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid oklch(var(--bc) / 0.12);
+  border-radius: 0.9rem;
+  padding: 0.75rem 0.95rem;
+  background: oklch(var(--b1));
+  color: oklch(var(--bc));
+  box-shadow: 0 18px 42px oklch(var(--bc) / 0.16);
+}
+
+.alert-success {
+  border-color: oklch(var(--su) / 0.3);
+  background: oklch(var(--su) / 0.12);
+}
+
+.alert-error {
+  border-color: oklch(var(--er) / 0.3);
+  background: oklch(var(--er) / 0.12);
+}
+
+.alert-info {
+  border-color: oklch(var(--in) / 0.3);
+  background: oklch(var(--in) / 0.12);
+}
+
+.alert-warning {
+  border-color: oklch(var(--wa) / 0.34);
+  background: oklch(var(--wa) / 0.14);
+}
+
+.loading {
+  display: inline-block;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid oklch(var(--bc) / 0.18);
+  border-top-color: oklch(var(--p));
+  border-radius: 999px;
+  animation: app-loading-spin 0.72s linear infinite;
+}
+
+.loading-xl {
+  width: 4rem;
+  height: 4rem;
+}
+
+@keyframes app-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

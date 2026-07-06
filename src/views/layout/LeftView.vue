@@ -9,10 +9,10 @@
             <span class="back-label">{{ t("common.back") }}</span>
           </button>
         </AppTooltip>
-        <a v-else-if="isExpanded" class="brand-logo" href="../">
+        <button v-else-if="isExpanded" class="brand-logo" type="button" @click="router.push({ name: 'home' })">
           <SvgIcon class="logo-icon" :src="brandIcon" colored />
           <span class="logo-text">{{ APP_NAME }} · {{ APP_VERSION }}</span>
-        </a>
+        </button>
 
         <AppTooltip :text="t('chat.sidebarToggle')" placement="right">
           <button class="collapse-btn" type="button" :aria-label="t('chat.sidebarToggle')" @click="emit('toggle')">
@@ -1046,13 +1046,33 @@ $radius-md: 12px;
   justify-content: flex-start;
   height: 36px;
   padding: 0 10px;
-  border: none;
+  border: 0;
   background: transparent;
   color: oklch(var(--bc));
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
   border-radius: $radius-md;
+  font: inherit;
+  text-align: left;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease;
+
+  &:hover {
+    background: oklch(var(--bc) / 0.05);
+    color: oklch(var(--bc));
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px oklch(var(--p) / 0.12);
+  }
 
   .logo-icon {
     width: 24px;
@@ -1698,8 +1718,11 @@ $radius-md: 12px;
   gap: 8px;
   justify-content: flex-start;
   cursor: pointer;
+  border: 0;
   border-radius: $radius-md;
+  background: transparent;
   color: #374151;
+  font: inherit;
   transition:
     background-color 0.16s ease,
     color 0.16s ease,

@@ -1,9 +1,11 @@
+@use "./theme.scss";
 @use "./global.scss";
+@use "./ui-primitives.scss";
 @use "./settings.scss";
 
-@use "./daisy-ui-alert.scss";
-@use "./daisy-ui-loading.scss";
+@use "./app-alert.scss";
+@use "./app-loading.scss";
 
-@use "./daisy-ui-markdown.scss";
-@use "./daisy-ui-highlight.scss";
+@use "./markdown.scss";
+@use "./highlight.scss";
 @use "./chat-md-bubble.scss";

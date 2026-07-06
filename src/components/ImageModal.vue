@@ -12,7 +12,7 @@
       @touchcancel="onTouchEnd"
     >
       <!-- Provide a simple close control for the fullscreen image preview. -->
-      <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2 close-forum" type="button" @click="close">&times;</button>
+      <button class="btn btn-sm btn-circle btn-ghost image-viewer-close" type="button" @click="close">&times;</button>
 
       <!-- Scale the selected image to fit within the viewport. -->
       <img class="img-container" :src="imgSrc" :style="imageStyle" draggable="false" />
@@ -201,7 +201,10 @@ function onDialogClick(event: MouseEvent) {
     user-select: none;
   }
 
-  .close-forum {
+  .image-viewer-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
     z-index: 2;
     background-color: transparent;
     color: oklch(var(--nc));

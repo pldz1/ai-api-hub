@@ -1,8 +1,9 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
-/* 设置整个应用的默认样式 */
 html,
 body {
   width: 100vw;
@@ -12,12 +13,45 @@ body {
   overflow: hidden;
 }
 
-/* daisy ui model的style问题: https://github.com/saadeghi/daisyui/issues/3040 */
+body {
+  color: oklch(var(--bc));
+  background: oklch(var(--b1));
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  padding: 0;
+}
+
+button,
+label {
+  -webkit-tap-highlight-color: transparent;
+}
+
+img,
+svg,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+/* Keep native dialogs from changing the root scrollbar gutter while open. */
 :root:has(:is(.modal-open, .modal:target, .modal-toggle:checked + .modal, .modal[open])) {
   scrollbar-gutter: unset;
 }
 
-/* 自定义的全局滚动条样式 */
 * {
   scrollbar-color: unset;
 }

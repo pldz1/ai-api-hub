@@ -1,0 +1,62 @@
+name: Build Dist
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-dist:
+    name: Build dist artifact
+    runs-on: ubuntu-latest
+
+    env:
+      ARTIFACT_NAME: ai-api-hub-dist
+      ZIP_NAME: ai-api-hub-dist.zip
+      SERVER_NOTICE_URL: ${{ secrets.SERVER_NOTICE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Package dist
+        run: |
+          cd dist
+          zip -r "../${ZIP_NAME}" .
+
+      - name: Upload dist artifact
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ZIP_NAME }}
+          if-no-files-found: error
+
+      - name: Notify target server
+        if: env.SERVER_NOTICE_URL != ''
+        run: |
+          curl -fG "$SERVER_NOTICE_URL" \
+            --data-urlencode "repo=${{ github.repository }}" \
+            --data-urlencode "sha=${{ github.sha }}" \
+            --data-urlencode "ref=${{ github.ref_name }}" \
+            --data-urlencode "run_id=${{ github.run_id }}" \
+            --data-urlencode "run_attempt=${{ github.run_attempt }}" \
+            --data-urlencode "artifact_name=${ARTIFACT_NAME}" \
+            --data-urlencode "artifact_url=${{ steps.upload.outputs.artifact-url }}" \
+            --data-urlencode "artifact_id=${{ steps.upload.outputs.artifact-id }}"

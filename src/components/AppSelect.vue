@@ -14,7 +14,7 @@
       v-if="searchable"
       :value="searchText"
       type="text"
-      class="input w-full app-select-control app-select-input"
+      class="input app-select-control app-select-input"
       :class="{ 'input-bordered': !borderless }"
       :placeholder="placeholder"
       :disabled="disabled"
@@ -29,7 +29,7 @@
     <button
       v-else
       type="button"
-      class="input w-full app-select-control app-select-button"
+      class="input app-select-control app-select-button"
       :class="{ 'input-bordered': !borderless }"
       :aria-expanded="open"
       :disabled="disabled"
@@ -351,6 +351,7 @@ watch(
 }
 
 .app-select-control {
+  width: 100%;
   min-height: 46px;
   padding-right: 3rem;
 }

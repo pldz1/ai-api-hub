@@ -2,7 +2,7 @@
 
 > One interface, every model. Your API keys, your data, your rules.
 
-Last reviewed: `2026-07-04`
+Last reviewed: `2026-07-06`
 
 **AI API HUB** is a unified chat & image generation frontend for multiple AI providers, running entirely in your browser—no backend, no telemetry, just you and the models having a conversation.
 
@@ -72,8 +72,9 @@ This is why you're here, right? Here's the current lineup:
 | State     | Vuex 4                                                |
 | Routing   | Vue Router 4 (Hash mode)                              |
 | i18n      | vue-i18n 9                                            |
-| UI        | DaisyUI 4 + Tailwind CSS 3                            |
+| UI        | Scoped SCSS + app-owned design primitives             |
 | Markdown  | markdown-it 14 + highlight.js 11                      |
+| Files     | PDF.js CDN runtime, mammoth, xlsx                     |
 | Streaming | Native Fetch API + ReadableStream (custom SSE parser) |
 
 ---
@@ -99,6 +100,14 @@ npm run build      # Production build -> dist/
 npm run preview    # Preview production build
 npm run typecheck  # TypeScript type check
 ```
+
+---
+
+## Build & Runtime Notes
+
+- The UI no longer depends on DaisyUI or Tailwind CSS. Shared theme tokens live in `src/assets/style/theme.scss`, and app-owned controls live in `src/assets/style/ui-primitives.scss`.
+- PDF text extraction loads both PDF.js `pdf.mjs` and `pdf.worker.min.mjs` at runtime from the locked version on `registry.npmmirror.com`. This keeps `pdfjs-dist` out of `package.json` and keeps PDF.js assets out of the local bundle. Offline or private-network deployments should self-host those two files or restore a local `pdfjs-dist` dependency.
+- DOCX and XLSX parsing stay local and are loaded only when needed through dynamic imports.
 
 ---
 

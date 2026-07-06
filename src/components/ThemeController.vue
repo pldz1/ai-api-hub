@@ -5,9 +5,9 @@
     <AppDropdownMenu :items="themeOptions" placement="bottom-end" :width="140" @select="handleThemeChange">
       <!-- Use a compact trigger button that opens the theme list. -->
       <template #trigger="{ toggle }">
-        <button type="button" class="btn m-1 btn-color1" @click="toggle">
+        <button type="button" class="btn theme-control-button" @click="toggle">
           {{ t("theme.label") }}
-          <svg width="12px" height="12px" class="inline-block h-2 w-2 fill-current opacity-60" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2048 2048">
+          <svg class="theme-control-caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2048 2048" aria-hidden="true">
             <path d="M1799 349l242 241-1017 1017L7 590l242-241 775 775 775-775z"></path>
           </svg>
         </button>
@@ -47,7 +47,8 @@ const handleThemeChange = (item: ThemeOption) => {
 </script>
 
 <style lang="scss" scoped>
-.btn-color1 {
+.theme-control-button {
+  margin: 4px;
   background-color: transparent;
   box-shadow: initial;
   border-color: transparent;
@@ -55,5 +56,13 @@ const handleThemeChange = (item: ThemeOption) => {
   &:hover {
     background-color: oklch(var(--nc) / 0.1);
   }
+}
+
+.theme-control-caret {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  fill: currentColor;
+  opacity: 0.6;
 }
 </style>

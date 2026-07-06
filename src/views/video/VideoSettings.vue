@@ -2,11 +2,11 @@
   <dialog ref="dialogRef" class="modal video-model-settings">
     <div class="modal-box">
       <form method="dialog">
-        <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" type="button" @click="handleClose">
+        <button class="btn btn-sm btn-circle btn-ghost dialog-close-button" type="button" @click="handleClose">
           <SvgIcon :src="closeIcon" style="width: 24px; height: 24px" />
         </button>
       </form>
-      <h3 class="text-lg font-bold">{{ t("video.settingsTitle") }}</h3>
+      <h3 class="settings-dialog-title">{{ t("video.settingsTitle") }}</h3>
       <div class="vms-container">
         <!-- Resolution -->
         <div class="vms-setting-item">
@@ -138,6 +138,7 @@ defineExpose({ openDialog });
   overflow: hidden;
 
   .modal-box {
+    position: relative;
     width: min(664px, calc(100vw - 24px));
     max-width: none;
     max-height: min(88dvh, 760px);
@@ -146,6 +147,19 @@ defineExpose({ openDialog });
     flex-direction: column;
     gap: 12px;
     overflow: hidden;
+  }
+
+  .dialog-close-button {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+
+  .settings-dialog-title {
+    font-size: 1.125rem;
+    line-height: 1.5;
+    font-weight: 700;
+    color: oklch(var(--bc));
   }
 
   .vms-container {

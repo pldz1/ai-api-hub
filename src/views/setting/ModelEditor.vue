@@ -6,7 +6,7 @@
         <!-- Shared display name field -->
         <label class="model-form-field model-form-field-span">
           <span>{{ t("user.modelCard.fields.name") }}</span>
-          <input v-model.trim="localModel.name" type="text" class="input input-bordered w-full" />
+          <input v-model.trim="localModel.name" type="text" class="input input-bordered model-input-full" />
         </label>
 
         <!-- Shared model selector -->
@@ -24,19 +24,22 @@
         <!-- OpenAI-style base URL -->
         <label v-if="usesBaseURL" class="model-form-field model-form-field-span">
           <span>{{ isImageModel || isVideoModel ? t("user.modelCard.fields.imageUrl") : t("user.modelCard.fields.baseUrl") }}</span>
-          <input v-model.trim="localModel.baseURL" type="text" class="input input-bordered w-full" />
+          <input v-model.trim="localModel.baseURL" type="text" class="input input-bordered model-input-full" />
           <small v-if="isImageModel || isVideoModel">{{ t("user.modelCard.imageBaseUrlHelp") }}</small>
         </label>
 
         <!-- Secret entry with a copy helper -->
         <div class="model-form-field model-form-field-span">
           <label>{{ t("user.modelCard.fields.apiKey") }}</label>
-          <label class="input input-bordered model-key-input">
-            <input v-model.trim="localModel.apiKey" type="password" class="grow" />
-            <button type="button" class="btn btn-ghost btn-sm" @click="copyApiKey">
+          <div class="model-key-control">
+            <input v-model.trim="localModel.apiKey" :type="isApiKeyVisible ? 'text' : 'password'" class="model-key-value" autocomplete="off" spellcheck="false" />
+            <button type="button" class="model-key-action" aria-label="Toggle API key visibility" @click="toggleApiKeyVisibility">
+              <SvgIcon :src="eyeIcon" />
+            </button>
+            <button type="button" class="model-key-action" aria-label="Copy API key" @click="copyApiKey">
               <SvgIcon :src="copyIcon" />
             </button>
-          </label>
+          </div>
         </div>
 
         <!-- Proxy toggle: only for video models (DashScope CORS workaround) -->
@@ -68,9 +71,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import copyIcon from "@/assets/svg/copy16.svg";
+import eyeIcon from "@/assets/svg/eye16.svg";
 import AppSelect from "@/components/AppSelect.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import {
@@ -132,6 +136,7 @@ const localModel = reactive<ModelEditorState>({
 });
 let isSyncingFromProps = false;
 let lastModelSnapshot = "";
+const isApiKeyVisible = ref(false);
 
 const isImageModel = computed(() => props.kind === "image");
 const isVideoModel = computed(() => props.kind === "video");
@@ -316,6 +321,10 @@ function copyApiKey() {
     });
 }
 
+function toggleApiKeyVisibility() {
+  isApiKeyVisible.value = !isApiKeyVisible.value;
+}
+
 watch(
   () => props.model,
   (newModel) => syncFromProps(newModel),
@@ -410,6 +419,10 @@ watch(
   grid-column: 1 / -1;
 }
 
+.model-input-full {
+  width: 100%;
+}
+
 .model-proxy-toggle {
   cursor: pointer;
 }
@@ -421,23 +434,70 @@ watch(
   cursor: pointer;
 }
 
-.model-key-input {
+.model-key-control {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 46px;
-  background: oklch(var(--b1) / 0.96);
-  border-radius: 12px;
+  gap: 6px;
+  min-height: 48px;
+  padding: 6px 8px 6px 14px;
+  border: 1px solid oklch(var(--bc) / 0.1);
+  border-radius: 16px;
+  background: oklch(var(--b1) / 0.98);
+  box-shadow:
+    0 1px 2px oklch(var(--bc) / 0.02),
+    inset 0 1px 2px oklch(var(--bc) / 0.02);
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background-color 0.16s ease;
 
-  input {
-    flex: 1;
-    min-width: 0;
+  &:focus-within {
+    border-color: oklch(var(--p) / 0.32);
+    box-shadow:
+      0 0 0 4px oklch(var(--p) / 0.08),
+      inset 0 1px 2px oklch(var(--bc) / 0.02);
+  }
+}
+
+.model-key-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: oklch(var(--bc));
+  font: inherit;
+  line-height: 32px;
+}
+
+.model-key-action {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  color: oklch(var(--bc) / 0.62);
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+
+  &:hover {
+    border-color: oklch(var(--bc) / 0.08);
+    background: oklch(var(--bc) / 0.055);
+    color: oklch(var(--bc));
   }
 
-  :deep(.btn) {
-    border-radius: 8px;
-    box-shadow: none;
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px oklch(var(--p) / 0.12);
   }
 }
 
@@ -539,7 +599,7 @@ watch(
     }
   }
 
-  .model-key-input {
+  .model-key-control {
     min-height: 50px;
   }
 

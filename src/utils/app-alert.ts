@@ -57,11 +57,11 @@ export function dsAlert({ type = "info", message = "", icon = "", duration = 150
   const iconValue = icon || defaultIcons[type] || "";
   const alertKey = getAlertKey(type, message);
 
-  let alertContainer = document.getElementById("custom-daisy-ui-alert");
+  let alertContainer = document.getElementById("custom-app-alert");
   if (!alertContainer) {
     alertContainer = document.createElement("div");
-    alertContainer.id = "custom-daisy-ui-alert";
-    alertContainer.className = "custom-daisy-ui-alert";
+    alertContainer.id = "custom-app-alert";
+    alertContainer.className = "custom-app-alert";
   }
 
   const existingAlert = Array.from(alertContainer.children).find(

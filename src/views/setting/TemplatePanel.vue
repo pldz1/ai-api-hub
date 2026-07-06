@@ -42,7 +42,7 @@
             <!-- Template metadata and prompt body -->
             <label>
               <span>{{ t("user.templates.name") }}</span>
-              <input type="text" class="input input-bordered w-full" :value="currentTemplate.name" @input="updateField('name', $event)" />
+              <input type="text" class="input input-bordered template-input" :value="currentTemplate.name" @input="updateField('name', $event)" />
             </label>
             <label>
               <span>{{ t("user.templates.instruction") }}</span>
@@ -304,9 +304,14 @@ watch(
 }
 
 .template-textarea {
+  width: 100%;
   min-height: 280px;
   flex: 1 1 auto;
   resize: vertical;
+}
+
+.template-input {
+  width: 100%;
 }
 
 @media (max-width: 900px) {
