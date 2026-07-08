@@ -10,11 +10,12 @@ jobs:
   build-dist:
     name: Build dist artifact
     runs-on: ubuntu-latest
+    environment: main-branch
 
     env:
       ARTIFACT_NAME: ai-api-hub-dist
-      ZIP_NAME: ai-api-hub-dist.zip
       SERVER_NOTICE_URL: ${{ secrets.SERVER_NOTICE_URL }}
+      SERVER_DEPLOY_TOKEN: ${{ secrets.SERVER_DEPLOY_TOKEN }}
 
     steps:
       - name: Checkout
@@ -35,28 +36,21 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Package dist
-        run: |
-          cd dist
-          zip -r "../${ZIP_NAME}" .
-
       - name: Upload dist artifact
         id: upload
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARTIFACT_NAME }}
-          path: ${{ env.ZIP_NAME }}
+          path: dist
           if-no-files-found: error
 
       - name: Notify target server
-        if: env.SERVER_NOTICE_URL != ''
+        if: env.SERVER_NOTICE_URL != '' && env.SERVER_DEPLOY_TOKEN != ''
         run: |
-          curl -fG "$SERVER_NOTICE_URL" \
-            --data-urlencode "repo=${{ github.repository }}" \
-            --data-urlencode "sha=${{ github.sha }}" \
-            --data-urlencode "ref=${{ github.ref_name }}" \
-            --data-urlencode "run_id=${{ github.run_id }}" \
-            --data-urlencode "run_attempt=${{ github.run_attempt }}" \
-            --data-urlencode "artifact_name=${ARTIFACT_NAME}" \
-            --data-urlencode "artifact_url=${{ steps.upload.outputs.artifact-url }}" \
-            --data-urlencode "artifact_id=${{ steps.upload.outputs.artifact-id }}"
+          curl -f -X POST "$SERVER_NOTICE_URL" \
+            -H "X-Deploy-Token: ${SERVER_DEPLOY_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "folder": "ai-api-hub",
+              "artifact_url": "${{ steps.upload.outputs.artifact-url }}"
+            }'
