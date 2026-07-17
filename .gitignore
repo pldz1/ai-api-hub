@@ -27,3 +27,4 @@ Dockerfile
 dist
 .claude
 .codex
+.cache

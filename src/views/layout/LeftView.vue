@@ -1561,6 +1561,7 @@ $radius-md: 12px;
 
   .modal-box {
     max-width: 420px;
+    padding: 24px;
     border: 1px solid oklch(var(--bc) / 0.12);
     background: oklch(var(--b1));
     border-radius: 8px;

@@ -121,6 +121,7 @@ defineExpose({ confirm });
 .config-import-confirm {
   .modal-box {
     max-width: 460px;
+    padding: 24px;
     border: 1px solid oklch(var(--bc) / 0.12);
     border-radius: 8px;
     background: oklch(var(--b1));
