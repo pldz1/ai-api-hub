@@ -1,8 +1,6 @@
 import type { ChatCompletionParams, ChatProviderResponse, ChatPromptContent, PackedChatMessage } from "../types";
 import { normalizeUsage, BaseChatClient, type JsonObject } from "../../common";
 
-const DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
-
 function toCompatibleContentPart(part: ChatPromptContent, role: PackedChatMessage["role"]): JsonObject | null {
   if (part.type === "text") {
     return {
@@ -58,10 +56,6 @@ function toCompatibleMessages(messages: PackedChatMessage[]): JsonObject[] {
   });
 }
 
-function isDashScopeDeepSeekV4(model = ""): boolean {
-  return /^deepseek-v4-(pro|flash)$/i.test(model.trim());
-}
-
 function normalizeDashScopeReasoningEffort(value: unknown): "high" | "max" | undefined {
   const effort = String(value || "").toLowerCase();
   if (effort === "max" || effort === "xhigh") return "max";
@@ -69,14 +63,14 @@ function normalizeDashScopeReasoningEffort(value: unknown): "high" | "max" | und
   return undefined;
 }
 
-function normalizeCompatibleParams(params: ChatCompletionParams = {}, stream = true, model = ""): JsonObject {
+function normalizeCompatibleParams(params: ChatCompletionParams = {}, stream = true, adapterOptions: Record<string, unknown> = {}): JsonObject {
   const { webSearch, stream: _stream, stream_options, reasoningBoost, max_output_tokens, reasoning_effort, thinking: _thinking, ...restParams } = params || {};
   const requestParams: JsonObject = { ...restParams };
 
   if (max_output_tokens !== undefined && requestParams.max_tokens === undefined) {
     requestParams.max_tokens = max_output_tokens;
   }
-  if (isDashScopeDeepSeekV4(model)) {
+  if (adapterOptions.reasoningEffortMode === "deepseek-v4") {
     const effort = normalizeDashScopeReasoningEffort(reasoningBoost ? "high" : reasoning_effort);
     if (effort) requestParams.reasoning_effort = effort;
   }
@@ -92,14 +86,14 @@ function normalizeCompatibleParams(params: ChatCompletionParams = {}, stream = t
 
 export class DashScopeClient extends BaseChatClient {
   getUrl(): string {
-    return this.baseURL || DEFAULT_BASE_URL;
+    return this.baseURL;
   }
 
   getBody(messages: PackedChatMessage[], params: ChatCompletionParams = {}, stream = true): JsonObject {
     return {
       model: this.model,
       messages: toCompatibleMessages(messages),
-      ...normalizeCompatibleParams(params, stream, this.model),
+      ...normalizeCompatibleParams(params, stream, this.adapterOptions),
       stream,
     };
   }

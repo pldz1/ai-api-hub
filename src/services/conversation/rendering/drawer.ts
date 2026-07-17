@@ -2,7 +2,7 @@ import store from "@/store/index";
 import { dsAlert, getUuid, saveBlobToLocal, saveTextToLocal } from "@/utils";
 import { tr } from "@/i18n";
 import type { ChatPromptMessage } from "@/types";
-import { getChatFileSource, deleteChatFileSource } from "@/services/app/storage";
+import { getChatFileSource, deleteChatFileSource } from "@/persistence";
 import { deleteMessage as deleteChatMessage } from "../conversation";
 import { buildChatAttachmentDownloadFilename } from "../chat-files";
 import { renderAssistantDraft } from "./message-renderer";
@@ -49,11 +49,11 @@ export function createChatDrawer(): ChatDrawer {
 
   const actions: MessageElementActions = {
     onPreviewImage: async (url) => {
-      await store.dispatch("setModalImage", url);
+      store.commit("setModalImage", url);
       (document.getElementById("global_image_preview_modal") as HTMLDialogElement | null)?.showModal();
     },
     onPreviewAttachment: async (attachment) => {
-      await store.dispatch("setModalChatAttachment", attachment);
+      store.commit("setModalChatAttachment", attachment);
       (document.getElementById("global_chat_file_preview_modal") as HTMLDialogElement | null)?.showModal();
     },
     onDownloadAttachment: async (attachment) => {
@@ -101,14 +101,7 @@ export function createChatDrawer(): ChatDrawer {
       return createUserMessageElement(container, message, actions);
     }
     if (message.role === "assistant") {
-      return createAssistantMessageElement(
-        container,
-        message.content,
-        message.reasoning_content,
-        message.mid,
-        actions,
-        Boolean(message.meta?.isContextBlocked),
-      );
+      return createAssistantMessageElement(container, message, actions);
     }
     return null;
   }
@@ -153,7 +146,7 @@ export function createChatDrawer(): ChatDrawer {
       return;
     }
     const msg = store.state.messages[idx];
-    await store.dispatch("spliceMessages", idx);
+    store.commit("spliceMessages", idx);
     getMessageElement(mid)?.remove();
     await deleteChatMessage(store.state.curChatId, mid);
     void Promise.allSettled((msg.attachments || []).map((attachment) => deleteChatFileSource(attachment.id)));

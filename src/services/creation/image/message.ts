@@ -15,13 +15,8 @@ export function createImageMessage(payload: Partial<ImageConversationMessage> = 
     prompt: payload.prompt || "",
     images: payload.images || [],
     attachments: payload.attachments || [],
-    status: payload.status || "ready",
     createdAt: payload.createdAt || Date.now(),
-    elapsedMs: payload.elapsedMs || 0,
-    usage: payload.usage || null,
-    error: payload.error || "",
-    modelName: payload.modelName || "",
-    size: payload.size || "",
+    run: payload.run || null,
   };
 }
 

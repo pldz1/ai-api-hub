@@ -212,29 +212,108 @@ export function createUserMessageElement(container: HTMLElement, message: ChatPr
 
 export function createAssistantMessageElement(
   container: HTMLElement,
-  content: ChatPromptContent[],
-  reasoningContent: string | null | undefined,
-  mid: string,
+  message: ChatPromptMessage,
   actions: MessageElementActions,
-  isError = false,
 ): HTMLDivElement | null {
   const assistantDiv = document.createElement("div");
-  assistantDiv.id = mid;
+  assistantDiv.id = message.mid || "";
   assistantDiv.classList.add("chat-md-bubble-assistant");
-  if (isError) assistantDiv.classList.add("is-error");
+  if (message.meta?.isContextBlocked) assistantDiv.classList.add("is-error");
   container.appendChild(assistantDiv);
 
-  const textDiv = createAssistantResponseElement(assistantDiv, mid, false, actions);
+  const textDiv = createAssistantResponseElement(assistantDiv, message.mid || "", false, actions);
 
-  if (reasoningContent) {
+  if (message.reasoning_content) {
     const reasoningTextDiv = insertReasoningElem(textDiv);
-    renderBlock("markdown-content", reasoningTextDiv, reasoningContent);
+    renderBlock("markdown-content", reasoningTextDiv, message.reasoning_content);
   }
 
-  const text = content[0]?.type === "text" ? content[0].text : "";
+  const text = message.content[0]?.type === "text" ? message.content[0].text : "";
   renderBlock("markdown-content", textDiv, text);
+  if (message.meta?.run?.result) insertRunInfo(textDiv, message);
 
   return assistantDiv;
+}
+
+function formatRunDuration(durationMs: number): string {
+  if (durationMs < 1000) return `${Math.round(durationMs)}ms`;
+  return `${(durationMs / 1000).toFixed(1)}s`;
+}
+
+function createRunFact(label: string, value: string, technical = false): HTMLDivElement {
+  const fact = document.createElement("div");
+  if (technical) fact.classList.add("is-technical");
+  const keyEl = document.createElement("dt");
+  const valueEl = document.createElement("dd");
+  keyEl.textContent = label;
+  valueEl.textContent = value || "—";
+  fact.append(keyEl, valueEl);
+  return fact;
+}
+
+function insertRunInfo(textDiv: HTMLDivElement, message: ChatPromptMessage): void {
+  const run = message.meta?.run;
+  const contentDiv = textDiv.parentElement;
+  if (!run?.result || !contentDiv) return;
+
+  const details = document.createElement("details");
+  details.className = "cmba-run-info";
+  details.dataset.status = run.status;
+
+  const summary = document.createElement("summary");
+  const totalTokens = Number(run.result.usage.total_tokens || 0);
+  const label = document.createElement("span");
+  label.className = "cmba-run-label";
+  label.textContent = tr("chat.runBubble.label");
+  const model = document.createElement("span");
+  model.className = "cmba-run-model";
+  model.textContent = run.route.model;
+  const metrics = document.createElement("span");
+  metrics.className = "cmba-run-metrics";
+  metrics.textContent = [run.status, formatRunDuration(run.durationMs), totalTokens > 0 ? `${totalTokens.toLocaleString()} tokens` : ""]
+    .filter(Boolean)
+    .join(" · ");
+  summary.append(label, model, metrics);
+
+  const body = document.createElement("div");
+  body.className = "cmba-run-body";
+
+  const facts = document.createElement("dl");
+  facts.className = "cmba-run-facts";
+  facts.append(
+    createRunFact(tr("chat.runBubble.fields.provider"), run.route.provider),
+    createRunFact(tr("chat.runBubble.fields.adapter"), run.route.adapterId, true),
+    createRunFact(tr("chat.runBubble.fields.binding"), run.route.bindingKey, true),
+    createRunFact(tr("chat.runBubble.fields.connectionUrl"), run.route.connectionURL, true),
+    createRunFact(tr("chat.runBubble.fields.messageCount"), String(run.request.inputCount)),
+  );
+  body.appendChild(facts);
+
+  const capabilities = Object.entries(run.request.capabilities)
+    .filter(([, enabled]) => Boolean(enabled))
+    .map(([key]) => key)
+    .join(", ");
+  facts.appendChild(createRunFact(tr("chat.runBubble.fields.capabilities"), capabilities || tr("chat.runBubble.none")));
+
+  const paramsDetails = document.createElement("details");
+  paramsDetails.className = "cmba-run-params";
+  const paramsSummary = document.createElement("summary");
+  paramsSummary.textContent = tr("chat.runBubble.fields.parameters");
+  const params = document.createElement("pre");
+  params.textContent = JSON.stringify(run.request.params, null, 2);
+  paramsDetails.append(paramsSummary, params);
+  body.appendChild(paramsDetails);
+
+  if (run.error) {
+    const error = document.createElement("div");
+    error.className = "cmba-run-error";
+    error.textContent = `${tr("chat.runBubble.fields.error")}: ${run.error}`;
+    body.appendChild(error);
+  }
+
+  details.append(summary, body);
+  const options = contentDiv.querySelector(":scope > .cmba-options");
+  (options || contentDiv).appendChild(details);
 }
 
 export function createAssistantResponseElement(assistantDiv: HTMLDivElement, mid: string, working: boolean, actions: MessageElementActions): HTMLDivElement {

@@ -1,12 +1,13 @@
 import { VideoProviderConnectionField, VideoProviderDefinition, VideoProviderKey, videoProviderKeys, videoProviderRegistry } from "../types";
-import type { VideoGenerationParams, VideoGenerationResult, VideoModelConfig, VideoModelProvider, VideoProviderRoute } from "../types";
+import type { VideoAdapterId, VideoGenerationParams, VideoGenerationResult, VideoModelConfig, VideoModelProvider } from "../types";
+import { resolveVideoModel } from "../models";
 
 import { DashScopeVideoClient } from "./dashscope";
 
 // -- runtime config --------------------------------------------------------
 
 type VideoProviderRuntimeConfig = Pick<VideoModelConfig, "provider" | "baseURL" | "apiKey" | "model" | "useProxy"> & {
-  route: VideoProviderRoute;
+  adapterId: VideoAdapterId;
 };
 
 // -- executor interface ----------------------------------------------------
@@ -53,13 +54,23 @@ export function createVideoProviderConfig(
   const providerDefinition = getVideoProviderDefinition(provider);
   if (!providerDefinition) return null;
 
-  return {
-    route: providerDefinition.route,
+  const resolved = resolveVideoModel({
+    name: "name" in model ? model.name || "" : "",
     provider: provider as VideoModelProvider,
     baseURL: model.baseURL || "",
     apiKey: model.apiKey || "",
     model: model.model || "",
     useProxy: model.useProxy ?? false,
+  });
+  if (!resolved) return null;
+
+  return {
+    adapterId: resolved.binding.adapterId,
+    provider: resolved.config.provider,
+    baseURL: resolved.config.baseURL,
+    apiKey: resolved.config.apiKey,
+    model: resolved.config.model,
+    useProxy: resolved.config.useProxy,
   };
 }
 
@@ -67,6 +78,8 @@ export function createVideoProviderConfig(
  * Instantiates the provider executor for already-derived runtime config.
  */
 export function createVideoExecutor(config: VideoProviderRuntimeConfig): VideoExecutor {
-  // DashScope is the only provider for now; structured for future additions.
-  return new DashScopeVideoClient(config.baseURL, config.apiKey, config.model, config.useProxy ?? false);
+  const factories: Record<VideoAdapterId, () => VideoExecutor> = {
+    "dashscope-video-task": () => new DashScopeVideoClient(config.baseURL, config.apiKey, config.model, config.useProxy ?? false),
+  };
+  return factories[config.adapterId]();
 }

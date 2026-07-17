@@ -19,7 +19,7 @@
           v-for="message in messages"
           :key="message.id"
           class="video-message"
-          :class="[`is-${message.role}`, `is-${message.status}`]"
+          :class="[`is-${message.role}`, `is-${getMessageStatus(message)}`]"
           :ref="(el) => registerMessage(message.id, message.role, el)"
         >
           <div
@@ -62,12 +62,12 @@
 
             <template v-else>
               <div class="video-message-meta">
-                <span>{{ message.modelName }}</span>
-                <span v-if="message.resolution">{{ message.resolution }}</span>
+                <span>{{ message.run?.route.model }}</span>
+                <span v-if="message.run?.request.params.resolution">{{ message.run.request.params.resolution }}</span>
                 <span v-if="getMessageElapsedMs(message) !== null">{{ formatElapsedMs(getMessageElapsedMs(message)!) }}</span>
               </div>
 
-              <div v-if="message.status === 'loading'" class="video-loading-card">
+              <div v-if="message.run?.status === 'running'" class="video-loading-card">
                 <div class="video-loading-preview"></div>
                 <span>{{ loadingStatusText }}</span>
               </div>
@@ -78,12 +78,12 @@
                 </figure>
               </div>
 
-              <div v-if="message.error" class="video-error-message">{{ message.error }}</div>
+              <div v-if="message.run?.error" class="video-error-message">{{ message.run.error }}</div>
 
-              <div v-if="message.usage" class="video-usage-row">
-                <span>Input {{ message.usage.input_tokens || 0 }}</span>
-                <span>Output {{ message.usage.output_tokens || 0 }}</span>
-                <span>Total {{ message.usage.total_tokens || 0 }}</span>
+              <div v-if="message.run?.status !== 'running' && message.run?.result.usage" class="video-usage-row">
+                <span>Input {{ message.run.result.usage.input_tokens || 0 }}</span>
+                <span>Output {{ message.run.result.usage.output_tokens || 0 }}</span>
+                <span>Total {{ message.run.result.usage.total_tokens || 0 }}</span>
               </div>
             </template>
           </div>
@@ -164,7 +164,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
-import { useStore } from "vuex";
+import { useAppStore } from "@/store";
 import CreationComposer from "@/components/CreationComposer.vue";
 import ImageModal from "@/components/ImageModal.vue";
 import MessageTopicList from "@/components/MessageTopicList.vue";
@@ -186,7 +186,7 @@ type CreationComposerRef = {
   resizeTextarea: () => void;
 };
 
-const store = useStore();
+const store = useAppStore();
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
@@ -244,13 +244,13 @@ const videoModelOptions = computed(() => {
 });
 
 const loadingStatusText = computed(() => {
-  const ts = activeVideoRuntime.value?.taskStatus;
+  const ts = activeVideoRuntime.value?.providerStatus;
   if (ts === "PENDING") return t("video.taskStatus.pending");
   if (ts === "RUNNING") return t("video.taskStatus.running");
   return t("video.processingRequest");
 });
 
-const isCurrentConversationSubmitting = computed(() => Boolean(activeVideoRuntime.value?.pending || activeVideoRuntime.value?.status === "loading"));
+const isCurrentConversationSubmitting = computed(() => Boolean(activeVideoRuntime.value?.pending));
 const isSendDisabled = computed(() => isCurrentConversationSubmitting.value || !prompt.value.trim() || !selectedModel.value);
 const {
   activeTopicId,
@@ -300,7 +300,7 @@ function splitDataUrl(dataUrl: string) {
 
 async function previewAttachmentImage(src: string) {
   if (!src) return;
-  await store.dispatch("setModalImage", src);
+  store.commit("setModalImage", src);
   const dialog = document.getElementById("global_image_preview_modal") as HTMLDialogElement | null;
   dialog?.showModal();
 }
@@ -467,16 +467,22 @@ function formatElapsedMs(elapsedMs: number) {
   return `${(elapsedMs / 1000).toFixed(1)}s`;
 }
 
+function getMessageStatus(message: VideoConversationMessage): "ready" | "loading" | "success" | "error" {
+  if (!message.run) return "ready";
+  if (message.run.status === "running") return "loading";
+  return message.run.status === "success" ? "success" : "error";
+}
+
 function getMessageElapsedMs(message: VideoConversationMessage): number | null {
-  if (message.status === "loading") {
+  if (message.run?.status === "running") {
     if (message.role !== "assistant") return null;
-    const startedAt = Number(activeVideoRuntime.value?.startedAt || message.createdAt || 0);
+    const startedAt = Number(message.run.startedAt || message.createdAt || 0);
     if (!startedAt) return null;
     return Math.max(0, runtimeTick.value - startedAt);
   }
 
-  if (typeof message.elapsedMs === "number" && message.elapsedMs > 0) {
-    return message.elapsedMs;
+  if (message.run && message.run.durationMs > 0) {
+    return message.run.durationMs;
   }
 
   return null;
@@ -527,8 +533,8 @@ async function send() {
     last_frame: currentLastFrame || undefined,
   });
 
-  if (result?.status === "error") {
-    dsAlert({ type: "error", message: result.error || t("video.videoRequestFailed") });
+  if (result?.run?.status === "error") {
+    dsAlert({ type: "error", message: result.run.error || t("video.videoRequestFailed") });
   }
 
   isSubmitting.value = false;
@@ -540,7 +546,7 @@ watch(
   async (id) => {
     if (!id) {
       await getVideoConversationMessages(id);
-      await store.dispatch("resetVideoRuntime");
+      store.commit("resetVideoRuntime");
       isSubmitting.value = false;
       prompt.value = "";
       firstFrame.value = null;
@@ -548,7 +554,7 @@ watch(
       drivingAudio.value = null;
       composerRef.value?.resizeTextarea();
     } else if (store.state.videoLoadedById?.[id]) {
-      await store.dispatch("setCurVideoConversationId", id);
+      store.commit("setCurVideoConversationId", id);
     } else {
       await getVideoConversationMessages(id);
     }
@@ -586,7 +592,7 @@ watch(
 );
 
 watch(
-  () => activeVideoRuntime.value?.pending || activeVideoRuntime.value?.status === "loading",
+  () => activeVideoRuntime.value?.pending,
   (running, _oldValue, onCleanup) => {
     if (runtimeTimer !== null) {
       window.clearInterval(runtimeTimer);

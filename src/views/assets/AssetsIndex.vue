@@ -110,16 +110,14 @@ const videoCount = computed(() => assets.value.filter((item) => item.kind === "v
 async function loadAssets() {
   loading.value = true;
   error.value = "";
-
-  const response = await getGeneratedAssets();
-  if (!response.flag) {
+  try {
+    assets.value = await getGeneratedAssets();
+  } catch (err) {
     assets.value = [];
-    error.value = response.log || t("assets.loadFailed");
-  } else {
-    assets.value = response.data || [];
+    error.value = err instanceof Error ? err.message : t("assets.loadFailed");
+  } finally {
+    loading.value = false;
   }
-
-  loading.value = false;
 }
 
 async function copyAssetSource(asset: GeneratedAssetItem) {
@@ -136,16 +134,15 @@ async function deleteAsset(asset: GeneratedAssetItem) {
   if (!confirmed) return;
 
   deletingId.value = `${asset.kind}-${asset.id}`;
-  const response = await deleteGeneratedAsset(asset);
-  deletingId.value = "";
-
-  if (!response.flag) {
-    dsAlert({ type: "error", message: response.log || t("assets.deleteFailed") });
-    return;
+  try {
+    await deleteGeneratedAsset(asset);
+    assets.value = assets.value.filter((item) => !(item.kind === asset.kind && item.id === asset.id));
+    dsAlert({ type: "success", message: t("assets.deleteSuccess") });
+  } catch (err) {
+    dsAlert({ type: "error", message: err instanceof Error ? err.message : t("assets.deleteFailed") });
+  } finally {
+    deletingId.value = "";
   }
-
-  assets.value = assets.value.filter((item) => !(item.kind === asset.kind && item.id === asset.id));
-  dsAlert({ type: "success", message: t("assets.deleteSuccess") });
 }
 
 function previewAsset(asset: GeneratedAssetItem) {
@@ -173,9 +170,7 @@ onMounted(loadAssets);
   padding: 34px clamp(18px, 4vw, 48px);
   box-sizing: border-box;
   color: oklch(var(--bc));
-  background:
-    linear-gradient(180deg, oklch(var(--b2) / 0.55), transparent 260px),
-    oklch(var(--b1));
+  background: linear-gradient(180deg, oklch(var(--b2) / 0.55), transparent 260px), oklch(var(--b1));
 }
 
 .assets-toolbar {

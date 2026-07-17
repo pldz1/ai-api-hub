@@ -1,32 +1,19 @@
-import type { VideoConversationInfo, VideoConversationListItem, VideoConversationMessage, VideoDataItem, VideoMessageStatus } from "@/types";
-
-export interface VideoRuntime {
-  pending: boolean;
-  status: VideoMessageStatus | "idle";
-  completedNotice: boolean;
-  startedAt: number;
-  elapsedMs: number;
-  error: string;
-  taskStatus?: string;
-}
-
-function _defaultVideoRuntime(): VideoRuntime {
-  return { pending: false, status: "idle", completedNotice: false, startedAt: 0, elapsedMs: 0, error: "" };
-}
+import type { VideoConversationInfo, VideoConversationListItem, VideoConversationMessage, VideoDataItem } from "@/types";
+import { createCreationRuntime, type CreationRuntime } from "./creation-runtime";
 
 export const VideoState = {
   videoList: [] as VideoDataItem[],
   videoConversationList: [] as VideoConversationInfo[],
   curVideoConversationId: "",
   videoMessages: [] as VideoConversationMessage[],
-  videoRuntime: _defaultVideoRuntime(),
+  videoRuntime: createCreationRuntime(),
   videoMessagesById: {} as Record<string, VideoConversationMessage[]>,
-  videoRuntimeById: {} as Record<string, VideoRuntime>,
+  videoRuntimeById: {} as Record<string, CreationRuntime>,
   videoLoadedById: {} as Record<string, boolean>,
 
   _ensureVideoEntry(vid: string) {
     if (!this.videoMessagesById[vid]) this.videoMessagesById[vid] = [];
-    if (!this.videoRuntimeById[vid]) this.videoRuntimeById[vid] = _defaultVideoRuntime();
+    if (!this.videoRuntimeById[vid]) this.videoRuntimeById[vid] = createCreationRuntime();
     if (this.videoLoadedById[vid] === undefined) this.videoLoadedById[vid] = false;
   },
 
@@ -37,7 +24,7 @@ export const VideoState = {
       this.videoRuntimeById[vid].completedNotice = false;
     }
     this.videoMessages = vid ? this.videoMessagesById[vid] || [] : [];
-    this.videoRuntime = vid ? this.videoRuntimeById[vid] || _defaultVideoRuntime() : _defaultVideoRuntime();
+    this.videoRuntime = vid ? this.videoRuntimeById[vid] || createCreationRuntime() : createCreationRuntime();
   },
 
   resetVideoList(list: VideoDataItem[] = []) {
@@ -96,10 +83,6 @@ export const VideoState = {
     this._ensureVideoEntry(vid);
     this.videoMessagesById[vid] = messages;
     this.videoLoadedById[vid] = true;
-    const runtime = this.videoRuntimeById[vid];
-    if (runtime) {
-      runtime.status = messages.length > 0 ? "success" : "idle";
-    }
     if (vid === this.curVideoConversationId) {
       this._syncActiveVideoState();
     }
@@ -127,7 +110,7 @@ export const VideoState = {
     }
   },
 
-  setVideoRuntime(data: { vid: string; runtime: Partial<VideoRuntime> }) {
+  setVideoRuntime(data: { vid: string; runtime: Partial<CreationRuntime> }) {
     const { vid, runtime } = data;
     this._ensureVideoEntry(vid);
     Object.assign(this.videoRuntimeById[vid], runtime);
@@ -136,9 +119,13 @@ export const VideoState = {
     }
   },
 
-  resetVideoRuntime(vid: string) {
+  resetVideoRuntime(vid: string = this.curVideoConversationId) {
+    if (!vid) {
+      this.videoRuntime = createCreationRuntime();
+      return;
+    }
     this._ensureVideoEntry(vid);
-    this.videoRuntimeById[vid] = _defaultVideoRuntime();
+    this.videoRuntimeById[vid] = createCreationRuntime();
     if (vid === this.curVideoConversationId) {
       this._syncActiveVideoState();
     }

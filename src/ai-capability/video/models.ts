@@ -1,90 +1,140 @@
-import type { VideoModelCapabilities, VideoModelProvider, VideoModelParamDef } from "./types";
+import { videoProviderRegistry } from "./types";
+import type {
+  VideoAdapterId,
+  VideoModelCapabilities,
+  VideoModelConfig,
+  VideoModelParamDef,
+  VideoModelProvider,
+  VideoProviderDefinition,
+} from "./types";
 
 export const videoParamList: Partial<VideoModelParamDef>[] = [
-  { key: "resolution", label: "resolution", type: "string", defaultValue: "720P", placeholder: "720P" },
-  { key: "duration", label: "duration", type: "number", defaultValue: 5, min: 5, max: 10, step: 5, placeholder: "5" },
-  { key: "prompt_extend", label: "prompt_extend", type: "boolean", defaultValue: true, placeholder: "" },
-  { key: "watermark", label: "watermark", type: "boolean", defaultValue: true, placeholder: "" },
-  { key: "first_frame", label: "first_frame", type: "image", defaultValue: null, placeholder: "image/png" },
+  {
+    key: "resolution",
+    label: "resolution",
+    type: "string",
+    descriptionKey: "video.resolutionTip",
+    defaultValue: "720P",
+    placeholder: "720P",
+  },
+  {
+    key: "duration",
+    label: "duration",
+    type: "number",
+    descriptionKey: "video.durationTip",
+    defaultValue: 5,
+    min: 5,
+    max: 10,
+    step: 5,
+    placeholder: "5",
+  },
+  {
+    key: "prompt_extend",
+    label: "prompt_extend",
+    type: "boolean",
+    descriptionKey: "video.promptExtendTip",
+    defaultValue: true,
+    placeholder: "",
+  },
+  {
+    key: "watermark",
+    label: "watermark",
+    type: "boolean",
+    descriptionKey: "video.watermarkTip",
+    defaultValue: true,
+    placeholder: "",
+  },
+  {
+    key: "first_frame",
+    label: "first_frame",
+    type: "image",
+    descriptionKey: "video.firstFrameTip",
+    defaultValue: null,
+    placeholder: "image/png",
+  },
 ];
 
-export type VideoModelCatalogItem = {
-  name: string;
-  videoParamKeys: string[];
+/** One explicit model/provider combination consumed by both UI and runtime. */
+export interface VideoModelBinding {
+  key: string;
+  model: string;
+  provider: VideoModelProvider;
+  adapterId: VideoAdapterId;
+  adapterOptions?: Record<string, unknown>;
+  paramKeys: string[];
   resolutionList: string[];
-  providers: {
-    provider: VideoModelProvider;
-    capabilities: VideoModelCapabilities;
-  }[];
-};
+  capabilities: VideoModelCapabilities;
+}
 
-export const videoModelCatalog: VideoModelCatalogItem[] = [
-  {
-    name: "wan2.7-i2v-2026-04-25",
-    videoParamKeys: ["resolution", "duration", "prompt_extend", "watermark", "first_frame"],
+export interface ResolvedVideoModel {
+  config: VideoModelConfig;
+  provider: VideoProviderDefinition;
+  binding: VideoModelBinding;
+  knownModel: boolean;
+}
+
+function defineBinding(
+  model: string,
+  capabilities: VideoModelCapabilities,
+): VideoModelBinding {
+  const provider = "DashScope";
+  return {
+    key: `${provider}:${model}`,
+    model,
+    provider,
+    adapterId: videoProviderRegistry[provider].adapterId,
+    paramKeys: ["resolution", "duration", "prompt_extend", "watermark", "first_frame"],
     resolutionList: ["720P", "1080P"],
-    providers: [
-      {
-        provider: "DashScope",
-        capabilities: { imageInput: true, audioInput: true, videoInput: false },
-      },
-    ],
-  },
-  {
-    name: "wan2.7-t2v",
-    videoParamKeys: ["resolution", "duration", "prompt_extend", "watermark", "first_frame"],
-    resolutionList: ["720P", "1080P"],
-    providers: [
-      {
-        provider: "DashScope",
-        capabilities: { imageInput: false, audioInput: false, videoInput: false },
-      },
-    ],
-  },
-  {
-    name: "wan2.7-r2v",
-    videoParamKeys: ["resolution", "duration", "prompt_extend", "watermark", "first_frame"],
-    resolutionList: ["720P", "1080P"],
-    providers: [
-      {
-        provider: "DashScope",
-        capabilities: { imageInput: true, audioInput: true, videoInput: true },
-      },
-    ],
-  },
-  {
-    name: "wan2.7-videoedit",
-    videoParamKeys: ["resolution", "duration", "prompt_extend", "watermark", "first_frame"],
-    resolutionList: ["720P", "1080P"],
-    providers: [
-      {
-        provider: "DashScope",
-        capabilities: { imageInput: true, audioInput: true, videoInput: true },
-      },
-    ],
-  },
+    capabilities: { ...capabilities },
+  };
+}
+
+export const videoModelBindings: VideoModelBinding[] = [
+  defineBinding("wan2.7-i2v-2026-04-25", { imageInput: true, audioInput: true, videoInput: false }),
+  defineBinding("wan2.7-t2v", { imageInput: false, audioInput: false, videoInput: false }),
+  defineBinding("wan2.7-r2v", { imageInput: true, audioInput: true, videoInput: true }),
+  defineBinding("wan2.7-videoedit", { imageInput: true, audioInput: true, videoInput: true }),
 ];
 
-export const videoModelTypeList: VideoModelCatalogItem[] = videoModelCatalog;
+export const videoCatalogModelIds = [...new Set(videoModelBindings.map((binding) => binding.model))];
 
-export function findVideoModelCatalogItems(model: string = ""): VideoModelCatalogItem[] {
+export function findVideoModelBindings(model = ""): VideoModelBinding[] {
   const targetModel = model.trim().toLowerCase();
   if (!targetModel) return [];
-  return videoModelCatalog.filter((item) => item.name.toLowerCase() === targetModel);
+  return videoModelBindings.filter((binding) => binding.model.toLowerCase() === targetModel);
 }
 
-export function findVideoModelCatalogItem(model: string = "", provider?: VideoModelProvider | null): VideoModelCatalogItem | null {
-  const catalogItems = findVideoModelCatalogItems(model);
-  if (!catalogItems.length) return null;
-  if (!provider) return catalogItems[0] || null;
-  return catalogItems.find((item) => item.providers.some((p) => p.provider === provider)) || catalogItems[0] || null;
+/** Exact lookup. A requested provider never falls back to another provider. */
+export function findVideoModelBinding(model = "", provider?: VideoModelProvider | null): VideoModelBinding | null {
+  const bindings = findVideoModelBindings(model);
+  if (!bindings.length) return null;
+  if (!provider) return bindings[0] || null;
+  return bindings.find((binding) => binding.provider === provider) || null;
 }
 
-export function findVideoModelCatalogProvider(model: string = "", provider?: VideoModelProvider | null): VideoModelCatalogItem["providers"][number] | null {
-  const catalogItem = findVideoModelCatalogItem(model, provider);
-  if (!catalogItem) return null;
-  if (!provider) return catalogItem.providers[0] || null;
-  return catalogItem.providers.find((p) => p.provider === provider) || catalogItem.providers[0] || null;
+export function resolveVideoModel(config: VideoModelConfig): ResolvedVideoModel | null {
+  const provider = videoProviderRegistry[config.provider];
+  if (!provider) return null;
+
+  const knownBinding = findVideoModelBinding(config.model, config.provider);
+  const binding: VideoModelBinding =
+    knownBinding ||
+    {
+      key: `${config.provider}:${config.model || "custom"}`,
+      model: config.model,
+      provider: config.provider,
+      adapterId: provider.adapterId,
+      paramKeys: ["resolution", "duration", "prompt_extend", "watermark"],
+      resolutionList: ["720P", "1080P"],
+      capabilities: { ...defaultVideoModelCapabilities },
+    };
+
+  return {
+    config: { ...config, baseURL: config.baseURL || provider.defaultBaseURL || "" },
+    provider,
+    binding,
+    knownModel: Boolean(knownBinding),
+  };
 }
 
 export const defaultVideoModelCapabilities: VideoModelCapabilities = {

@@ -31,19 +31,19 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useStore } from "vuex";
+import { useAppStore } from "@/store";
 import { useI18n } from "vue-i18n";
 import { formatChatFileSize } from "@/services";
 import closeIcon from "@/assets/svg/close16.svg";
 
 const dialogRef = ref<HTMLDialogElement | null>(null);
-const store = useStore();
+const store = useAppStore();
 const { t } = useI18n();
 const attachment = computed(() => store.state.modalChatAttachment);
 
 function close() {
   dialogRef.value?.close();
-  store.dispatch("setModalChatAttachment", null);
+  store.commit("setModalChatAttachment", null);
 }
 
 function onDialogClick(event: MouseEvent) {

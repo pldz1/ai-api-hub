@@ -1,4 +1,4 @@
-import type { TokenUsage, ImageModelProvider, ImageInputFile, ImageModelConfig, VideoModelConfig, VideoInputFile } from "@/ai-capability";
+import type { TokenUsage, RunSnapshot, ImageModelProvider, ImageInputFile, ImageModelConfig, VideoModelConfig, VideoInputFile } from "@/ai-capability";
 
 export type ImageConversationRole = "user" | "assistant";
 export type ImageConversationMode = "generation" | "edit";
@@ -52,13 +52,8 @@ export interface ImageConversationMessage {
   prompt: string;
   images: ImagePayload[];
   attachments?: ImageInputAttachment[];
-  status: ImageMessageStatus;
   createdAt: number;
-  elapsedMs?: number;
-  usage?: TokenUsage | null;
-  error?: string;
-  modelName?: string;
-  size?: string;
+  run: RunSnapshot | null;
 }
 
 export interface ImageTurnRequest {
@@ -132,13 +127,8 @@ export interface VideoConversationMessage {
   prompt: string;
   videos: VideoPayload[];
   attachments?: VideoInputAttachment[];
-  status: VideoMessageStatus;
   createdAt: number;
-  elapsedMs?: number;
-  usage?: TokenUsage | null;
-  error?: string;
-  modelName?: string;
-  resolution?: string;
+  run: RunSnapshot | null;
 }
 
 export interface VideoTurnRequest {

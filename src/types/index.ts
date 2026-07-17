@@ -24,7 +24,6 @@ export {
   type ConversationModelSnapshot,
   type PersistedChatSettings,
   type ChatListItem,
-  type StoredChatMessage,
 } from "./conversation";
 
 export type { ImageModelConfig, ImageModelProvider, ImageInputFile, ImageModelParamDef, ImageModelParamType } from "@/ai-capability/image";
@@ -67,4 +66,15 @@ export {
 // App setting
 export * from "./settings";
 
-export type { ModelParamDef, ParamDefaultValue, ApiMethod, ApiResponse, RequestBody, RequestHeaders, TokenUsage } from "@/ai-capability/common";
+export type {
+  ModelParamDef,
+  ParamDefaultValue,
+  RequestHeaders,
+  TokenUsage,
+  RunKind,
+  RunStatus,
+  RunRouteSnapshot,
+  RunRequestSnapshot,
+  RunResultSnapshot,
+  RunSnapshot,
+} from "@/ai-capability/common";

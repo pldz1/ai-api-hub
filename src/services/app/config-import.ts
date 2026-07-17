@@ -115,22 +115,22 @@ export async function importSettingsPayload(data: unknown, options: ImportConfig
     const models = sanitizeModelSettings(modelSource as Partial<ModelSettings>);
     const templates = "models" in importedPackage && Array.isArray(importedPackage.templates) ? clonePlainData(importedPackage.templates) : undefined;
 
-    await store.dispatch("setModels", models);
+    store.commit("setModels", models);
     if (Array.isArray(templates)) {
-      await store.dispatch("setChatInsTemplateList", templates);
+      store.commit("setChatInsTemplateList", templates);
     }
 
     const modelsSaved = await setModels(models);
     const templatesSaved = Array.isArray(templates) ? await setChatInsTemplateList(templates) : true;
 
     if (modelsSaved === false || templatesSaved === false) {
-      await store.dispatch("setModels", currentModels);
-      await store.dispatch("setChatInsTemplateList", currentTemplates);
+      store.commit("setModels", currentModels);
+      store.commit("setChatInsTemplateList", currentTemplates);
       return false;
     }
   } catch (error) {
-    await store.dispatch("setModels", currentModels);
-    await store.dispatch("setChatInsTemplateList", currentTemplates);
+    store.commit("setModels", currentModels);
+    store.commit("setChatInsTemplateList", currentTemplates);
     console.error("Failed to import settings:", error);
     if (shouldNotify) {
       dsAlert({ type: "error", message: tr("user.importFailed", { error: error instanceof Error ? error.message : String(error) }) });

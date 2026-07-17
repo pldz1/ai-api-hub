@@ -53,7 +53,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
-import { useStore } from "vuex";
+import { useAppStore } from "@/store";
 import type { ChatModelConfig, ChatPromptMessage } from "@/types";
 import { dsLoading } from "@/utils";
 import { createChatDrawer, addChat, getAllMessage, getChatSettings, getChatSessionRunner, resetCurrentChatDraft, stopChatSession } from "@/services";
@@ -71,7 +71,7 @@ type ChatStartPayload = {
   model: ChatModelConfig | null;
 };
 
-const store = useStore();
+const store = useAppStore();
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
@@ -178,7 +178,7 @@ const syncConversationFromRoute = async (nextRouteChatId: string) => {
       }
       activeRunnerChatId = null;
     }
-    await store.dispatch("setCurChatId", nextRouteChatId);
+    store.commit("setCurChatId", nextRouteChatId);
   }
 
   const isLoaded = Boolean(store.state.chatLoadedById?.[nextRouteChatId]);

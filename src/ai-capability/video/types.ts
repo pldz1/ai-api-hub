@@ -4,12 +4,12 @@ import type { TokenUsage } from "../common";
 // Provider runtime config (derived from user-owned model config)
 // ============================================================================
 
-export type VideoProviderRoute = "dashscope";
+export type VideoAdapterId = "dashscope-video-task";
 export type VideoProviderConnectionField = "baseURL";
 
 export interface VideoProviderDefinition {
   name: string;
-  route: VideoProviderRoute;
+  adapterId: VideoAdapterId;
   connectionFields: readonly VideoProviderConnectionField[];
   defaultBaseURL?: string;
 }
@@ -17,7 +17,7 @@ export interface VideoProviderDefinition {
 const videoProviderRegistryConfig = {
   DashScope: {
     name: "DashScope",
-    route: "dashscope",
+    adapterId: "dashscope-video-task",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis",
   },

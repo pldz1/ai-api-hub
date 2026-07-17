@@ -1,12 +1,10 @@
 import store from "@/store";
 import { getUuid } from "@/utils";
-import { getImageSource, getVideoSource, setImageSource, setVideoSource } from "@/services/app/storage";
-import { addImageConversationAPI, getImageConversationMessagesAPI, setImageConversationMessagesAPI } from "../image/api";
-import { addVideoConversationAPI, getVideoConversationMessagesAPI, setVideoConversationMessagesAPI } from "../video/api";
+import { getImageSource, getVideoSource, imageRepository, setImageSource, setVideoSource, videoRepository } from "@/persistence";
 import type { ImageConversationMessage, ImageInputAttachment, ImagePayload, VideoConversationMessage, VideoInputAttachment, VideoPayload } from "@/types";
 
 const ARCHIVE_FORMAT = "ai-api-hub.conversation";
-const ARCHIVE_VERSION = 1;
+const ARCHIVE_VERSION = 2;
 const IDB_SRC_PREFIX = "idb:";
 
 interface CreationConversationArchive<TType extends "image" | "video", TMessage> {
@@ -76,21 +74,6 @@ function assertCreationArchive<TType extends "image" | "video">(
   }
 }
 
-function parseMessages<T>(raw: string, label: string): T[] {
-  try {
-    const parsed = JSON.parse(raw || "[]");
-    if (Array.isArray(parsed)) return parsed as T[];
-  } catch {
-    // Fall through to the shared error.
-  }
-  throw new Error(`Invalid ${label} conversation messages.`);
-}
-
-function omitModelName<T extends { modelName?: string }>(message: T): Omit<T, "modelName"> {
-  const { modelName: _modelName, ...rest } = message;
-  return rest;
-}
-
 async function expandImageSrc(src = ""): Promise<string> {
   if (!src.startsWith(IDB_SRC_PREFIX)) return src;
   return (await getImageSource(src.slice(IDB_SRC_PREFIX.length))) || src;
@@ -104,7 +87,7 @@ async function expandVideoSrc(src = ""): Promise<string> {
 async function expandImageMessages(messages: ImageConversationMessage[]): Promise<ImageConversationMessage[]> {
   return Promise.all(
     messages.map(async (message) => ({
-      ...omitModelName(message),
+      ...message,
       images: await Promise.all((message.images || []).map(async (image) => ({ ...image, src: await expandImageSrc(image.src) }))),
       attachments: await Promise.all(
         (message.attachments || []).map(async (attachment) => ({ ...attachment, previewUrl: await expandImageSrc(attachment.previewUrl) })),
@@ -116,7 +99,7 @@ async function expandImageMessages(messages: ImageConversationMessage[]): Promis
 async function expandVideoMessages(messages: VideoConversationMessage[]): Promise<VideoConversationMessage[]> {
   return Promise.all(
     messages.map(async (message) => ({
-      ...omitModelName(message),
+      ...message,
       videos: await Promise.all((message.videos || []).map(async (video) => ({ ...video, src: await expandVideoSrc(video.src) }))),
       attachments: await Promise.all(
         (message.attachments || []).map(async (attachment) => ({ ...attachment, previewUrl: await expandVideoSrc(attachment.previewUrl) })),
@@ -195,9 +178,6 @@ export async function exportImageConversationArchive(iid: string): Promise<void>
   const item = store.state.imageConversationList.find((conversation: { iid: string }) => conversation.iid === iid);
   if (!iid || !item) throw new Error("Image conversation not found.");
 
-  const response = await getImageConversationMessagesAPI(iid);
-  if (!response.flag) throw new Error(response.log || "Failed to read image conversation.");
-
   const archive: ImageConversationArchive = {
     format: ARCHIVE_FORMAT,
     version: ARCHIVE_VERSION,
@@ -207,7 +187,7 @@ export async function exportImageConversationArchive(iid: string): Promise<void>
       id: iid,
       name: item.iname || iid,
     },
-    messages: await expandImageMessages(parseMessages<ImageConversationMessage>(response.data, "image")),
+    messages: await expandImageMessages(await imageRepository.getMessages(iid)),
   };
 
   downloadJson(archive, `${safeFilename(archive.conversation.name, "image")}.aihub-image.json`);
@@ -219,23 +199,18 @@ export async function importImageConversationArchive(file: File): Promise<string
 
   const iid = getUuid("imgconv");
   const iname = raw.conversation.name || "Imported image";
-  const messages = await foldImportedImageMessages(raw.messages);
-  const addResponse = await addImageConversationAPI(iid, iname);
-  if (!addResponse.flag) throw new Error(addResponse.log || "Failed to create image conversation.");
-  const setResponse = await setImageConversationMessagesAPI(iid, messages);
-  if (!setResponse.flag) throw new Error(setResponse.log || "Failed to save image conversation.");
+  const importedMessages = await foldImportedImageMessages(raw.messages);
+  await imageRepository.createConversation(iid, iname, importedMessages);
+  const messages = await imageRepository.getMessages(iid);
 
-  await store.dispatch("pushImageConversation", { iid, iname });
-  await store.dispatch("resetImageMessages", { iid, messages });
+  store.commit("pushImageConversation", { iid, iname });
+  store.commit("resetImageMessages", { iid, messages });
   return iid;
 }
 
 export async function exportVideoConversationArchive(vid: string): Promise<void> {
   const item = store.state.videoConversationList.find((conversation: { vid: string }) => conversation.vid === vid);
   if (!vid || !item) throw new Error("Video conversation not found.");
-
-  const response = await getVideoConversationMessagesAPI(vid);
-  if (!response.flag) throw new Error(response.log || "Failed to read video conversation.");
 
   const archive: VideoConversationArchive = {
     format: ARCHIVE_FORMAT,
@@ -246,7 +221,7 @@ export async function exportVideoConversationArchive(vid: string): Promise<void>
       id: vid,
       name: item.vname || vid,
     },
-    messages: await expandVideoMessages(parseMessages<VideoConversationMessage>(response.data, "video")),
+    messages: await expandVideoMessages(await videoRepository.getMessages(vid)),
   };
 
   downloadJson(archive, `${safeFilename(archive.conversation.name, "video")}.aihub-video.json`);
@@ -258,13 +233,11 @@ export async function importVideoConversationArchive(file: File): Promise<string
 
   const vid = getUuid("vidconv");
   const vname = raw.conversation.name || "Imported video";
-  const messages = await foldImportedVideoMessages(raw.messages);
-  const addResponse = await addVideoConversationAPI(vid, vname);
-  if (!addResponse.flag) throw new Error(addResponse.log || "Failed to create video conversation.");
-  const setResponse = await setVideoConversationMessagesAPI(vid, messages);
-  if (!setResponse.flag) throw new Error(setResponse.log || "Failed to save video conversation.");
+  const importedMessages = await foldImportedVideoMessages(raw.messages);
+  await videoRepository.createConversation(vid, vname, importedMessages);
+  const messages = await videoRepository.getMessages(vid);
 
-  await store.dispatch("pushVideoConversation", { vid, vname });
-  await store.dispatch("resetVideoMessages", { vid, messages });
+  store.commit("pushVideoConversation", { vid, vname });
+  store.commit("resetVideoMessages", { vid, messages });
   return vid;
 }

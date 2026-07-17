@@ -2,7 +2,8 @@ import type { ImageModelConfig, ImageModelSettings, ImageModelParamDef, LooseMod
 import { imageParamPresetList } from "@/constants/image-model";
 import { parseParamValue } from "./settings";
 import {
-  findImageModelCatalogItem,
+  findImageModelBindings,
+  resolveImageModel,
   imageProviderKeys,
   isImageModelProvider,
   imageProviderUsesField,
@@ -27,15 +28,14 @@ function getImageParamPreset(key = ""): Partial<ImageModelParamDef> | null {
 }
 
 /**
- * Normalizes loose/legacy image model data into the canonical user config shape.
+ * Normalizes loose image model data into the canonical user config shape.
  *
  * Like `normalizeChatModelConfig`, this still returns user configuration rather
  * than low-level HTTP/runtime request args.
  */
 export function normalizeImageModelConfig(model: LooseModelConfig | null | undefined = {}): ImageModelConfig {
   const data = model || {};
-  const provider = String(data.provider || "") === "Qwen" ? "DashScope" : data.provider;
-  const nextProvider = isImageModelProvider(provider) ? provider : "OpenAI";
+  const nextProvider = isImageModelProvider(data.provider) ? data.provider : "OpenAI";
 
   return {
     name: String(data.name || "").trim(),
@@ -70,15 +70,14 @@ export function normalizeImageParamDef(def: Partial<ImageModelParamDef> = {}): I
 const normalizedImageParamDefs = new Map(imageParamPresetList.map((item) => [item.key, normalizeImageParamDef(item)] as const));
 
 export function getImageProvidersForModel(model = "") {
-  const catalogItem = findImageModelCatalogItem(model);
-  if (!catalogItem) return imageProviderKeys;
-  return catalogItem.providers.map((itemProvider) => itemProvider.provider);
+  const bindings = findImageModelBindings(model);
+  if (!bindings.length) return imageProviderKeys;
+  return bindings.map((binding) => binding.provider);
 }
 
 export function resolveImageParamDefs(model: LooseModelConfig | null = null): ImageModelParamDef[] {
   const modelConfig = normalizeImageModelConfig(model || {});
-  const catalogItem = findImageModelCatalogItem(modelConfig.model, modelConfig.provider);
-  const paramKeys = catalogItem?.imageParamKeys || ["quality", "output_format", "image", "mask"];
+  const paramKeys = resolveImageModel(modelConfig)?.binding.paramKeys || [];
   return paramKeys.map((key) => normalizedImageParamDefs.get(key)).filter(Boolean) as ImageModelParamDef[];
 }
 
@@ -86,18 +85,7 @@ export const imageParamDefs: ImageModelParamDef[] = ["quality", "output_format",
 
 export function getImageModelSizes(model: LooseModelConfig | null = null): string[] {
   const modelConfig = normalizeImageModelConfig(model || {});
-  return (
-    findImageModelCatalogItem(modelConfig.model, modelConfig.provider)?.sizeList || [
-      "1024x1024",
-      "1536x1024",
-      "1024x1536",
-      "2048x2048",
-      "2048x1152",
-      "3840x2160",
-      "2160x3840",
-      "auto",
-    ]
-  );
+  return resolveImageModel(modelConfig)?.binding.sizeList || [];
 }
 
 function mergeResolvedImageSettings(defs: ImageModelParamDef[], settings: Partial<ImageModelSettings> = {}): ImageModelSettings {

@@ -3,7 +3,7 @@
   <div class="chat-template-display-card">
     <!-- Introduce the empty state with a lightweight headline and subtitle. -->
     <div class="ctdc-copy">
-      <h1 class="ctdc-title">Over to you{{ userSuffix }}</h1>
+      <h1 class="ctdc-title">Over to you</h1>
       <p class="ctdc-subtitle">Start a new conversation or reuse one of your prompt templates.</p>
     </div>
     <!-- Offer built-in and saved prompt shortcuts as reusable chips. -->
@@ -21,7 +21,7 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
-import { useStore } from "vuex";
+import { useAppStore } from "@/store";
 import type { ChatPromptMessage } from "@/types";
 import { addChat } from "@/services";
 import { append4Random, dsAlert } from "@/utils";
@@ -37,11 +37,10 @@ const emit = defineEmits<{
   "on-update": [messages: ChatPromptMessage[]];
 }>();
 
-const store = useStore();
+const store = useAppStore();
 const router = useRouter();
 const { t, locale } = useI18n();
 const curChatModelSettings = computed(() => store.state.curChatModelSettings);
-const userSuffix = computed(() => (store.state.username && store.state.username !== "__workspace__" ? `, ${store.state.username}` : ""));
 const insTemplateList = computed<ChatInstructionTemplate[]>(() => {
   locale.value;
   return [...chatInsTemplateList, ...store.state.chatInsTemplateList];
@@ -56,7 +55,7 @@ const onSelectInst = async (id: string) => {
 
   const newVal = { ...curChatModelSettings.value };
   newVal.prompts[0].content[0].text = instObj.value;
-  await store.dispatch("setCurChatModelSettings", newVal);
+  store.commit("setCurChatModelSettings", newVal);
 
   const name = append4Random(instObj.name);
   await addChat(name);

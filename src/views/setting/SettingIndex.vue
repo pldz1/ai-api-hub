@@ -27,7 +27,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { useStore } from "vuex";
+import { useAppStore } from "@/store";
 import AppPanel from "./AppPanel.vue";
 import ModelPanel from "./ModelPanel.vue";
 import TemplatePanel from "./TemplatePanel.vue";
@@ -179,7 +179,7 @@ defineEmits<{
   "update:activeTab": [key: SettingTabKey_S];
 }>();
 
-const store = useStore();
+const store = useAppStore();
 const { t } = useI18n();
 const activeTab = computed(() => props.activeTab);
 
@@ -189,8 +189,8 @@ const { draftModels, draftTemplates, shouldBlockUnload, getDraftPayload, syncDra
     templates: store.state.chatInsTemplateList,
   }),
   persistDraft: async (draft) => {
-    await store.dispatch("setModels", draft.models);
-    await store.dispatch("setChatInsTemplateList", draft.templates);
+    store.commit("setModels", draft.models);
+    store.commit("setChatInsTemplateList", draft.templates);
 
     const modelsSaved = await setModels(draft.models);
     const templatesSaved = await setChatInsTemplateList(draft.templates);

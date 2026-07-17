@@ -32,7 +32,13 @@
         <div class="model-form-field model-form-field-span">
           <label>{{ t("user.modelCard.fields.apiKey") }}</label>
           <div class="model-key-control">
-            <input v-model.trim="localModel.apiKey" :type="isApiKeyVisible ? 'text' : 'password'" class="model-key-value" autocomplete="off" spellcheck="false" />
+            <input
+              v-model.trim="localModel.apiKey"
+              :type="isApiKeyVisible ? 'text' : 'password'"
+              class="model-key-value"
+              autocomplete="off"
+              spellcheck="false"
+            />
             <button type="button" class="model-key-action" aria-label="Toggle API key visibility" @click="toggleApiKeyVisibility">
               <SvgIcon :src="eyeIcon" />
             </button>
@@ -83,9 +89,9 @@ import {
   imageModelProviderList,
   videoModelProviderList,
   chatProviderKeys,
-  chatModelTypeList,
-  imageModelTypeList,
-  videoModelTypeList,
+  chatCatalogModelIds,
+  imageCatalogModelIds,
+  videoCatalogModelIds,
 } from "@/constants";
 import { dsAlert } from "@/utils";
 import {
@@ -113,7 +119,7 @@ type ModelEditorState = Omit<ChatModelEditorState, "provider"> & {
   provider: ChatModelEditorState["provider"] | ImageModelEditorState["provider"];
   useProxy?: boolean;
 };
-type ModelEditorInput = Partial<ModelConfig> & { apiType?: ModelEditorState["provider"] };
+type ModelEditorInput = Partial<ModelConfig>;
 type ProviderSuggestion = ModelEditorState["provider"];
 
 const props = withDefaults(
@@ -149,8 +155,7 @@ const usesBaseURL = computed(() =>
       : chatProviderUsesField(localModel.provider, "baseURL"),
 );
 const availableModelOptions = computed(() => {
-  const catalog = isVideoModel.value ? videoModelTypeList : isImageModel.value ? imageModelTypeList : chatModelTypeList;
-  const options = catalog.map((item) => item.name);
+  const options = isVideoModel.value ? videoCatalogModelIds : isImageModel.value ? imageCatalogModelIds : chatCatalogModelIds;
   const currentModel = String(localModel.model || "").trim();
 
   if (currentModel && !options.includes(currentModel)) {
@@ -285,14 +290,14 @@ function createModelPayload(): ModelConfig {
 
 function syncFromProps(model?: ModelEditorInput) {
   // Sync external selection changes into local edit state without immediately re-emitting.
-  const legacyModel = model || {};
+  const sourceModel = model || {};
   isSyncingFromProps = true;
   Object.assign(
     localModel,
     normalizeModelDraft({
       ...createEmptyModelEditorState(),
-      ...legacyModel,
-      provider: legacyModel.provider || legacyModel.apiType || "",
+      ...sourceModel,
+      provider: sourceModel.provider || "",
     }),
   );
   syncProviderForModel(true);
@@ -334,7 +339,7 @@ watch(
 watch(
   () => [localModel.provider, localModel.model],
   () => {
-    if (isSyncingFromProps || isImageModel.value || isVideoModel.value) return;
+    if (isSyncingFromProps) return;
     syncProviderForModel();
     syncProviderBaseURL(localModel.provider);
   },

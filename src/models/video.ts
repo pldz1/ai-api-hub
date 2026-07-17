@@ -3,9 +3,8 @@ import type { VideoModelCapabilities } from "@/ai-capability/video";
 import { videoParamPresetList } from "@/constants/video-model";
 import { parseParamValue } from "./settings";
 import {
-  findVideoModelCatalogItem,
-  findVideoModelCatalogProvider,
-  defaultVideoModelCapabilities,
+  findVideoModelBindings,
+  resolveVideoModel,
   videoProviderKeys,
   isVideoModelProvider,
   videoProviderUsesField,
@@ -65,15 +64,14 @@ export function normalizeVideoParamDef(def: Partial<VideoModelParamDef> = {}): V
 const normalizedVideoParamDefs = new Map(videoParamPresetList.map((item) => [item.key, normalizeVideoParamDef(item)] as const));
 
 export function getVideoProvidersForModel(model: string = "") {
-  const catalogItem = findVideoModelCatalogItem(model);
-  if (!catalogItem) return videoProviderKeys;
-  return catalogItem.providers.map((p) => p.provider);
+  const bindings = findVideoModelBindings(model);
+  if (!bindings.length) return videoProviderKeys;
+  return bindings.map((binding) => binding.provider);
 }
 
 export function resolveVideoParamDefs(model: LooseModelConfig | null = null): VideoModelParamDef[] {
   const modelConfig = normalizeVideoModelConfig(model || {});
-  const catalogItem = findVideoModelCatalogItem(modelConfig.model, modelConfig.provider);
-  const paramKeys = catalogItem?.videoParamKeys || ["resolution", "duration", "prompt_extend", "watermark", "first_frame"];
+  const paramKeys = resolveVideoModel(modelConfig)?.binding.paramKeys || [];
   return paramKeys.map((key) => normalizedVideoParamDefs.get(key)).filter(Boolean) as VideoModelParamDef[];
 }
 
@@ -83,7 +81,7 @@ export const videoParamDefs: VideoModelParamDef[] = ["resolution", "duration", "
 
 export function getVideoModelResolutions(model: LooseModelConfig | null = null): string[] {
   const modelConfig = normalizeVideoModelConfig(model || {});
-  return findVideoModelCatalogItem(modelConfig.model, modelConfig.provider)?.resolutionList || ["720P", "1080P"];
+  return resolveVideoModel(modelConfig)?.binding.resolutionList || [];
 }
 
 function mergeResolvedVideoSettings(_defs: VideoModelParamDef[], settings: Partial<VideoModelSettings> = {}): VideoModelSettings {
@@ -125,7 +123,7 @@ export type VideoModelType = "t2v" | "i2v" | "r2v";
 
 export function getVideoModelCapabilities(model: LooseModelConfig | null = null): VideoModelCapabilities {
   const config = normalizeVideoModelConfig(model || {});
-  return findVideoModelCatalogProvider(config.model, config.provider)?.capabilities || defaultVideoModelCapabilities;
+  return resolveVideoModel(config)?.binding.capabilities || { imageInput: false, audioInput: false, videoInput: false };
 }
 
 export function getVideoModelType(model: LooseModelConfig | null = null): VideoModelType {

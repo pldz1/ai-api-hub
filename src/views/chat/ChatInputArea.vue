@@ -122,7 +122,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { useStore } from "vuex";
+import { useAppStore } from "@/store";
 import type { ChatModelConfig, ChatPromptMessage } from "@/types";
 import attachIcon from "@/assets/svg/attach24.svg";
 import imageIcon from "@/assets/svg/navImage24.svg";
@@ -136,7 +136,7 @@ import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import { createConversationModelSnapshot, getChatModelCapabilities, mergeChatSettingsWithModel, getModelFromSnapshot } from "@/models";
 import { packUserMsg, setChatSettings } from "@/services";
-import { setChatFileSource, deleteChatFileSource } from "@/services/app/storage";
+import { setChatFileSource, deleteChatFileSource } from "@/persistence";
 import {
   CHAT_INPUT_FILE_MAX_MB,
   formatChatFileSize,
@@ -193,7 +193,7 @@ const chatFileInputRef = ref<HTMLInputElement | null>(null);
 const inputImages = ref<ChatInputImage[]>([]);
 const inputFiles = ref<ChatInputAttachment[]>([]);
 
-const store = useStore();
+const store = useAppStore();
 const { t } = useI18n();
 const chatModels = computed<ChatModelConfig[]>(() => store.state.models.chat || []);
 const chatModelOptions = computed(() =>
@@ -259,15 +259,15 @@ watch(
   async (model, previousModel) => {
     if (!model) return;
 
-    await store.dispatch("setCurChatModel", model);
+    store.commit("setCurChatModel", model);
 
     if (!previousModel || getModelIdentityKey(previousModel) !== getModelIdentityKey(model)) {
       if (curChatId.value) {
-        await store.dispatch("setCurConversationModel", model);
+        store.commit("setCurConversationModel", model);
       }
 
-      await store.dispatch("setCurChatModelSettings", mergeChatSettingsWithModel(model, curChatId.value ? store.state.curChatModelSettings || {} : {}));
-      await store.dispatch("resetInputCapabilities");
+      store.commit("setCurChatModelSettings", mergeChatSettingsWithModel(model, curChatId.value ? store.state.curChatModelSettings || {} : {}));
+      store.commit("resetInputCapabilities");
 
       if (curChatId.value) {
         await setChatSettings(curChatId.value);
@@ -314,7 +314,7 @@ const onSendInputData = async () => {
   if (curChatId.value) {
     const currentConversationModel = getModelFromSnapshot(curConversation.value?.modelSnapshot);
     if (getModelIdentityKey(currentConversationModel) !== getModelIdentityKey(selectedModel.value)) {
-      await store.dispatch("setCurConversationModel", selectedModel.value);
+      store.commit("setCurConversationModel", selectedModel.value);
     }
     await setChatSettings(curChatId.value);
   }
@@ -340,7 +340,7 @@ const onSendInputData = async () => {
 };
 
 const onToggleCapability = async (key: InputCapabilityKey, value: boolean) => {
-  await store.dispatch("setInputCapability", { key, value });
+  store.commit("setInputCapability", { key, value });
 };
 
 /* When the browser supports field-sizing:content natively we skip the manual
@@ -506,7 +506,7 @@ async function onPaste(event: ClipboardEvent) {
 }
 
 async function previewInputImage(src: string) {
-  await store.dispatch("setModalImage", src);
+  store.commit("setModalImage", src);
   const dialog = document.getElementById("global_image_preview_modal") as HTMLDialogElement | null;
   dialog?.showModal();
 }

@@ -70,7 +70,7 @@ import copyIcon from "@/assets/svg/copy16.svg";
 import deleteIcon from "@/assets/svg/delete16.svg";
 import newIcon from "@/assets/svg/new24.svg";
 import SvgIcon from "@/components/SvgIcon.vue";
-import { getImageProviderDefaultBaseURL, getVideoProviderDefaultBaseURL } from "@/models";
+import { getChatProviderDefaultBaseURL, getImageProviderDefaultBaseURL, getVideoProviderDefaultBaseURL } from "@/models";
 import { append4Random } from "@/utils";
 import type { ChatModelConfig, ImageModelConfig, VideoModelConfig, ModelConfig, ModelKind } from "@/types";
 
@@ -124,7 +124,7 @@ function addModel() {
       : ({
           name: append4Random(t("user.chatModels.defaultName")),
           provider: "OpenAI",
-          baseURL: "https://api.openai.com/v1",
+          baseURL: getChatProviderDefaultBaseURL("OpenAI"),
           apiKey: "",
           model: "gpt-5.5",
         } as ChatModelConfig);

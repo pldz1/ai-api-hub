@@ -1,6 +1,24 @@
 import { defaultModelCapabilities } from "@/constants";
-import { createConversationModelSnapshot, getChatModelCapabilities, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
-import { findChatModelCatalogItem } from "@/ai-capability/chat";
+import { createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
+import type { ChatListItem, ChatModelSettings, ChatPromptMessage, ConversationModelSnapshot, TokenUsage } from "@/types";
+
+interface StoredChatConversationProjection {
+  id: string;
+  title: string;
+  modelSnapshot: ConversationModelSnapshot;
+}
+
+interface ChatRuntimeState {
+  status: string;
+  pending: boolean;
+  completedNotice: boolean;
+  sessionTokenTotal: number;
+  sessionTokenUsage: TokenUsage;
+  draftMessageId: string;
+  draftAssistantContent: string;
+  draftReasoningContent: string;
+  lastError: string;
+}
 
 const emptyTokenUsage = () => ({
   input_tokens: 0,
@@ -20,11 +38,11 @@ function normalizeTokenUsage(data: Record<string, unknown> = {}) {
   };
 }
 
+function getMessageUsage(message: any) {
+  return message?.meta?.run?.result?.usage || null;
+}
+
 function createInputCapabilities(_conversation = null, _fallbackModel = null) {
-  const model = _fallbackModel;
-  if (model && !findChatModelCatalogItem(model.model, model.provider)) {
-    return { ...getChatModelCapabilities(model) };
-  }
   return { ...defaultModelCapabilities };
 }
 
@@ -61,12 +79,12 @@ export const ChatState = {
   /**
    * 对话路由列表
    */
-  chatList: [],
+  chatList: [] as ChatListItem[],
 
   /**
    * 当前对话绑定的模型快照。会话创建后不再允许切换模型。
    */
-  curConversation: null,
+  curConversation: null as StoredChatConversationProjection | null,
 
   /**
    * 单次输入启用的能力开关。最终能力还会被模型支持能力和配置启用能力约束。
@@ -81,7 +99,7 @@ export const ChatState = {
   /**
    * 当前激活会话的消息投影。
    */
-  messages: [],
+  messages: [] as ChatPromptMessage[],
 
   /**
    * 本次前端会话内累计 token。仅保存在内存中，不持久化。
@@ -97,12 +115,12 @@ export const ChatState = {
   /**
    * 所有会话的运行态和本地缓存。
    */
-  chatConversationsById: {},
-  chatMessagesById: {},
-  chatSettingsById: {},
-  chatInputCapabilitiesById: {},
-  chatRuntimeById: {},
-  chatLoadedById: {},
+  chatConversationsById: {} as Record<string, StoredChatConversationProjection | null>,
+  chatMessagesById: {} as Record<string, ChatPromptMessage[]>,
+  chatSettingsById: {} as Record<string, ChatModelSettings>,
+  chatInputCapabilitiesById: {} as Record<string, Record<string, boolean>>,
+  chatRuntimeById: {} as Record<string, ChatRuntimeState>,
+  chatLoadedById: {} as Record<string, boolean>,
 
   _ensureChatEntry(cid) {
     if (!cid) return;
@@ -212,7 +230,7 @@ export const ChatState = {
   /**
    * 从模型配置创建当前对话快照。
    */
-  setCurConversationFromModel(data) {
+  setCurConversationModel(data) {
     const snapshot = createConversationModelSnapshot(data);
     if (!snapshot) {
       this.curConversation = null;
@@ -253,8 +271,9 @@ export const ChatState = {
       }
       currentRuntime.sessionTokenUsage = emptyTokenUsage();
       this.chatMessagesById[cid].forEach((message) => {
-        if (!message?.token_usage) return;
-        const usage = normalizeTokenUsage(message.token_usage);
+        const messageUsage = getMessageUsage(message);
+        if (!messageUsage) return;
+        const usage = normalizeTokenUsage(messageUsage);
         currentRuntime.sessionTokenUsage = {
           input_tokens: currentRuntime.sessionTokenUsage.input_tokens + usage.input_tokens,
           output_tokens: currentRuntime.sessionTokenUsage.output_tokens + usage.output_tokens,
@@ -365,8 +384,9 @@ export const ChatState = {
       runtime.sessionTokenUsage = emptyTokenUsage();
       runtime.sessionTokenTotal = 0;
       (this.chatMessagesById[this.curChatId] || []).forEach((message) => {
-        if (!message?.token_usage) return;
-        const usage = normalizeTokenUsage(message.token_usage);
+        const messageUsage = getMessageUsage(message);
+        if (!messageUsage) return;
+        const usage = normalizeTokenUsage(messageUsage);
         runtime.sessionTokenUsage = {
           input_tokens: runtime.sessionTokenUsage.input_tokens + usage.input_tokens,
           output_tokens: runtime.sessionTokenUsage.output_tokens + usage.output_tokens,
@@ -382,7 +402,8 @@ export const ChatState = {
     this.sessionTokenUsage = emptyTokenUsage();
     this.sessionTokenTotal = 0;
     this.messages.forEach((message) => {
-      if (message?.token_usage) this.addSessionTokens(message.token_usage);
+      const messageUsage = getMessageUsage(message);
+      if (messageUsage) this.addSessionTokens(messageUsage);
     });
   },
 
@@ -409,12 +430,14 @@ export const ChatState = {
       this._ensureChatEntry(this.curChatId);
       this.chatMessagesById[this.curChatId].push(msg);
       this.messages = this.chatMessagesById[this.curChatId];
-      if (msg?.token_usage) this.addSessionTokens(msg.token_usage);
+      const messageUsage = getMessageUsage(msg);
+      if (messageUsage) this.addSessionTokens(messageUsage);
       return;
     }
 
     this.messages.push(msg);
-    if (msg?.token_usage) this.addSessionTokens(msg.token_usage);
+    const messageUsage = getMessageUsage(msg);
+    if (messageUsage) this.addSessionTokens(messageUsage);
   },
 
   pushChatMessage(data) {
@@ -426,10 +449,11 @@ export const ChatState = {
     this.chatLoadedById[cid] = true;
     if (cid === this.curChatId) {
       this.messages = this.chatMessagesById[cid];
-      if (msg?.token_usage) this.addSessionTokens(msg.token_usage);
-    } else if (msg?.token_usage) {
+      const messageUsage = getMessageUsage(msg);
+      if (messageUsage) this.addSessionTokens(messageUsage);
+    } else if (getMessageUsage(msg)) {
       const runtime = cloneRuntime(this.chatRuntimeById[cid]);
-      const usage = normalizeTokenUsage(msg.token_usage);
+      const usage = normalizeTokenUsage(getMessageUsage(msg));
       runtime.sessionTokenUsage = {
         input_tokens: runtime.sessionTokenUsage.input_tokens + usage.input_tokens,
         output_tokens: runtime.sessionTokenUsage.output_tokens + usage.output_tokens,

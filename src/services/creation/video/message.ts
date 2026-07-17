@@ -14,13 +14,8 @@ export function createVideoMessage(payload: Partial<VideoConversationMessage> = 
     prompt: payload.prompt || "",
     videos: payload.videos || [],
     attachments: payload.attachments || [],
-    status: payload.status || "ready",
     createdAt: payload.createdAt || Date.now(),
-    elapsedMs: payload.elapsedMs || 0,
-    usage: payload.usage || null,
-    error: payload.error || "",
-    modelName: payload.modelName || "",
-    resolution: payload.resolution || "",
+    run: payload.run || null,
   };
 }
 

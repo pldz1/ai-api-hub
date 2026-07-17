@@ -1,39 +1,21 @@
-function createImageRuntime() {
-  return {
-    pending: false,
-    status: "idle",
-    completedNotice: false,
-    startedAt: 0,
-    elapsedMs: 0,
-    error: "",
-  };
-}
-
-function cloneImageRuntime(runtime = {}) {
-  return {
-    ...createImageRuntime(),
-    ...runtime,
-  };
-}
-
-function getRuntimeStatusByMessages(messages = []) {
-  return messages.length > 0 ? "success" : "idle";
-}
+import { cloneCreationRuntime, createCreationRuntime } from "./creation-runtime";
+import type { ImageConversationInfo, ImageConversationMessage, ImageDataItem } from "@/types";
+import type { CreationRuntime } from "./creation-runtime";
 
 export const ImageState = {
-  imageList: [],
-  imageConversationList: [],
+  imageList: [] as ImageDataItem[],
+  imageConversationList: [] as ImageConversationInfo[],
   curImageConversationId: "",
-  imageMessages: [],
-  imageRuntime: createImageRuntime(),
-  imageMessagesById: {},
-  imageRuntimeById: {},
-  imageLoadedById: {},
+  imageMessages: [] as ImageConversationMessage[],
+  imageRuntime: createCreationRuntime(),
+  imageMessagesById: {} as Record<string, ImageConversationMessage[]>,
+  imageRuntimeById: {} as Record<string, CreationRuntime>,
+  imageLoadedById: {} as Record<string, boolean>,
 
   _ensureImageEntry(iid) {
     if (!iid) return;
     if (!this.imageMessagesById[iid]) this.imageMessagesById[iid] = [];
-    if (!this.imageRuntimeById[iid]) this.imageRuntimeById[iid] = createImageRuntime();
+    if (!this.imageRuntimeById[iid]) this.imageRuntimeById[iid] = createCreationRuntime();
     if (!this.imageLoadedById[iid]) this.imageLoadedById[iid] = false;
   },
 
@@ -41,19 +23,19 @@ export const ImageState = {
     const iid = this.curImageConversationId;
     if (!iid) {
       this.imageMessages = [];
-      this.imageRuntime = createImageRuntime();
+      this.imageRuntime = createCreationRuntime();
       return;
     }
 
     this._ensureImageEntry(iid);
     if (this.imageRuntimeById[iid]?.completedNotice) {
-      this.imageRuntimeById[iid] = cloneImageRuntime({
+      this.imageRuntimeById[iid] = cloneCreationRuntime({
         ...this.imageRuntimeById[iid],
         completedNotice: false,
       });
     }
     this.imageMessages = this.imageMessagesById[iid] || [];
-    this.imageRuntime = cloneImageRuntime(this.imageRuntimeById[iid]);
+    this.imageRuntime = cloneCreationRuntime(this.imageRuntimeById[iid]);
   },
 
   resetImageList(t) {
@@ -114,11 +96,7 @@ export const ImageState = {
     this.imageMessagesById[iid] = [...messages];
     this.imageLoadedById[iid] = true;
 
-    const currentRuntime = this.imageRuntimeById[iid] || createImageRuntime();
-    if (!currentRuntime.pending) {
-      currentRuntime.status = getRuntimeStatusByMessages(this.imageMessagesById[iid]);
-    }
-    this.imageRuntimeById[iid] = cloneImageRuntime(currentRuntime);
+    this.imageRuntimeById[iid] = cloneCreationRuntime(this.imageRuntimeById[iid]);
 
     if (iid === this.curImageConversationId) this._syncActiveImageState();
   },
@@ -159,7 +137,7 @@ export const ImageState = {
     const runtime = data?.runtime || data;
 
     if (!iid) {
-      this.imageRuntime = cloneImageRuntime({
+      this.imageRuntime = cloneCreationRuntime({
         ...this.imageRuntime,
         ...runtime,
       });
@@ -167,13 +145,13 @@ export const ImageState = {
     }
 
     this._ensureImageEntry(iid);
-    this.imageRuntimeById[iid] = cloneImageRuntime({
+    this.imageRuntimeById[iid] = cloneCreationRuntime({
       ...this.imageRuntimeById[iid],
       ...runtime,
     });
 
     if (iid === this.curImageConversationId) {
-      this.imageRuntime = cloneImageRuntime(this.imageRuntimeById[iid]);
+      this.imageRuntime = cloneCreationRuntime(this.imageRuntimeById[iid]);
     }
   },
 
@@ -181,18 +159,15 @@ export const ImageState = {
     const iid = typeof data === "string" ? data : data?.iid || this.curImageConversationId;
 
     if (!iid) {
-      this.imageRuntime = createImageRuntime();
+      this.imageRuntime = createCreationRuntime();
       return;
     }
 
     this._ensureImageEntry(iid);
-    this.imageRuntimeById[iid] = {
-      ...createImageRuntime(),
-      status: getRuntimeStatusByMessages(this.imageMessagesById[iid] || []),
-    };
+    this.imageRuntimeById[iid] = createCreationRuntime();
 
     if (iid === this.curImageConversationId) {
-      this.imageRuntime = cloneImageRuntime(this.imageRuntimeById[iid]);
+      this.imageRuntime = cloneCreationRuntime(this.imageRuntimeById[iid]);
     }
   },
 };

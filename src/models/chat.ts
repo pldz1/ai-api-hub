@@ -10,16 +10,17 @@ import type {
   LooseModelConfig,
 } from "@/types";
 import { tr } from "@/i18n";
-import { chatParamPresetList, defaultModelCapabilities } from "@/constants";
+import { chatParamList, defaultModelCapabilities } from "@/ai-capability/chat";
 import { parseParamValue } from "./settings";
 
 type LooseChatParamDef = Partial<ModelParamDef> & { key?: string };
-const chatParamDefMap = new Map(chatParamPresetList.map((item) => [item.key, item] as const));
+const chatParamDefMap = new Map(chatParamList.map((item) => [item.key, item] as const));
 
 import {
   chatProviderUsesField,
-  findChatModelCatalogItem,
-  findChatModelCatalogProvider,
+  findChatModelBinding,
+  findChatModelBindings,
+  resolveChatModel,
   getChatProviderDefinition,
   getChatProviderDefaultBaseURL,
   getKnownChatProviderDefaultBaseURLs,
@@ -42,8 +43,7 @@ export function isOpenAIChatModel(model: ChatModelConfig | null | undefined): mo
  */
 export function normalizeChatModelConfig(model: LooseModelConfig | null | undefined = {}): ChatModelConfig {
   const provider = model?.provider;
-  const normalizedProvider = String(provider || "") === "Qwen" ? "DashScope" : provider;
-  const nextProvider = isChatModelProvider(normalizedProvider) ? normalizedProvider : "OpenAI";
+  const nextProvider = isChatModelProvider(provider) ? provider : "OpenAI";
   return {
     name: String(model?.name || "").trim(),
     provider: nextProvider,
@@ -54,25 +54,26 @@ export function normalizeChatModelConfig(model: LooseModelConfig | null | undefi
 }
 
 export function getChatProvidersForModel(model = ""): ChatModelProvider[] {
-  const catalogItem = findChatModelCatalogItem(model);
-  if (!catalogItem) return chatProviderKeys;
-  return catalogItem.providers.map((itemProvider) => itemProvider.provider);
+  const bindings = findChatModelBindings(model);
+  if (!bindings.length) return chatProviderKeys;
+  return bindings.map((binding) => binding.provider);
 }
 
 export function getChatModelCapabilities(model: LooseModelConfig | string | null | undefined = null): ChatModelCapabilities {
-  const modelId = typeof model === "string" ? model : model?.model || "";
-  const modelProvider = typeof model === "string" ? null : isChatModelProvider(model?.provider) ? model.provider : null;
-  const catalogCapabilities = findChatModelCatalogProvider(modelId, modelProvider)?.capabilities;
-  if (!catalogCapabilities) return { webSearch: true, imageRead: true };
-  return normalizeModelCapabilities(catalogCapabilities, { ...defaultModelCapabilities, ...catalogCapabilities });
+  const binding =
+    typeof model === "string"
+      ? findChatModelBinding(model)
+      : resolveChatModel(normalizeChatModelConfig(model || {}))?.binding || null;
+  if (!binding) return { ...defaultModelCapabilities };
+  return normalizeModelCapabilities(binding.capabilities, { ...defaultModelCapabilities, ...binding.capabilities });
 }
 
 export function getChatMessageFormat(model: LooseModelConfig | string | null | undefined = null): "text" | "parts" {
-  const modelId = typeof model === "string" ? model : model?.model || "";
-  const provider = typeof model === "string" ? null : isChatModelProvider(model?.provider) ? model.provider : null;
-  const catalogFormat = findChatModelCatalogItem(modelId, provider)?.messageFormat;
-  if (!catalogFormat) return "parts";
-  return catalogFormat;
+  const binding =
+    typeof model === "string"
+      ? findChatModelBinding(model)
+      : resolveChatModel(normalizeChatModelConfig(model || {}))?.binding || null;
+  return binding?.messageFormat || "text";
 }
 
 /**
@@ -157,11 +158,10 @@ export function normalizeChatParamDef(def: LooseChatParamDef = {}): ModelParamDe
   };
 }
 
-const normalizedChatParamDefs = new Map(chatParamPresetList.map((item) => [item.key, normalizeChatParamDef(item)] as const));
+const normalizedChatParamDefs = new Map(chatParamList.map((item) => [item.key, normalizeChatParamDef(item)] as const));
 
 export function resolveChatParamDefs(model: LooseModelConfig | null = null): ModelParamDef[] {
-  const modelProvider = isChatModelProvider(model?.provider) ? model.provider : null;
-  const paramKeys = findChatModelCatalogItem(model?.model || "", modelProvider)?.chatParamKeys || [];
+  const paramKeys = resolveChatModel(normalizeChatModelConfig(model || {}))?.binding.paramKeys || [];
   return paramKeys.map((key) => normalizedChatParamDefs.get(key)).filter(Boolean) as ModelParamDef[];
 }
 

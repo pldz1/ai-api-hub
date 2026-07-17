@@ -54,11 +54,6 @@ export interface PersistedChatSettings {
   settings: ChatModelSettings;
 }
 
-export interface StoredChatMessage {
-  mid: string;
-  message: string;
-}
-
 export interface ChatListItem {
   cid: string;
   cname: string;

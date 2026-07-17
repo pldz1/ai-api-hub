@@ -81,7 +81,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { useStore } from "vuex";
+import { useAppStore } from "@/store";
 import infoIcon from "@/assets/svg/info24.svg";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
@@ -103,7 +103,7 @@ type ParamDef = {
   defaultValue?: unknown;
 };
 
-const store = useStore();
+const store = useAppStore();
 const { t } = useI18n();
 const dialogRef = ref<HTMLDialogElement | null>(null);
 const curChatModel = computed(() => store.state.curChatModel);
@@ -168,7 +168,7 @@ const handleClose = async () => {
     nextSettings[item.key] = parsedValue as any;
   });
 
-  await store.dispatch("setCurChatModelSettings", nextSettings);
+  store.commit("setCurChatModelSettings", nextSettings);
   await setChatSettings();
   dialogRef.value?.close();
 };

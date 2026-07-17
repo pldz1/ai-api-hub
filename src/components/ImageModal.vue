@@ -22,13 +22,13 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { useStore } from "vuex";
+import { useAppStore } from "@/store";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 6;
 const WHEEL_ZOOM_SPEED = 0.0018;
 
-const store = useStore();
+const store = useAppStore();
 const dialogRef = ref<HTMLDialogElement | null>(null);
 const viewerRef = ref<HTMLDivElement | null>(null);
 const imgSrc = computed(() => store.state.modalImgSrc);

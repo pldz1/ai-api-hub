@@ -1,13 +1,24 @@
 import { ChatProviderConnectionField, ChatProviderDefinition, ChatProviderKey, chatProviderKeys, chatProviderRegistry } from "../types";
-import type { ChatExecutor, ChatModelConfig, ChatProviderRoute } from "../types";
+import type { ChatAdapterId, ChatExecutor, ChatModelConfig } from "../types";
+import { resolveChatModel } from "../models";
 
 import { AzureOpenAIClient } from "./azure-openai";
 import { DashScopeClient } from "./dashscope";
 import { DeepSeekClient } from "./deepseek";
 import { OpenAIClient } from "./openai";
 
-type ChatProviderRuntimeConfig = Pick<ChatModelConfig, "provider" | "baseURL" | "apiKey" | "model"> & {
-  route: ChatProviderRoute;
+export type ChatProviderRuntimeConfig = Pick<ChatModelConfig, "provider" | "baseURL" | "apiKey" | "model"> & {
+  adapterId: ChatAdapterId;
+  adapterOptions: Record<string, unknown>;
+};
+
+type ChatAdapterFactory = (config: ChatProviderRuntimeConfig) => ChatExecutor;
+
+const chatAdapterRegistry: Record<ChatAdapterId, ChatAdapterFactory> = {
+  "openai-responses": (config) => new OpenAIClient(config.baseURL, config.apiKey, config.model, config.adapterOptions),
+  "azure-openai-responses": (config) => new AzureOpenAIClient(config.baseURL, config.apiKey, config.model, config.adapterOptions),
+  "anthropic-messages": (config) => new DeepSeekClient(config.baseURL, config.apiKey, config.model, config.adapterOptions),
+  "openai-chat-completions": (config) => new DashScopeClient(config.baseURL, config.apiKey, config.model, config.adapterOptions),
 };
 
 export function isChatModelProvider(value: unknown): value is ChatProviderKey {
@@ -41,15 +52,16 @@ export function getKnownChatProviderDefaultBaseURLs(): string[] {
  * request execution configuration begins.
  */
 export function createChatProviderConfig(model: ChatModelConfig): ChatProviderRuntimeConfig | null {
-  const providerDefinition = getChatProviderDefinition(model.provider);
-  if (!providerDefinition) return null;
+  const resolved = resolveChatModel(model);
+  if (!resolved) return null;
 
   return {
-    route: providerDefinition.route,
-    provider: model.provider,
-    baseURL: model.baseURL,
-    apiKey: model.apiKey,
-    model: model.model,
+    adapterId: resolved.binding.adapterId,
+    adapterOptions: { ...(resolved.binding.adapterOptions || {}) },
+    provider: resolved.config.provider,
+    baseURL: resolved.config.baseURL,
+    apiKey: resolved.config.apiKey,
+    model: resolved.config.model,
   };
 }
 
@@ -60,17 +72,5 @@ export function createChatProviderConfig(model: ChatModelConfig): ChatProviderRu
  * payloads from storage/UI.
  */
 export function createChatExecutor(config: ChatProviderRuntimeConfig): ChatExecutor {
-  if (config.route === "azure-openai") {
-    return new AzureOpenAIClient(config.baseURL, config.apiKey, config.model);
-  }
-
-  if (config.route === "deepseek") {
-    return new DeepSeekClient(config.baseURL, config.apiKey, config.model);
-  }
-
-  if (config.route === "dashscope") {
-    return new DashScopeClient(config.baseURL, config.apiKey, config.model);
-  }
-
-  return new OpenAIClient(config.baseURL, config.apiKey, config.model);
+  return chatAdapterRegistry[config.adapterId](config);
 }

@@ -1,5 +1,6 @@
 import { ImageProviderConnectionField, ImageProviderDefinition, ImageProviderKey, imageProviderKeys, imageProviderRegistry } from "../types";
-import type { ImageGenerationParams, ImageGenerationResult, ImageModelConfig, ImageModelProvider, ImageProviderRoute } from "../types";
+import type { ImageAdapterId, ImageGenerationParams, ImageGenerationResult, ImageModelConfig, ImageModelProvider } from "../types";
+import { resolveImageModel } from "../models";
 
 import { AzureOpenAIImageClient } from "./azure-openai";
 import { DashScopeImageClient } from "./dashscope";
@@ -8,7 +9,7 @@ import { OpenAIImageClient } from "./openai";
 // -- runtime config --------------------------------------------------------
 
 type ImageProviderRuntimeConfig = Pick<ImageModelConfig, "provider" | "baseURL" | "apiKey" | "model"> & {
-  route: ImageProviderRoute;
+  adapterId: ImageAdapterId;
 };
 
 // -- executor interface ----------------------------------------------------
@@ -58,12 +59,21 @@ export function createImageProviderConfig(
   const providerDefinition = getImageProviderDefinition(provider);
   if (!providerDefinition) return null;
 
-  return {
-    route: providerDefinition.route,
+  const resolved = resolveImageModel({
+    name: "name" in model ? model.name || "" : "",
     provider: provider as ImageModelProvider,
     baseURL: model.baseURL || "",
     apiKey: model.apiKey || "",
     model: model.model || "",
+  });
+  if (!resolved) return null;
+
+  return {
+    adapterId: resolved.binding.adapterId,
+    provider: resolved.config.provider,
+    baseURL: resolved.config.baseURL,
+    apiKey: resolved.config.apiKey,
+    model: resolved.config.model,
   };
 }
 
@@ -74,13 +84,10 @@ export function createImageProviderConfig(
  * payloads from storage/UI.
  */
 export function createImageExecutor(config: ImageProviderRuntimeConfig): ImageExecutor {
-  if (config.route === "azure-openai") {
-    return new AzureOpenAIImageClient(config.baseURL, config.apiKey, config.model);
-  }
-
-  if (config.route === "dashscope") {
-    return new DashScopeImageClient(config.baseURL, config.apiKey, config.model);
-  }
-
-  return new OpenAIImageClient(config.baseURL, config.apiKey, config.model);
+  const factories: Record<ImageAdapterId, () => ImageExecutor> = {
+    "openai-images": () => new OpenAIImageClient(config.baseURL, config.apiKey, config.model),
+    "azure-openai-images": () => new AzureOpenAIImageClient(config.baseURL, config.apiKey, config.model),
+    "dashscope-multimodal": () => new DashScopeImageClient(config.baseURL, config.apiKey, config.model),
+  };
+  return factories[config.adapterId]();
 }

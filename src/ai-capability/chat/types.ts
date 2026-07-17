@@ -1,15 +1,22 @@
-import { TokenUsage, ParamDefaultValue } from "../common";
+import { TokenUsage, ParamDefaultValue, RunSnapshot } from "../common";
 
 // ============================================================================
 // Provider runtime config (derived from user-owned model config, with extra fields for execution)
 // ============================================================================
 
-export type ChatProviderRoute = "openai" | "azure-openai" | "deepseek" | "dashscope";
+/**
+ * Wire-protocol implementation used to execute a chat model.
+ *
+ * Provider identity and protocol identity are deliberately separate: one
+ * provider can expose different protocols, while multiple providers can share
+ * the same protocol shape.
+ */
+export type ChatAdapterId = "openai-responses" | "azure-openai-responses" | "anthropic-messages" | "openai-chat-completions";
 export type ChatProviderConnectionField = "baseURL";
 
 export interface ChatProviderDefinition {
   name: string;
-  route: ChatProviderRoute;
+  adapterId: ChatAdapterId;
   connectionFields: readonly ChatProviderConnectionField[];
   defaultBaseURL?: string;
 }
@@ -17,25 +24,25 @@ export interface ChatProviderDefinition {
 const chatProviderRegistryConfig = {
   OpenAI: {
     name: "OpenAI",
-    route: "openai",
+    adapterId: "openai-responses",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://api.openai.com/v1/responses",
   },
   "Azure OpenAI": {
     name: "Azure OpenAI",
-    route: "azure-openai",
+    adapterId: "azure-openai-responses",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://<YOUR-AZURE-PROJECT>.openai.azure.com/openai/v1/responses",
   },
   DeepSeek: {
     name: "DeepSeek",
-    route: "deepseek",
+    adapterId: "anthropic-messages",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://api.deepseek.com/anthropic",
   },
   DashScope: {
     name: "DashScope",
-    route: "dashscope",
+    adapterId: "openai-chat-completions",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
   },
@@ -115,11 +122,11 @@ export interface ChatPromptMessage {
   content: ChatPromptContent[];
   mid?: string;
   reasoning_content?: string;
-  token_usage?: TokenUsage | null;
   attachments?: ChatMessageAttachment[];
   meta?: {
     isContextBlocked?: boolean;
     usedCapabilities?: Partial<ChatModelCapabilities>;
+    run?: RunSnapshot;
   };
 }
 

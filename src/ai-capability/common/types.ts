@@ -48,12 +48,42 @@ export interface TokenUsage {
   [key: string]: unknown;
 }
 
-export type ApiMethod = "get" | "post" | "put" | "patch" | "delete";
-export type RequestBody = Record<string, unknown>;
-export type RequestHeaders = Record<string, string>;
+export type RunKind = "chat" | "image" | "video";
+export type RunStatus = "running" | "success" | "error" | "stopped";
 
-export interface ApiResponse<TData = unknown> {
-  flag: boolean;
-  log: string;
-  data: TData;
+export interface RunRouteSnapshot {
+  knownModel: boolean;
+  bindingKey: string;
+  provider: string;
+  model: string;
+  adapterId: string;
+  connectionURL: string;
 }
+
+export interface RunRequestSnapshot {
+  params: Record<string, unknown>;
+  capabilities: Record<string, boolean>;
+  inputCount: number;
+}
+
+export interface RunResultSnapshot {
+  usage: TokenUsage;
+  outputCount: number;
+  providerStatus?: string;
+}
+
+/** Immutable, secret-free execution facts owned by one generated response. */
+export interface RunSnapshot {
+  id: string;
+  kind: RunKind;
+  status: RunStatus;
+  startedAt: number;
+  completedAt: number;
+  durationMs: number;
+  route: RunRouteSnapshot;
+  request: RunRequestSnapshot;
+  result: RunResultSnapshot;
+  error?: string;
+}
+
+export type RequestHeaders = Record<string, string>;

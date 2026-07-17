@@ -1,11 +1,10 @@
 import store from "@/store";
-import { apiRequest } from "@/services/app";
-import { getChatFileSource, setChatFileSource } from "@/services/app/storage";
+import { chatRepository, getChatFileSource, setChatFileSource } from "@/persistence";
 import { getUuid } from "@/utils";
-import type { ChatMessageAttachment, ChatPromptMessage, StoredChatMessage } from "@/types";
+import type { ChatMessageAttachment, ChatPromptMessage } from "@/types";
 
 const ARCHIVE_FORMAT = "ai-api-hub.conversation";
-const ARCHIVE_VERSION = 2;
+const ARCHIVE_VERSION = 3;
 
 type ArchivedChatMessageAttachment = ChatMessageAttachment & { source?: string };
 
@@ -15,7 +14,7 @@ interface ArchivedChatMessage extends Omit<ChatPromptMessage, "attachments"> {
 
 interface ChatConversationArchive {
   format: typeof ARCHIVE_FORMAT;
-  version: 1 | 2;
+  version: typeof ARCHIVE_VERSION;
   type: "chat";
   exportedAt: string;
   conversation: {
@@ -83,7 +82,7 @@ function assertChatArchive(value: unknown): asserts value is ChatConversationArc
   if (
     !archive ||
     archive.format !== ARCHIVE_FORMAT ||
-    (archive.version !== 1 && archive.version !== 2) ||
+    archive.version !== ARCHIVE_VERSION ||
     archive.type !== "chat" ||
     !archive.conversation ||
     !Array.isArray(archive.messages)
@@ -93,33 +92,20 @@ function assertChatArchive(value: unknown): asserts value is ChatConversationArc
 }
 
 async function getChatMessagesRaw(cid: string): Promise<ChatPromptMessage[]> {
-  const response = await apiRequest<StoredChatMessage[]>("post", "/_api/chat/getAllMessage", { cid });
-  if (!response.flag || !Array.isArray(response.data)) {
-    throw new Error(response.log || "Failed to read chat messages.");
-  }
-
-  const messages: ChatPromptMessage[] = [];
-  for (const record of response.data) {
-    try {
-      const message = JSON.parse(record.message) as ArchivedChatMessage;
+  return Promise.all(
+    (await chatRepository.getMessages(cid)).map(async (stored) => {
+      const message = { ...stored } as ArchivedChatMessage;
       if (message.attachments?.length) {
         message.attachments = await Promise.all(
           message.attachments.map(async (attachment) => {
             const source = attachment.id ? await getChatFileSource(attachment.id) : null;
-            return {
-              ...attachment,
-              ...(source ? { source: await blobToDataUrl(source) } : {}),
-            };
+            return { ...attachment, ...(source ? { source: await blobToDataUrl(source) } : {}) };
           }),
         );
       }
-      messages.push({ ...message, mid: record.mid });
-    } catch {
-      // Skip malformed records so one bad message does not block the archive.
-    }
-  }
-
-  return messages;
+      return message as ChatPromptMessage;
+    }),
+  );
 }
 
 export async function exportChatConversationArchive(cid: string): Promise<void> {
@@ -147,12 +133,8 @@ export async function importChatConversationArchive(file: File): Promise<string>
 
   const cid = getUuid("chat");
   const cname = archive.conversation.name || "Imported chat";
-  const addResponse = await apiRequest<null>("post", "/_api/chat/addChat", { cid, cname });
-  if (!addResponse.flag) throw new Error(addResponse.log || "Failed to create chat conversation.");
-
   const settings = { modelSnapshot: null, settings: store.state.curChatModelSettings };
-  const settingsResponse = await apiRequest<null>("post", "/_api/chat/setChatSettings", { cid, data: JSON.stringify(settings) });
-  if (!settingsResponse.flag) throw new Error(settingsResponse.log || "Failed to save chat settings.");
+  await chatRepository.create(cid, cname, settings);
 
   const importedMessages: ChatPromptMessage[] = [];
   for (const message of archive.messages) {
@@ -168,12 +150,12 @@ export async function importChatConversationArchive(file: File): Promise<string>
       }),
     );
     const nextPayload = { ...payload, attachments };
-    const response = await apiRequest<null>("post", "/_api/chat/addMessage", { cid, mid, message: JSON.stringify(nextPayload) });
-    if (!response.flag) throw new Error(response.log || "Failed to save chat message.");
-    importedMessages.push({ ...nextPayload, mid } as ChatPromptMessage);
+    const importedMessage = { ...nextPayload, mid } as ChatPromptMessage;
+    await chatRepository.saveMessage(cid, importedMessage);
+    importedMessages.push(importedMessage);
   }
 
-  await store.dispatch("resetChatList", [...store.state.chatList, { cid, cname }]);
-  await store.dispatch("replaceChatMessages", { cid, messages: importedMessages });
+  store.commit("resetChatList", [...store.state.chatList, { cid, cname }]);
+  store.commit("replaceChatMessages", { cid, messages: importedMessages });
   return cid;
 }

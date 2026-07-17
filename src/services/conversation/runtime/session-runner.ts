@@ -1,9 +1,9 @@
 import store from "@/store";
-import { ChatGateway } from "@/ai-capability";
-import { buildChatCompletionParams, getChatMessageFormat, getModelFromSnapshot } from "@/models";
+import { ChatGateway, resolveChatModel } from "@/ai-capability";
+import { buildChatCompletionParams, completeRunSnapshot, createRunSnapshot, getChatMessageFormat, getModelFromSnapshot } from "@/models";
 import { getUuid } from "@/utils";
 import { tr } from "@/i18n";
-import type { ChatModelConfig, ChatPromptContent, ChatPromptMessage, ChatResponseDelta, PackedChatMessage } from "@/types";
+import type { ChatModelConfig, ChatPromptContent, ChatPromptMessage, ChatResponseDelta, RunSnapshot, RunStatus, PackedChatMessage } from "@/types";
 import { addMessage } from "../conversation";
 import { composeChatPromptText } from "../chat-files";
 import { createStreamState, type StreamState, type StreamDraft } from "../rendering/stream-state";
@@ -70,11 +70,12 @@ function createChatRunner(chatId: string): ChatRunner {
   let _onDraftRemove: (() => void) | null = null;
   let _onMessagePersisted: ((msg: ChatPromptMessage) => void | Promise<void>) | null = null;
   let _onRuntimeUpdate: ((runtime: Record<string, unknown>) => void) | null = null;
+  let activeRun: RunSnapshot | null = null;
 
   // === runtime sync ===
 
   function updateRuntime(runtime: Record<string, unknown> = {}) {
-    store.dispatch("setChatRuntime", { cid: chatId, runtime });
+    store.commit("setChatRuntime", { cid: chatId, runtime });
     _onRuntimeUpdate?.(runtime);
   }
 
@@ -92,20 +93,32 @@ function createChatRunner(chatId: string): ChatRunner {
     _onDraftRemove?.();
   }
 
-  async function persistAssistant(): Promise<boolean> {
+  function completeRun(status: Exclude<RunStatus, "running">, error = ""): RunSnapshot | undefined {
+    if (!activeRun) return undefined;
+    return completeRunSnapshot(activeRun, {
+      status,
+      usage: stream.getTokenUsage(),
+      outputCount: stream.hasContent() ? 1 : 0,
+      error,
+    });
+  }
+
+  async function persistAssistant(status: "success" | "error"): Promise<boolean> {
     if (!stream.hasContent()) return false;
 
     const draft = stream.getDraft();
+    const run = completeRun(status, status === "error" ? stream.getError() : "");
     const assistantMsg: ChatPromptMessage = {
       role: "assistant",
       content: [{ type: "text", text: draft.content }],
       reasoning_content: draft.reasoning_content,
       mid: stream.getMessageId(),
-      meta: { isContextBlocked: stream.isError() || undefined },
+      meta: {
+        isContextBlocked: stream.isError() || undefined,
+        run,
+      },
     };
-    if (stream.getTokenUsage()) assistantMsg.token_usage = stream.getTokenUsage();
-
-    await store.dispatch("pushChatMessage", { cid: chatId, msg: assistantMsg });
+    store.commit("pushChatMessage", { cid: chatId, msg: assistantMsg });
     await addMessage(chatId, stream.getMessageId(), assistantMsg);
     await _onMessagePersisted?.(assistantMsg);
     return true;
@@ -115,6 +128,13 @@ function createChatRunner(chatId: string): ChatRunner {
     if (stream.isStopped()) return;
 
     stream.applyDelta(delta);
+    if (store.state.chatRuntimeById?.[chatId]?.status === "loading") {
+      updateRuntime({
+        status: "streaming",
+        pending: true,
+        draftMessageId: stream.getMessageId(),
+      });
+    }
     _onDraftUpdate?.(stream.getDraft());
 
     if (delta.kind === "error") {
@@ -132,10 +152,11 @@ function createChatRunner(chatId: string): ChatRunner {
   // === phase 1: prepare — reset stream, persist user message, set loading ===
 
   async function prepareRequest(data: ChatPromptMessage): Promise<void> {
+    activeRun = null;
     stream.startStream(getUuid("msg"));
 
     const userMessage = { ...data, mid: getUuid("msg") };
-    await store.dispatch("pushChatMessage", { cid: chatId, msg: userMessage });
+    store.commit("pushChatMessage", { cid: chatId, msg: userMessage });
     await addMessage(chatId, userMessage.mid, userMessage);
     await _onMessagePersisted?.(userMessage);
 
@@ -152,6 +173,7 @@ function createChatRunner(chatId: string): ChatRunner {
   // === phase 2: execute — build request, call gateway, iterate stream ===
 
   async function executeStream(): Promise<boolean> {
+    const startedAt = Date.now();
     const model = getSessionModel(chatId);
     const settings = store.state.chatSettingsById?.[chatId] || store.state.curChatModelSettings;
 
@@ -159,13 +181,35 @@ function createChatRunner(chatId: string): ChatRunner {
     const passedMsgLen = Number(settings?.passedMsgLen || history.length || 1);
     const messages = history.slice(-Math.min(passedMsgLen, history.length));
     const packedMessages = packChatMessages(messages, chatId, model);
+    const params = buildChatCompletionParams(model, settings);
+    const capabilities = messages[messages.length - 1]?.meta?.usedCapabilities || {};
+    const resolvedModel = model ? resolveChatModel(model) : null;
+    if (resolvedModel) {
+      activeRun = createRunSnapshot({
+        kind: "chat",
+        startedAt,
+        route: {
+          knownModel: resolvedModel.knownModel,
+          bindingKey: resolvedModel.binding.key,
+          provider: resolvedModel.config.provider,
+          model: resolvedModel.config.model,
+          adapterId: resolvedModel.binding.adapterId,
+          connectionURL: resolvedModel.config.baseURL,
+        },
+        params,
+        capabilities: {
+          imageRead: Boolean(capabilities.imageRead),
+          webSearch: Boolean(capabilities.webSearch),
+        },
+        inputCount: packedMessages.length,
+      });
+    }
     const request = {
       model,
-      params: buildChatCompletionParams(model, settings),
-      capabilities: messages[messages.length - 1]?.meta?.usedCapabilities || {},
+      params,
+      capabilities,
     };
 
-    client.init(request.model);
     const gen = client.chat(packedMessages, request);
 
     let next = await gen.next();
@@ -188,7 +232,7 @@ function createChatRunner(chatId: string): ChatRunner {
       if (!stream.hasContent()) {
         stream.setContent(stream.getError() || tr("toast.modelRequestFailed", { error: "" }));
       }
-      await persistAssistant();
+      await persistAssistant("error");
       clearDraft("error", { lastError: stream.getError() || tr("toast.modelRequestFailed", { error: "" }) });
       return;
     }
@@ -203,7 +247,7 @@ function createChatRunner(chatId: string): ChatRunner {
     }
 
     stream.complete();
-    await persistAssistant();
+    await persistAssistant("success");
     clearDraft("success");
   }
 

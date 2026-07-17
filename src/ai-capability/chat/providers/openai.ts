@@ -1,8 +1,6 @@
 import type { ChatCompletionParams, ChatProviderResponse, PackedChatMessage, ChatPromptContent } from "../types";
 import { normalizeUsage, BaseChatClient, type JsonObject } from "../../common";
 
-const DEFAULT_BASE_URL = "https://api.openai.com/v1/responses";
-
 function toResponsesContentPart(part: ChatPromptContent, role: PackedChatMessage["role"]): JsonObject | null {
   if (part.type === "text") {
     return {
@@ -121,7 +119,8 @@ function normalizeOpenAIResponsesParams(params: ChatCompletionParams = {}): Json
 
 export class OpenAIClient extends BaseChatClient {
   getUrl(): string {
-    return this.baseURL || DEFAULT_BASE_URL;
+    const url = String(this.baseURL || "").trim().replace(/\/+$/, "");
+    return /\/responses(?=($|[?#]))/.test(url) ? url : `${url}/responses`;
   }
 
   getBody(messages: PackedChatMessage[], params: ChatCompletionParams = {}, stream = true): JsonObject {

@@ -1,6 +1,5 @@
-import { deleteImageAPI, getImageListAPI } from "../image/api";
-import { deleteVideoAPI, getVideoListAPI } from "../video/api";
-import type { ApiResponse, ImageDataItem, VideoDataItem } from "@/types";
+import { imageRepository, videoRepository } from "@/persistence";
+import type { ImageDataItem, VideoDataItem } from "@/types";
 
 export type GeneratedAssetKind = "image" | "video";
 
@@ -29,22 +28,12 @@ function normalizeVideoAsset(item: VideoDataItem): GeneratedAssetItem {
   };
 }
 
-export async function getGeneratedAssets(): Promise<ApiResponse<GeneratedAssetItem[]>> {
-  const [imageResponse, videoResponse] = await Promise.all([getImageListAPI(), getVideoListAPI()]);
-
-  if (!imageResponse.flag) return { flag: false, log: imageResponse.log, data: [] };
-  if (!videoResponse.flag) return { flag: false, log: videoResponse.log, data: [] };
-
-  const images = Array.isArray(imageResponse.data) ? imageResponse.data.map(normalizeImageAsset) : [];
-  const videos = Array.isArray(videoResponse.data) ? videoResponse.data.map(normalizeVideoAsset) : [];
-
-  return {
-    flag: true,
-    log: "Successfully.",
-    data: [...images.reverse(), ...videos.reverse()],
-  };
+export async function getGeneratedAssets(): Promise<GeneratedAssetItem[]> {
+  const [imageItems, videoItems] = await Promise.all([imageRepository.listAssets(), videoRepository.listAssets()]);
+  return [...imageItems.map(normalizeImageAsset).reverse(), ...videoItems.map(normalizeVideoAsset).reverse()];
 }
 
-export async function deleteGeneratedAsset(item: Pick<GeneratedAssetItem, "id" | "kind">): Promise<ApiResponse<null>> {
-  return item.kind === "image" ? deleteImageAPI(item.id) : deleteVideoAPI(item.id);
+export async function deleteGeneratedAsset(item: Pick<GeneratedAssetItem, "id" | "kind">): Promise<void> {
+  if (item.kind === "image") await imageRepository.deleteAsset(item.id);
+  else await videoRepository.deleteAsset(item.id);
 }

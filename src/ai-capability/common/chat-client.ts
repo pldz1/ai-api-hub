@@ -24,22 +24,24 @@ export abstract class BaseChatClient {
   baseURL = "";
   apiKey = "";
   model = "";
+  adapterOptions: Record<string, unknown> = {};
 
-  constructor(baseURL: string, apiKey: string, model: string) {
-    this.init(baseURL, apiKey, model);
+  constructor(baseURL: string, apiKey: string, model: string, adapterOptions: Record<string, unknown> = {}) {
+    this.init(baseURL, apiKey, model, adapterOptions);
   }
 
   // -- lifecycle -----------------------------------------------------------
 
-  init(baseURL: string, apiKey: string, model: string): void {
+  init(baseURL: string, apiKey: string, model: string, adapterOptions: Record<string, unknown> = {}): void {
     this.baseURL = baseURL;
     this.apiKey = apiKey;
     this.model = model;
+    this.adapterOptions = { ...adapterOptions };
   }
 
-  update(baseURL: string, apiKey: string, model: string): void {
-    if (baseURL !== this.baseURL || apiKey !== this.apiKey || model !== this.model) {
-      this.init(baseURL, apiKey, model);
+  update(baseURL: string, apiKey: string, model: string, adapterOptions: Record<string, unknown> = {}): void {
+    if (baseURL !== this.baseURL || apiKey !== this.apiKey || model !== this.model || JSON.stringify(adapterOptions) !== JSON.stringify(this.adapterOptions)) {
+      this.init(baseURL, apiKey, model, adapterOptions);
     }
   }
 
@@ -47,6 +49,7 @@ export abstract class BaseChatClient {
     this.baseURL = "";
     this.apiKey = "";
     this.model = "";
+    this.adapterOptions = {};
   }
 
   isConfigured(): boolean {

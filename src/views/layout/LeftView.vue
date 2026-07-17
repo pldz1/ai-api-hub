@@ -399,7 +399,7 @@
 </template>
 
 <script setup lang="ts">
-import { useStore } from "vuex";
+import { useAppStore } from "@/store";
 import { getChatList, deleteChat, renameChat, resetCurrentChatDraft, exportChatConversationArchive, importChatConversationArchive } from "@/services";
 import {
   deleteImageConversation,
@@ -466,7 +466,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["toggle"]);
-const store = useStore();
+const store = useAppStore();
 const router = useRouter();
 const route = useRoute();
 const { t, locale } = useI18n();
@@ -546,6 +546,9 @@ const completedStatuses = new Set(["success", "error", "stopped"]);
 const getChatRuntime = (cid: string) => store.state.chatRuntimeById?.[cid] || null;
 const getImageRuntime = (iid: string) => store.state.imageRuntimeById?.[iid] || null;
 const getVideoRuntime = (vid: string) => store.state.videoRuntimeById?.[vid] || null;
+const getLastRun = (messages: any[] = []) => [...messages].reverse().find((message) => message?.role === "assistant" && message?.run)?.run || null;
+const getImageRun = (iid: string) => getLastRun(store.state.imageMessagesById?.[iid] || []);
+const getVideoRun = (vid: string) => getLastRun(store.state.videoMessagesById?.[vid] || []);
 
 const isRuntimeRunning = (runtime: any) => Boolean(runtime?.pending || runningStatuses.has(runtime?.status || ""));
 const isRuntimeCompletedNotice = (runtime: any) => Boolean(runtime?.completedNotice && completedStatuses.has(runtime?.status || ""));
@@ -557,12 +560,12 @@ const hasChatRuntimeStatus = (cid: string) => {
 
 const hasImageRuntimeStatus = (iid: string) => {
   const runtime = getImageRuntime(iid);
-  return isRuntimeRunning(runtime) || isRuntimeCompletedNotice(runtime);
+  return isRuntimeRunning(runtime) || Boolean(runtime?.completedNotice && getImageRun(iid));
 };
 
 const hasVideoRuntimeStatus = (vid: string) => {
   const runtime = getVideoRuntime(vid);
-  return isRuntimeRunning(runtime) || isRuntimeCompletedNotice(runtime);
+  return isRuntimeRunning(runtime) || Boolean(runtime?.completedNotice && getVideoRun(vid));
 };
 
 const getRuntimeStatusClass = (runtime: any) => ({
@@ -573,8 +576,14 @@ const getRuntimeStatusClass = (runtime: any) => ({
 });
 
 const getChatRuntimeStatusClass = (cid: string) => getRuntimeStatusClass(getChatRuntime(cid));
-const getImageRuntimeStatusClass = (iid: string) => getRuntimeStatusClass(getImageRuntime(iid));
-const getVideoRuntimeStatusClass = (vid: string) => getRuntimeStatusClass(getVideoRuntime(vid));
+const getCreationRuntimeStatusClass = (runtime: any, run: any) => ({
+  "is-running": Boolean(runtime?.pending),
+  "is-complete": Boolean(runtime?.completedNotice && run?.status === "success"),
+  "is-error": Boolean(runtime?.completedNotice && run?.status === "error"),
+  "is-stopped": Boolean(runtime?.completedNotice && run?.status === "stopped"),
+});
+const getImageRuntimeStatusClass = (iid: string) => getCreationRuntimeStatusClass(getImageRuntime(iid), getImageRun(iid));
+const getVideoRuntimeStatusClass = (vid: string) => getCreationRuntimeStatusClass(getVideoRuntime(vid), getVideoRun(vid));
 
 const getRuntimeLabel = (runtime: any) => {
   if (isRuntimeRunning(runtime)) return t("chat.runtimeRunning");
@@ -584,8 +593,14 @@ const getRuntimeLabel = (runtime: any) => {
 };
 
 const getChatRuntimeLabel = (cid: string) => getRuntimeLabel(getChatRuntime(cid));
-const getImageRuntimeLabel = (iid: string) => getRuntimeLabel(getImageRuntime(iid));
-const getVideoRuntimeLabel = (vid: string) => getRuntimeLabel(getVideoRuntime(vid));
+const getCreationRuntimeLabel = (runtime: any, run: any) => {
+  if (runtime?.pending) return t("chat.runtimeRunning");
+  if (run?.status === "error") return t("chat.runtimeError");
+  if (run?.status === "stopped") return t("chat.runtimeStopped");
+  return t("chat.runtimeCompleted");
+};
+const getImageRuntimeLabel = (iid: string) => getCreationRuntimeLabel(getImageRuntime(iid), getImageRun(iid));
+const getVideoRuntimeLabel = (vid: string) => getCreationRuntimeLabel(getVideoRuntime(vid), getVideoRun(vid));
 
 watch(chatList, (items) => {
   const ids = new Set(items.map((item) => item.cid));

@@ -35,7 +35,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { useStore } from "vuex";
+import { useAppStore } from "@/store";
 import type { ChatPromptMessage } from "@/types";
 import SvgIcon from "@/components/SvgIcon.vue";
 import ChatQuestionPanel from "@/views/chat/ChatQuestionPanel.vue";
@@ -47,7 +47,7 @@ const props = defineProps<{
   containerEl: HTMLElement | null;
 }>();
 
-const store = useStore();
+const store = useAppStore();
 const { t } = useI18n();
 
 // question list

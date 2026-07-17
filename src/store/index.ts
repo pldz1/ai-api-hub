@@ -1,147 +1,97 @@
-import { createStore } from "vuex";
+import { createStore, useStore, type Store } from "vuex";
 import { ChatState } from "./chat";
-import { UserState } from "./user";
 import { ImageState } from "./image";
-import { VideoState } from "./video";
 import { ModalState } from "./modal";
+import { WorkspaceState } from "./workspace";
+import { VideoState } from "./video";
 
 const state = {
-  ...UserState,
+  ...WorkspaceState,
   ...ChatState,
   ...ImageState,
   ...VideoState,
   ...ModalState,
 };
 
-function createStateMutation(methodName, afterMutate = null) {
-  return (storeState, payload) => {
-    if (typeof storeState[methodName] === "function") {
-      storeState[methodName](payload);
-    }
-    if (typeof afterMutate === "function") {
-      afterMutate(storeState, payload);
+export type AppState = typeof state;
+
+const mutationMethods = [
+  "setModels",
+  "setCurChatModel",
+  "setChatInsTemplateList",
+  "setCurChatModelSettings",
+  "resetChatList",
+  "setChatLoaded",
+  "setCurChatId",
+  "setCurConversation",
+  "setCurConversationModel",
+  "hydrateChatSession",
+  "removeChatSession",
+  "setInputCapability",
+  "resetInputCapabilities",
+  "setLlmRequestPending",
+  "addSessionTokens",
+  "resetSessionTokens",
+  "pushMessages",
+  "pushChatMessage",
+  "replaceChatMessages",
+  "spliceMessages",
+  "resetMessages",
+  "setChatRuntime",
+  "resetChatRuntime",
+  "resetImageList",
+  "pushImage",
+  "deleteImage",
+  "resetImageConversationList",
+  "pushImageConversation",
+  "deleteImageConversation",
+  "setCurImageConversationId",
+  "resetImageMessages",
+  "pushImageMessage",
+  "updateImageMessage",
+  "setImageRuntime",
+  "resetImageRuntime",
+  "resetVideoList",
+  "pushVideo",
+  "deleteVideo",
+  "resetVideoConversationList",
+  "pushVideoConversation",
+  "deleteVideoConversation",
+  "setCurVideoConversationId",
+  "resetVideoMessages",
+  "pushVideoMessage",
+  "updateVideoMessage",
+  "setVideoRuntime",
+  "resetVideoRuntime",
+  "setModalImage",
+  "setModalChatAttachment",
+] as const satisfies readonly (keyof AppState)[];
+
+export type MutationName = (typeof mutationMethods)[number];
+export type AppStore = Omit<Store<AppState>, "commit"> & {
+  commit(type: MutationName, payload?: unknown): void;
+};
+
+/** Typed Store entry point for Vue components. */
+export function useAppStore(): AppStore {
+  return useStore<AppState>() as AppStore;
+}
+
+function createStateMutation(methodName: string) {
+  return (storeState: Record<string, any>, payload: unknown) => {
+    const method = storeState[methodName];
+    if (typeof method !== "function") throw new Error(`Unknown state mutation method: ${methodName}`);
+    method.call(storeState, payload);
+    if (methodName === "setCurChatId" && typeof storeState._syncActiveChatState === "function") {
+      storeState._syncActiveChatState();
     }
   };
 }
 
-const mutations = {
-  SET_MODELS: createStateMutation("setModels"),
-  SET_CUR_CHAT_MODEL: createStateMutation("setCurChatModel"),
-  SET_CHAT_INS_TEMPLATE_LIST: createStateMutation("setChatInsTemplateList"),
-  SET_CURRENT_CHAT_MODEL_SETTINGS: createStateMutation("setCurChatModelSettings"),
-  RESET_CHAT_LIST: createStateMutation("resetChatList"),
-  SET_CHAT_LOADED: createStateMutation("setChatLoaded"),
-  SET_CURRENT_CHAT_ID: createStateMutation("setCurChatId", (storeState) => {
-    if (typeof storeState._syncActiveChatState === "function") {
-      storeState._syncActiveChatState();
-    }
-  }),
-  SET_CURRENT_CONVERSATION: createStateMutation("setCurConversation"),
-  SET_CURRENT_CONVERSATION_MODEL: createStateMutation("setCurConversationFromModel"),
-  HYDRATE_CHAT_SESSION: createStateMutation("hydrateChatSession"),
-  REMOVE_CHAT_SESSION: createStateMutation("removeChatSession"),
-  SET_INPUT_CAPABILITY: createStateMutation("setInputCapability"),
-  RESET_INPUT_CAPABILITIES: createStateMutation("resetInputCapabilities"),
-  SET_LLM_REQUEST_PENDING: createStateMutation("setLlmRequestPending"),
-  ADD_SESSION_TOKENS: createStateMutation("addSessionTokens"),
-  RESET_SESSION_TOKENS: createStateMutation("resetSessionTokens"),
-  PUSH_MESSAGES: createStateMutation("pushMessages"),
-  PUSH_CHAT_MESSAGE: createStateMutation("pushChatMessage"),
-  REPLACE_CHAT_MESSAGES: createStateMutation("replaceChatMessages"),
-  SPLICE_MESSAGES: createStateMutation("spliceMessages"),
-  RESET_MESSAGES: createStateMutation("resetMessages"),
-  SET_CHAT_RUNTIME: createStateMutation("setChatRuntime"),
-  RESET_CHAT_RUNTIME: createStateMutation("resetChatRuntime"),
-  RESET_IMAGE_LIST: createStateMutation("resetImageList"),
-  PUSH_IMAGE: createStateMutation("pushImage"),
-  DELETE_IMAGE: createStateMutation("deleteImage"),
-  RESET_IMAGE_CONVERSATION_LIST: createStateMutation("resetImageConversationList"),
-  PUSH_IMAGE_CONVERSATION: createStateMutation("pushImageConversation"),
-  DELETE_IMAGE_CONVERSATION: createStateMutation("deleteImageConversation"),
-  SET_CURRENT_IMAGE_CONVERSATION_ID: createStateMutation("setCurImageConversationId"),
-  RESET_IMAGE_MESSAGES: createStateMutation("resetImageMessages"),
-  PUSH_IMAGE_MESSAGE: createStateMutation("pushImageMessage"),
-  UPDATE_IMAGE_MESSAGE: createStateMutation("updateImageMessage"),
-  SET_IMAGE_RUNTIME: createStateMutation("setImageRuntime"),
-  RESET_IMAGE_RUNTIME: createStateMutation("resetImageRuntime"),
-  RESET_VIDEO_LIST: createStateMutation("resetVideoList"),
-  PUSH_VIDEO: createStateMutation("pushVideo"),
-  DELETE_VIDEO: createStateMutation("deleteVideo"),
-  RESET_VIDEO_CONVERSATION_LIST: createStateMutation("resetVideoConversationList"),
-  PUSH_VIDEO_CONVERSATION: createStateMutation("pushVideoConversation"),
-  DELETE_VIDEO_CONVERSATION: createStateMutation("deleteVideoConversation"),
-  SET_CURRENT_VIDEO_CONVERSATION_ID: createStateMutation("setCurVideoConversationId"),
-  RESET_VIDEO_MESSAGES: createStateMutation("resetVideoMessages"),
-  PUSH_VIDEO_MESSAGE: createStateMutation("pushVideoMessage"),
-  UPDATE_VIDEO_MESSAGE: createStateMutation("updateVideoMessage"),
-  SET_VIDEO_RUNTIME: createStateMutation("setVideoRuntime"),
-  RESET_VIDEO_RUNTIME: createStateMutation("resetVideoRuntime"),
-  SET_MODAL_IMAGE: createStateMutation("setModalImage"),
-  SET_MODAL_CHAT_ATTACHMENT: createStateMutation("setModalChatAttachment"),
-};
+/**
+ * Vuex is only the reactive in-memory projection. Mutations use the same names
+ * as state operations; there is intentionally no pass-through Action layer.
+ */
+const mutations = Object.fromEntries(mutationMethods.map((methodName) => [methodName, createStateMutation(methodName)]));
 
-function createCommitAction(type) {
-  return ({ commit }, payload) => commit(type, payload);
-}
-
-const passthroughActions = {
-  setModels: "SET_MODELS",
-  setCurChatModel: "SET_CUR_CHAT_MODEL",
-  setChatInsTemplateList: "SET_CHAT_INS_TEMPLATE_LIST",
-  setCurChatModelSettings: "SET_CURRENT_CHAT_MODEL_SETTINGS",
-  resetChatList: "RESET_CHAT_LIST",
-  setChatLoaded: "SET_CHAT_LOADED",
-  setCurChatId: "SET_CURRENT_CHAT_ID",
-  setCurConversation: "SET_CURRENT_CONVERSATION",
-  setCurConversationModel: "SET_CURRENT_CONVERSATION_MODEL",
-  hydrateChatSession: "HYDRATE_CHAT_SESSION",
-  removeChatSession: "REMOVE_CHAT_SESSION",
-  setInputCapability: "SET_INPUT_CAPABILITY",
-  resetInputCapabilities: "RESET_INPUT_CAPABILITIES",
-  setLlmRequestPending: "SET_LLM_REQUEST_PENDING",
-  addSessionTokens: "ADD_SESSION_TOKENS",
-  resetSessionTokens: "RESET_SESSION_TOKENS",
-  pushMessages: "PUSH_MESSAGES",
-  pushChatMessage: "PUSH_CHAT_MESSAGE",
-  replaceChatMessages: "REPLACE_CHAT_MESSAGES",
-  spliceMessages: "SPLICE_MESSAGES",
-  resetMessages: "RESET_MESSAGES",
-  setChatRuntime: "SET_CHAT_RUNTIME",
-  resetChatRuntime: "RESET_CHAT_RUNTIME",
-  resetImageList: "RESET_IMAGE_LIST",
-  pushImage: "PUSH_IMAGE",
-  deleteImage: "DELETE_IMAGE",
-  resetImageConversationList: "RESET_IMAGE_CONVERSATION_LIST",
-  pushImageConversation: "PUSH_IMAGE_CONVERSATION",
-  deleteImageConversation: "DELETE_IMAGE_CONVERSATION",
-  setCurImageConversationId: "SET_CURRENT_IMAGE_CONVERSATION_ID",
-  resetImageMessages: "RESET_IMAGE_MESSAGES",
-  pushImageMessage: "PUSH_IMAGE_MESSAGE",
-  updateImageMessage: "UPDATE_IMAGE_MESSAGE",
-  setImageRuntime: "SET_IMAGE_RUNTIME",
-  resetImageRuntime: "RESET_IMAGE_RUNTIME",
-  resetVideoList: "RESET_VIDEO_LIST",
-  pushVideo: "PUSH_VIDEO",
-  deleteVideo: "DELETE_VIDEO",
-  resetVideoConversationList: "RESET_VIDEO_CONVERSATION_LIST",
-  pushVideoConversation: "PUSH_VIDEO_CONVERSATION",
-  deleteVideoConversation: "DELETE_VIDEO_CONVERSATION",
-  setCurVideoConversationId: "SET_CURRENT_VIDEO_CONVERSATION_ID",
-  resetVideoMessages: "RESET_VIDEO_MESSAGES",
-  pushVideoMessage: "PUSH_VIDEO_MESSAGE",
-  updateVideoMessage: "UPDATE_VIDEO_MESSAGE",
-  setVideoRuntime: "SET_VIDEO_RUNTIME",
-  resetVideoRuntime: "RESET_VIDEO_RUNTIME",
-  setModalImage: "SET_MODAL_IMAGE",
-  setModalChatAttachment: "SET_MODAL_CHAT_ATTACHMENT",
-};
-
-const actions = {
-  ...Object.fromEntries(Object.entries(passthroughActions).map(([actionName, mutationName]) => [actionName, createCommitAction(mutationName)])),
-};
-
-export default createStore({
-  state,
-  mutations,
-  actions,
-});
+export default createStore<AppState>({ state, mutations });

@@ -19,7 +19,7 @@
           v-for="message in messages"
           :key="message.id"
           class="image-message"
-          :class="[`is-${message.role}`, `is-${message.status}`]"
+          :class="[`is-${message.role}`, `is-${getMessageStatus(message)}`]"
           :ref="(el) => registerMessage(message.id, message.role, el)"
         >
           <div
@@ -61,11 +61,11 @@
             <template v-else>
               <div class="image-message-meta">
                 <span>{{ message.mode === "edit" ? t("image.modeEdit") : t("image.modeGeneration") }}</span>
-                <span v-if="message.modelName">{{ message.modelName }}</span>
+                <span v-if="message.run?.route.model">{{ message.run.route.model }}</span>
                 <span v-if="getMessageElapsedMs(message) !== null">{{ formatElapsedMs(getMessageElapsedMs(message)!) }}</span>
               </div>
 
-              <div v-if="message.status === 'loading'" class="image-loading-card">
+              <div v-if="message.run?.status === 'running'" class="image-loading-card">
                 <div class="image-loading-preview"></div>
                 <span>{{ t("image.processingRequest") }}</span>
               </div>
@@ -76,12 +76,12 @@
                 </figure>
               </div>
 
-              <div v-if="message.error" class="image-error-message">{{ message.error }}</div>
+              <div v-if="message.run?.error" class="image-error-message">{{ message.run.error }}</div>
 
-              <div v-if="message.usage" class="image-usage-row">
-                <span>{{ t("image.inputTokens") }} {{ message.usage.input_tokens || 0 }}</span>
-                <span>{{ t("image.outputTokens") }} {{ message.usage.output_tokens || 0 }}</span>
-                <span>{{ t("image.totalTokens") }} {{ message.usage.total_tokens || 0 }}</span>
+              <div v-if="message.run?.status !== 'running' && message.run?.result.usage" class="image-usage-row">
+                <span>{{ t("image.inputTokens") }} {{ message.run.result.usage.input_tokens || 0 }}</span>
+                <span>{{ t("image.outputTokens") }} {{ message.run.result.usage.output_tokens || 0 }}</span>
+                <span>{{ t("image.totalTokens") }} {{ message.run.result.usage.total_tokens || 0 }}</span>
               </div>
             </template>
           </div>
@@ -150,7 +150,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
-import { useStore } from "vuex";
+import { useAppStore } from "@/store";
 import AppTooltip from "@/components/AppTooltip.vue";
 import CreationComposer from "@/components/CreationComposer.vue";
 import ImageModal from "@/components/ImageModal.vue";
@@ -172,7 +172,7 @@ type CreationComposerRef = {
   resizeTextarea: () => void;
 };
 
-const store = useStore();
+const store = useAppStore();
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
@@ -204,7 +204,7 @@ const imageModelOptions = computed(() =>
   })),
 );
 const selectedModel = computed<ImageModelConfig | null>(() => availableModels.value[selectedModelIndex.value] || null);
-const isCurrentConversationSubmitting = computed(() => Boolean(activeImageRuntime.value?.pending || activeImageRuntime.value?.status === "loading"));
+const isCurrentConversationSubmitting = computed(() => Boolean(activeImageRuntime.value?.pending));
 const isSendDisabled = computed(() => isCurrentConversationSubmitting.value || !prompt.value.trim() || !selectedModel.value);
 const {
   activeTopicId,
@@ -320,7 +320,7 @@ function removeAttachment(id: string) {
 
 async function previewAttachmentImage(src: string) {
   if (!src) return;
-  await store.dispatch("setModalImage", src);
+  store.commit("setModalImage", src);
   const dialog = document.getElementById("global_image_preview_modal") as HTMLDialogElement | null;
   dialog?.showModal();
 }
@@ -387,16 +387,22 @@ function formatElapsedMs(elapsedMs: number) {
   return `${(elapsedMs / 1000).toFixed(1)}s`;
 }
 
+function getMessageStatus(message: ImageConversationMessage): "ready" | "loading" | "success" | "error" {
+  if (!message.run) return "ready";
+  if (message.run.status === "running") return "loading";
+  return message.run.status === "success" ? "success" : "error";
+}
+
 function getMessageElapsedMs(message: ImageConversationMessage): number | null {
-  if (message.status === "loading") {
+  if (message.run?.status === "running") {
     if (message.role !== "assistant") return null;
-    const startedAt = Number(activeImageRuntime.value?.startedAt || message.createdAt || 0);
+    const startedAt = Number(message.run.startedAt || message.createdAt || 0);
     if (!startedAt) return null;
     return Math.max(0, runtimeTick.value - startedAt);
   }
 
-  if (typeof message.elapsedMs === "number" && message.elapsedMs > 0) {
-    return message.elapsedMs;
+  if (message.run && message.run.durationMs > 0) {
+    return message.run.durationMs;
   }
 
   return null;
@@ -433,9 +439,9 @@ async function send() {
     attachments: currentAttachments,
   });
 
-  if (result?.status === "error") {
-    console.error("Failed to submit image message:", result.error);
-    dsAlert({ type: "error", message: result.error || t("image.imageRequestFailed") });
+  if (result?.run?.status === "error") {
+    console.error("Failed to submit image message:", result.run.error);
+    dsAlert({ type: "error", message: result.run.error || t("image.imageRequestFailed") });
   }
 
   isSubmitting.value = false;
@@ -447,14 +453,14 @@ watch(
   async (id) => {
     if (!id) {
       await getImageConversationMessages(id);
-      await store.dispatch("resetImageRuntime");
+      store.commit("resetImageRuntime");
       isSubmitting.value = false;
       prompt.value = "";
       attachments.value = [];
       hasEditedMask.value = false;
       composerRef.value?.resizeTextarea();
     } else if (store.state.imageLoadedById?.[id]) {
-      await store.dispatch("setCurImageConversationId", id);
+      store.commit("setCurImageConversationId", id);
     } else {
       await getImageConversationMessages(id);
     }
@@ -504,7 +510,7 @@ watch(
 );
 
 watch(
-  () => activeImageRuntime.value?.pending || activeImageRuntime.value?.status === "loading",
+  () => activeImageRuntime.value?.pending,
   (running, _oldValue, onCleanup) => {
     if (runtimeTimer !== null) {
       window.clearInterval(runtimeTimer);

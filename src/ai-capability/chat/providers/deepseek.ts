@@ -1,7 +1,6 @@
 import type { ChatCompletionParams, ChatProviderResponse, ChatPromptContent, PackedChatMessage } from "../types";
 import { normalizeUsage, BaseChatClient, type JsonObject } from "../../common";
 
-const DEFAULT_BASE_URL = "https://api.deepseek.com/anthropic";
 const MESSAGES_PATH = "/v1/messages";
 
 function joinUrl(baseUrl: string, path: string): string {
@@ -9,7 +8,7 @@ function joinUrl(baseUrl: string, path: string): string {
 }
 
 function toDeepSeekMessagesUrl(baseUrl: string): string {
-  const url = (baseUrl || DEFAULT_BASE_URL).trim();
+  const url = baseUrl.trim();
   if (/\/v\d+\/messages\/?$/i.test(url)) return url;
   if (/\/messages\/?$/i.test(url)) return url;
   return joinUrl(url, MESSAGES_PATH);

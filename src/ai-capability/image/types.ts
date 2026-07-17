@@ -4,12 +4,12 @@ import type { TokenUsage } from "../common";
 // Provider runtime config (derived from user-owned model config)
 // ============================================================================
 
-export type ImageProviderRoute = "openai" | "azure-openai" | "dashscope";
+export type ImageAdapterId = "openai-images" | "azure-openai-images" | "dashscope-multimodal";
 export type ImageProviderConnectionField = "baseURL";
 
 export interface ImageProviderDefinition {
   name: string;
-  route: ImageProviderRoute;
+  adapterId: ImageAdapterId;
   connectionFields: readonly ImageProviderConnectionField[];
   defaultBaseURL?: string;
 }
@@ -17,19 +17,19 @@ export interface ImageProviderDefinition {
 const imageProviderRegistryConfig = {
   OpenAI: {
     name: "OpenAI",
-    route: "openai",
+    adapterId: "openai-images",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://api.openai.com/v1",
   },
   "Azure OpenAI": {
     name: "Azure OpenAI",
-    route: "azure-openai",
+    adapterId: "azure-openai-images",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://<YOUR-DEPLOYMENT-NAME>.openai.com/v1",
   },
   DashScope: {
     name: "DashScope",
-    route: "dashscope",
+    adapterId: "dashscope-multimodal",
     connectionFields: ["baseURL"],
     defaultBaseURL: "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
   },
