@@ -1,92 +1,19 @@
 <template>
-  <section ref="pageRef" class="image-chat-page">
-    <MessageTopicList
-      :topics="messageTopics"
-      :active-topic-id="activeTopicId"
-      :label="t('image.topics')"
-      :style="{ '--topic-bottom-gap': 'var(--image-bottom-gap)' }"
-      @select="scrollToMessage"
-    />
-
-    <div ref="messageScrollRef" class="image-message-scroll" @scroll="onMessageScroll">
+  <section class="image-chat-page">
+    <div ref="messageScrollRef" class="image-message-scroll">
       <div v-if="messages.length === 0" class="image-empty-state">
         <h1>{{ t("image.workspaceTitle") }}</h1>
         <p>{{ t("image.workspaceDescription") }}</p>
       </div>
 
-      <div v-else class="image-message-list">
-        <article
-          v-for="message in messages"
-          :key="message.id"
-          class="image-message"
-          :class="[`is-${message.role}`, `is-${getMessageStatus(message)}`]"
-          :ref="(el) => registerMessage(message.id, message.role, el)"
-        >
-          <div
-            class="image-message-body"
-            :class="{
-              'is-collapsible': message.role === 'user' && collapsibleMessageIds.has(message.id),
-              'is-expanded': message.role === 'user' && expandedUserMessageIds.has(message.id),
-            }"
-          >
-            <template v-if="message.role === 'user'">
-              <div class="image-message-content" :ref="(el) => registerMessageContent(message.id, el)">
-                <p v-if="message.prompt" class="image-message-prompt">{{ message.prompt }}</p>
-
-                <div v-if="message.attachments?.length" class="image-attachment-row">
-                  <div
-                    v-for="attachment in message.attachments"
-                    :key="attachment.id"
-                    class="image-attachment clickable"
-                    @click="previewAttachmentImage(attachment.previewUrl)"
-                  >
-                    <img :src="attachment.previewUrl" :alt="attachment.filename" />
-                  </div>
-                </div>
-              </div>
-
-              <button
-                v-if="collapsibleMessageIds.has(message.id)"
-                class="image-message-toggle"
-                :class="{ 'is-expanded': expandedUserMessageIds.has(message.id) }"
-                type="button"
-                :aria-label="expandedUserMessageIds.has(message.id) ? t('common.collapseMessage') : t('common.expandMessage')"
-                :aria-expanded="expandedUserMessageIds.has(message.id)"
-                @click="toggleMessage(message.id)"
-              >
-                <SvgIcon :src="arrowUpIcon" class="image-message-toggle-icon" />
-              </button>
-            </template>
-
-            <template v-else>
-              <div class="image-message-meta">
-                <span>{{ message.mode === "edit" ? t("image.modeEdit") : t("image.modeGeneration") }}</span>
-                <span v-if="message.run?.route.model">{{ message.run.route.model }}</span>
-                <span v-if="getMessageElapsedMs(message) !== null">{{ formatElapsedMs(getMessageElapsedMs(message)!) }}</span>
-              </div>
-
-              <div v-if="message.run?.status === 'running'" class="image-loading-card">
-                <div class="image-loading-preview"></div>
-                <span>{{ t("image.processingRequest") }}</span>
-              </div>
-
-              <div v-if="message.images.length" class="image-output-grid">
-                <figure v-for="image in message.images" :key="image.id" class="image-output-card" @click="openEditDialog(image)">
-                  <img :src="image.src" :alt="message.prompt" />
-                </figure>
-              </div>
-
-              <div v-if="message.run?.error" class="image-error-message">{{ message.run.error }}</div>
-
-              <div v-if="message.run?.status !== 'running' && message.run?.result.usage" class="image-usage-row">
-                <span>{{ t("image.inputTokens") }} {{ message.run.result.usage.input_tokens || 0 }}</span>
-                <span>{{ t("image.outputTokens") }} {{ message.run.result.usage.output_tokens || 0 }}</span>
-                <span>{{ t("image.totalTokens") }} {{ message.run.result.usage.total_tokens || 0 }}</span>
-              </div>
-            </template>
-          </div>
-        </article>
-      </div>
+      <ImageMessageList
+        v-else
+        :messages="messages"
+        :runtime-tick="runtimeTick"
+        :reuse-disabled="isCurrentConversationSubmitting"
+        @reuse="reuseInput"
+        @edit-output="openEditDialog"
+      />
     </div>
 
     <div class="image-composer-wrap">
@@ -119,7 +46,7 @@
                   {{ hasEditedMask ? t("image.maskEdited") : t("image.maskLabel") }}
                 </span>
               </button>
-              <button class="image-input-remove" type="button" :aria-label="t('image.removeImage')" @click.stop="removeAttachment(attachment.id)">×</button>
+              <button class="image-input-remove" type="button" :aria-label="t('image.removeImage')" @click.stop="removeAttachment(attachment.id)">&times;</button>
             </div>
           </div>
         </template>
@@ -147,28 +74,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useAppStore } from "@/store";
 import AppTooltip from "@/components/AppTooltip.vue";
 import CreationComposer from "@/components/CreationComposer.vue";
 import ImageModal from "@/components/ImageModal.vue";
-import MessageTopicList from "@/components/MessageTopicList.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import ImageEditDialog from "@/views/image/ImageEditDialog.vue";
+import ImageMessageList from "@/views/image/ImageMessageList.vue";
 import ImageSettings from "@/views/image/ImageSettings.vue";
 import type { ImageSettingsData } from "@/views/image/ImageSettings.vue";
-import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import attachIcon from "@/assets/svg/attach24.svg";
-import { addImageConversation, getImageConversationMessages, submitImageMessage, useCreationMessageUi } from "@/services/creation";
+import { addImageConversation, getImageConversationMessages, submitImageMessage } from "@/services/creation";
 import { dsAlert, getUuid, saveToLocal } from "@/utils";
 import type { ImageConversationMessage, ImageInputAttachment, ImagePayload, ImageModelConfig } from "@/types";
 
 const MAX_IMAGE_MB = 20;
 type CreationComposerRef = {
   focus: () => void;
-  getElement: () => HTMLElement | null;
   resizeTextarea: () => void;
 };
 
@@ -183,13 +108,11 @@ const isSubmitting = ref(false);
 const hasEditedMask = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const messageScrollRef = ref<HTMLElement | null>(null);
-const pageRef = ref<HTMLElement | null>(null);
 const composerRef = ref<CreationComposerRef | null>(null);
 const imageEditDialogRef = ref<{ open: (image: ImageInputAttachment) => void } | null>(null);
 const imageSettingsRef = ref<{ openDialog: () => void } | null>(null);
 const imageSettings = ref<ImageSettingsData>({ size: "1024x1024", n: 1 });
 let runtimeTimer: number | null = null;
-let composerResizeObserver: ResizeObserver | null = null;
 
 const messages = computed<ImageConversationMessage[]>(() => store.state.imageMessages || []);
 const routeImageId = computed(() => (typeof route.params.iid === "string" ? route.params.iid : ""));
@@ -206,29 +129,6 @@ const imageModelOptions = computed(() =>
 const selectedModel = computed<ImageModelConfig | null>(() => availableModels.value[selectedModelIndex.value] || null);
 const isCurrentConversationSubmitting = computed(() => Boolean(activeImageRuntime.value?.pending));
 const isSendDisabled = computed(() => isCurrentConversationSubmitting.value || !prompt.value.trim() || !selectedModel.value);
-const {
-  activeTopicId,
-  collapsibleMessageIds,
-  expandedMessageIds: expandedUserMessageIds,
-  messageTopics,
-  onMessageScroll,
-  refreshMessageUi,
-  registerMessage,
-  registerMessageContent,
-  scrollToMessage,
-  toggleMessage,
-} = useCreationMessageUi({
-  messages,
-  scrollRef: messageScrollRef,
-});
-
-function updateComposerHeight() {
-  const page = pageRef.value;
-  const composer = composerRef.value?.getElement();
-  if (!page || !composer) return;
-  const height = Math.ceil(composer.getBoundingClientRect().height);
-  if (height > 0) page.style.setProperty("--image-composer-height", `${height}px`);
-}
 
 function isNearScrollBottom(threshold = 120) {
   const el = messageScrollRef.value;
@@ -318,13 +218,6 @@ function removeAttachment(id: string) {
   if (attachments.value.length < 2) hasEditedMask.value = false;
 }
 
-async function previewAttachmentImage(src: string) {
-  if (!src) return;
-  store.commit("setModalImage", src);
-  const dialog = document.getElementById("global_image_preview_modal") as HTMLDialogElement | null;
-  dialog?.showModal();
-}
-
 async function imagePayloadToAttachment(image: ImagePayload): Promise<ImageInputAttachment> {
   const response = await fetch(image.src);
   const blob = await response.blob();
@@ -383,29 +276,28 @@ function onImageSettingsClose(settings: ImageSettingsData) {
   imageSettings.value = settings;
 }
 
-function formatElapsedMs(elapsedMs: number) {
-  return `${(elapsedMs / 1000).toFixed(1)}s`;
-}
+function reuseInput(message: ImageConversationMessage) {
+  if (message.role !== "user" || isCurrentConversationSubmitting.value) return;
+  prompt.value = message.prompt;
+  attachments.value = (message.attachments || []).map((attachment) => ({ ...attachment }));
+  hasEditedMask.value = attachments.value.length > 1;
 
-function getMessageStatus(message: ImageConversationMessage): "ready" | "loading" | "success" | "error" {
-  if (!message.run) return "ready";
-  if (message.run.status === "running") return "loading";
-  return message.run.status === "success" ? "success" : "error";
-}
-
-function getMessageElapsedMs(message: ImageConversationMessage): number | null {
-  if (message.run?.status === "running") {
-    if (message.role !== "assistant") return null;
-    const startedAt = Number(message.run.startedAt || message.createdAt || 0);
-    if (!startedAt) return null;
-    return Math.max(0, runtimeTick.value - startedAt);
+  const index = messages.value.findIndex((item) => item.id === message.id);
+  const run = messages.value[index + 1]?.role === "assistant" ? messages.value[index + 1].run : null;
+  if (run) {
+    const modelIndex = availableModels.value.findIndex((model) => model.provider === run.route.provider && model.model === run.route.model);
+    if (modelIndex >= 0) selectedModelIndex.value = modelIndex;
+    imageSettings.value = {
+      ...imageSettings.value,
+      ...run.request.params,
+      size: String(run.request.params.size || imageSettings.value.size),
+      n: Number(run.request.params.n || imageSettings.value.n || 1),
+    };
   }
-
-  if (message.run && message.run.durationMs > 0) {
-    return message.run.durationMs;
-  }
-
-  return null;
+  nextTick(() => {
+    composerRef.value?.resizeTextarea();
+    composerRef.value?.focus();
+  });
 }
 
 async function send() {
@@ -487,7 +379,7 @@ watch(
   () => mode.value,
   () => {
     // Only auto-select the first model when nothing is selected yet.
-    // A model can handle both generation and edit — switching modes should
+    // A model can handle both generation and edit; switching modes should
     // not reset the user's choice.
     if (selectedModelIndex.value < 0 && availableModels.value.length) {
       selectedModelIndex.value = 0;
@@ -498,15 +390,8 @@ watch(
 watch(
   () => messages.value.length,
   () => {
-    refreshMessageUi();
     if (isNearScrollBottom()) scrollToBottom();
   },
-);
-
-watch(
-  () => messages.value.map((message) => `${message.id}:${message.role}:${message.prompt}:${message.attachments?.length || 0}`).join("|"),
-  refreshMessageUi,
-  { immediate: true },
 );
 
 watch(
@@ -534,19 +419,7 @@ watch(
   { immediate: true },
 );
 
-onMounted(() => {
-  nextTick(updateComposerHeight);
-  refreshMessageUi();
-  const composer = composerRef.value?.getElement();
-  if (window.ResizeObserver && composer) {
-    composerResizeObserver = new ResizeObserver(updateComposerHeight);
-    composerResizeObserver.observe(composer);
-  }
-});
-
 onBeforeUnmount(() => {
-  composerResizeObserver?.disconnect();
-  composerResizeObserver = null;
   if (runtimeTimer !== null) window.clearInterval(runtimeTimer);
   attachments.value.forEach((item) => {
     if (item.previewUrl.startsWith("blob:")) URL.revokeObjectURL(item.previewUrl);
@@ -559,12 +432,6 @@ onBeforeUnmount(() => {
   --image-page-max-width: 1080px;
   --image-side-gap: max(24px, calc((100% - var(--image-page-max-width)) / 2));
   --image-top-gap: 28px;
-  --image-composer-height: 126px;
-  --image-scroll-tail-gap: 32px;
-  --image-bottom-gap: calc(var(--image-composer-height) + var(--image-composer-bottom) + var(--image-scroll-tail-gap));
-  --image-composer-bottom: 18px;
-  --image-composer-shell-gap: 18px;
-  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
@@ -582,7 +449,7 @@ onBeforeUnmount(() => {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: oklch(var(--bc) / 0.24) transparent;
-  padding: var(--image-top-gap) var(--image-side-gap) var(--image-bottom-gap);
+  padding: var(--image-top-gap) var(--image-side-gap) 20px;
   box-sizing: border-box;
   contain: layout paint style;
 
@@ -649,272 +516,19 @@ onBeforeUnmount(() => {
   }
 }
 
-.image-message-list {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-}
-
-.image-message {
-  display: flex;
-
-  &.is-user {
-    justify-content: flex-end;
-
-    .image-message-body {
-      max-width: min(560px, 82%);
-      border-radius: 30px;
-      background: #f1f1f0;
-    }
-  }
-
-  &.is-assistant {
-    justify-content: flex-start;
-
-    .image-message-body {
-      width: min(720px, 100%);
-      border-radius: 8px;
-      background: transparent;
-    }
-  }
-}
-
-.image-message-body {
-  min-width: 0;
-  padding: 16px 18px;
-}
-
-.image-message.is-user .image-message-body {
-  position: relative;
-  overflow: hidden;
-
-  &.is-collapsible {
-    padding-bottom: 12px;
-
-    &::after {
-      content: "";
-      position: absolute;
-      right: 0;
-      bottom: 42px;
-      left: 0;
-      height: 52px;
-      pointer-events: none;
-      background: linear-gradient(180deg, rgba(241, 241, 240, 0), #f1f1f0 70%);
-    }
-  }
-
-  &.is-expanded::after {
-    display: none;
-  }
-}
-
-.image-message-content {
-  max-height: 200px;
-  overflow: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: oklch(var(--bc) / 0.28) transparent;
-
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background: oklch(var(--bc) / 0.22);
-  }
-}
-
-.image-message-body.is-expanded .image-message-content {
-  overflow-y: auto;
-}
-
-.image-message-toggle {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin: 8px 0 0 auto;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: oklch(var(--bc) / 0.76);
-  line-height: 1;
-  cursor: pointer;
-
-  :deep(.image-message-toggle-icon) {
-    width: 16px;
-    height: 16px;
-    transform: rotate(180deg);
-  }
-
-  &.is-expanded :deep(.image-message-toggle-icon) {
-    transform: rotate(0deg);
-  }
-}
-
-.image-message-meta,
-.image-usage-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-size: 12px;
-}
-
-.image-message-meta span,
-.image-usage-row span {
-  min-height: 24px;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 9px;
-  border-radius: 999px;
-  background: rgba(17, 24, 39, 0.05);
-}
-
-.image-message-prompt {
-  margin: 4px 0 0;
-  color: oklch(var(--bc));
-  line-height: 1.7;
-  white-space: pre-wrap;
-}
-
-.image-attachment-row,
-.image-output-grid {
-  margin-top: 14px;
-}
-
-.image-attachment-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.image-attachment {
-  width: 96px;
-  height: 96px;
-  overflow: hidden;
-  border-radius: 8px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-
-  &.clickable {
-    cursor: zoom-in;
-  }
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-}
-
-.image-output-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 360px));
-  gap: 14px;
-  align-items: start;
-}
-
-.image-output-card {
-  width: min(100%, 360px);
-  margin: 0;
-  overflow: hidden;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 18px 48px rgba(17, 24, 39, 0.08);
-  cursor: pointer;
-
-  img {
-    display: block;
-    width: 100%;
-    max-height: 360px;
-    aspect-ratio: 1;
-    object-fit: contain;
-    background:
-      linear-gradient(45deg, rgba(17, 24, 39, 0.04) 25%, transparent 25%), linear-gradient(-45deg, rgba(17, 24, 39, 0.04) 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, rgba(17, 24, 39, 0.04) 75%), linear-gradient(-45deg, transparent 75%, rgba(17, 24, 39, 0.04) 75%);
-    background-position:
-      0 0,
-      0 8px,
-      8px -8px,
-      -8px 0;
-    background-size: 16px 16px;
-  }
-
-  figcaption {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    padding: 10px;
-  }
-
-  button {
-    height: 32px;
-    padding: 0 12px;
-    border: 1px solid rgba(17, 24, 39, 0.1);
-    border-radius: 8px;
-    background: #fff;
-    font-size: 13px;
-  }
-}
-
-.image-loading-card {
-  width: min(360px, 100%);
-  margin-top: 14px;
-  color: oklch(var(--b1));
-  font-size: 13px;
-}
-
-.image-loading-preview {
-  width: 100%;
-  aspect-ratio: 1;
-  margin-bottom: 10px;
-  border-radius: 8px;
-  background: #e5e7eb;
-}
-
-.image-error-message {
-  margin-top: 12px;
-  padding: 12px 14px;
-  border-radius: 8px;
-  background: #fef2f2;
-  color: #b91c1c;
-  line-height: 1.6;
-}
-
-.image-usage-row {
-  margin-top: 12px;
-}
-
 .image-composer-wrap {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: var(--image-composer-bottom);
-  z-index: 6;
+  position: relative;
+  flex: 0 0 auto;
   display: flex;
   justify-content: center;
-  padding: 0 var(--image-composer-shell-gap);
-  pointer-events: none;
+  padding: 10px max(18px, calc((100% - var(--image-page-max-width)) / 2)) max(14px, env(safe-area-inset-bottom));
+  border-top: 1px solid oklch(var(--bc) / 0.06);
+  background: oklch(var(--b1) / 0.94);
+  backdrop-filter: blur(14px);
 }
 
 .image-composer-wrap::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(var(--image-composer-bottom) * -1);
-  height: clamp(170px, 30vh, 260px);
-  z-index: 0;
-  pointer-events: none;
-  background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.8) 46%, oklch(var(--b1)) 82%, oklch(var(--b1)) 100%);
+  display: none;
 }
 
 .image-input-preview-row {
@@ -1026,13 +640,10 @@ onBeforeUnmount(() => {
   .image-message-scroll {
     padding-top: 22px;
     padding-right: 14px;
-    padding-bottom: var(--image-bottom-gap);
+    padding-bottom: 14px;
     padding-left: 14px;
   }
 
-  .image-message.is-user .image-message-body {
-    max-width: 94%;
-  }
 
   .image-composer {
     width: 100%;
@@ -1054,23 +665,17 @@ onBeforeUnmount(() => {
 
   .image-chat-page {
     --image-side-gap: 12px;
-    --image-top-gap: 60px;
-    --image-composer-bottom: max(12px, env(safe-area-inset-bottom));
-    --image-composer-shell-gap: 6px;
-    --image-scroll-tail-gap: 26px;
+    --image-top-gap: 16px;
   }
 
   .image-message-scroll {
     padding-top: var(--image-top-gap);
-    padding-bottom: var(--image-bottom-gap);
+    padding-bottom: 12px;
   }
 
-  .image-message.is-user .image-message-body {
-    max-width: 78%;
-  }
 
   .image-composer-wrap {
-    padding-bottom: env(safe-area-inset-bottom);
+    padding: 8px 8px max(10px, env(safe-area-inset-bottom));
   }
 
   .image-composer {

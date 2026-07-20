@@ -182,6 +182,45 @@ export async function addMessage(cid: string = store.state.curChatId, mid: strin
   }
 }
 
+/** Replace the causal history of a Chat conversation as one persistence operation. */
+export async function replaceChatHistory(cid: string, messages: ChatPromptMessage[]): Promise<boolean> {
+  if (!cid) return false;
+  try {
+    await chatRepository.saveMessages(cid, messages);
+    store.commit("replaceChatMessages", { cid, messages });
+    return true;
+  } catch (error) {
+    console.error("Failed to replace chat history:", error);
+    dsAlert({ type: "error", message: tr("toast.chatMessageAddFailed", { error: errorText(error) }) });
+    return false;
+  }
+}
+
+/**
+ * Edit one user input and discard everything causally downstream from it.
+ * Images and file attachments on the edited input are intentionally preserved.
+ */
+export async function editChatUserMessage(cid: string, mid: string, text: string): Promise<ChatPromptMessage | null> {
+  const messages = store.state.chatMessagesById?.[cid] || [];
+  const index = messages.findIndex((message) => message.mid === mid && message.role === "user");
+  if (index < 0) return null;
+
+  const source = messages[index];
+  const content = source.content.map((part) => (part.type === "text" ? { ...part, text } : part));
+  if (!content.some((part) => part.type === "text")) content.unshift({ type: "text", text });
+  const edited: ChatPromptMessage = { ...source, content };
+  const nextMessages = [...messages.slice(0, index), edited];
+  return (await replaceChatHistory(cid, nextMessages)) ? edited : null;
+}
+
+/** Discard the selected message and every message after it. */
+export async function truncateChatFromMessage(cid: string, mid: string): Promise<boolean> {
+  const messages = store.state.chatMessagesById?.[cid] || [];
+  const index = messages.findIndex((message) => message.mid === mid);
+  if (index < 0) return false;
+  return replaceChatHistory(cid, messages.slice(0, index));
+}
+
 export async function deleteMessage(cid: string = store.state.curChatId, mid: string): Promise<boolean> {
   if (!cid) return false;
   try {

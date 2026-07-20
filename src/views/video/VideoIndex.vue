@@ -1,94 +1,19 @@
 <template>
-  <section ref="pageRef" class="video-chat-page">
-    <MessageTopicList
-      :topics="messageTopics"
-      :active-topic-id="activeTopicId"
-      label="Topics"
-      :style="{ '--topic-bottom-gap': 'var(--video-bottom-gap)' }"
-      @select="scrollToMessage"
-    />
-
-    <div ref="messageScrollRef" class="video-message-scroll" @scroll="onMessageScroll">
+  <section class="video-chat-page">
+    <div ref="messageScrollRef" class="video-message-scroll">
       <div v-if="messages.length === 0" class="video-empty-state">
         <h1>{{ t("video.workspaceTitle") }}</h1>
         <p>{{ t("video.workspaceDescription") }}</p>
       </div>
 
-      <div v-else class="video-message-list">
-        <article
-          v-for="message in messages"
-          :key="message.id"
-          class="video-message"
-          :class="[`is-${message.role}`, `is-${getMessageStatus(message)}`]"
-          :ref="(el) => registerMessage(message.id, message.role, el)"
-        >
-          <div
-            class="video-message-body"
-            :class="{
-              'is-collapsible': message.role === 'user' && collapsibleMessageIds.has(message.id),
-              'is-expanded': message.role === 'user' && expandedUserMessageIds.has(message.id),
-            }"
-          >
-            <template v-if="message.role === 'user'">
-              <div class="video-message-content" :ref="(el) => registerMessageContent(message.id, el)">
-                <p v-if="message.prompt" class="video-message-prompt">{{ message.prompt }}</p>
-
-                <div v-if="message.attachments?.length" class="video-attachment-row">
-                  <div
-                    v-for="att in message.attachments"
-                    :key="att.id"
-                    class="video-attachment"
-                    :class="{ clickable: att.content_type?.startsWith('image/') }"
-                    @click="att.content_type?.startsWith('image/') && previewAttachmentImage(att.previewUrl)"
-                  >
-                    <img v-if="att.content_type?.startsWith('image/')" :src="att.previewUrl" :alt="att.filename" />
-                    <span v-else class="video-audio-badge">{{ att.filename }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                v-if="collapsibleMessageIds.has(message.id)"
-                class="video-message-toggle"
-                :class="{ 'is-expanded': expandedUserMessageIds.has(message.id) }"
-                type="button"
-                :aria-label="expandedUserMessageIds.has(message.id) ? 'Collapse message' : 'Expand message'"
-                :aria-expanded="expandedUserMessageIds.has(message.id)"
-                @click="toggleMessage(message.id)"
-              >
-                <SvgIcon :src="arrowUpIcon" class="video-message-toggle-icon" />
-              </button>
-            </template>
-
-            <template v-else>
-              <div class="video-message-meta">
-                <span>{{ message.run?.route.model }}</span>
-                <span v-if="message.run?.request.params.resolution">{{ message.run.request.params.resolution }}</span>
-                <span v-if="getMessageElapsedMs(message) !== null">{{ formatElapsedMs(getMessageElapsedMs(message)!) }}</span>
-              </div>
-
-              <div v-if="message.run?.status === 'running'" class="video-loading-card">
-                <div class="video-loading-preview"></div>
-                <span>{{ loadingStatusText }}</span>
-              </div>
-
-              <div v-if="message.videos.length" class="video-output-grid">
-                <figure v-for="video in message.videos" :key="video.id" class="video-output-card">
-                  <video :src="video.src" controls playsinline preload="metadata" />
-                </figure>
-              </div>
-
-              <div v-if="message.run?.error" class="video-error-message">{{ message.run.error }}</div>
-
-              <div v-if="message.run?.status !== 'running' && message.run?.result.usage" class="video-usage-row">
-                <span>Input {{ message.run.result.usage.input_tokens || 0 }}</span>
-                <span>Output {{ message.run.result.usage.output_tokens || 0 }}</span>
-                <span>Total {{ message.run.result.usage.total_tokens || 0 }}</span>
-              </div>
-            </template>
-          </div>
-        </article>
-      </div>
+      <VideoMessageList
+        v-else
+        :messages="messages"
+        :runtime-tick="runtimeTick"
+        :loading-status-text="loadingStatusText"
+        :reuse-disabled="isCurrentConversationSubmitting"
+        @reuse="reuseInput"
+      />
     </div>
 
     <div class="video-composer-wrap">
@@ -114,7 +39,7 @@
             <div v-if="activeCapabilities.imageInput" class="video-media-slot" :class="{ filled: !!firstFrame }" @click="openFirstFramePicker">
               <div v-if="firstFrame" class="video-media-preview">
                 <img :src="firstFrame.previewUrl" :alt="firstFrame.filename" />
-                <button class="video-media-remove" type="button" :aria-label="t('video.removeAttachment')" @click.stop="firstFrame = null">×</button>
+                <button class="video-media-remove" type="button" :aria-label="t('video.removeAttachment')" @click.stop="firstFrame = null">&times;</button>
                 <span class="video-media-tag">{{ t("video.firstFrame") }}</span>
               </div>
               <div v-else class="video-media-empty">
@@ -127,7 +52,7 @@
             <div v-if="activeCapabilities.imageInput" class="video-media-slot" :class="{ filled: !!lastFrame }" @click="openLastFramePicker">
               <div v-if="lastFrame" class="video-media-preview">
                 <img :src="lastFrame.previewUrl" :alt="lastFrame.filename" />
-                <button class="video-media-remove" type="button" :aria-label="t('video.removeAttachment')" @click.stop="lastFrame = null">×</button>
+                <button class="video-media-remove" type="button" :aria-label="t('video.removeAttachment')" @click.stop="lastFrame = null">&times;</button>
                 <span class="video-media-tag">{{ t("video.lastFrame") }}</span>
               </div>
               <div v-else class="video-media-empty">
@@ -140,7 +65,7 @@
             <div v-if="activeCapabilities.audioInput" class="video-media-slot" :class="{ filled: !!drivingAudio }" @click="openAudioPicker">
               <div v-if="drivingAudio" class="video-media-preview">
                 <span class="video-media-audio-name">{{ drivingAudio.filename }}</span>
-                <button class="video-media-remove" type="button" :aria-label="t('video.removeAttachment')" @click.stop="drivingAudio = null">×</button>
+                <button class="video-media-remove" type="button" :aria-label="t('video.removeAttachment')" @click.stop="drivingAudio = null">&times;</button>
                 <span class="video-media-tag">{{ t("video.drivingAudio") }}</span>
               </div>
               <div v-else class="video-media-empty">
@@ -161,20 +86,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useAppStore } from "@/store";
 import CreationComposer from "@/components/CreationComposer.vue";
 import ImageModal from "@/components/ImageModal.vue";
-import MessageTopicList from "@/components/MessageTopicList.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
+import VideoMessageList from "@/views/video/VideoMessageList.vue";
 import VideoSettings from "@/views/video/VideoSettings.vue";
 import type { VideoSettingsData } from "@/views/video/VideoSettings.vue";
-import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import audioIcon from "@/assets/svg/attach24.svg";
 import imageIcon from "@/assets/svg/navImage24.svg";
-import { addVideoConversation, getVideoConversationMessages, submitVideoMessage, useCreationMessageUi } from "@/services/creation";
+import { addVideoConversation, getVideoConversationMessages, submitVideoMessage } from "@/services/creation";
 import { getVideoModelCapabilities, getVideoModelType } from "@/models";
 import { dsAlert, getUuid } from "@/utils";
 import type { VideoConversationMessage, VideoInputAttachment, VideoModelConfig } from "@/types";
@@ -182,7 +106,6 @@ import type { VideoConversationMessage, VideoInputAttachment, VideoModelConfig }
 const MAX_MEDIA_MB = 20;
 type CreationComposerRef = {
   focus: () => void;
-  getElement: () => HTMLElement | null;
   resizeTextarea: () => void;
 };
 
@@ -200,12 +123,10 @@ const firstFrameInputRef = ref<HTMLInputElement | null>(null);
 const lastFrameInputRef = ref<HTMLInputElement | null>(null);
 const audioInputRef = ref<HTMLInputElement | null>(null);
 const messageScrollRef = ref<HTMLElement | null>(null);
-const pageRef = ref<HTMLElement | null>(null);
 const composerRef = ref<CreationComposerRef | null>(null);
 const videoSettingsRef = ref<{ openDialog: () => void } | null>(null);
 const videoSettings = ref<VideoSettingsData>({ resolution: "720P", duration: 5 });
 let runtimeTimer: number | null = null;
-let composerResizeObserver: ResizeObserver | null = null;
 
 const messages = computed<VideoConversationMessage[]>(() => store.state.videoMessages || []);
 const routeVideoId = computed(() => (typeof route.params.vid === "string" ? route.params.vid : ""));
@@ -252,29 +173,6 @@ const loadingStatusText = computed(() => {
 
 const isCurrentConversationSubmitting = computed(() => Boolean(activeVideoRuntime.value?.pending));
 const isSendDisabled = computed(() => isCurrentConversationSubmitting.value || !prompt.value.trim() || !selectedModel.value);
-const {
-  activeTopicId,
-  collapsibleMessageIds,
-  expandedMessageIds: expandedUserMessageIds,
-  messageTopics,
-  onMessageScroll,
-  refreshMessageUi,
-  registerMessage,
-  registerMessageContent,
-  scrollToMessage,
-  toggleMessage,
-} = useCreationMessageUi({
-  messages,
-  scrollRef: messageScrollRef,
-});
-
-function updateComposerHeight() {
-  const page = pageRef.value;
-  const composer = composerRef.value?.getElement();
-  if (!page || !composer) return;
-  const height = Math.ceil(composer.getBoundingClientRect().height);
-  if (height > 0) page.style.setProperty("--video-composer-height", `${height}px`);
-}
 
 function isNearScrollBottom(threshold = 120) {
   const el = messageScrollRef.value;
@@ -296,13 +194,6 @@ function splitDataUrl(dataUrl: string) {
     contentType: match?.[1] || "image/png",
     data: match?.[2] || dataUrl,
   };
-}
-
-async function previewAttachmentImage(src: string) {
-  if (!src) return;
-  store.commit("setModalImage", src);
-  const dialog = document.getElementById("global_image_preview_modal") as HTMLDialogElement | null;
-  dialog?.showModal();
 }
 
 const MAX_IMAGE_DIM = 1024;
@@ -463,37 +354,39 @@ function onVideoSettingsClose(settings: VideoSettingsData) {
   videoSettings.value = settings;
 }
 
-function formatElapsedMs(elapsedMs: number) {
-  return `${(elapsedMs / 1000).toFixed(1)}s`;
-}
-
-function getMessageStatus(message: VideoConversationMessage): "ready" | "loading" | "success" | "error" {
-  if (!message.run) return "ready";
-  if (message.run.status === "running") return "loading";
-  return message.run.status === "success" ? "success" : "error";
-}
-
-function getMessageElapsedMs(message: VideoConversationMessage): number | null {
-  if (message.run?.status === "running") {
-    if (message.role !== "assistant") return null;
-    const startedAt = Number(message.run.startedAt || message.createdAt || 0);
-    if (!startedAt) return null;
-    return Math.max(0, runtimeTick.value - startedAt);
-  }
-
-  if (message.run && message.run.durationMs > 0) {
-    return message.run.durationMs;
-  }
-
-  return null;
-}
-
 function buildAttachments(): VideoInputAttachment[] {
   const atts: VideoInputAttachment[] = [];
   if (firstFrame.value) atts.push(firstFrame.value);
   if (lastFrame.value) atts.push(lastFrame.value);
   if (drivingAudio.value) atts.push(drivingAudio.value);
   return atts;
+}
+
+function reuseInput(message: VideoConversationMessage) {
+  if (message.role !== "user" || isCurrentConversationSubmitting.value) return;
+  prompt.value = message.prompt;
+  const sourceAttachments = (message.attachments || []).map((attachment) => ({ ...attachment }));
+  const imageAttachments = sourceAttachments.filter((attachment) => attachment.content_type?.startsWith("image/"));
+  firstFrame.value = imageAttachments[0] || null;
+  lastFrame.value = imageAttachments[1] || null;
+  drivingAudio.value = sourceAttachments.find((attachment) => attachment.content_type?.startsWith("audio/")) || null;
+
+  const index = messages.value.findIndex((item) => item.id === message.id);
+  const run = messages.value[index + 1]?.role === "assistant" ? messages.value[index + 1].run : null;
+  if (run) {
+    const modelIndex = availableModels.value.findIndex((model) => model.provider === run.route.provider && model.model === run.route.model);
+    if (modelIndex >= 0) selectedModelIndex.value = modelIndex;
+    videoSettings.value = {
+      ...videoSettings.value,
+      ...run.request.params,
+      resolution: String(run.request.params.resolution || videoSettings.value.resolution),
+      duration: Number(run.request.params.duration || videoSettings.value.duration),
+    };
+  }
+  nextTick(() => {
+    composerRef.value?.resizeTextarea();
+    composerRef.value?.focus();
+  });
 }
 
 async function send() {
@@ -580,15 +473,8 @@ watch(
 watch(
   () => messages.value.length,
   () => {
-    refreshMessageUi();
     if (isNearScrollBottom()) scrollToBottom();
   },
-);
-
-watch(
-  () => messages.value.map((message) => `${message.id}:${message.role}:${message.prompt}:${message.attachments?.length || 0}`).join("|"),
-  refreshMessageUi,
-  { immediate: true },
 );
 
 watch(
@@ -616,19 +502,7 @@ watch(
   { immediate: true },
 );
 
-onMounted(() => {
-  nextTick(updateComposerHeight);
-  refreshMessageUi();
-  const composer = composerRef.value?.getElement();
-  if (window.ResizeObserver && composer) {
-    composerResizeObserver = new ResizeObserver(updateComposerHeight);
-    composerResizeObserver.observe(composer);
-  }
-});
-
 onBeforeUnmount(() => {
-  composerResizeObserver?.disconnect();
-  composerResizeObserver = null;
   if (runtimeTimer !== null) window.clearInterval(runtimeTimer);
 });
 </script>
@@ -638,12 +512,6 @@ onBeforeUnmount(() => {
   --video-page-max-width: 1080px;
   --video-side-gap: max(24px, calc((100% - var(--video-page-max-width)) / 2));
   --video-top-gap: 28px;
-  --video-composer-height: 126px;
-  --video-scroll-tail-gap: 32px;
-  --video-bottom-gap: calc(var(--video-composer-height) + var(--video-composer-bottom) + var(--video-scroll-tail-gap));
-  --video-composer-bottom: 18px;
-  --video-composer-shell-gap: 18px;
-  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
@@ -661,7 +529,7 @@ onBeforeUnmount(() => {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: oklch(var(--bc) / 0.24) transparent;
-  padding: var(--video-top-gap) var(--video-side-gap) var(--video-bottom-gap);
+  padding: var(--video-top-gap) var(--video-side-gap) 20px;
   box-sizing: border-box;
   contain: layout paint style;
 
@@ -727,234 +595,18 @@ onBeforeUnmount(() => {
   }
 }
 
-.video-message-list {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-}
-
-.video-message {
-  display: flex;
-  &.is-user {
-    justify-content: flex-end;
-    .video-message-body {
-      max-width: min(560px, 82%);
-      border-radius: 30px;
-      background: #f1f1f0;
-    }
-  }
-  &.is-assistant {
-    justify-content: flex-start;
-    .video-message-body {
-      width: min(720px, 100%);
-      border-radius: 8px;
-      background: transparent;
-    }
-  }
-}
-
-.video-message-body {
-  min-width: 0;
-  padding: 16px 18px;
-}
-
-.video-message.is-user .video-message-body {
-  position: relative;
-  overflow: hidden;
-
-  &.is-collapsible {
-    padding-bottom: 12px;
-
-    &::after {
-      content: "";
-      position: absolute;
-      right: 0;
-      bottom: 42px;
-      left: 0;
-      height: 52px;
-      pointer-events: none;
-      background: linear-gradient(180deg, rgba(241, 241, 240, 0), #f1f1f0 70%);
-    }
-  }
-
-  &.is-expanded::after {
-    display: none;
-  }
-}
-
-.video-message-content {
-  max-height: 200px;
-  overflow: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: oklch(var(--bc) / 0.28) transparent;
-
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background: oklch(var(--bc) / 0.22);
-  }
-}
-
-.video-message-body.is-expanded .video-message-content {
-  overflow-y: auto;
-}
-
-.video-message-toggle {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin: 8px 0 0 auto;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: oklch(var(--bc) / 0.76);
-  line-height: 1;
-  cursor: pointer;
-
-  :deep(.video-message-toggle-icon) {
-    width: 16px;
-    height: 16px;
-    transform: rotate(180deg);
-  }
-
-  &.is-expanded :deep(.video-message-toggle-icon) {
-    transform: rotate(0deg);
-  }
-}
-
-.video-message-meta,
-.video-usage-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-size: 12px;
-  span {
-    min-height: 24px;
-    display: inline-flex;
-    align-items: center;
-    padding: 0 9px;
-    border-radius: 999px;
-    background: rgba(17, 24, 39, 0.05);
-  }
-}
-
-.video-message-prompt {
-  margin: 4px 0 0;
-  color: oklch(var(--bc));
-  line-height: 1.7;
-  white-space: pre-wrap;
-}
-
-.video-attachment-row,
-.video-output-grid {
-  margin-top: 14px;
-}
-.video-attachment-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.video-attachment {
-  width: 96px;
-  height: 96px;
-  overflow: hidden;
-  border-radius: 8px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  &.clickable {
-    cursor: zoom-in;
-  }
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-}
-.video-audio-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  font-size: 12px;
-  color: oklch(var(--bc));
-  background: oklch(var(--b2));
-}
-
-.video-output-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 14px;
-}
-.video-output-card {
-  margin: 0;
-  overflow: hidden;
-  border-radius: 8px;
-  background: #000;
-  video {
-    display: block;
-    width: 100%;
-    max-height: 400px;
-  }
-}
-
-.video-loading-card {
-  width: min(360px, 100%);
-  margin-top: 14px;
-  color: oklch(var(--b1));
-  font-size: 13px;
-}
-.video-loading-preview {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  margin-bottom: 10px;
-  border-radius: 8px;
-  background: #e5e7eb;
-}
-.video-error-message {
-  margin-top: 12px;
-  padding: 12px 14px;
-  border-radius: 8px;
-  background: #fef2f2;
-  color: #b91c1c;
-  line-height: 1.6;
-}
-.video-usage-row {
-  margin-top: 12px;
-}
-
 .video-composer-wrap {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: var(--video-composer-bottom);
-  z-index: 6;
+  position: relative;
+  flex: 0 0 auto;
   display: flex;
   justify-content: center;
-  padding: 0 var(--video-composer-shell-gap);
-  pointer-events: none;
+  padding: 10px max(18px, calc((100% - var(--video-page-max-width)) / 2)) max(14px, env(safe-area-inset-bottom));
+  border-top: 1px solid oklch(var(--bc) / 0.06);
+  background: oklch(var(--b1) / 0.94);
+  backdrop-filter: blur(14px);
 
   &::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: calc(var(--video-composer-bottom) * -1);
-    height: clamp(170px, 30vh, 260px);
-    z-index: 0;
-    pointer-events: none;
-    background: linear-gradient(180deg, oklch(var(--b1) / 0) 0%, oklch(var(--b1) / 0.8) 46%, oklch(var(--b1)) 82%, oklch(var(--b1)) 100%);
+    display: none;
   }
 }
 
@@ -1065,11 +717,10 @@ onBeforeUnmount(() => {
 @media (max-width: 640px) {
   .video-chat-page {
     --video-side-gap: 12px;
-    --video-top-gap: 60px;
-    --video-composer-bottom: max(12px, env(safe-area-inset-bottom));
-    --video-composer-shell-gap: 6px;
-    --video-scroll-tail-gap: 26px;
+    --video-top-gap: 16px;
   }
+  .video-message-scroll { padding-bottom: 12px; scrollbar-gutter: auto; }
+  .video-composer-wrap { padding: 8px 8px max(10px, env(safe-area-inset-bottom)); }
   .video-media-slots {
     flex-direction: column;
   }

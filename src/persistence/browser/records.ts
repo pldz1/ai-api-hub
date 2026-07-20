@@ -56,8 +56,17 @@ async function readMessages<T>(storeName: MessageStoreName, conversationId: stri
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+/**
+ * IndexedDB cannot clone Vue reactive proxies. Persistence owns the boundary,
+ * so callers may safely pass either plain records or reactive Store projections.
+ */
+function toCloneableRecords<T>(messages: T[]): T[] {
+  return JSON.parse(JSON.stringify(messages)) as T[];
+}
+
 async function writeMessages<T>(storeName: MessageStoreName, conversationId: string, messages: T[]): Promise<void> {
-  await withRecordStore(storeName, "readwrite", async (store) => void (await requestToPromise(store.put(messages, conversationId))));
+  const records = toCloneableRecords(messages);
+  await withRecordStore(storeName, "readwrite", async (store) => void (await requestToPromise(store.put(records, conversationId))));
 }
 
 async function deleteMessages(storeName: MessageStoreName, conversationId: string): Promise<void> {

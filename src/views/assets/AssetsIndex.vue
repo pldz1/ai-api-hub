@@ -18,21 +18,6 @@
       </div>
     </header>
 
-    <section class="asset-summary" :aria-label="t('assets.summaryLabel')">
-      <div>
-        <strong>{{ assets.length }}</strong>
-        <span>{{ t("assets.summary.total") }}</span>
-      </div>
-      <div>
-        <strong>{{ imageCount }}</strong>
-        <span>{{ t("assets.summary.images") }}</span>
-      </div>
-      <div>
-        <strong>{{ videoCount }}</strong>
-        <span>{{ t("assets.summary.videos") }}</span>
-      </div>
-    </section>
-
     <section v-if="error" class="asset-state is-error">
       {{ error }}
     </section>
@@ -104,8 +89,6 @@ const assetKindLabels = computed<Record<GeneratedAssetKind, string>>(() => ({
 }));
 
 const filteredAssets = computed(() => (filter.value === "all" ? assets.value : assets.value.filter((item) => item.kind === filter.value)));
-const imageCount = computed(() => assets.value.filter((item) => item.kind === "image").length);
-const videoCount = computed(() => assets.value.filter((item) => item.kind === "video").length);
 
 async function loadAssets() {
   loading.value = true;
@@ -248,42 +231,9 @@ onMounted(loadAssets);
   }
 }
 
-.asset-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin: 28px 0 22px;
-
-  div {
-    min-height: 72px;
-    padding: 14px 16px;
-    border: 1px solid oklch(var(--bc) / 0.08);
-    border-radius: 8px;
-    background: oklch(var(--b1) / 0.82);
-  }
-
-  strong,
-  span {
-    display: block;
-  }
-
-  strong {
-    font-size: 25px;
-    line-height: 1;
-  }
-
-  span {
-    margin-top: 8px;
-    color: oklch(var(--bc) / 0.56);
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-}
-
 .asset-grid {
   display: grid;
+  margin-top: 28px;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 14px;
 }

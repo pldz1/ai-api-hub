@@ -73,7 +73,11 @@ export const chatRepository = {
 
   async saveMessages(cid: string, messages: ChatPromptMessage[]): Promise<void> {
     requireChat(cid);
+    const previousMessages = await getChatMessageRecords(cid);
+    const retainedAttachmentIds = new Set(attachmentIds(messages));
+    const removedAttachmentIds = attachmentIds(previousMessages).filter((id) => !retainedAttachmentIds.has(id));
     await setChatMessageRecords(cid, messages);
+    await Promise.allSettled(removedAttachmentIds.map(deleteChatFileSource));
   },
 
   async deleteMessage(cid: string, mid: string): Promise<void> {

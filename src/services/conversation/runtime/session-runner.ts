@@ -16,7 +16,7 @@ function getSessionModel(chatId: string): ChatModelConfig | null {
   return getModelFromSnapshot(store.state.chatConversationsById?.[chatId]?.modelSnapshot) || store.state.curChatModel || store.state.models.chat?.[0] || null;
 }
 
-function packChatMessages(messages: ChatPromptMessage[], chatId: string, model: ChatModelConfig | null): PackedChatMessage[] {
+export function packChatMessages(messages: ChatPromptMessage[], chatId: string, model: ChatModelConfig | null): PackedChatMessage[] {
   const settings = store.state.chatSettingsById?.[chatId] || store.state.curChatModelSettings;
   const firstPromptContent = settings?.prompts?.[0]?.content?.[0];
   const hasSystemPrompt = firstPromptContent?.type === "text" && Boolean(firstPromptContent.text);
@@ -53,6 +53,7 @@ function packChatMessages(messages: ChatPromptMessage[], chatId: string, model: 
 
 export interface ChatRunner {
   chat(data: ChatPromptMessage): Promise<void>;
+  regenerate(): Promise<void>;
   stop(): void;
   getStream(): StreamState;
   readonly chatId: string;
@@ -128,14 +129,15 @@ function createChatRunner(chatId: string): ChatRunner {
     if (stream.isStopped()) return;
 
     stream.applyDelta(delta);
-    if (store.state.chatRuntimeById?.[chatId]?.status === "loading") {
-      updateRuntime({
-        status: "streaming",
-        pending: true,
-        draftMessageId: stream.getMessageId(),
-      });
-    }
-    _onDraftUpdate?.(stream.getDraft());
+    const draft = stream.getDraft();
+    updateRuntime({
+      status: delta.kind === "error" ? "error" : "streaming",
+      pending: delta.kind !== "error",
+      draftMessageId: stream.getMessageId(),
+      draftAssistantContent: draft.content,
+      draftReasoningContent: draft.reasoning_content,
+    });
+    _onDraftUpdate?.(draft);
 
     if (delta.kind === "error") {
       updateRuntime({
@@ -160,6 +162,21 @@ function createChatRunner(chatId: string): ChatRunner {
     await addMessage(chatId, userMessage.mid, userMessage);
     await _onMessagePersisted?.(userMessage);
 
+    updateRuntime({
+      status: "loading",
+      pending: true,
+      draftMessageId: stream.getMessageId(),
+      draftAssistantContent: "",
+      draftReasoningContent: "",
+      lastError: "",
+    });
+  }
+
+  function prepareRegeneration(): void {
+    activeRun = null;
+    const history = store.state.chatMessagesById?.[chatId] || [];
+    if (history.at(-1)?.role !== "user") throw new Error("Chat regeneration requires a user message at the end of the conversation.");
+    stream.startStream(getUuid("msg"));
     updateRuntime({
       status: "loading",
       pending: true,
@@ -259,6 +276,12 @@ function createChatRunner(chatId: string): ChatRunner {
     await finalizeStream(completed);
   }
 
+  async function regenerate(): Promise<void> {
+    prepareRegeneration();
+    const completed = await executeStream();
+    await finalizeStream(completed);
+  }
+
   function stop() {
     stream.stop();
     client.abort();
@@ -267,6 +290,7 @@ function createChatRunner(chatId: string): ChatRunner {
 
   return {
     chat,
+    regenerate,
     stop,
     getStream: () => stream,
     get chatId() {

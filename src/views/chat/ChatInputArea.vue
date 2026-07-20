@@ -259,19 +259,18 @@ watch(
   async (model, previousModel) => {
     if (!model) return;
 
+    const lockedModel = getModelFromSnapshot(curConversation.value?.modelSnapshot);
+    if (curChatId.value && lockedModel) {
+      if (getModelIdentityKey(model) !== getModelIdentityKey(lockedModel)) selectedModel.value = lockedModel;
+      store.commit("setCurChatModel", lockedModel);
+      return;
+    }
+
     store.commit("setCurChatModel", model);
 
     if (!previousModel || getModelIdentityKey(previousModel) !== getModelIdentityKey(model)) {
-      if (curChatId.value) {
-        store.commit("setCurConversationModel", model);
-      }
-
-      store.commit("setCurChatModelSettings", mergeChatSettingsWithModel(model, curChatId.value ? store.state.curChatModelSettings || {} : {}));
+      store.commit("setCurChatModelSettings", mergeChatSettingsWithModel(model, {}));
       store.commit("resetInputCapabilities");
-
-      if (curChatId.value) {
-        await setChatSettings(curChatId.value);
-      }
     }
   },
   { immediate: true },
@@ -311,13 +310,7 @@ const onSendInputData = async () => {
     return;
   }
 
-  if (curChatId.value) {
-    const currentConversationModel = getModelFromSnapshot(curConversation.value?.modelSnapshot);
-    if (getModelIdentityKey(currentConversationModel) !== getModelIdentityKey(selectedModel.value)) {
-      store.commit("setCurConversationModel", selectedModel.value);
-    }
-    await setChatSettings(curChatId.value);
-  }
+  if (curChatId.value) await setChatSettings(curChatId.value);
 
   const imageUrls = inputImages.value.map((item) => item.src);
   const data = packUserMsg(imageUrls, inputText.value, activeCapabilities.value.imageRead, inputFiles.value);
@@ -965,6 +958,16 @@ watch(
       width: 36px;
       height: 36px;
     }
+  }
+
+  @media (max-width: 380px) {
+    .ccia-capability-row { flex-wrap: wrap; }
+    .ccia-right-actions,
+    .ccia-left-actions { width: 100%; }
+    .ccia-left-actions { justify-content: flex-end; }
+    .ccia-model-area { flex: 1 1 auto; max-width: none; }
+    .ccia-model-select,
+    .ccia-model-lock { width: 100%; max-width: none; }
   }
 }
 </style>

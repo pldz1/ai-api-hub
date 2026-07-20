@@ -13,16 +13,7 @@
     <div class="main-view-content">
       <LeftView v-if="!isSidebarHidden" :expanded="sidebarExpanded" @toggle="sidebarExpanded = !sidebarExpanded" />
       <div class="main-view-stage">
-        <RightView>
-          <ChatIndex v-if="routeName === 'chat'" />
-          <ImageIndex v-else-if="routeName === 'image'" />
-          <VideoIndex v-else-if="routeName === 'video'" />
-          <router-view v-else />
-
-          <template #footer>
-            <AppFooter />
-          </template>
-        </RightView>
+        <router-view />
       </div>
     </div>
   </div>
@@ -32,19 +23,13 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import LeftView from "@/views/layout/LeftView.vue";
-import RightView from "@/views/layout/RightView.vue";
-import AppFooter from "@/components/AppFooter.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
-import ChatIndex from "@/views/chat/ChatIndex.vue";
-import ImageIndex from "@/views/image/ImageIndex.vue";
-import VideoIndex from "@/views/video/VideoIndex.vue";
 
 import menuIcon from "@/assets/svg/menu32.svg";
 
 const sidebarExpanded = ref(true);
 const isMobile = ref(false);
 const route = useRoute();
-const routeName = computed(() => route.name);
 const isSidebarHidden = computed(() => route.meta.hideSidebar === true);
 
 let mobileQuery: MediaQueryList | null = null;
@@ -54,7 +39,7 @@ const handleMobileQueryChange = (event: MediaQueryListEvent) => {
 };
 
 onMounted(() => {
-  mobileQuery = window.matchMedia("(max-width: 768px)");
+  mobileQuery = window.matchMedia("(max-width: 900px)");
   isMobile.value = mobileQuery.matches;
   if (mobileQuery.matches) sidebarExpanded.value = false;
   mobileQuery.addEventListener("change", handleMobileQueryChange);
@@ -101,7 +86,7 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .main-view-mask {
     display: block;
     position: fixed;

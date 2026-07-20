@@ -32,6 +32,19 @@
           </a>
         </div>
       </section>
+
+      <section class="app-settings-row">
+        <div class="app-settings-copy">
+          <h3>{{ t("user.app.about") }}</h3>
+          <p>{{ APP_NAME }} · {{ APP_VERSION }} · {{ UPDATE_TIME }}</p>
+        </div>
+        <div class="app-settings-actions">
+          <a class="app-settings-action" :href="REPO_SOURCE_LINK" target="_blank" rel="noopener noreferrer">
+            <SvgIcon class="app-settings-action-icon" :src="webIcon" />
+            <span>{{ t("user.app.source") }}</span>
+          </a>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -42,6 +55,7 @@ import attachIcon from "@/assets/svg/attach24.svg";
 import saveIcon from "@/assets/svg/save18.svg";
 import webIcon from "@/assets/svg/web24.svg";
 import SvgIcon from "@/components/SvgIcon.vue";
+import { APP_NAME, APP_VERSION, REPO_SOURCE_LINK, UPDATE_TIME } from "@/constants";
 
 // Parent view owns import/export workflows; this panel only exposes the actions.
 const emit = defineEmits<{

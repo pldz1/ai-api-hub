@@ -51,9 +51,9 @@ watch(
 
 <style lang="scss">
 #app {
-  position: fixed;
-  inset: 0;
-  min-height: 400px;
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
   font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
   overflow: hidden;
   color: oklch(var(--bc));

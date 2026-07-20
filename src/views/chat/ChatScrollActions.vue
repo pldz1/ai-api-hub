@@ -1,15 +1,8 @@
 <template>
-  <!-- This view renders quick actions for scrolling the chat list. -->
+  <!-- Only surface navigation when the latest response is outside the viewport. -->
   <div class="cccd-scroll-actions">
-    <!-- Jump to the first visible message when the list is scrolled down. -->
-    <AppTooltip text="To top" placement="left">
-      <button class="cccd-scroll-action" :class="{ disabled: !canScrollTop }" type="button" aria-label="To top" @click="$emit('scroll-top')">
-        <SvgIcon class="cccd-scroll-action-icon" :src="arrowUpIcon" />
-      </button>
-    </AppTooltip>
-    <!-- Jump back to the latest message near the bottom of the list. -->
-    <AppTooltip text="To bottom" placement="left">
-      <button class="cccd-scroll-action" :class="{ disabled: !canScrollBottom }" type="button" aria-label="To bottom" @click="$emit('scroll-bottom')">
+    <AppTooltip :text="t('chat.jumpLatest')" placement="left">
+      <button class="cccd-scroll-action" :class="{ disabled: !canScrollBottom }" type="button" :aria-label="t('chat.jumpLatest')" @click="$emit('scroll-bottom')">
         <SvgIcon class="cccd-scroll-action-icon is-bottom" :src="arrowUpIcon" />
       </button>
     </AppTooltip>
@@ -18,22 +11,22 @@
 
 <script setup lang="ts">
 import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
+import { useI18n } from "vue-i18n";
 import AppTooltip from "@/components/AppTooltip.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 
+const { t } = useI18n();
+
 withDefaults(
   defineProps<{
-    canScrollTop?: boolean;
     canScrollBottom?: boolean;
   }>(),
   {
-    canScrollTop: false,
     canScrollBottom: false,
   },
 );
 
 defineEmits<{
-  "scroll-top": [];
   "scroll-bottom": [];
 }>();
 </script>
@@ -42,10 +35,8 @@ defineEmits<{
 .cccd-scroll-actions {
   position: absolute;
   right: 20px;
-  bottom: calc(var(--chat-bottom-gap) + 14px);
+  bottom: 18px;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
   z-index: 5;
 }
 

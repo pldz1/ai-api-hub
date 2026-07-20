@@ -129,6 +129,9 @@ also hide media indirection: callers work with usable data URLs while persisted
 messages use small `idb:` references. Serialization and blob cleanup do not
 belong in a feature service.
 
+Repositories also convert Store projections into plain cloneable records at
+the persistence boundary. Vue reactive proxies must never reach IndexedDB.
+
 The current browser schema key is `ai-api-hub.workspace.v4`. This project is in
 active development, so old internal schemas are intentionally not migrated.
 
@@ -149,10 +152,44 @@ providers or persistence, and commit directly only for local UI state.
 
 ## Conversation lifecycle
 
+Chat conversations and creation sessions intentionally have different product
+semantics:
+
+- A Chat conversation is one causal history. Its model snapshot is fixed when
+  the conversation is created. Editing a user message replaces the downstream
+  history and regenerates from that point; regenerating an Assistant response
+  also replaces everything downstream from that response.
+- An Image or Video session is a collection of independent Runs. Each new Run
+  may select another model. Reusing an old input fills the composer and creates
+  a new Run while preserving the previous result.
+
 Image and Video share collection lifecycle code for list, create, select and
 delete. Their message schemas, provider execution, polling and persistence
-folding remain separate. Chat keeps its own lifecycle because conversation-bound
-model snapshots and settings make its creation and hydration semantics different.
+folding remain separate. Chat keeps its own lifecycle because its causal history,
+conversation-bound model snapshot and settings require different behavior.
+
+## View ownership
+
+`MainView` owns the workspace sidebar and renders feature routes through one
+nested router view. Each workbench owns one scrolling result viewport and keeps
+its composer in normal document flow beneath it. Floating navigation is limited
+to a contextual “jump to latest” action.
+
+`LeftView` owns sidebar workflows such as create, select, rename, export and
+delete. Its children own presentation only: `SidebarPrimaryNav` renders feature
+navigation, `SidebarHistorySection` renders one normalized history collection,
+and `SidebarSettingsNav` renders settings navigation.
+
+`ImageIndex` and `VideoIndex` own route/session state, composer drafts, model
+selection and request submission. `ImageMessageList` and `VideoMessageList` own
+historical run rendering, message folding and attachment preview. Reusing an old
+input is emitted back to the parent because it changes the current composer
+draft; it does not mutate the historical run.
+
+Chat messages are Vue components. Provider execution and streaming state live
+in services and Store runtime projections; views do not construct message DOM
+nodes or maintain a parallel rendering tree. Per-result `RunDetails` is shared
+by Chat, Image and Video and stays collapsed until requested.
 
 ## Adding support
 

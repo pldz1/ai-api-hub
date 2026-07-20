@@ -11,7 +11,7 @@
         </AppTooltip>
         <button v-else-if="isExpanded" class="brand-logo" type="button" @click="router.push({ name: 'home' })">
           <SvgIcon class="logo-icon" :src="brandIcon" colored />
-          <span class="logo-text">{{ APP_NAME }} · {{ APP_VERSION }}</span>
+          <span class="logo-text">{{ APP_NAME }}</span>
         </button>
 
         <AppTooltip :text="t('chat.sidebarToggle')" placement="right">
@@ -21,316 +21,77 @@
         </AppTooltip>
       </div>
 
-      <!-- Settings Navigation (when on settings route) -->
-      <nav v-if="isSettingsRoute && isExpanded" class="settings-nav-area">
-        <h2 class="settings-title">{{ t("user.app.title") }}</h2>
-        <section v-for="group in settingGroups" :key="group.key" class="settings-nav-group">
-          <h3>{{ group.label }}</h3>
-          <button
-            v-for="item in group.items"
-            :key="item.key"
-            class="settings-tab-btn"
-            :class="{ active: activeSettingsTab === item.key }"
-            type="button"
-            @click="router.push({ name: `settings-${item.key}` })"
-          >
-            <span>{{ item.label }}</span>
-            <small>{{ item.description }}</small>
-          </button>
-        </section>
-      </nav>
+      <SidebarSettingsNav v-if="isSettingsRoute && isExpanded" />
 
-      <!-- Main Navigation (normal routes) -->
       <template v-else>
-        <nav class="nav-group">
-          <AppTooltip :text="isExpanded ? '' : t('chat.newChatConversation')" placement="right">
-            <button class="nav-item" :class="{ 'is-active': isChatDraftRoute }" type="button" @click="onNewChat">
-              <SvgIcon :src="newIcon" class="nav-icon" />
-              <span v-if="isExpanded" class="nav-label">{{ t("chat.newChatConversation") }}</span>
-            </button>
-          </AppTooltip>
-          <AppTooltip :text="isExpanded ? '' : t('chat.newImageCreation')" placement="right">
-            <button class="nav-item" :class="{ 'is-active': isImageDraftRoute }" type="button" @click="onNewImage">
-              <SvgIcon :src="libraryIcon" class="nav-icon" />
-              <span v-if="isExpanded" class="nav-label">{{ t("chat.newImageCreation") }}</span>
-            </button>
-          </AppTooltip>
-          <AppTooltip :text="isExpanded ? '' : t('chat.newVideoCreation')" placement="right">
-            <button class="nav-item" :class="{ 'is-active': isVideoDraftRoute }" type="button" @click="onNewVideo">
-              <SvgIcon :src="videoIcon" class="nav-icon" />
-              <span v-if="isExpanded" class="nav-label">{{ t("chat.newVideoCreation") }}</span>
-            </button>
-          </AppTooltip>
-          <AppTooltip :text="isExpanded ? '' : 'Assets'" placement="right">
-            <button class="nav-item" :class="{ 'is-active': isAssetsRoute }" type="button" @click="router.push({ name: 'assets' })">
-              <SvgIcon :src="assetsIcon" class="nav-icon" />
-              <span v-if="isExpanded" class="nav-label">Assets</span>
-            </button>
-          </AppTooltip>
-          <AppDropdownMenu placement="bottom-start">
-            <template #trigger="{ toggle }">
-              <AppTooltip :text="isExpanded ? '' : t('chat.conversationActions')" placement="right">
-                <button class="nav-item" :class="{ 'is-active': isDeleteMode }" type="button" @click="toggle">
-                  <SvgIcon :src="optionsIcon" class="nav-icon" />
-                  <span v-if="isExpanded" class="nav-label">{{ t("chat.conversationActions") }}</span>
-                </button>
-              </AppTooltip>
-            </template>
-            <template #default="{ close }">
-              <button class="menu-option" type="button" @click="onImportAnyArchiveFromMenu(close)">
-                <SvgIcon class="menu-option-icon" :src="saveIcon" />
-                <span>{{ t("chat.importConversation") }}</span>
-              </button>
-              <button class="menu-option" :class="{ 'is-danger': !isDeleteMode }" type="button" @click="onToggleDeleteModeFromMenu(close)">
-                <SvgIcon class="menu-option-icon" :src="deleteIcon" />
-                <span>{{ isDeleteMode ? t("chat.cancelDeletion") : t("chat.deleteConversations") }}</span>
-              </button>
-            </template>
-          </AppDropdownMenu>
-          <div v-if="isExpanded && isDeleteMode" class="nav-delete-panel is-active">
-            <div v-if="isDeleteMode" class="delete-mode-toolbar">
-              <button type="button" @click="selectAllConversations">{{ t("chat.all") }}</button>
-              <button type="button" @click="clearSelectedConversations">{{ t("chat.clear") }}</button>
-              <button class="is-danger" type="button" :disabled="selectedConversationCount === 0" @click="onDeleteSelectedConversations">
-                {{ t("chat.deleteSelectedConversations", { count: selectedConversationCount }) }}
-              </button>
-            </div>
-          </div>
-        </nav>
+        <SidebarPrimaryNav
+          :expanded="isExpanded"
+          :chat-draft-active="isChatDraftRoute"
+          :image-draft-active="isImageDraftRoute"
+          :video-draft-active="isVideoDraftRoute"
+          :assets-active="isAssetsRoute"
+          :delete-mode="isDeleteMode"
+          :selected-count="selectedConversationCount"
+          @new-chat="onNewChat"
+          @new-image="onNewImage"
+          @new-video="onNewVideo"
+          @open-assets="router.push({ name: 'assets' })"
+          @import-archive="onImportAnyArchive"
+          @toggle-delete="toggleDeleteMode"
+          @select-all="selectAllConversations"
+          @clear-selected="clearSelectedConversations"
+          @delete-selected="onDeleteSelectedConversations"
+        />
 
-        <!-- Recent Chats -->
         <Transition name="sidebar-panel">
           <div v-if="isExpanded" class="sidebar-panels">
-            <div class="sidebar-section recents-section">
-              <button
-                class="section-toggle"
-                :class="{ 'is-collapsed': !isChatSectionOpen }"
-                type="button"
-                :aria-expanded="isChatSectionOpen"
-                @click="isChatSectionOpen = !isChatSectionOpen"
-              >
-                <span class="section-title">{{ t("chat.chatConversations") }}</span>
-                <span class="section-count">{{ chatList.length }}</span>
-                <span class="section-caret"></span>
-              </button>
-              <Transition name="section-list">
-                <div v-if="isChatSectionOpen" class="section-body">
-                  <div v-if="chatList.length === 0" class="empty-tip">{{ t("chat.noChats") }}</div>
-                  <div v-else class="recents-list">
-                    <div v-for="item in chatList" :key="item.cid" class="chat-item-wrapper">
-                      <!-- Inline rename input replaces only the active chat row, keeping the list layout stable. -->
-                      <input
-                        v-if="isShowOptionCid === item.cid && isEditChatName"
-                        ref="editChatNameInputElRef"
-                        v-model="editChatName"
-                        type="text"
-                        class="rename-input"
-                        @blur="changeChatName"
-                        @keydown.enter.prevent="changeChatName"
-                      />
-
-                      <!-- Chat rows keep actions hidden until hover/active state so long titles remain easy to scan. -->
-                      <div
-                        v-else
-                        class="chat-item"
-                        :class="{
-                          'is-active': activeRouteChatId === item.cid,
-                          'is-selected': isDeleteMode && selectedChatIds.includes(item.cid),
-                          'has-runtime-status': hasChatRuntimeStatus(item.cid),
-                        }"
-                      >
-                        <input
-                          v-if="isDeleteMode"
-                          v-model="selectedChatIds"
-                          class="row-select-checkbox"
-                          type="checkbox"
-                          :value="item.cid"
-                          :aria-label="`Select ${item.cname}`"
-                          @click.stop
-                        />
-                        <button class="chat-main-btn" type="button" @click="onSelectChat(item)">
-                          <span class="chat-title-text">{{ item.cname }}</span>
-                        </button>
-                        <span
-                          v-if="hasChatRuntimeStatus(item.cid)"
-                          class="session-status-dot"
-                          :class="getChatRuntimeStatusClass(item.cid)"
-                          :title="getChatRuntimeLabel(item.cid)"
-                          aria-hidden="true"
-                        ></span>
-
-                        <!-- Per-chat actions live in a dropdown; each action confirms before touching persisted chat data. -->
-                        <AppDropdownMenu placement="bottom-end">
-                          <template #trigger="{ toggle }">
-                            <button class="chat-menu-btn" :aria-label="t('chat.moreActions')" @click.stop="toggle">
-                              <span class="dot"></span>
-                              <span class="dot"></span>
-                              <span class="dot"></span>
-                            </button>
-                          </template>
-                          <template #default="{ close }">
-                            <button class="menu-option" type="button" @click="onExportChatArchive(item, close)">
-                              <SvgIcon class="menu-option-icon" :src="saveIcon" />
-                              <span>{{ t("chat.exportConversation") }}</span>
-                            </button>
-                            <button class="menu-option" type="button" @click="onEditChatName(item, close)">
-                              <SvgIcon class="menu-option-icon" :src="editIcon" />
-                              <span>{{ t("chat.renameChat") }}</span>
-                            </button>
-                            <button class="menu-option is-danger" type="button" @click="onDeleteChat(item, close)">
-                              <SvgIcon class="menu-option-icon" :src="deleteIcon" />
-                              <span>{{ t("chat.deleteChat") }}</span>
-                            </button>
-                          </template>
-                        </AppDropdownMenu>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Transition>
-            </div>
-
-            <div class="sidebar-section image-recents-section">
-              <button
-                class="section-toggle"
-                :class="{ 'is-collapsed': !isImageSectionOpen }"
-                type="button"
-                :aria-expanded="isImageSectionOpen"
-                @click="isImageSectionOpen = !isImageSectionOpen"
-              >
-                <span class="section-title">{{ t("chat.imageConversations") }}</span>
-                <span class="section-count">{{ imageConversationList.length }}</span>
-                <span class="section-caret"></span>
-              </button>
-              <Transition name="section-list">
-                <div v-if="isImageSectionOpen" class="section-body">
-                  <div v-if="imageConversationList.length === 0" class="empty-tip">{{ t("chat.noImageConversations") }}</div>
-                  <div v-else class="recents-list">
-                    <div v-for="item in imageConversationList" :key="item.iid" class="chat-item-wrapper">
-                      <div
-                        class="chat-item"
-                        :class="{
-                          'is-active': activeRouteImageId === item.iid,
-                          'is-selected': isDeleteMode && selectedImageConversationIds.includes(item.iid),
-                          'has-runtime-status': hasImageRuntimeStatus(item.iid),
-                        }"
-                      >
-                        <input
-                          v-if="isDeleteMode"
-                          v-model="selectedImageConversationIds"
-                          class="row-select-checkbox"
-                          type="checkbox"
-                          :value="item.iid"
-                          :aria-label="`Select ${item.iname}`"
-                          @click.stop
-                        />
-                        <button class="chat-main-btn" type="button" @click="onSelectImageConversation(item)">
-                          <span class="chat-title-text">{{ item.iname }}</span>
-                        </button>
-                        <span
-                          v-if="hasImageRuntimeStatus(item.iid)"
-                          class="session-status-dot"
-                          :class="getImageRuntimeStatusClass(item.iid)"
-                          :title="getImageRuntimeLabel(item.iid)"
-                          aria-hidden="true"
-                        ></span>
-
-                        <AppDropdownMenu placement="bottom-end">
-                          <template #trigger="{ toggle }">
-                            <button class="chat-menu-btn" :aria-label="t('chat.moreImageActions')" @click.stop="toggle">
-                              <span class="dot"></span>
-                              <span class="dot"></span>
-                              <span class="dot"></span>
-                            </button>
-                          </template>
-                          <template #default="{ close }">
-                            <button class="menu-option" type="button" @click="onExportImageArchive(item, close)">
-                              <SvgIcon class="menu-option-icon" :src="saveIcon" />
-                              <span>{{ t("chat.exportImageConversation") }}</span>
-                            </button>
-                            <button class="menu-option is-danger" type="button" @click="onDeleteImageConversation(item, close)">
-                              <SvgIcon class="menu-option-icon" :src="deleteIcon" />
-                              <span>{{ t("chat.deleteImageConversation") }}</span>
-                            </button>
-                          </template>
-                        </AppDropdownMenu>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Transition>
-            </div>
-
-            <div class="sidebar-section video-recents-section">
-              <button
-                class="section-toggle"
-                :class="{ 'is-collapsed': !isVideoSectionOpen }"
-                type="button"
-                :aria-expanded="isVideoSectionOpen"
-                @click="isVideoSectionOpen = !isVideoSectionOpen"
-              >
-                <span class="section-title">{{ t("chat.videoConversations") }}</span>
-                <span class="section-count">{{ videoConversationList.length }}</span>
-                <span class="section-caret"></span>
-              </button>
-              <Transition name="section-list">
-                <div v-if="isVideoSectionOpen" class="section-body">
-                  <div v-if="videoConversationList.length === 0" class="empty-tip">{{ t("chat.noVideoConversations") }}</div>
-                  <div v-else class="recents-list">
-                    <div v-for="item in videoConversationList" :key="item.vid" class="chat-item-wrapper">
-                      <div
-                        class="chat-item"
-                        :class="{
-                          'is-active': activeRouteVideoId === item.vid,
-                          'is-selected': isDeleteMode && selectedVideoConversationIds.includes(item.vid),
-                          'has-runtime-status': hasVideoRuntimeStatus(item.vid),
-                        }"
-                      >
-                        <input
-                          v-if="isDeleteMode"
-                          v-model="selectedVideoConversationIds"
-                          class="row-select-checkbox"
-                          type="checkbox"
-                          :value="item.vid"
-                          :aria-label="`Select ${item.vname}`"
-                          @click.stop
-                        />
-                        <button class="chat-main-btn" type="button" @click="onSelectVideoConversation(item)">
-                          <span class="chat-title-text">{{ item.vname }}</span>
-                        </button>
-                        <span
-                          v-if="hasVideoRuntimeStatus(item.vid)"
-                          class="session-status-dot"
-                          :class="getVideoRuntimeStatusClass(item.vid)"
-                          :title="getVideoRuntimeLabel(item.vid)"
-                          aria-hidden="true"
-                        ></span>
-
-                        <AppDropdownMenu placement="bottom-end">
-                          <template #trigger="{ toggle }">
-                            <button class="chat-menu-btn" :aria-label="t('chat.moreActions')" @click.stop="toggle">
-                              <span class="dot"></span>
-                              <span class="dot"></span>
-                              <span class="dot"></span>
-                            </button>
-                          </template>
-                          <template #default="{ close }">
-                            <button class="menu-option" type="button" @click="onExportVideoArchive(item, close)">
-                              <SvgIcon class="menu-option-icon" :src="saveIcon" />
-                              <span>{{ t("chat.exportVideoConversation") }}</span>
-                            </button>
-                            <button class="menu-option is-danger" type="button" @click="onDeleteVideoConversation(item, close)">
-                              <SvgIcon class="menu-option-icon" :src="deleteIcon" />
-                              <span>{{ t("chat.deleteVideoConversation") }}</span>
-                            </button>
-                          </template>
-                        </AppDropdownMenu>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Transition>
-            </div>
+            <SidebarHistorySection
+              v-model:open="isChatSectionOpen"
+              v-model:editing-value="editChatName"
+              :title="t('chat.chatConversations')"
+              :empty-text="t('chat.noChats')"
+              :items="chatHistoryItems"
+              :delete-mode="isDeleteMode"
+              :menu-label="t('chat.moreActions')"
+              :export-label="t('chat.exportConversation')"
+              :rename-label="t('chat.renameChat')"
+              :delete-label="t('chat.deleteChat')"
+              :editing-id="isEditChatName ? isShowOptionCid : ''"
+              @select="onSelectChatById"
+              @toggle-selected="onToggleChatSelected"
+              @export="onExportChatById"
+              @rename="onEditChatNameById"
+              @delete="onDeleteChatById"
+              @commit-rename="changeChatName"
+            />
+            <SidebarHistorySection
+              v-model:open="isImageSectionOpen"
+              :title="t('chat.imageConversations')"
+              :empty-text="t('chat.noImageConversations')"
+              :items="imageHistoryItems"
+              :delete-mode="isDeleteMode"
+              :menu-label="t('chat.moreImageActions')"
+              :export-label="t('chat.exportImageConversation')"
+              :delete-label="t('chat.deleteImageConversation')"
+              @select="onSelectImageById"
+              @toggle-selected="onToggleImageSelected"
+              @export="onExportImageById"
+              @delete="onDeleteImageById"
+            />
+            <SidebarHistorySection
+              v-model:open="isVideoSectionOpen"
+              :title="t('chat.videoConversations')"
+              :empty-text="t('chat.noVideoConversations')"
+              :items="videoHistoryItems"
+              :delete-mode="isDeleteMode"
+              :menu-label="t('chat.moreActions')"
+              :export-label="t('chat.exportVideoConversation')"
+              :delete-label="t('chat.deleteVideoConversation')"
+              @select="onSelectVideoById"
+              @toggle-selected="onToggleVideoSelected"
+              @export="onExportVideoById"
+              @delete="onDeleteVideoById"
+            />
           </div>
         </Transition>
       </template>
@@ -369,7 +130,7 @@
       </div>
 
       <!--
-        ⚠️ Keep this dialog teleported to body.
+        Keep this dialog teleported to body.
         Native dialog returns to normal DOM flow for a frame on close; if it stays inside
         the sidebar, the modal can visibly jump left before disappearing.
       -->
@@ -410,56 +171,24 @@ import {
   importVideoConversationArchive,
 } from "@/services/creation";
 import { deleteVideoConversation, getVideoConversationList } from "@/services/creation";
-import { nextTick, ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { setAppLocale } from "@/i18n";
 import { dsAlert } from "@/utils";
 import { applyTheme, getStoredTheme } from "@/utils/theme";
 import brandIcon from "@/assets/svg/app18.svg";
-import newIcon from "@/assets/svg/new24.svg";
 import settingIcon from "@/assets/svg/setting24.svg";
-import libraryIcon from "@/assets/svg/navImage24.svg";
-import assetsIcon from "@/assets/svg/assets32.svg";
-import videoIcon from "@/assets/svg/video24.svg";
 import collapseIcon from "@/assets/svg/collapse24.svg";
 import expandIcon from "@/assets/svg/expand24.svg";
-import editIcon from "@/assets/svg/edit24.svg";
-import deleteIcon from "@/assets/svg/delete16.svg";
-import saveIcon from "@/assets/svg/save18.svg";
-import optionsIcon from "@/assets/svg/options24.svg";
 import backIcon from "@/assets/svg/revert32.svg";
 import AppDropdownMenu from "@/components/AppDropdownMenu.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
-import { APP_NAME, APP_VERSION } from "@/constants";
-type SettingTabKey_L = "chat-templates" | "chat-models" | "image-models" | "video-models" | "app";
-
-const settingGroups = computed(() => [
-  {
-    key: "chat",
-    label: t("user.groups.chat"),
-    items: [
-      { key: "chat-templates" as SettingTabKey_L, label: t("user.tabs.templates.label"), description: t("user.tabs.templates.description") },
-      { key: "chat-models" as SettingTabKey_L, label: t("user.tabs.chatModels.label"), description: t("user.tabs.chatModels.description") },
-    ],
-  },
-  {
-    key: "image",
-    label: t("user.groups.image"),
-    items: [{ key: "image-models" as SettingTabKey_L, label: t("user.tabs.imageModels.label"), description: t("user.tabs.imageModels.description") }],
-  },
-  {
-    key: "video",
-    label: t("user.groups.video"),
-    items: [{ key: "video-models" as SettingTabKey_L, label: t("user.tabs.videoModels.label"), description: t("user.tabs.videoModels.description") }],
-  },
-  {
-    key: "app",
-    label: t("user.groups.app"),
-    items: [{ key: "app" as SettingTabKey_L, label: t("user.tabs.app.label"), description: t("user.tabs.app.description") }],
-  },
-]);
+import { APP_NAME } from "@/constants";
+import SidebarHistorySection, { type SidebarHistoryItem } from "@/views/layout/SidebarHistorySection.vue";
+import SidebarPrimaryNav from "@/views/layout/SidebarPrimaryNav.vue";
+import SidebarSettingsNav from "@/views/layout/SidebarSettingsNav.vue";
 
 const props = defineProps({
   expanded: { type: Boolean, default: true },
@@ -484,15 +213,6 @@ const isVideoDraftRoute = computed(() => route.name === "video" && !activeRouteV
 const isAssetsRoute = computed(() => route.name === "assets");
 const isSettingsRoute = computed(() => typeof route.name === "string" && route.name.startsWith("settings"));
 
-const activeSettingsTab = computed<SettingTabKey_L>(() => {
-  const name = route.name?.toString() || "";
-  if (name === "settings-chat-templates") return "chat-templates";
-  if (name === "settings-chat-models") return "chat-models";
-  if (name === "settings-image-models") return "image-models";
-  if (name === "settings-video-models") return "video-models";
-  if (name === "settings-app") return "app";
-  return "chat-models";
-});
 const isShowOptionCid = ref("");
 const isEditChatName = ref(false);
 const isChatSectionOpen = ref(true);
@@ -502,7 +222,6 @@ const isDeleteMode = ref(false);
 const currentTheme = ref(getStoredTheme());
 const editChatName = ref("");
 const originalChatName = ref("");
-const editChatNameInputElRef = ref<HTMLInputElement[] | null>(null);
 const selectedChatIds = ref<string[]>([]);
 const selectedImageConversationIds = ref<string[]>([]);
 const selectedVideoConversationIds = ref<string[]>([]);
@@ -601,6 +320,58 @@ const getCreationRuntimeLabel = (runtime: any, run: any) => {
 };
 const getImageRuntimeLabel = (iid: string) => getCreationRuntimeLabel(getImageRuntime(iid), getImageRun(iid));
 const getVideoRuntimeLabel = (vid: string) => getCreationRuntimeLabel(getVideoRuntime(vid), getVideoRun(vid));
+
+const chatHistoryItems = computed<SidebarHistoryItem[]>(() =>
+  chatList.value.map((item) => ({
+    id: item.cid,
+    title: item.cname,
+    active: activeRouteChatId.value === item.cid,
+    selected: selectedChatIds.value.includes(item.cid),
+    statusVisible: hasChatRuntimeStatus(item.cid),
+    statusClass: getChatRuntimeStatusClass(item.cid),
+    statusLabel: getChatRuntimeLabel(item.cid),
+  })),
+);
+const imageHistoryItems = computed<SidebarHistoryItem[]>(() =>
+  imageConversationList.value.map((item) => ({
+    id: item.iid,
+    title: item.iname,
+    active: activeRouteImageId.value === item.iid,
+    selected: selectedImageConversationIds.value.includes(item.iid),
+    statusVisible: hasImageRuntimeStatus(item.iid),
+    statusClass: getImageRuntimeStatusClass(item.iid),
+    statusLabel: getImageRuntimeLabel(item.iid),
+  })),
+);
+const videoHistoryItems = computed<SidebarHistoryItem[]>(() =>
+  videoConversationList.value.map((item) => ({
+    id: item.vid,
+    title: item.vname,
+    active: activeRouteVideoId.value === item.vid,
+    selected: selectedVideoConversationIds.value.includes(item.vid),
+    statusVisible: hasVideoRuntimeStatus(item.vid),
+    statusClass: getVideoRuntimeStatusClass(item.vid),
+    statusLabel: getVideoRuntimeLabel(item.vid),
+  })),
+);
+
+function setSelectedId(target: { value: string[] }, id: string, checked: boolean) {
+  target.value = checked ? [...new Set([...target.value, id])] : target.value.filter((item) => item !== id);
+}
+const onToggleChatSelected = (id: string, checked: boolean) => setSelectedId(selectedChatIds, id, checked);
+const onToggleImageSelected = (id: string, checked: boolean) => setSelectedId(selectedImageConversationIds, id, checked);
+const onToggleVideoSelected = (id: string, checked: boolean) => setSelectedId(selectedVideoConversationIds, id, checked);
+
+const onSelectChatById = (id: string) => onSelectChat({ cid: id });
+const onSelectImageById = (id: string) => onSelectImageConversation({ iid: id });
+const onSelectVideoById = (id: string) => onSelectVideoConversation({ vid: id });
+const onExportChatById = (id: string) => onExportChatArchive(chatList.value.find((item) => item.cid === id), () => {});
+const onExportImageById = (id: string) => onExportImageArchive(imageConversationList.value.find((item) => item.iid === id), () => {});
+const onExportVideoById = (id: string) => onExportVideoArchive(videoConversationList.value.find((item) => item.vid === id), () => {});
+const onEditChatNameById = (id: string) => onEditChatName(chatList.value.find((item) => item.cid === id), () => {});
+const onDeleteChatById = (id: string) => onDeleteChat(chatList.value.find((item) => item.cid === id), () => {});
+const onDeleteImageById = (id: string) => onDeleteImageConversation(imageConversationList.value.find((item) => item.iid === id), () => {});
+const onDeleteVideoById = (id: string) => onDeleteVideoConversation(videoConversationList.value.find((item) => item.vid === id), () => {});
 
 watch(chatList, (items) => {
   const ids = new Set(items.map((item) => item.cid));
@@ -921,11 +692,6 @@ const onEditChatName = async (item: any, closeMenu: () => void) => {
   isEditChatName.value = true;
   originalChatName.value = item?.cname || "";
   editChatName.value = originalChatName.value;
-  await nextTick();
-  if (editChatNameInputElRef.value?.[0]) {
-    editChatNameInputElRef.value[0].focus();
-    editChatNameInputElRef.value[0].select();
-  }
 };
 
 // Important: Enter submits and then the input can blur, so this path may be invoked
@@ -995,11 +761,6 @@ $radius-md: 12px;
       justify-content: center;
     }
 
-    .nav-group {
-      align-items: center;
-    }
-
-    .nav-item,
     .settings-btn {
       width: 36px;
       min-width: 36px;
@@ -1130,122 +891,6 @@ $radius-md: 12px;
   }
 }
 
-.nav-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-
-  :deep(.app-tooltip-host),
-  :deep(.app-tooltip-trigger) {
-    width: 100%;
-  }
-}
-
-.nav-item {
-  height: 36px;
-  padding: 0 12px;
-  border: none;
-  border-radius: $radius-md;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  color: oklch(var(--bc) / 0.82);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  width: 100%;
-  box-sizing: border-box;
-  transition:
-    background-color 0.16s ease,
-    color 0.16s ease,
-    transform 0.16s ease;
-
-  .nav-icon {
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-  }
-
-  .nav-label {
-    margin-left: 12px;
-    white-space: nowrap;
-  }
-
-  &:hover {
-    background: oklch(var(--bc) / 0.05);
-    color: oklch(var(--bc));
-  }
-
-  &:active {
-    transform: scale(0.98);
-  }
-
-  &.is-active {
-    background: oklch(var(--p) / 0.12);
-    color: oklch(var(--p));
-    font-weight: 600;
-  }
-}
-
-.nav-delete-panel {
-  margin-top: 2px;
-}
-
-.delete-mode-toolbar {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1.4fr;
-  gap: 6px;
-  margin: 6px 0 4px;
-  padding: 6px;
-  border-radius: 12px;
-  background: oklch(var(--bc) / 0.04);
-
-  button {
-    min-height: 30px;
-    padding: 0 8px;
-    border: none;
-    border-radius: 8px;
-    background: oklch(var(--b1));
-    color: oklch(var(--bc) / 0.7);
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-
-    &:hover:not(:disabled) {
-      background: oklch(var(--b2));
-      color: oklch(var(--bc));
-    }
-
-    &:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
-    &.is-danger {
-      background: oklch(var(--er));
-      color: oklch(var(--nc));
-
-      &:hover:not(:disabled) {
-        background: oklch(var(--er) / 0.9);
-        color: oklch(var(--nc));
-      }
-    }
-  }
-}
-
-.sidebar-container:not(.is-expanded) .nav-group :deep(.app-tooltip-host),
-.sidebar-container:not(.is-expanded) .nav-group :deep(.app-tooltip-trigger) {
-  width: 36px;
-}
-
-.sidebar-section {
-  margin-top: 16px;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  flex: 0 0 auto;
-}
-
 .sidebar-panels {
   display: flex;
   min-height: 0;
@@ -1267,304 +912,15 @@ $radius-md: 12px;
   }
 }
 
-.section-toggle {
-  width: 100%;
-  height: 32px;
-  padding: 0 8px 0 12px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: oklch(var(--bc) / 0.45);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  text-align: left;
-  transition:
-    background-color 0.16s ease,
-    color 0.16s ease;
-
-  &:hover {
-    background: oklch(var(--bc) / 0.04);
-    color: oklch(var(--bc) / 0.62);
-  }
-
-  .section-title {
-    flex: 1;
-    min-width: 0;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-}
-
-.section-count {
-  min-width: 20px;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: oklch(var(--b2));
-  color: oklch(var(--bc) / 0.62);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.section-caret {
-  width: 7px;
-  height: 7px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: rotate(45deg) translateY(-1px);
-  transition: transform 0.16s ease;
-  flex-shrink: 0;
-}
-
-.section-toggle.is-collapsed .section-caret {
-  transform: rotate(-45deg);
-}
-
-.section-body {
-  margin-top: 4px;
-}
-
 .sidebar-panel-enter-active,
 .sidebar-panel-leave-active {
-  transition:
-    opacity 0.16s ease,
-    transform 0.16s ease;
+  transition: opacity 0.16s ease, transform 0.16s ease;
 }
 
 .sidebar-panel-enter-from,
 .sidebar-panel-leave-to {
   opacity: 0;
   transform: translateX(-8px);
-}
-
-.recents-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow: visible;
-}
-
-.section-list-enter-active,
-.section-list-leave-active {
-  overflow: hidden;
-  transition:
-    opacity 0.14s ease,
-    max-height 0.18s ease;
-}
-
-.section-list-enter-from,
-.section-list-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
-
-.section-list-enter-to,
-.section-list-leave-from {
-  max-height: 720px;
-  opacity: 1;
-}
-
-.empty-tip {
-  padding: 12px;
-  color: oklch(var(--bc) / 0.45);
-  font-size: 12px;
-}
-
-.chat-item-wrapper {
-  width: 100%;
-}
-
-.chat-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  height: 36px;
-  border-radius: $radius-md;
-  padding: 0 4px;
-  color: oklch(var(--bc) / 0.82);
-  transition:
-    background-color 0.16s ease,
-    color 0.16s ease;
-
-  &:hover,
-  &.is-active,
-  &.is-selected {
-    background: oklch(var(--p) / 0.12);
-    color: oklch(var(--bc));
-
-    .chat-menu-btn {
-      opacity: 1;
-    }
-  }
-
-  &.is-active .chat-title-text {
-    font-weight: 600;
-    color: oklch(var(--p));
-  }
-}
-
-.row-select-checkbox {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 auto;
-  margin: 0 0 0 4px;
-  accent-color: oklch(var(--p));
-  cursor: pointer;
-}
-
-.chat-main-btn {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  padding: 0 8px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-
-.chat-title-text {
-  flex: 1;
-  font-size: 12px;
-  text-align: left;
-  color: oklch(var(--bc) / 0.82);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-left: 12px;
-}
-
-.chat-menu-btn {
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2.5px;
-  cursor: pointer;
-  opacity: 0;
-  flex-shrink: 0;
-
-  &:hover {
-    background: rgba(0, 0, 0, 0.06);
-  }
-
-  .dot {
-    width: 3.5px;
-    height: 3.5px;
-    border-radius: 50%;
-    background: oklch(var(--bc) / 0.62);
-  }
-}
-
-.session-status-dot {
-  width: 8px;
-  height: 8px;
-  flex: 0 0 auto;
-  margin-right: 4px;
-  border-radius: 999px;
-  background: oklch(var(--p));
-  box-shadow: 0 0 0 2px oklch(var(--b1));
-
-  &.is-running {
-    background: oklch(var(--su));
-    animation: sessionStatusPulse 1.2s ease-in-out infinite;
-  }
-
-  &.is-error {
-    background: oklch(var(--er));
-  }
-
-  &.is-stopped {
-    background: oklch(var(--bc) / 0.42);
-  }
-}
-
-@keyframes sessionStatusPulse {
-  0%,
-  100% {
-    transform: scale(0.9);
-    opacity: 0.72;
-  }
-
-  50% {
-    transform: scale(1.18);
-    opacity: 1;
-  }
-}
-
-.menu-option {
-  width: 100%;
-  min-width: 150px;
-  height: 32px;
-  padding: 0 10px;
-  border: none;
-  border-radius: 9px;
-  background: transparent;
-  color: oklch(var(--bc) / 0.82);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    background-color 0.16s ease,
-    color 0.16s ease;
-
-  &:hover,
-  &:focus-visible {
-    background: #f3f4f6;
-    color: oklch(var(--bc));
-    outline: none;
-
-    .menu-option-icon {
-      color: oklch(var(--bc));
-    }
-  }
-
-  &.is-danger {
-    color: #dc2626;
-
-    .menu-option-icon {
-      color: #ef4444;
-    }
-
-    &:hover,
-    &:focus-visible {
-      background: oklch(var(--er) / 0.12);
-      color: #b91c1c;
-
-      .menu-option-icon {
-        color: #dc2626;
-      }
-    }
-  }
-}
-
-.menu-option-icon {
-  width: 16px;
-  height: 16px;
-  color: oklch(var(--bc) / 0.62);
-  flex-shrink: 0;
-  transition: color 0.16s ease;
 }
 
 .sidebar-action-confirm {
@@ -1598,24 +954,6 @@ $radius-md: 12px;
 
   .sidebar-confirm-actions {
     gap: 8px;
-  }
-}
-
-.rename-input {
-  width: calc(100% - 8px);
-  height: 32px;
-  margin: 0 4px;
-  padding: 0 10px;
-  border: 1px solid #e4e4e7;
-  border-radius: 8px;
-  background: oklch(var(--b1));
-  font-size: 12px;
-  outline: none;
-  box-sizing: border-box;
-
-  &:focus {
-    border-color: oklch(var(--p));
-    box-shadow: 0 0 0 2px oklch(var(--p) / 0.1);
   }
 }
 
@@ -1809,90 +1147,6 @@ $radius-md: 12px;
   }
 }
 
-.settings-nav-area {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  padding-right: 2px;
-  display: flex;
-  flex-direction: column;
-
-  &::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: oklch(var(--bc) / 0.12);
-    border-radius: 4px;
-  }
-}
-
-.settings-title {
-  margin: 0 4px 18px;
-  color: oklch(var(--bc));
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.settings-nav-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  & + & {
-    margin-top: 18px;
-  }
-
-  h3 {
-    margin: 0 4px;
-    color: oklch(var(--bc) / 0.45);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-}
-
-.settings-tab-btn {
-  border: 1px solid oklch(var(--bc) / 0.06);
-  border-radius: 16px;
-  padding: 12px 14px;
-  text-align: left;
-  background: oklch(var(--b1) / 0.84);
-  box-shadow: 0 8px 24px oklch(var(--bc) / 0.04);
-  cursor: pointer;
-  transition:
-    border-color 0.16s ease,
-    background-color 0.16s ease;
-
-  span,
-  small {
-    display: block;
-  }
-
-  span {
-    font-size: 13px;
-    font-weight: 600;
-    color: oklch(var(--bc));
-  }
-
-  small {
-    margin-top: 4px;
-    font-size: 10px;
-    line-height: 1.4;
-    color: oklch(var(--bc) / 0.68);
-  }
-
-  &:hover,
-  &.active {
-    border-color: oklch(var(--p) / 0.14);
-    background: oklch(var(--p) / 0.12);
-  }
-}
-
 /* Collapsed sidebar: back button compact */
 .sidebar-container:not(.is-expanded) {
   .back-btn {
@@ -1903,13 +1157,9 @@ $radius-md: 12px;
     justify-content: center;
   }
 
-  .settings-title,
-  .settings-nav-area {
-    display: none;
-  }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .sidebar-container {
     position: fixed;
     left: 0;

@@ -22,7 +22,6 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { useAppStore } from "@/store";
-import type { ChatPromptMessage } from "@/types";
 import { addChat } from "@/services";
 import { append4Random, dsAlert } from "@/utils";
 import { chatInsTemplateList } from "@/constants";
@@ -32,10 +31,6 @@ type ChatInstructionTemplate = {
   name: string;
   value: string;
 };
-
-const emit = defineEmits<{
-  "on-update": [messages: ChatPromptMessage[]];
-}>();
 
 const store = useAppStore();
 const router = useRouter();
@@ -63,10 +58,6 @@ const onSelectInst = async (id: string) => {
     await router.replace({ name: "chat", params: { cid: store.state.curChatId } });
   }
 
-  emit("on-update", [
-    { role: "user", content: [{ type: "text", text: t("chat.repeatInstruction") }] },
-    { role: "assistant", content: [{ type: "text", text: instObj.value }] },
-  ]);
 };
 </script>
 

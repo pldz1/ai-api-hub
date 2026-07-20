@@ -342,8 +342,7 @@
         padding: 3px 5px 3px 0;
         cursor: pointer;
         list-style: none;
-        transition:
-          color 0.15s ease;
+        transition: color 0.15s ease;
 
         &::-webkit-details-marker {
           display: none;
@@ -372,10 +371,12 @@
       .cmba-run-label {
         display: inline-flex;
         align-items: center;
+        flex: 0 0 auto;
         gap: 6px;
         color: oklch(var(--bc) / 0.66);
         font-size: 12px;
         font-weight: 650;
+        white-space: nowrap;
 
         &::after {
           content: "";
@@ -529,6 +530,7 @@
       color: oklch(var(--er));
       overflow-wrap: anywhere;
     }
+
   }
 
   .cmba-reasoning-content {
