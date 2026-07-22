@@ -16,7 +16,7 @@
       />
     </div>
 
-    <div class="image-composer-wrap">
+    <ComposerDock>
       <CreationComposer
         ref="composerRef"
         v-model="prompt"
@@ -46,7 +46,9 @@
                   {{ hasEditedMask ? t("image.maskEdited") : t("image.maskLabel") }}
                 </span>
               </button>
-              <button class="image-input-remove" type="button" :aria-label="t('image.removeImage')" @click.stop="removeAttachment(attachment.id)">&times;</button>
+              <button class="image-input-remove" type="button" :aria-label="t('image.removeImage')" @click.stop="removeAttachment(attachment.id)">
+                &times;
+              </button>
             </div>
           </div>
         </template>
@@ -66,7 +68,7 @@
         </template>
       </CreationComposer>
       <input ref="fileInputRef" class="image-file-input" type="file" accept="image/*" multiple @change="onFileChange" />
-    </div>
+    </ComposerDock>
     <ImageEditDialog ref="imageEditDialogRef" @apply="applyBrushEdit" @close="focusPromptInput" />
     <ImageModal />
     <ImageSettings ref="imageSettingsRef" :model="selectedModel" :settings="imageSettings" @close="onImageSettingsClose" />
@@ -79,6 +81,7 @@ import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useAppStore } from "@/store";
 import AppTooltip from "@/components/AppTooltip.vue";
+import ComposerDock from "@/components/ComposerDock.vue";
 import CreationComposer from "@/components/CreationComposer.vue";
 import ImageModal from "@/components/ImageModal.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
@@ -434,6 +437,7 @@ onBeforeUnmount(() => {
   --image-top-gap: 28px;
   width: 100%;
   height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -504,31 +508,19 @@ onBeforeUnmount(() => {
   }
 
   h1 {
-    margin: 18px 0 8px;
-    font-size: 32px;
-    font-weight: 700;
+    margin: 0;
+    font-size: clamp(36px, 4vw, 48px);
+    font-weight: 400;
+    letter-spacing: -0.04em;
   }
 
   p {
     width: min(520px, 100%);
-    margin: 0;
+    margin: 10px 0 0;
+    color: oklch(var(--bc) / 0.68);
+    font-size: 16px;
     line-height: 1.7;
   }
-}
-
-.image-composer-wrap {
-  position: relative;
-  flex: 0 0 auto;
-  display: flex;
-  justify-content: center;
-  padding: 10px max(18px, calc((100% - var(--image-page-max-width)) / 2)) max(14px, env(safe-area-inset-bottom));
-  border-top: 1px solid oklch(var(--bc) / 0.06);
-  background: oklch(var(--b1) / 0.94);
-  backdrop-filter: blur(14px);
-}
-
-.image-composer-wrap::before {
-  display: none;
 }
 
 .image-input-preview-row {
@@ -595,8 +587,8 @@ onBeforeUnmount(() => {
 }
 
 .image-icon-button {
-  width: 38px;
-  height: 38px;
+  width: var(--creation-composer-control-size, 38px);
+  height: var(--creation-composer-control-size, 38px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -636,26 +628,6 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 720px) {
-  .image-message-scroll {
-    padding-top: 22px;
-    padding-right: 14px;
-    padding-bottom: 14px;
-    padding-left: 14px;
-  }
-
-
-  .image-composer {
-    width: 100%;
-    border-radius: 24px;
-    padding: 12px 14px;
-  }
-
-  .image-input-preview-row {
-    padding-left: 0;
-  }
-}
-
 @media (max-width: 640px) {
   .image-mode-pill {
     height: 26px;
@@ -671,15 +643,6 @@ onBeforeUnmount(() => {
   .image-message-scroll {
     padding-top: var(--image-top-gap);
     padding-bottom: 12px;
-  }
-
-
-  .image-composer-wrap {
-    padding: 8px 8px max(10px, env(safe-area-inset-bottom));
-  }
-
-  .image-composer {
-    max-height: none;
   }
 }
 </style>

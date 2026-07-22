@@ -1,6 +1,7 @@
 <template>
   <div
     ref="rootRef"
+    v-bind="$attrs"
     class="app-select"
     :class="{
       'app-select-open': open,
@@ -32,6 +33,7 @@
       class="input app-select-control app-select-button"
       :class="{ 'input-bordered': !borderless }"
       :aria-expanded="open"
+      :title="String(selectedLabel || placeholder)"
       :disabled="disabled"
       @click="toggleMenu"
       @keydown.down.prevent="highlightNextOption"
@@ -80,6 +82,8 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+
+defineOptions({ inheritAttrs: false });
 
 export type AppSelectOption = {
   label: string;

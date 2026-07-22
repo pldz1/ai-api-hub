@@ -91,14 +91,14 @@ const onSelectInst = async (id: string) => {
   }
 
   &::before {
-    width: min(520px, 86vw);
+    width: min(560px, 88vw);
     aspect-ratio: 1;
     background: radial-gradient(circle, oklch(var(--p) / 0.18) 0%, oklch(var(--p) / 0.08) 34%, oklch(var(--p) / 0) 68%);
     filter: blur(8px);
   }
 
   &::after {
-    width: min(320px, 62vw);
+    width: min(340px, 64vw);
     aspect-ratio: 1;
     background: radial-gradient(circle, oklch(var(--p) / 0.14) 0%, oklch(var(--p) / 0.05) 42%, oklch(var(--p) / 0) 72%);
   }
@@ -106,7 +106,7 @@ const onSelectInst = async (id: string) => {
 
 .ctdc-title {
   margin: 0;
-  font-size: clamp(42px, 5vw, 60px);
+  font-size: clamp(36px, 4vw, 48px);
   font-weight: 400;
   letter-spacing: -0.04em;
   color: oklch(var(--bc));
@@ -148,13 +148,6 @@ const onSelectInst = async (id: string) => {
     padding: 18px 0;
   }
 
-  .ctdc-title {
-    font-size: 38px;
-  }
-
-  .ctdc-subtitle {
-    font-size: 14px;
-  }
 }
 
 @media (max-width: 640px) {
@@ -163,13 +156,7 @@ const onSelectInst = async (id: string) => {
     padding: 12px 0;
   }
 
-  .ctdc-title {
-    font-size: clamp(30px, 9vw, 36px);
-    letter-spacing: 0;
-  }
-
   .ctdc-subtitle {
-    max-width: 280px;
     margin-top: 8px;
     line-height: 1.45;
   }

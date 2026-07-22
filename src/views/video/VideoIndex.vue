@@ -16,7 +16,7 @@
       />
     </div>
 
-    <div class="video-composer-wrap">
+    <ComposerDock>
       <CreationComposer
         ref="composerRef"
         v-model="prompt"
@@ -79,7 +79,7 @@
       <input ref="firstFrameInputRef" class="video-file-input" type="file" accept="image/*" @change="onFirstFrameChange" />
       <input ref="lastFrameInputRef" class="video-file-input" type="file" accept="image/*" @change="onLastFrameChange" />
       <input ref="audioInputRef" class="video-file-input" type="file" accept="audio/*" @change="onAudioFileChange" />
-    </div>
+    </ComposerDock>
     <ImageModal />
     <VideoSettings ref="videoSettingsRef" :model="selectedModel" :settings="videoSettings" @close="onVideoSettingsClose" />
   </section>
@@ -90,6 +90,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useAppStore } from "@/store";
+import ComposerDock from "@/components/ComposerDock.vue";
 import CreationComposer from "@/components/CreationComposer.vue";
 import ImageModal from "@/components/ImageModal.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
@@ -514,6 +515,7 @@ onBeforeUnmount(() => {
   --video-top-gap: 28px;
   width: 100%;
   height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -584,29 +586,17 @@ onBeforeUnmount(() => {
   }
 
   h1 {
-    margin: 18px 0 8px;
-    font-size: 32px;
-    font-weight: 700;
+    margin: 0;
+    font-size: clamp(36px, 4vw, 48px);
+    font-weight: 400;
+    letter-spacing: -0.04em;
   }
   p {
     width: min(520px, 100%);
-    margin: 0;
+    margin: 10px 0 0;
+    color: oklch(var(--bc) / 0.68);
+    font-size: 16px;
     line-height: 1.7;
-  }
-}
-
-.video-composer-wrap {
-  position: relative;
-  flex: 0 0 auto;
-  display: flex;
-  justify-content: center;
-  padding: 10px max(18px, calc((100% - var(--video-page-max-width)) / 2)) max(14px, env(safe-area-inset-bottom));
-  border-top: 1px solid oklch(var(--bc) / 0.06);
-  background: oklch(var(--b1) / 0.94);
-  backdrop-filter: blur(14px);
-
-  &::before {
-    display: none;
   }
 }
 
@@ -720,7 +710,6 @@ onBeforeUnmount(() => {
     --video-top-gap: 16px;
   }
   .video-message-scroll { padding-bottom: 12px; scrollbar-gutter: auto; }
-  .video-composer-wrap { padding: 8px 8px max(10px, env(safe-area-inset-bottom)); }
   .video-media-slots {
     flex-direction: column;
   }

@@ -19,7 +19,7 @@
       <ChatScrollActions v-if="canScrollBottom && !isShowTemplate" :can-scroll-bottom="true" @scroll-bottom="scrollToBottom('smooth')" />
     </div>
 
-    <footer class="chat-composer-dock">
+    <ComposerDock>
       <ChatInputArea
         :is-chatting="isChatting"
         :model-selection-readonly="isModelSelectionReadonly"
@@ -27,7 +27,7 @@
         @on-start="onStartChat"
         @on-stop="onStopChat"
       />
-    </footer>
+    </ComposerDock>
   </section>
 
   <ImageModal />
@@ -56,6 +56,7 @@ import ChatInputArea from "@/views/chat/ChatInputArea.vue";
 import ChatInsTemplate from "@/views/chat/ChatInsTemplate.vue";
 import ChatMessageList from "@/views/chat/ChatMessageList.vue";
 import ChatScrollActions from "@/views/chat/ChatScrollActions.vue";
+import ComposerDock from "@/components/ComposerDock.vue";
 import ImageModal from "@/components/ImageModal.vue";
 
 type ChatStartPayload = { message: ChatPromptMessage; model: ChatModelConfig | null };
@@ -240,6 +241,9 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 .chat-page {
+  --workspace-page-max-width: 1080px;
+  --workspace-side-gap: max(24px, calc((100% - var(--workspace-page-max-width)) / 2));
+  --workspace-top-gap: 28px;
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -247,40 +251,58 @@ onBeforeUnmount(() => {
   flex-direction: column;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 0%, oklch(var(--in) / 0.1), transparent 48%),
-    linear-gradient(180deg, oklch(var(--b1)) 0%, oklch(var(--b2) / 0.32) 100%);
+    radial-gradient(circle at 50% 0%, oklch(var(--in) / 0.1), transparent 48%), linear-gradient(180deg, oklch(var(--b1)) 0%, oklch(var(--b2) / 0.32) 100%);
 }
 
-.chat-viewport { position: relative; min-height: 0; flex: 1 1 auto; }
+.chat-viewport {
+  position: relative;
+  min-height: 0;
+  flex: 1 1 auto;
+}
 .chat-scroll {
   width: 100%;
   height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 24px max(24px, calc((100% - 960px) / 2)) 18px;
+  padding: var(--workspace-top-gap) var(--workspace-side-gap) 20px;
   box-sizing: border-box;
   scrollbar-gutter: stable;
-}
-.chat-empty-state { min-height: 100%; display: grid; place-items: center; }
-.chat-composer-dock {
-  flex: 0 0 auto;
-  padding: 10px max(18px, calc((100% - 1020px) / 2)) max(14px, env(safe-area-inset-bottom));
-  border-top: 1px solid oklch(var(--bc) / 0.06);
-  background: oklch(var(--b1) / 0.94);
-  backdrop-filter: blur(14px);
-}
+  scrollbar-width: thin;
+  scrollbar-color: oklch(var(--bc) / 0.24) transparent;
 
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: oklch(var(--bc) / 0.2);
+  }
+}
+.chat-empty-state {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+}
 .chat-page :deep(.chat-md-bubble-user),
-.chat-page :deep(.chat-md-bubble-assistant) { max-width: 100%; }
-
-@media (max-width: 768px) {
-  .chat-scroll { padding: 18px 18px 12px; scrollbar-gutter: auto; }
-  .chat-composer-dock { padding: 8px 12px max(10px, env(safe-area-inset-bottom)); }
+.chat-page :deep(.chat-md-bubble-assistant) {
+  max-width: 100%;
 }
 
-@media (max-width: 380px) {
-  .chat-scroll { padding-inline: 12px; }
-  .chat-composer-dock { padding-inline: 8px; }
+@media (max-width: 640px) {
+  .chat-page {
+    --workspace-side-gap: 12px;
+    --workspace-top-gap: 16px;
+  }
+
+  .chat-scroll {
+    padding-bottom: 12px;
+    scrollbar-gutter: auto;
+  }
 }
 </style>

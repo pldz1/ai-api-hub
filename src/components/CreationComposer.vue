@@ -1,5 +1,10 @@
 <template>
-  <div ref="composerRef" class="creation-composer" :class="[rootClass, { 'is-action-stacked-mobile': stackActionsOnMobile }]" @paste="emit('paste', $event)">
+  <div
+    ref="composerRef"
+    class="creation-composer"
+    :class="[rootClass, { 'is-action-stacked-mobile': stackActionsOnMobile, 'is-edit-mode': isEditMode }]"
+    @paste="emit('paste', $event)"
+  >
     <slot name="media"></slot>
 
     <textarea
@@ -16,16 +21,22 @@
       <div class="creation-composer-left-actions">
         <slot name="left-actions"></slot>
 
-        <AppSelect
-          :model-value="modelIndex"
-          class="creation-composer-model-select"
-          :options="modelOptions"
-          :placeholder="modelPlaceholder"
-          :disabled="modelDisabled"
-          menu-class="creation-composer-select-menu"
-          borderless
-          @update:model-value="emit('update:modelIndex', Number($event ?? -1))"
-        />
+        <div v-if="modelReadonly" class="creation-composer-model-lock">
+          <AppTooltip :text="modelReadonlyTooltip" placement="top">
+            <span class="creation-composer-model-lock-label">{{ modelReadonlyLabel }}</span>
+          </AppTooltip>
+        </div>
+        <div v-else class="creation-composer-model-select">
+          <AppSelect
+            :model-value="modelIndex"
+            :options="modelOptions"
+            :placeholder="modelPlaceholder"
+            :disabled="modelDisabled"
+            menu-class="creation-composer-select-menu"
+            borderless
+            @update:model-value="emit('update:modelIndex', Number($event ?? -1))"
+          />
+        </div>
 
         <AppTooltip :text="settingsTooltip" placement="top">
           <button class="creation-composer-settings-button" type="button" @click="emit('settings')">
@@ -36,9 +47,13 @@
 
       <div class="creation-composer-right-actions">
         <slot name="right-actions-extra"></slot>
-        <button class="creation-composer-send-button" type="button" :disabled="sendDisabled" @click="emit('send')">
-          <SvgIcon :src="arrowUpIcon" />
-        </button>
+        <AppTooltip :text="sendTooltip" placement="top">
+          <button class="creation-composer-send-button" :class="sendButtonClass" type="button" :disabled="sendDisabled" @click="emit('send')">
+            <slot name="send-icon">
+              <SvgIcon :src="arrowUpIcon" />
+            </slot>
+          </button>
+        </AppTooltip>
       </div>
     </div>
   </div>
@@ -57,22 +72,32 @@ type RootClass = string | Record<string, boolean> | Array<string | Record<string
 const props = withDefaults(
   defineProps<{
     modelValue: string;
-    modelIndex: number;
+    modelIndex: number | null;
     modelOptions: AppSelectOption[];
     modelPlaceholder?: string;
     modelDisabled?: boolean;
+    modelReadonly?: boolean;
+    modelReadonlyLabel?: string;
+    modelReadonlyTooltip?: string;
     placeholder?: string;
     rootClass?: RootClass;
     sendDisabled?: boolean;
+    sendButtonClass?: RootClass;
+    sendTooltip?: string;
     settingsTooltip?: string;
     stackActionsOnMobile?: boolean;
   }>(),
   {
     modelPlaceholder: "",
     modelDisabled: false,
+    modelReadonly: false,
+    modelReadonlyLabel: "",
+    modelReadonlyTooltip: "",
     placeholder: "",
     rootClass: undefined,
     sendDisabled: false,
+    sendButtonClass: undefined,
+    sendTooltip: "",
     settingsTooltip: "",
     stackActionsOnMobile: false,
   },
@@ -89,11 +114,16 @@ const emit = defineEmits<{
 
 const composerRef = ref<HTMLElement | null>(null);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
+const isEditMode = ref(false);
 
 function resizeTextarea() {
   const textarea = textareaRef.value;
   if (!textarea) return;
   textarea.style.height = "auto";
+  if (!props.modelValue) {
+    textarea.style.height = "";
+    return;
+  }
   textarea.style.height = `${Math.min(textarea.scrollHeight, 180)}px`;
 }
 
@@ -104,7 +134,21 @@ function onInput(event: Event) {
 }
 
 function onEnter(event: KeyboardEvent) {
-  if (event.shiftKey || event.isComposing) return;
+  if (event.isComposing) return;
+
+  if (event.ctrlKey || event.metaKey) {
+    event.preventDefault();
+    emit("send");
+    return;
+  }
+
+  if (event.shiftKey) {
+    isEditMode.value = true;
+    return;
+  }
+
+  if (isEditMode.value) return;
+
   event.preventDefault();
   emit("send");
 }
@@ -119,7 +163,10 @@ function getElement() {
 
 watch(
   () => props.modelValue,
-  () => nextTick(() => resizeTextarea()),
+  (value) => {
+    if (!value) isEditMode.value = false;
+    nextTick(() => resizeTextarea());
+  },
 );
 
 defineExpose({
@@ -131,6 +178,8 @@ defineExpose({
 
 <style scoped lang="scss">
 .creation-composer {
+  --creation-composer-control-size: 38px;
+  --creation-composer-model-width: clamp(80px, calc(100vw - 240px), 240px);
   position: relative;
   z-index: 1;
   width: min(100%, 742px);
@@ -145,6 +194,7 @@ defineExpose({
 }
 
 .creation-composer-textarea {
+  display: block;
   width: 100%;
   min-height: 36px;
   max-height: 188px;
@@ -175,8 +225,8 @@ defineExpose({
 }
 
 .creation-composer-send-button {
-  width: 38px;
-  height: 38px;
+  width: var(--creation-composer-control-size);
+  height: var(--creation-composer-control-size);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -189,6 +239,11 @@ defineExpose({
   &:disabled {
     opacity: 0.36;
     cursor: not-allowed;
+  }
+
+  &.is-stopping {
+    background-color: oklch(var(--er));
+    color: oklch(var(--nc));
   }
 
   :deep(.svg-icon) {
@@ -222,8 +277,8 @@ defineExpose({
 
 .creation-composer-model-select {
   min-width: 0;
-  width: 120px;
-  max-width: 220px;
+  width: var(--creation-composer-model-width);
+  max-width: var(--creation-composer-model-width);
 
   :deep(.app-select-control) {
     min-height: 32px;
@@ -284,8 +339,36 @@ defineExpose({
   }
 }
 
+.creation-composer-model-lock {
+  width: var(--creation-composer-model-width);
+  height: 32px;
+  min-width: 0;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+  background: oklch(var(--b2) / 0.5);
+  color: oklch(var(--bc));
+  font-size: 16px;
+
+  :deep(.app-tooltip-host),
+  :deep(.app-tooltip-trigger) {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+.creation-composer-model-lock-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 640px) {
   .creation-composer {
+    --creation-composer-control-size: 36px;
     border-radius: 24px;
     padding: 12px 14px;
   }
@@ -300,17 +383,30 @@ defineExpose({
     gap: 6px;
   }
 
+  .creation-composer-left-actions {
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .creation-composer-right-actions {
+    flex: 0 0 auto;
+  }
+
   .creation-composer-model-select {
-    max-width: 130px;
+    flex: 0 0 var(--creation-composer-model-width);
+    width: var(--creation-composer-model-width);
+    max-width: var(--creation-composer-model-width);
 
     :deep(.app-select-control) {
       font-size: 13px;
     }
   }
 
-  .creation-composer-send-button {
-    width: 36px;
-    height: 36px;
+  .creation-composer-model-lock {
+    flex: 0 0 var(--creation-composer-model-width);
+    width: var(--creation-composer-model-width);
+    max-width: var(--creation-composer-model-width);
+    font-size: 13px;
   }
 }
 

@@ -1,10 +1,26 @@
 <template>
   <!-- This view renders the chat input box, capabilities, and send controls. -->
-  <div id="component-chat-input-area" class="component-chat-input-area" @paste="onPaste">
-    <!-- Wrap the editable prompt area and action controls in a single composer card. -->
-    <div class="ccia-input-card" :class="{ 'is-home': props.isHome }">
-      <div class="ccia-input-area">
-        <!-- Preview uploaded files before sending the message. -->
+  <div id="component-chat-input-area" class="component-chat-input-area">
+    <CreationComposer
+      ref="composerRef"
+      v-model="inputText"
+      v-model:model-index="selectedModelIndex"
+      :root-class="['chat-composer', { 'is-home': props.isHome }]"
+      :model-options="chatModelOptions"
+      :model-placeholder="t('input.selectChatModel')"
+      :model-disabled="chatModels.length === 0"
+      :model-readonly="isModelSelectionReadonly"
+      :model-readonly-label="readonlyModelName"
+      :model-readonly-tooltip="t('tooltip.cannotEditModel')"
+      :placeholder="t('input.chatPlaceholder')"
+      :send-button-class="{ 'is-stopping': props.isChatting }"
+      :send-tooltip="t('tooltip.sendOrStop')"
+      :settings-tooltip="t('tooltip.modelSettings')"
+      @paste="onPaste"
+      @send="onSendInputData"
+      @settings="onShowModelSettings"
+    >
+      <template #media>
         <div v-if="inputFiles.length" class="ccia-files-area">
           <div v-for="file in inputFiles" :key="file.id" class="ccia-file-item">
             <div class="ccia-file-card" :title="file.name">
@@ -27,7 +43,6 @@
           </div>
         </div>
 
-        <!-- Preview uploaded images before sending the message. -->
         <div v-if="inputImages.length" class="ccia-imgs-area">
           <div v-for="image in inputImages" :key="image.id" class="ccia-item">
             <button class="ccia-image-button" type="button" :aria-label="t('image.viewMask')" @click="previewInputImage(image.src)">
@@ -36,80 +51,38 @@
             <button class="ccia-remove-button" type="button" :aria-label="t('image.removeImage')" @click.stop="removeInputImage(image.id)">x</button>
           </div>
         </div>
+      </template>
 
-        <!-- Let the user compose a multi-line prompt with auto-resizing behavior. -->
-        <div class="ccia-shell">
-          <textarea
-            ref="cciaTextareaRef"
-            v-model="inputText"
-            class="textarea ccia-custom-textarea"
-            :placeholder="t('input.chatPlaceholder')"
-            @input="debounceInputText"
-            @keydown.enter="onEnterKeydown"
-          ></textarea>
-        </div>
+      <template #right-actions-extra>
+        <AppTooltip :text="t('tooltip.uploadFile')" placement="top">
+          <button class="ccia-capability-chip" type="button" @click="openFilePicker">
+            <SvgIcon class="ccia-capability-icon" :src="attachIcon" />
+            <span class="ccia-capability-label">{{ t("input.capabilities.fileContext") }}</span>
+          </button>
+        </AppTooltip>
+        <AppTooltip v-if="supportedCapabilities.imageRead" :text="t('tooltip.uploadImage')" placement="top">
+          <button class="ccia-capability-chip" type="button" @click="openImageFilePicker">
+            <SvgIcon class="ccia-capability-icon" :src="imageIcon" />
+            <span class="ccia-capability-label">{{ t("input.capabilities.imageRead") }}</span>
+          </button>
+        </AppTooltip>
+        <AppTooltip v-if="supportedCapabilities.webSearch" :text="t('input.capabilities.webSearch')" placement="top">
+          <button
+            class="ccia-capability-chip"
+            :class="{ active: inputCapabilities.webSearch }"
+            type="button"
+            @click="onToggleCapability('webSearch', !inputCapabilities.webSearch)"
+          >
+            <SvgIcon class="ccia-capability-icon" :src="webIcon" />
+            <span class="ccia-capability-label">{{ t("input.capabilities.webSearch") }}</span>
+          </button>
+        </AppTooltip>
+      </template>
 
-        <!-- Split model controls from per-message capability toggles and send actions. -->
-        <div class="ccia-capability-row">
-          <!-- Keep the model selector and settings entry point together. -->
-          <div class="ccia-right-actions">
-            <div class="ccia-model-area">
-              <AppSelect
-                v-if="!isModelSelectionReadonly"
-                v-model="selectedModelIndex"
-                class="ccia-model-select"
-                :options="chatModelOptions"
-                :placeholder="t('input.selectChatModel')"
-                :disabled="chatModels.length === 0"
-                borderless
-              />
-              <div v-else class="ccia-model-lock">
-                <AppTooltip :text="t('tooltip.cannotEditModel')" placement="top">
-                  {{ readonlyModelName }}
-                </AppTooltip>
-              </div>
-            </div>
-            <AppTooltip :text="t('tooltip.modelSettings')" placement="top">
-              <button class="ccia-model-setting-button" type="button" @click="onShowModelSettings">
-                <SvgIcon :src="paramIcon" />
-              </button>
-            </AppTooltip>
-          </div>
-
-          <!-- Surface per-turn capabilities and the send or stop trigger. -->
-          <div class="ccia-left-actions">
-            <AppTooltip :text="t('tooltip.uploadFile')" placement="top">
-              <button class="ccia-capability-chip" type="button" @click="openFilePicker">
-                <SvgIcon class="ccia-capability-icon" :src="attachIcon" />
-                <span class="ccia-capability-label">{{ t("input.capabilities.fileContext") }}</span>
-              </button>
-            </AppTooltip>
-            <AppTooltip v-if="supportedCapabilities.imageRead" :text="t('tooltip.uploadImage')" placement="top">
-              <button class="ccia-capability-chip" type="button" @click="openImageFilePicker">
-                <SvgIcon class="ccia-capability-icon" :src="imageIcon" />
-                <span class="ccia-capability-label">{{ t("input.capabilities.imageRead") }}</span>
-              </button>
-            </AppTooltip>
-            <AppTooltip v-if="supportedCapabilities.webSearch" :text="t('input.capabilities.webSearch')" placement="top">
-              <button
-                class="ccia-capability-chip"
-                :class="{ active: inputCapabilities.webSearch }"
-                type="button"
-                @click="onToggleCapability('webSearch', !inputCapabilities.webSearch)"
-              >
-                <SvgIcon class="ccia-capability-icon" :src="webIcon" />
-                <span class="ccia-capability-label">{{ t("input.capabilities.webSearch") }}</span>
-              </button>
-            </AppTooltip>
-            <AppTooltip :text="t('tooltip.sendOrStop')" placement="top">
-              <button class="ccia-send-button" :class="{ stopping: props.isChatting }" type="button" @click="onSendInputData">
-                <SvgIcon class="ccia-send-icon" :src="props.isChatting ? pauseIcon : arrowUpIcon" />
-              </button>
-            </AppTooltip>
-          </div>
-        </div>
-      </div>
-    </div>
+      <template #send-icon>
+        <SvgIcon :src="props.isChatting ? pauseIcon : arrowUpIcon" />
+      </template>
+    </CreationComposer>
 
     <input ref="imageFileInputRef" class="ccia-file-input" type="file" accept="image/*" multiple @change="onImageFileChange" />
     <input ref="chatFileInputRef" class="ccia-file-input" type="file" :accept="chatFileAccept" multiple @change="onChatFileChange" />
@@ -120,19 +93,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAppStore } from "@/store";
 import type { ChatModelConfig, ChatPromptMessage } from "@/types";
 import attachIcon from "@/assets/svg/attach24.svg";
 import imageIcon from "@/assets/svg/navImage24.svg";
 import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
-import paramIcon from "@/assets/svg/param24.svg";
 import pauseIcon from "@/assets/svg/pause32.svg";
 import webIcon from "@/assets/svg/web24.svg";
 import { defaultModelCapabilities } from "@/constants";
-import AppSelect from "@/components/AppSelect.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
+import CreationComposer from "@/components/CreationComposer.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import { createConversationModelSnapshot, getChatModelCapabilities, mergeChatSettingsWithModel, getModelFromSnapshot } from "@/models";
 import { packUserMsg, setChatSettings } from "@/services";
@@ -156,6 +128,11 @@ type StartChatPayload = {
 
 type ChatSettingsExpose = {
   openDialog: () => void;
+};
+
+type CreationComposerExpose = {
+  focus: () => void;
+  resizeTextarea: () => void;
 };
 
 type ChatInputImage = {
@@ -185,7 +162,7 @@ const emit = defineEmits<{
 }>();
 
 const inputText = ref("");
-const cciaTextareaRef = ref<HTMLTextAreaElement | null>(null);
+const composerRef = ref<CreationComposerExpose | null>(null);
 
 const chatSettingsRef = ref<ChatSettingsExpose | null>(null);
 const imageFileInputRef = ref<HTMLInputElement | null>(null);
@@ -329,46 +306,12 @@ const onSendInputData = async () => {
     model: selectedModel.value,
   });
 
-  if (cciaTextareaRef.value) cciaTextareaRef.value.style.height = "";
+  nextTick(() => composerRef.value?.resizeTextarea());
 };
 
 const onToggleCapability = async (key: InputCapabilityKey, value: boolean) => {
   store.commit("setInputCapability", { key, value });
 };
-
-/* When the browser supports field-sizing:content natively we skip the manual
-   height dance entirely — zero jitter. Older engines fall back to JS resize. */
-const supportsFieldSizing = CSS.supports("field-sizing", "content");
-
-const onInputText = () => {
-  if (supportsFieldSizing) return;
-  const textarea = cciaTextareaRef.value;
-  if (!textarea) return;
-  /* Hide overflow during measurement so the height-auto → scrollHeight
-     recalculation doesn't produce visible jank. */
-  textarea.style.overflowY = "hidden";
-  textarea.style.height = "auto";
-  textarea.style.height = `${textarea.scrollHeight}px`;
-  textarea.style.overflowY = "";
-};
-
-const debounce = (fn: Function, delay: number, immediate: boolean = false) => {
-  let timer: number | null;
-  return function (...args: any) {
-    if (immediate && !timer) {
-      fn.apply(this, args);
-    }
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      if (!immediate) fn.apply(this, args);
-      timer = null;
-    }, delay);
-  };
-};
-
-/* immediate:true — first keystroke resizes instantly, trailing calls are
-   batched at most every 50ms so rapid typing stays responsive. */
-const debounceInputText = debounce(onInputText, 50, true);
 
 const readFileAsChatAttachment = async (file: File): Promise<ChatInputAttachment | null> => {
   const fileSizeMB = file.size / (1024 * 1024);
@@ -408,13 +351,6 @@ async function addChatFiles(files: FileList | File[]) {
   }
   inputFiles.value = [...inputFiles.value, ...nextFiles];
 }
-
-const onEnterKeydown = async (event: KeyboardEvent) => {
-  if (event.key === "Enter" && !event.shiftKey) {
-    event.preventDefault();
-    await onSendInputData();
-  }
-};
 
 const onShowModelSettings = () => {
   if (!selectedModel.value) {
@@ -524,7 +460,7 @@ function onGlobalKeydown(e: KeyboardEvent) {
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el?.isContentEditable) return;
 
   e.preventDefault();
-  cciaTextareaRef.value?.focus();
+  composerRef.value?.focus();
 }
 
 onMounted(() => {
@@ -552,22 +488,6 @@ watch(
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
-  .ccia-input-card {
-    position: relative;
-    z-index: 1;
-    width: 100%;
-    background: oklch(var(--b1) / 0.96);
-    border-radius: 42px;
-    padding: 14px 18px 12px;
-    border: 1px solid oklch(var(--bc) / 0.27);
-  }
-
-  .ccia-input-area {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-  }
 
   .ccia-files-area {
     display: flex;
@@ -667,163 +587,6 @@ watch(
     }
   }
 
-  .ccia-shell {
-    display: flex;
-    align-items: flex-end;
-    gap: 10px;
-  }
-
-  .ccia-model-setting-button {
-    width: 32px;
-    height: 32px;
-    flex: 0 0 32px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: 10px;
-    background: transparent;
-    color: oklch(var(--bc) / 0.66);
-    cursor: pointer;
-    transition:
-      background-color 0.16s ease,
-      color 0.16s ease,
-      transform 0.16s ease;
-
-    &:hover {
-      background: oklch(var(--b2) / 0.72);
-      color: oklch(var(--bc));
-    }
-
-    &:active {
-      transform: scale(0.96);
-    }
-
-    &:focus-visible {
-      outline: none;
-      box-shadow: 0 0 0 3px oklch(var(--p) / 0.12);
-    }
-
-    :deep(.svg-icon) {
-      width: 20px;
-      height: 20px;
-    }
-  }
-
-  .ccia-custom-textarea {
-    flex: 1 1 auto;
-    padding: 8px 0 6px;
-    border: none;
-    outline: none;
-    background-color: transparent;
-    resize: none;
-    box-shadow: initial;
-    border-radius: initial;
-    min-height: 36px;
-    max-height: 188px;
-    line-height: 1.5;
-    font-size: 16px;
-    field-sizing: content;
-  }
-
-  .ccia-model-area {
-    min-width: 0;
-    max-width: 220px;
-  }
-
-  .ccia-model-select,
-  .ccia-model-lock {
-    width: 120px;
-    height: 32px;
-    padding: 0 4px 0 4px;
-    border-radius: 8px;
-    color: oklch(var(--bc));
-    font-size: 16px;
-    background: transparent;
-  }
-
-  .ccia-model-select {
-    :deep(.app-select-control) {
-      min-height: 32px;
-      height: 32px;
-      padding: 0 28px 0 4px;
-      border: 0 !important;
-      outline: 0;
-      background: transparent;
-      box-shadow: none;
-      font-size: 16px;
-    }
-
-    :deep(.app-select-control:hover),
-    :deep(.app-select-control:focus),
-    :deep(.app-select-control:focus-visible) {
-      border: 0 !important;
-      outline: 0;
-      background: oklch(var(--b2) / 0.36);
-      box-shadow: none;
-    }
-
-    :deep(.app-select-button-label) {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    :deep(.app-select-trigger) {
-      right: 2px;
-      width: 24px;
-      height: 24px;
-    }
-
-    :deep(.app-select-menu) {
-      min-width: 180px;
-    }
-  }
-
-  .ccia-model-lock {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .ccia-model-lock {
-    background: oklch(var(--b2) / 0.5);
-  }
-
-  .ccia-send-button {
-    height: 38px;
-    width: 38px;
-    flex: 0 0 auto;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background-color: oklch(var(--n));
-    color: oklch(var(--nc));
-    border: none;
-
-    &.stopping {
-      background-color: oklch(var(--er));
-      color: oklch(var(--nc));
-    }
-  }
-
-  .ccia-capability-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: nowrap;
-    padding: 4px 0 0 8px;
-    justify-content: space-between;
-  }
-
-  .ccia-right-actions,
-  .ccia-left-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
   .ccia-capability-chip {
     height: 28px;
     display: inline-flex;
@@ -853,90 +616,11 @@ watch(
     height: 16px;
   }
 
-  .ccia-send-icon {
-    width: 20px;
-    height: 20px;
-  }
-
   .ccia-file-input {
     display: none;
   }
 
   @media (max-width: 640px) {
-    &::before {
-      left: -12px;
-      right: -12px;
-      bottom: -12px;
-      height: 92px;
-      box-shadow: none;
-    }
-
-    .ccia-input-card {
-      width: 100%;
-      border-radius: 24px;
-      padding: 12px 14px;
-      border: 1px solid oklch(var(--bc) / 0.27);
-    }
-
-    .ccia-shell {
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .ccia-custom-textarea {
-      order: 2;
-      width: 100%;
-      font-size: 14px;
-      min-height: 32px;
-    }
-
-    .ccia-model-area {
-      max-width: 130px;
-    }
-
-    .ccia-model-select,
-    .ccia-model-lock {
-      max-width: 120px;
-      font-size: 13px;
-    }
-
-    .ccia-model-select {
-      :deep(.app-select-control) {
-        font-size: 13px;
-      }
-    }
-
-    .ccia-capability-row {
-      padding: 8px 0 0;
-      gap: 8px;
-      align-items: center;
-      flex-direction: row;
-      flex-wrap: nowrap;
-      justify-content: space-between;
-    }
-
-    .ccia-right-actions,
-    .ccia-left-actions {
-      gap: 6px;
-      width: auto;
-      min-width: 0;
-    }
-
-    .ccia-right-actions {
-      justify-content: flex-start;
-      flex-wrap: nowrap;
-    }
-
-    .ccia-left-actions {
-      margin-left: auto;
-      justify-content: flex-start;
-      flex-wrap: nowrap;
-    }
-
-    .ccia-left-actions :deep(.app-tooltip-host:last-child) {
-      margin-left: 2px;
-    }
-
     .ccia-capability-chip {
       width: 28px;
       height: 26px;
@@ -953,21 +637,6 @@ watch(
     .ccia-capability-label {
       display: none;
     }
-
-    .ccia-send-button {
-      width: 36px;
-      height: 36px;
-    }
-  }
-
-  @media (max-width: 380px) {
-    .ccia-capability-row { flex-wrap: wrap; }
-    .ccia-right-actions,
-    .ccia-left-actions { width: 100%; }
-    .ccia-left-actions { justify-content: flex-end; }
-    .ccia-model-area { flex: 1 1 auto; max-width: none; }
-    .ccia-model-select,
-    .ccia-model-lock { width: 100%; max-width: none; }
   }
 }
 </style>
