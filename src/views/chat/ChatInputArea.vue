@@ -4,21 +4,19 @@
     <CreationComposer
       ref="composerRef"
       v-model="inputText"
-      v-model:model-index="selectedModelIndex"
       :root-class="['chat-composer', { 'is-home': props.isHome }]"
-      :model-options="chatModelOptions"
+      :model-index="modelIndex"
+      :model-options="modelOptions"
       :model-placeholder="t('input.selectChatModel')"
-      :model-disabled="chatModels.length === 0"
-      :model-readonly="isModelSelectionReadonly"
-      :model-readonly-label="readonlyModelName"
-      :model-readonly-tooltip="t('tooltip.cannotEditModel')"
+      :model-disabled="modelDisabled || modelOptions.length === 0"
       :placeholder="t('input.chatPlaceholder')"
       :send-button-class="{ 'is-stopping': props.isChatting }"
       :send-tooltip="t('tooltip.sendOrStop')"
       :settings-tooltip="t('tooltip.modelSettings')"
+      @update:model-index="emit('update:modelIndex', $event)"
+      @settings="emit('settings')"
       @paste="onPaste"
       @send="onSendInputData"
-      @settings="onShowModelSettings"
     >
       <template #media>
         <div v-if="inputFiles.length" class="ccia-files-area">
@@ -61,7 +59,7 @@
           </button>
         </AppTooltip>
         <AppTooltip v-if="supportedCapabilities.imageRead" :text="t('tooltip.uploadImage')" placement="top">
-          <button class="ccia-capability-chip" type="button" @click="openImageFilePicker">
+          <button class="ccia-capability-chip" type="button" @click="openImageSourceDialog">
             <SvgIcon class="ccia-capability-icon" :src="imageIcon" />
             <span class="ccia-capability-label">{{ t("input.capabilities.imageRead") }}</span>
           </button>
@@ -86,10 +84,9 @@
 
     <input ref="imageFileInputRef" class="ccia-file-input" type="file" accept="image/*" multiple @change="onImageFileChange" />
     <input ref="chatFileInputRef" class="ccia-file-input" type="file" :accept="chatFileAccept" multiple @change="onChatFileChange" />
+    <ImageSourceDialog ref="imageSourceDialogRef" @select="addAssetImage" @local="openImageFilePicker" />
   </div>
 
-  <!-- Mount the model settings dialog next to the composer for local control. -->
-  <ChatSettings ref="chatSettingsRef" />
 </template>
 
 <script setup lang="ts">
@@ -103,11 +100,13 @@ import arrowUpIcon from "@/assets/svg/arrowUp32.svg";
 import pauseIcon from "@/assets/svg/pause32.svg";
 import webIcon from "@/assets/svg/web24.svg";
 import { defaultModelCapabilities } from "@/constants";
+import type { AppSelectOption } from "@/components/AppSelect.vue";
 import AppTooltip from "@/components/AppTooltip.vue";
 import CreationComposer from "@/components/CreationComposer.vue";
+import ImageSourceDialog from "@/components/ImageSourceDialog.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
-import { createConversationModelSnapshot, getChatModelCapabilities, mergeChatSettingsWithModel, getModelFromSnapshot } from "@/models";
-import { packUserMsg, setChatSettings } from "@/services";
+import { getChatModelCapabilities } from "@/models";
+import { packUserMsg } from "@/services";
 import { setChatFileSource, deleteChatFileSource } from "@/persistence";
 import {
   CHAT_INPUT_FILE_MAX_MB,
@@ -117,17 +116,12 @@ import {
   type ChatInputAttachment,
 } from "@/services/conversation/chat-files";
 import { dsAlert, getUuid } from "@/utils";
-import ChatSettings from "@/views/chat/ChatSettings.vue";
 
 type InputCapabilityKey = string;
 
 type StartChatPayload = {
   message: ChatPromptMessage;
-  model: ChatModelConfig | null;
-};
-
-type ChatSettingsExpose = {
-  openDialog: () => void;
+  model: ChatModelConfig;
 };
 
 type CreationComposerExpose = {
@@ -146,17 +140,23 @@ const MAX_IMAGE_MB = 20;
 const props = withDefaults(
   defineProps<{
     isChatting?: boolean;
-    modelSelectionReadonly?: boolean;
     isHome?: boolean;
+    modelOptions?: AppSelectOption[];
+    modelIndex?: number | null;
+    modelDisabled?: boolean;
   }>(),
   {
     isChatting: false,
-    modelSelectionReadonly: false,
     isHome: false,
+    modelOptions: () => [],
+    modelIndex: null,
+    modelDisabled: false,
   },
 );
 
 const emit = defineEmits<{
+  "update:modelIndex": [value: number];
+  settings: [];
   "on-start": [payload: StartChatPayload];
   "on-stop": [];
 }>();
@@ -164,7 +164,7 @@ const emit = defineEmits<{
 const inputText = ref("");
 const composerRef = ref<CreationComposerExpose | null>(null);
 
-const chatSettingsRef = ref<ChatSettingsExpose | null>(null);
+const imageSourceDialogRef = ref<{ open: () => void } | null>(null);
 const imageFileInputRef = ref<HTMLInputElement | null>(null);
 const chatFileInputRef = ref<HTMLInputElement | null>(null);
 const inputImages = ref<ChatInputImage[]>([]);
@@ -172,23 +172,10 @@ const inputFiles = ref<ChatInputAttachment[]>([]);
 
 const store = useAppStore();
 const { t } = useI18n();
-const chatModels = computed<ChatModelConfig[]>(() => store.state.models.chat || []);
-const chatModelOptions = computed(() =>
-  chatModels.value.map((model, index) => ({
-    label: model.name,
-    value: index,
-  })),
-);
-const curChatId = computed<string>(() => store.state.curChatId || "");
-const curConversation = computed(() => store.state.curConversation);
 const inputCapabilities = computed<Record<string, boolean>>(() => store.state.inputCapabilities || {});
-const selectedModel = ref<ChatModelConfig | null>(null);
-
-const isModelSelectionReadonly = computed(() => Boolean(props.modelSelectionReadonly));
-const draftSnapshot = computed(() => createConversationModelSnapshot(selectedModel.value));
-const activeSnapshot = computed(() => draftSnapshot.value || curConversation.value?.modelSnapshot || null);
+const selectedModel = computed<ChatModelConfig | null>(() => store.state.curChatModel || null);
 const supportedCapabilities = computed(() => {
-  const model = getModelFromSnapshot(activeSnapshot.value);
+  const model = selectedModel.value;
   return model ? getChatModelCapabilities(model) : { ...defaultModelCapabilities };
 });
 const activeCapabilities = computed(() => ({
@@ -196,72 +183,6 @@ const activeCapabilities = computed(() => ({
   webSearch: Boolean(supportedCapabilities.value.webSearch && inputCapabilities.value.webSearch),
 }));
 const chatFileAccept = getChatInputFileAccept();
-const readonlyModelName = computed(() => draftSnapshot.value?.displayName || curConversation.value?.modelSnapshot?.displayName || t("input.lockedModel"));
-
-const getModelIdentityKey = (model: ChatModelConfig | null) => [model?.provider, model?.name, model?.model, model?.baseURL].join("|");
-const selectedModelIndex = computed<number | null>({
-  get: () => {
-    if (!selectedModel.value) return null;
-    const selectedKey = getModelIdentityKey(selectedModel.value);
-    const index = chatModels.value.findIndex((model) => getModelIdentityKey(model) === selectedKey);
-    return index >= 0 ? index : null;
-  },
-  set: (index) => {
-    selectedModel.value = typeof index === "number" ? chatModels.value[index] || null : null;
-  },
-});
-
-watch(
-  () => chatModels.value,
-  (models) => {
-    if (models.length === 0) {
-      selectedModel.value = null;
-      return;
-    }
-
-    if (!selectedModel.value) {
-      selectedModel.value = models[0];
-      return;
-    }
-
-    const selectedKey = getModelIdentityKey(selectedModel.value);
-    const matchedModel = models.find((model) => getModelIdentityKey(model) === selectedKey) || null;
-    if (matchedModel && matchedModel !== selectedModel.value) selectedModel.value = matchedModel;
-  },
-  { deep: true, immediate: true },
-);
-
-watch(
-  () => selectedModel.value,
-  async (model, previousModel) => {
-    if (!model) return;
-
-    const lockedModel = getModelFromSnapshot(curConversation.value?.modelSnapshot);
-    if (curChatId.value && lockedModel) {
-      if (getModelIdentityKey(model) !== getModelIdentityKey(lockedModel)) selectedModel.value = lockedModel;
-      store.commit("setCurChatModel", lockedModel);
-      return;
-    }
-
-    store.commit("setCurChatModel", model);
-
-    if (!previousModel || getModelIdentityKey(previousModel) !== getModelIdentityKey(model)) {
-      store.commit("setCurChatModelSettings", mergeChatSettingsWithModel(model, {}));
-      store.commit("resetInputCapabilities");
-    }
-  },
-  { immediate: true },
-);
-
-watch(
-  () => curConversation.value?.modelSnapshot,
-  (snapshot) => {
-    const model = getModelFromSnapshot(snapshot);
-    if (!model || getModelIdentityKey(selectedModel.value) === getModelIdentityKey(model)) return;
-    selectedModel.value = model;
-  },
-  { immediate: true },
-);
 
 const onSendInputData = async () => {
   if (props.isChatting) {
@@ -274,20 +195,6 @@ const onSendInputData = async () => {
     dsAlert({ type: "warn", message: t("input.selectChatModel") });
     return;
   }
-
-  if (!curChatId.value && !draftSnapshot.value) {
-    console.warn("No chat ID and no draft model snapshot available.");
-    dsAlert({ type: "warn", message: t("toast.modelInitCheck") });
-    return;
-  }
-
-  if (!draftSnapshot.value) {
-    console.warn("No selected model snapshot available.");
-    dsAlert({ type: "warn", message: t("toast.modelInitCheck") });
-    return;
-  }
-
-  if (curChatId.value) await setChatSettings(curChatId.value);
 
   const imageUrls = inputImages.value.map((item) => item.src);
   const data = packUserMsg(imageUrls, inputText.value, activeCapabilities.value.imageRead, inputFiles.value);
@@ -352,14 +259,6 @@ async function addChatFiles(files: FileList | File[]) {
   inputFiles.value = [...inputFiles.value, ...nextFiles];
 }
 
-const onShowModelSettings = () => {
-  if (!selectedModel.value) {
-    dsAlert({ type: "warn", message: t("chat.chooseModelFirst") });
-    return;
-  }
-  chatSettingsRef.value?.openDialog();
-};
-
 function readFileAsInputImage(file: File): Promise<ChatInputImage | null> {
   return new Promise((resolve) => {
     if (!file.type.startsWith("image/")) {
@@ -404,6 +303,15 @@ async function addImageFiles(files: FileList | File[]) {
 function openImageFilePicker() {
   if (!supportedCapabilities.value.imageRead) return;
   imageFileInputRef.value?.click();
+}
+
+function openImageSourceDialog() {
+  if (!supportedCapabilities.value.imageRead) return;
+  imageSourceDialogRef.value?.open();
+}
+
+async function addAssetImage(file: File) {
+  await addImageFiles([file]);
 }
 
 async function onImageFileChange(event: Event) {

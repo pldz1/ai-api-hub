@@ -52,8 +52,13 @@ const onSelectInst = async (id: string) => {
   newVal.prompts[0].content[0].text = instObj.value;
   store.commit("setCurChatModelSettings", newVal);
 
+  const model = store.state.curChatModel;
+  if (!model) {
+    dsAlert({ type: "warn", message: t("chat.chooseModelFirst") });
+    return;
+  }
   const name = append4Random(instObj.name);
-  await addChat(name);
+  await addChat(name, model);
   if (store.state.curChatId) {
     await router.replace({ name: "chat", params: { cid: store.state.curChatId } });
   }

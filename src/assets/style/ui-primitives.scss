@@ -316,3 +316,23 @@
     transform: rotate(360deg);
   }
 }
+/**
+ * Shared readable content column for Chat, Image and Video workbenches.
+ * The page shell, headers and composer docks stay full width; only result
+ * content is constrained.
+ */
+.workbench-content {
+  width: 82%;
+  min-width: min(620px, 100%);
+  max-width: 920px;
+  min-height: 100%;
+  margin-inline: auto;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .workbench-content {
+    width: 100%;
+    min-width: 0;
+  }
+}

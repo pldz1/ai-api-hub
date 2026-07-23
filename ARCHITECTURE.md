@@ -155,18 +155,20 @@ providers or persistence, and commit directly only for local UI state.
 Chat conversations and creation sessions intentionally have different product
 semantics:
 
-- A Chat conversation is one causal history. Its model snapshot is fixed when
-  the conversation is created. Editing a user message replaces the downstream
-  history and regenerates from that point; regenerating an Assistant response
-  also replaces everything downstream from that response.
+- A Chat conversation is one causal history. Each new Run may use the model
+  currently selected in the composer while still sending the configured amount
+  of preceding history. The persisted conversation model snapshot records the
+  latest selection for reopening; each Assistant message's `RunSnapshot` records
+  the exact model that produced that response. Editing a user message replaces
+  downstream history and regenerates from that point with the current selection.
 - An Image or Video session is a collection of independent Runs. Each new Run
   may select another model. Reusing an old input fills the composer and creates
   a new Run while preserving the previous result.
 
 Image and Video share collection lifecycle code for list, create, select and
 delete. Their message schemas, provider execution, polling and persistence
-folding remain separate. Chat keeps its own lifecycle because its causal history,
-conversation-bound model snapshot and settings require different behavior.
+folding remain separate. Chat keeps its own lifecycle because its causal history
+and per-conversation request settings require different behavior.
 
 ## View ownership
 
@@ -185,6 +187,25 @@ selection and request submission. `ImageMessageList` and `VideoMessageList` own
 historical run rendering, message folding and attachment preview. Reusing an old
 input is emitted back to the parent because it changes the current composer
 draft; it does not mutate the historical run.
+
+`CreationComposer` owns only the shared composer shell. `ImageSourceDialog`
+owns the shared choice between generated Image assets and the browser's local
+file picker, and emits a normal `File`. Chat, Image and Video views remain
+responsible for converting that file into their capability-specific attachment
+shape.
+
+All three workbenches use the same full-width shell: `WorkbenchHeaderBar` owns
+the session identity, cumulative token usage and contextual navigation;
+`workbench-content` constrains only the readable result column; `ComposerDock`
+remains full width and owns the complete current-turn interaction. Chat, Image
+and Video composers therefore keep model selection and model settings beside
+the prompt, attachments, capabilities and send/stop action.
+
+All three workbenches expose a compact right-side topic navigator. Chat topics
+show the active response's Markdown outline, while Image and Video topics show
+the independent prompts in the session. `ChatHeaderBar` composes the shared
+header with the user-question history for navigating the full causal
+conversation.
 
 Chat messages are Vue components. Provider execution and streaming state live
 in services and Store runtime projections; views do not construct message DOM

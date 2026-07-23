@@ -37,6 +37,17 @@ export function sanitizeRunParams(params: Record<string, unknown> = {}): Record<
   return sanitizeRunValue(params) as Record<string, unknown>;
 }
 
+export function sumTokenUsage(usages: Array<TokenUsage | null | undefined>): TokenUsage {
+  return usages.reduce<TokenUsage>(
+    (total, usage) => ({
+      input_tokens: total.input_tokens + Number(usage?.input_tokens || 0),
+      output_tokens: total.output_tokens + Number(usage?.output_tokens || 0),
+      total_tokens: total.total_tokens + Number(usage?.total_tokens || 0),
+    }),
+    emptyUsage(),
+  );
+}
+
 export function createRunSnapshot(input: {
   kind: RunKind;
   route: RunRouteSnapshot;

@@ -21,7 +21,7 @@ export {
   type ChatFormProvider,
   type ChatModelEditorState,
   type ChatModelSettings,
-  type ConversationModelSnapshot,
+  type ChatModelSnapshot,
   type PersistedChatSettings,
   type ChatListItem,
 } from "./conversation";

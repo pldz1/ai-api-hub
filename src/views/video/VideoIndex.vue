@@ -1,19 +1,33 @@
 <template>
   <section class="video-chat-page">
-    <div ref="messageScrollRef" class="video-message-scroll">
-      <div v-if="messages.length === 0" class="video-empty-state">
-        <h1>{{ t("video.workspaceTitle") }}</h1>
-        <p>{{ t("video.workspaceDescription") }}</p>
-      </div>
+    <WorkbenchHeaderBar
+      :title="videoConversationTitle"
+      :count="messages.filter((message) => message.role === 'user').length"
+      :token-usage="videoTokenUsage"
+      :running="isCurrentConversationSubmitting"
+    />
+    <MessageTopicList
+      :topics="messageTopics"
+      :active-topic-id="activeTopicId"
+      :label="t('video.topics')"
+      @select="scrollToMessage"
+    />
+    <div ref="messageScrollRef" class="video-message-scroll" @scroll="onMessageScroll">
+      <div class="workbench-content">
+        <div v-if="messages.length === 0" class="video-empty-state">
+          <h1>{{ t("video.workspaceTitle") }}</h1>
+          <p>{{ t("video.workspaceDescription") }}</p>
+        </div>
 
-      <VideoMessageList
-        v-else
-        :messages="messages"
-        :runtime-tick="runtimeTick"
-        :loading-status-text="loadingStatusText"
-        :reuse-disabled="isCurrentConversationSubmitting"
-        @reuse="reuseInput"
-      />
+        <VideoMessageList
+          v-else
+          :messages="messages"
+          :runtime-tick="runtimeTick"
+          :loading-status-text="loadingStatusText"
+          :reuse-disabled="isCurrentConversationSubmitting"
+          @reuse="reuseInput"
+        />
+      </div>
     </div>
 
     <ComposerDock>
@@ -28,9 +42,9 @@
         :placeholder="t('video.generatePromptPlaceholder')"
         :send-disabled="isSendDisabled"
         :settings-tooltip="t('tooltip.modelSettings')"
+        @settings="onShowModelSettings"
         @paste="onPaste"
         @send="send"
-        @settings="onShowModelSettings"
       >
         <template #media>
           <!-- Media slots: shown/hidden based on model capabilities -->
@@ -79,6 +93,7 @@
       <input ref="firstFrameInputRef" class="video-file-input" type="file" accept="image/*" @change="onFirstFrameChange" />
       <input ref="lastFrameInputRef" class="video-file-input" type="file" accept="image/*" @change="onLastFrameChange" />
       <input ref="audioInputRef" class="video-file-input" type="file" accept="audio/*" @change="onAudioFileChange" />
+      <ImageSourceDialog ref="imageSourceDialogRef" @select="setAssetFrame" @local="openLocalFramePicker" />
     </ComposerDock>
     <ImageModal />
     <VideoSettings ref="videoSettingsRef" :model="selectedModel" :settings="videoSettings" @close="onVideoSettingsClose" />
@@ -93,14 +108,17 @@ import { useAppStore } from "@/store";
 import ComposerDock from "@/components/ComposerDock.vue";
 import CreationComposer from "@/components/CreationComposer.vue";
 import ImageModal from "@/components/ImageModal.vue";
+import ImageSourceDialog from "@/components/ImageSourceDialog.vue";
+import MessageTopicList from "@/components/MessageTopicList.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
+import WorkbenchHeaderBar from "@/components/WorkbenchHeaderBar.vue";
 import VideoMessageList from "@/views/video/VideoMessageList.vue";
 import VideoSettings from "@/views/video/VideoSettings.vue";
 import type { VideoSettingsData } from "@/views/video/VideoSettings.vue";
 import audioIcon from "@/assets/svg/attach24.svg";
 import imageIcon from "@/assets/svg/navImage24.svg";
-import { addVideoConversation, getVideoConversationMessages, submitVideoMessage } from "@/services/creation";
-import { getVideoModelCapabilities, getVideoModelType } from "@/models";
+import { addVideoConversation, getVideoConversationMessages, submitVideoMessage, useCreationMessageTopics } from "@/services/creation";
+import { getVideoModelCapabilities, getVideoModelType, sumTokenUsage } from "@/models";
 import { dsAlert, getUuid } from "@/utils";
 import type { VideoConversationMessage, VideoInputAttachment, VideoModelConfig } from "@/types";
 
@@ -123,6 +141,8 @@ const isSubmitting = ref(false);
 const firstFrameInputRef = ref<HTMLInputElement | null>(null);
 const lastFrameInputRef = ref<HTMLInputElement | null>(null);
 const audioInputRef = ref<HTMLInputElement | null>(null);
+const imageSourceDialogRef = ref<{ open: () => void } | null>(null);
+const pendingFrameTarget = ref<"first" | "last">("first");
 const messageScrollRef = ref<HTMLElement | null>(null);
 const composerRef = ref<CreationComposerRef | null>(null);
 const videoSettingsRef = ref<{ openDialog: () => void } | null>(null);
@@ -174,6 +194,11 @@ const loadingStatusText = computed(() => {
 
 const isCurrentConversationSubmitting = computed(() => Boolean(activeVideoRuntime.value?.pending));
 const isSendDisabled = computed(() => isCurrentConversationSubmitting.value || !prompt.value.trim() || !selectedModel.value);
+const videoConversationTitle = computed(() =>
+  store.state.videoConversationList.find((item) => item.vid === routeVideoId.value)?.vname || t("chat.newVideoCreation"),
+);
+const videoTokenUsage = computed(() => sumTokenUsage(messages.value.map((message) => message.run?.result?.usage)));
+const { activeTopicId, messageTopics, onMessageScroll, scrollToMessage, updateActiveTopic } = useCreationMessageTopics(messages, messageScrollRef);
 
 function isNearScrollBottom(threshold = 120) {
   const el = messageScrollRef.value;
@@ -274,11 +299,25 @@ function readFileAsAttachment(file: File): Promise<VideoInputAttachment | null> 
 }
 
 function openFirstFramePicker() {
-  firstFrameInputRef.value?.click();
+  pendingFrameTarget.value = "first";
+  imageSourceDialogRef.value?.open();
 }
 
 function openLastFramePicker() {
-  lastFrameInputRef.value?.click();
+  pendingFrameTarget.value = "last";
+  imageSourceDialogRef.value?.open();
+}
+
+function openLocalFramePicker() {
+  if (pendingFrameTarget.value === "first") firstFrameInputRef.value?.click();
+  else lastFrameInputRef.value?.click();
+}
+
+async function setAssetFrame(file: File) {
+  const attachment = await readFileAsAttachment(file);
+  if (!attachment || !attachment.content_type?.startsWith("image/")) return;
+  if (pendingFrameTarget.value === "first") firstFrame.value = attachment;
+  else lastFrame.value = attachment;
 }
 
 function openAudioPicker() {
@@ -474,6 +513,7 @@ watch(
 watch(
   () => messages.value.length,
   () => {
+    nextTick(updateActiveTopic);
     if (isNearScrollBottom()) scrollToBottom();
   },
 );
@@ -510,11 +550,10 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .video-chat-page {
-  --video-page-max-width: 1080px;
-  --video-side-gap: max(24px, calc((100% - var(--video-page-max-width)) / 2));
   --video-top-gap: 28px;
   width: 100%;
   height: 100%;
+  position: relative;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -531,7 +570,7 @@ onBeforeUnmount(() => {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: oklch(var(--bc) / 0.24) transparent;
-  padding: var(--video-top-gap) var(--video-side-gap) 20px;
+  padding: var(--video-top-gap) 0 20px;
   box-sizing: border-box;
   contain: layout paint style;
 
@@ -706,10 +745,9 @@ onBeforeUnmount(() => {
 
 @media (max-width: 640px) {
   .video-chat-page {
-    --video-side-gap: 12px;
     --video-top-gap: 16px;
   }
-  .video-message-scroll { padding-bottom: 12px; scrollbar-gutter: auto; }
+  .video-message-scroll { padding: var(--video-top-gap) 12px 12px; scrollbar-gutter: auto; }
   .video-media-slots {
     flex-direction: column;
   }

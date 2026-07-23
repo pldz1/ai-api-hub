@@ -1,6 +1,6 @@
 import store from "@/store";
 import { ChatGateway, resolveChatModel } from "@/ai-capability";
-import { buildChatCompletionParams, completeRunSnapshot, createRunSnapshot, getChatMessageFormat, getModelFromSnapshot } from "@/models";
+import { buildChatCompletionParams, completeRunSnapshot, createRunSnapshot, getChatMessageFormat } from "@/models";
 import { getUuid } from "@/utils";
 import { tr } from "@/i18n";
 import type { ChatModelConfig, ChatPromptContent, ChatPromptMessage, ChatResponseDelta, RunSnapshot, RunStatus, PackedChatMessage } from "@/types";
@@ -12,11 +12,7 @@ type ChatRuntimeStatus = "idle" | "loading" | "streaming" | "success" | "error" 
 
 // ===== helpers =====
 
-function getSessionModel(chatId: string): ChatModelConfig | null {
-  return getModelFromSnapshot(store.state.chatConversationsById?.[chatId]?.modelSnapshot) || store.state.curChatModel || store.state.models.chat?.[0] || null;
-}
-
-export function packChatMessages(messages: ChatPromptMessage[], chatId: string, model: ChatModelConfig | null): PackedChatMessage[] {
+export function packChatMessages(messages: ChatPromptMessage[], chatId: string, model: ChatModelConfig): PackedChatMessage[] {
   const settings = store.state.chatSettingsById?.[chatId] || store.state.curChatModelSettings;
   const firstPromptContent = settings?.prompts?.[0]?.content?.[0];
   const hasSystemPrompt = firstPromptContent?.type === "text" && Boolean(firstPromptContent.text);
@@ -52,9 +48,10 @@ export function packChatMessages(messages: ChatPromptMessage[], chatId: string, 
 // ===== runner factory =====
 
 export interface ChatRunner {
-  chat(data: ChatPromptMessage): Promise<void>;
-  regenerate(): Promise<void>;
+  chat(data: ChatPromptMessage, model: ChatModelConfig): Promise<void>;
+  regenerate(model: ChatModelConfig): Promise<void>;
   stop(): void;
+  dispose(): void;
   getStream(): StreamState;
   readonly chatId: string;
   onDraftUpdate: ((draft: StreamDraft) => void) | null;
@@ -72,6 +69,7 @@ function createChatRunner(chatId: string): ChatRunner {
   let _onMessagePersisted: ((msg: ChatPromptMessage) => void | Promise<void>) | null = null;
   let _onRuntimeUpdate: ((runtime: Record<string, unknown>) => void) | null = null;
   let activeRun: RunSnapshot | null = null;
+  let disposed = false;
 
   // === runtime sync ===
 
@@ -104,7 +102,7 @@ function createChatRunner(chatId: string): ChatRunner {
     });
   }
 
-  async function persistAssistant(status: "success" | "error"): Promise<boolean> {
+  async function persistAssistant(status: Exclude<RunStatus, "running">): Promise<boolean> {
     if (!stream.hasContent()) return false;
 
     const draft = stream.getDraft();
@@ -189,9 +187,8 @@ function createChatRunner(chatId: string): ChatRunner {
 
   // === phase 2: execute — build request, call gateway, iterate stream ===
 
-  async function executeStream(): Promise<boolean> {
+  async function executeStream(model: ChatModelConfig): Promise<boolean> {
     const startedAt = Date.now();
-    const model = getSessionModel(chatId);
     const settings = store.state.chatSettingsById?.[chatId] || store.state.curChatModelSettings;
 
     const history = (store.state.chatMessagesById?.[chatId] || []).filter((msg) => !msg.meta?.isContextBlocked);
@@ -200,7 +197,7 @@ function createChatRunner(chatId: string): ChatRunner {
     const packedMessages = packChatMessages(messages, chatId, model);
     const params = buildChatCompletionParams(model, settings);
     const capabilities = messages[messages.length - 1]?.meta?.usedCapabilities || {};
-    const resolvedModel = model ? resolveChatModel(model) : null;
+    const resolvedModel = resolveChatModel(model);
     if (resolvedModel) {
       activeRun = createRunSnapshot({
         kind: "chat",
@@ -241,6 +238,8 @@ function createChatRunner(chatId: string): ChatRunner {
 
   async function finalizeStream(completed: boolean): Promise<void> {
     if (stream.isStopped()) {
+      if (disposed) return;
+      await persistAssistant("stopped");
       clearDraft("stopped");
       return;
     }
@@ -270,28 +269,34 @@ function createChatRunner(chatId: string): ChatRunner {
 
   // === public API ===
 
-  async function chat(data: ChatPromptMessage): Promise<void> {
+  async function chat(data: ChatPromptMessage, model: ChatModelConfig): Promise<void> {
     await prepareRequest(data);
-    const completed = await executeStream();
+    const completed = await executeStream(model);
     await finalizeStream(completed);
   }
 
-  async function regenerate(): Promise<void> {
+  async function regenerate(model: ChatModelConfig): Promise<void> {
     prepareRegeneration();
-    const completed = await executeStream();
+    const completed = await executeStream(model);
     await finalizeStream(completed);
   }
 
   function stop() {
     stream.stop();
     client.abort();
-    clearDraft("stopped");
+  }
+
+  function dispose() {
+    disposed = true;
+    stream.stop();
+    client.abort();
   }
 
   return {
     chat,
     regenerate,
     stop,
+    dispose,
     getStream: () => stream,
     get chatId() {
       return chatId;
@@ -339,6 +344,6 @@ export function stopChatSession(chatId: string): void {
 
 export function removeChatSessionRunner(chatId: string): void {
   const runner = runnerMap.get(chatId);
-  if (runner) runner.stop();
+  if (runner) runner.dispose();
   runnerMap.delete(chatId);
 }

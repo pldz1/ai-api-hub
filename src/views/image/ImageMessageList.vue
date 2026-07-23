@@ -3,6 +3,7 @@
     <article
       v-for="message in messages"
       :key="message.id"
+      :id="message.id"
       class="image-message"
       :class="[`is-${message.role}`, `is-${getMessageStatus(message)}`]"
     >

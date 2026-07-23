@@ -1,4 +1,61 @@
-import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, type ComputedRef, type Ref } from "vue";
+
+export interface CreationTopicMessage {
+  id: string;
+  role?: string;
+  prompt?: string;
+  attachments?: unknown[];
+}
+
+export function useCreationMessageTopics<T extends CreationTopicMessage>(messages: ComputedRef<T[]>, scrollRef: Ref<HTMLElement | null>) {
+  const activeTopicId = ref("");
+  let scrollFrame = 0;
+
+  const sourceMessages = computed(() => {
+    const userMessages = messages.value.filter((message) => message.role === "user");
+    return userMessages.length ? userMessages : messages.value.filter((message) => message.prompt);
+  });
+  const messageTopics = computed(() => sourceMessages.value.map((message, index) => {
+    const prompt = (message.prompt || "").replace(/\s+/g, " ").trim();
+    const title = prompt ? (prompt.length > 72 ? `${prompt.slice(0, 72)}...` : prompt) : `Prompt ${index + 1}`;
+    const attachmentCount = message.attachments?.length || 0;
+    return { id: message.id, title, detail: attachmentCount ? `${attachmentCount} attachment${attachmentCount > 1 ? "s" : ""}` : "" };
+  }));
+
+  function updateActiveTopic() {
+    const container = scrollRef.value;
+    if (!container || !messageTopics.value.length) { activeTopicId.value = messageTopics.value[0]?.id || ""; return; }
+    const anchor = container.getBoundingClientRect().top + 48;
+    let nextId = messageTopics.value[0].id;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (const topic of messageTopics.value) {
+      const element = container.querySelector(`#${CSS.escape(topic.id)}`) as HTMLElement | null;
+      if (!element) continue;
+      const distance = Math.abs(element.getBoundingClientRect().top - anchor);
+      if (distance < bestDistance) { bestDistance = distance; nextId = topic.id; }
+    }
+    activeTopicId.value = nextId;
+  }
+
+  function onMessageScroll() {
+    if (scrollFrame) return;
+    scrollFrame = requestAnimationFrame(() => { scrollFrame = 0; updateActiveTopic(); });
+  }
+
+  function scrollToMessage(id: string) {
+    const container = scrollRef.value;
+    const element = container?.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
+    if (!container || !element) return;
+    const top = element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 16;
+    container.scrollTo({ top, behavior: "smooth" });
+    activeTopicId.value = id;
+  }
+
+  onMounted(() => nextTick(updateActiveTopic));
+  onBeforeUnmount(() => { if (scrollFrame) cancelAnimationFrame(scrollFrame); });
+
+  return { activeTopicId, messageTopics, onMessageScroll, scrollToMessage, updateActiveTopic };
+}
 
 interface CreationMessageUiOptions {
   collapsedHeight?: number;

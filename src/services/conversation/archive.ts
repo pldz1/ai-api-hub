@@ -1,4 +1,5 @@
 import store from "@/store";
+import { createChatModelSnapshot, mergeChatSettingsWithModel } from "@/models";
 import { chatRepository, getChatFileSource, setChatFileSource } from "@/persistence";
 import { getUuid } from "@/utils";
 import type { ChatMessageAttachment, ChatPromptMessage } from "@/types";
@@ -133,7 +134,13 @@ export async function importChatConversationArchive(file: File): Promise<string>
 
   const cid = getUuid("chat");
   const cname = archive.conversation.name || "Imported chat";
-  const settings = { modelSnapshot: null, settings: store.state.curChatModelSettings };
+  const model = store.state.curChatModel;
+  const modelSnapshot = createChatModelSnapshot(model);
+  if (!model || !modelSnapshot) throw new Error("Select a chat model before importing a conversation.");
+  const settings = {
+    modelSnapshot,
+    settings: mergeChatSettingsWithModel(model, store.state.curChatModelSettings),
+  };
   await chatRepository.create(cid, cname, settings);
 
   const importedMessages: ChatPromptMessage[] = [];

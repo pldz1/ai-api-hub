@@ -6,7 +6,7 @@ import type {
   ModelParamDef,
   ParamDefaultValue,
   ChatModelSettings,
-  ConversationModelSnapshot,
+  ChatModelSnapshot,
   LooseModelConfig,
 } from "@/types";
 import { tr } from "@/i18n";
@@ -110,13 +110,13 @@ export function getEffectiveCapabilities(
 }
 
 /**
- * Creates the conversation model snapshot persisted with one chat session.
+ * Creates the latest-selected chat model snapshot persisted with one conversation.
  *
  * The snapshot stores only the user-selected model identity/config needed to
- * lock the conversation to a stable model. Derived runtime data is intentionally
- * excluded and recomputed later from `modelConfig`.
+ * restore the composer when that conversation is reopened. Each Run records its
+ * own execution model separately. Derived runtime data is intentionally excluded.
  */
-export function createConversationModelSnapshot(model: LooseModelConfig | null | undefined): ConversationModelSnapshot | null {
+export function createChatModelSnapshot(model: LooseModelConfig | null | undefined): ChatModelSnapshot | null {
   const modelConfig = normalizeChatModelConfig(model);
   if (!modelConfig?.name || !modelConfig?.apiKey) return null;
 
@@ -133,8 +133,8 @@ export function createConversationModelSnapshot(model: LooseModelConfig | null |
   };
 }
 
-/** Restores canonical user model config from a saved conversation snapshot. */
-export function getModelFromSnapshot(snapshot: ConversationModelSnapshot | null | undefined): ChatModelConfig | null {
+/** Restores canonical user model config from a saved chat snapshot. */
+export function getModelFromSnapshot(snapshot: ChatModelSnapshot | null | undefined): ChatModelConfig | null {
   return snapshot?.modelConfig ? normalizeChatModelConfig(snapshot.modelConfig) : null;
 }
 
@@ -170,35 +170,24 @@ function mergeResolvedChatSettings(defs: ModelParamDef[], settings: Partial<Chat
     passedMsgLen: 10,
     prompts: [{ role: "system", content: [{ type: "text", text: tr("chat.defaultSystemPrompt") }] }],
   };
-  const nextSettings = { ...settings };
 
   defs.forEach((item) => {
     defaultSettings[item.key] = structuredClone(item.defaultValue);
   });
 
-  const coreSettings: Partial<ChatModelSettings> = {
-    prompts: Array.isArray(nextSettings.prompts) ? nextSettings.prompts : undefined,
-    passedMsgLen: nextSettings.passedMsgLen,
-  };
-  const mergedSettings = {
-    ...structuredClone(defaultSettings),
-    ...nextSettings,
-    ...coreSettings,
-  };
+  const mergedSettings = structuredClone(defaultSettings);
+  const firstPrompt = settings.prompts?.[0];
+  if (firstPrompt?.content?.[0]?.type === "text") {
+    mergedSettings.prompts = settings.prompts.map((prompt) => ({
+      ...prompt,
+      content: prompt.content.map((part) => ({ ...part })),
+    }));
+  }
+  if (Number.isFinite(Number(settings.passedMsgLen))) mergedSettings.passedMsgLen = Number(settings.passedMsgLen);
 
   defs.forEach((item) => {
-    mergedSettings[item.key] = parseParamValue(item.type, mergedSettings[item.key], structuredClone(item.defaultValue));
+    mergedSettings[item.key] = parseParamValue(item.type, settings[item.key], structuredClone(item.defaultValue));
   });
-
-  if (!Array.isArray(mergedSettings.prompts)) {
-    mergedSettings.prompts = structuredClone(defaultSettings.prompts);
-  }
-
-  if (!Number.isFinite(Number(mergedSettings.passedMsgLen))) {
-    mergedSettings.passedMsgLen = defaultSettings.passedMsgLen;
-  } else {
-    mergedSettings.passedMsgLen = Number(mergedSettings.passedMsgLen);
-  }
 
   return mergedSettings;
 }

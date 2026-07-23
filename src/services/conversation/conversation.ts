@@ -1,25 +1,22 @@
 import store from "@/store";
 import { tr } from "@/i18n";
-import { createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
+import { createChatModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
 import { chatRepository } from "@/persistence";
 import { dsAlert, getUuid } from "@/utils";
 import { removeChatSessionRunner } from "./runtime/session-runner";
-import type { ChatMessageAttachment, ChatModelConfig, ChatModelSettings, ChatPromptMessage, ConversationModelSnapshot, PersistedChatSettings } from "@/types";
+import type { ChatMessageAttachment, ChatModelConfig, ChatModelSettings, ChatPromptMessage, ChatModelSnapshot, PersistedChatSettings } from "@/types";
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
 function createChatSettingsPayload(
-  modelSnapshot: ConversationModelSnapshot | null,
+  modelSnapshot: ChatModelSnapshot,
   settings: Partial<ChatModelSettings> | null | undefined,
-  fallbackModel: ChatModelConfig | null = null,
+  model: ChatModelConfig,
 ): PersistedChatSettings {
-  const fallback = fallbackModel || store.state.curChatModel || store.state.models.chat?.[0] || null;
-  const activeSnapshot = modelSnapshot || createConversationModelSnapshot(fallback);
-  const model = getModelFromSnapshot(activeSnapshot) || fallback;
   return {
-    modelSnapshot: activeSnapshot,
+    modelSnapshot,
     settings: mergeChatSettingsWithModel(model, settings || {}),
   };
 }
@@ -55,13 +52,13 @@ export async function getChatSettings(cid: string = store.state.curChatId): Prom
   if (!cid) return false;
   try {
     const stored = chatRepository.getSettings(cid);
-    const fallbackModel = store.state.curChatModel || store.state.models.chat?.[0] || null;
-    const modelSnapshot = stored?.modelSnapshot || createConversationModelSnapshot(fallbackModel);
-    const model = getModelFromSnapshot(modelSnapshot) || fallbackModel;
+    if (!stored?.modelSnapshot) return false;
+    const model = getModelFromSnapshot(stored.modelSnapshot);
+    if (!model) return false;
     store.commit("hydrateChatSession", {
       cid,
-      conversation: modelSnapshot ? { id: cid, title: store.state.chatList.find((item) => item.cid === cid)?.cname || "", modelSnapshot } : null,
-      settings: mergeChatSettingsWithModel(model, stored?.settings || {}),
+      conversation: { id: cid, title: store.state.chatList.find((item) => item.cid === cid)?.cname || "", modelSnapshot: stored.modelSnapshot },
+      settings: mergeChatSettingsWithModel(model, stored.settings),
     });
     return true;
   } catch (error) {
@@ -74,14 +71,12 @@ export async function getChatSettings(cid: string = store.state.curChatId): Prom
 export async function setChatSettings(cid: string = store.state.curChatId): Promise<boolean> {
   if (!cid) return false;
   try {
-    chatRepository.saveSettings(
-      cid,
-      createChatSettingsPayload(
-        store.state.chatConversationsById?.[cid]?.modelSnapshot || store.state.curConversation?.modelSnapshot || null,
-        store.state.chatSettingsById?.[cid] || store.state.curChatModelSettings,
-        store.state.curChatModel,
-      ),
-    );
+    const conversation = store.state.chatConversationsById?.[cid] || null;
+    if (!conversation?.modelSnapshot) return false;
+    const model = getModelFromSnapshot(conversation.modelSnapshot);
+    if (!model) return false;
+    const settings = mergeChatSettingsWithModel(model, store.state.chatSettingsById?.[cid] || store.state.curChatModelSettings);
+    chatRepository.saveSettings(cid, createChatSettingsPayload(conversation.modelSnapshot, settings, model));
     return true;
   } catch (error) {
     console.error("Failed to save chat settings:", error);
@@ -90,17 +85,33 @@ export async function setChatSettings(cid: string = store.state.curChatId): Prom
   }
 }
 
-export async function addChat(name: string | null = null, model: ChatModelConfig | null = null): Promise<boolean> {
+/** Select the model used by the next Run and persist it as the conversation's latest selection. */
+export async function selectChatModel(cid: string, model: ChatModelConfig): Promise<boolean> {
+  if (!cid) return false;
+  const modelSnapshot = createChatModelSnapshot(model);
+  if (!modelSnapshot) return false;
+  const existingConversation = store.state.chatConversationsById?.[cid] || null;
+  const settings = mergeChatSettingsWithModel(model, store.state.chatSettingsById?.[cid] || store.state.curChatModelSettings);
+  store.commit("hydrateChatSession", {
+    cid,
+    conversation: {
+      id: cid,
+      title: existingConversation?.title || store.state.chatList.find((item) => item.cid === cid)?.cname || "",
+      modelSnapshot,
+    },
+    settings,
+  });
+  return setChatSettings(cid);
+}
+
+export async function addChat(name: string | null, model: ChatModelConfig): Promise<boolean> {
   const chatId = getUuid("chat");
   const chatName = name || getUuid("chat");
-  const modelSnapshot = createConversationModelSnapshot(
-    model || store.state.curConversation?.modelSnapshot?.modelConfig || store.state.curChatModel || store.state.models.chat?.[0] || null,
-  );
+  const modelSnapshot = createChatModelSnapshot(model);
   if (!modelSnapshot) return false;
 
   const conversation = { id: chatId, title: chatName, modelSnapshot };
-  const modelForSettings = getModelFromSnapshot(modelSnapshot) || store.state.curChatModel;
-  const settings = store.state.curChatId ? mergeChatSettingsWithModel(modelForSettings, store.state.curChatModelSettings) : store.state.curChatModelSettings;
+  const settings = mergeChatSettingsWithModel(model, store.state.curChatModelSettings);
 
   try {
     await chatRepository.create(chatId, chatName, createChatSettingsPayload(modelSnapshot, settings, model));

@@ -1,11 +1,11 @@
 import { defaultModelCapabilities } from "@/constants";
-import { createConversationModelSnapshot, getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
-import type { ChatListItem, ChatModelSettings, ChatPromptMessage, ConversationModelSnapshot, TokenUsage } from "@/types";
+import { getModelFromSnapshot, mergeChatSettingsWithModel } from "@/models";
+import type { ChatListItem, ChatModelSettings, ChatPromptMessage, ChatModelSnapshot, TokenUsage } from "@/types";
 
 interface StoredChatConversationProjection {
   id: string;
   title: string;
-  modelSnapshot: ConversationModelSnapshot;
+  modelSnapshot: ChatModelSnapshot;
 }
 
 interface ChatRuntimeState {
@@ -42,7 +42,7 @@ function getMessageUsage(message: any) {
   return message?.meta?.run?.result?.usage || null;
 }
 
-function createInputCapabilities(_conversation = null, _fallbackModel = null) {
+function createInputCapabilities() {
   return { ...defaultModelCapabilities };
 }
 
@@ -82,35 +82,14 @@ export const ChatState = {
   chatList: [] as ChatListItem[],
 
   /**
-   * 当前对话绑定的模型快照。会话创建后不再允许切换模型。
-   */
-  curConversation: null as StoredChatConversationProjection | null,
-
-  /**
    * 单次输入启用的能力开关。最终能力还会被模型支持能力和配置启用能力约束。
    */
-  inputCapabilities: createInputCapabilities(null),
+  inputCapabilities: createInputCapabilities(),
 
   /**
    * 配置聊天模型的设置参数。
    */
   curChatModelSettings: mergeChatSettingsWithModel(null, {}),
-
-  /**
-   * 当前激活会话的消息投影。
-   */
-  messages: [] as ChatPromptMessage[],
-
-  /**
-   * 本次前端会话内累计 token。仅保存在内存中，不持久化。
-   */
-  sessionTokenTotal: 0,
-  sessionTokenUsage: emptyTokenUsage(),
-
-  /**
-   * 当前请求是否还在等待模型开始返回。仅用于实时 UI。
-   */
-  llmRequestPending: false,
 
   /**
    * 所有会话的运行态和本地缓存。
@@ -133,25 +112,13 @@ export const ChatState = {
       this.chatSettingsById[cid] = mergeChatSettingsWithModel(model, {});
     }
     if (!this.chatInputCapabilitiesById[cid]) {
-      this.chatInputCapabilitiesById[cid] = createInputCapabilities(this.chatConversationsById[cid], this.curChatModel);
+      this.chatInputCapabilitiesById[cid] = createInputCapabilities();
     }
-  },
-
-  _applyRuntime(runtime) {
-    const normalized = cloneRuntime(runtime);
-    this.llmRequestPending = Boolean(normalized.pending);
-    this.sessionTokenUsage = normalized.sessionTokenUsage;
-    this.sessionTokenTotal = normalized.sessionTokenUsage.total_tokens;
   },
 
   _syncActiveChatState() {
     const cid = this.curChatId;
-    if (!cid) {
-      this.curConversation = null;
-      this.messages = [];
-      this._applyRuntime(createChatRuntime());
-      return;
-    }
+    if (!cid) return;
 
     this._ensureChatEntry(cid);
     if (this.chatRuntimeById[cid]?.completedNotice) {
@@ -161,7 +128,6 @@ export const ChatState = {
       });
     }
     const conversation = this.chatConversationsById[cid] || null;
-    this.curConversation = conversation;
 
     const model = getModelFromSnapshot(conversation?.modelSnapshot);
     if (model) {
@@ -171,11 +137,9 @@ export const ChatState = {
     this.curChatModelSettings = mergeChatSettingsWithModel(model || this.curChatModel, this.chatSettingsById[cid] || {});
     this.chatSettingsById[cid] = this.curChatModelSettings;
     this.inputCapabilities = {
-      ...(this.chatInputCapabilitiesById[cid] || createInputCapabilities(conversation, this.curChatModel)),
+      ...(this.chatInputCapabilitiesById[cid] || createInputCapabilities()),
     };
     this.chatInputCapabilitiesById[cid] = { ...this.inputCapabilities };
-    this.messages = this.chatMessagesById[cid] || [];
-    this._applyRuntime(this.chatRuntimeById[cid]);
   },
 
   /**
@@ -196,51 +160,14 @@ export const ChatState = {
    * 设置当前对话模型参数
    */
   setCurChatModelSettings(data) {
-    const activeModel = getModelFromSnapshot(this.curConversation?.modelSnapshot) || this.curChatModel;
+    const activeConversation = this.curChatId ? this.chatConversationsById[this.curChatId] : null;
+    const activeModel = this.curChatModel || getModelFromSnapshot(activeConversation?.modelSnapshot);
     const nextSettings = mergeChatSettingsWithModel(activeModel, data);
     this.curChatModelSettings = nextSettings;
     if (this.curChatId) {
       this._ensureChatEntry(this.curChatId);
       this.chatSettingsById[this.curChatId] = nextSettings;
     }
-  },
-
-  /**
-   * 设置当前对话绑定的模型快照。
-   */
-  setCurConversation(data) {
-    this.curConversation = data || null;
-    if (this.curChatId) {
-      this._ensureChatEntry(this.curChatId);
-      this.chatConversationsById[this.curChatId] = data || null;
-      if (!this.chatInputCapabilitiesById[this.curChatId]) {
-        this.chatInputCapabilitiesById[this.curChatId] = createInputCapabilities(data, this.curChatModel);
-      }
-    }
-    const model = getModelFromSnapshot(this.curConversation?.modelSnapshot);
-    if (model) {
-      this.curChatModel = model;
-      this.curChatModelSettings = mergeChatSettingsWithModel(model, this.curChatModelSettings);
-      if (this.curChatId) this.chatSettingsById[this.curChatId] = this.curChatModelSettings;
-    }
-    this.resetInputCapabilities();
-    this._syncActiveChatState();
-  },
-
-  /**
-   * 从模型配置创建当前对话快照。
-   */
-  setCurConversationModel(data) {
-    const snapshot = createConversationModelSnapshot(data);
-    if (!snapshot) {
-      this.curConversation = null;
-      return;
-    }
-    this.setCurConversation({
-      id: this.curChatId || "",
-      title: "",
-      modelSnapshot: snapshot,
-    });
   },
 
   hydrateChatSession(data) {
@@ -258,9 +185,9 @@ export const ChatState = {
     }
 
     if ("inputCapabilities" in (data || {})) {
-      this.chatInputCapabilitiesById[cid] = { ...(data.inputCapabilities || createInputCapabilities(this.chatConversationsById[cid], this.curChatModel)) };
+      this.chatInputCapabilitiesById[cid] = { ...(data.inputCapabilities || createInputCapabilities()) };
     } else if (!this.chatInputCapabilitiesById[cid]) {
-      this.chatInputCapabilitiesById[cid] = createInputCapabilities(this.chatConversationsById[cid], this.curChatModel);
+      this.chatInputCapabilitiesById[cid] = createInputCapabilities();
     }
 
     if ("messages" in (data || {})) {
@@ -308,9 +235,7 @@ export const ChatState = {
     delete this.chatLoadedById[cid];
 
     if (cid === this.curChatId) {
-      this.curConversation = null;
-      this.messages = [];
-      this._applyRuntime(createChatRuntime());
+      this.inputCapabilities = createInputCapabilities();
     }
   },
 
@@ -329,115 +254,12 @@ export const ChatState = {
   },
 
   resetInputCapabilities() {
-    const nextCapabilities = createInputCapabilities(this.curConversation, this.curChatModel);
+    const nextCapabilities = createInputCapabilities();
     this.inputCapabilities = nextCapabilities;
     if (this.curChatId) {
       this._ensureChatEntry(this.curChatId);
       this.chatInputCapabilitiesById[this.curChatId] = { ...nextCapabilities };
     }
-  },
-
-  setLlmRequestPending(data) {
-    if (this.curChatId) {
-      this._ensureChatEntry(this.curChatId);
-      this.chatRuntimeById[this.curChatId] = cloneRuntime({
-        ...this.chatRuntimeById[this.curChatId],
-        pending: Boolean(data),
-      });
-      this._applyRuntime(this.chatRuntimeById[this.curChatId]);
-      return;
-    }
-
-    this.llmRequestPending = Boolean(data);
-  },
-
-  addSessionTokens(data) {
-    const usage = normalizeTokenUsage(data);
-    if (usage.total_tokens <= 0) return;
-
-    if (this.curChatId) {
-      this._ensureChatEntry(this.curChatId);
-      const runtime = cloneRuntime(this.chatRuntimeById[this.curChatId]);
-      runtime.sessionTokenUsage = {
-        input_tokens: runtime.sessionTokenUsage.input_tokens + usage.input_tokens,
-        output_tokens: runtime.sessionTokenUsage.output_tokens + usage.output_tokens,
-        total_tokens: runtime.sessionTokenUsage.total_tokens + usage.total_tokens,
-      };
-      runtime.sessionTokenTotal = runtime.sessionTokenUsage.total_tokens;
-      this.chatRuntimeById[this.curChatId] = runtime;
-      this._applyRuntime(runtime);
-      return;
-    }
-
-    this.sessionTokenUsage = {
-      input_tokens: this.sessionTokenUsage.input_tokens + usage.input_tokens,
-      output_tokens: this.sessionTokenUsage.output_tokens + usage.output_tokens,
-      total_tokens: this.sessionTokenUsage.total_tokens + usage.total_tokens,
-    };
-    this.sessionTokenTotal = this.sessionTokenUsage.total_tokens;
-  },
-
-  recalculateSessionTokens() {
-    if (this.curChatId) {
-      this._ensureChatEntry(this.curChatId);
-      const runtime = cloneRuntime(this.chatRuntimeById[this.curChatId]);
-      runtime.sessionTokenUsage = emptyTokenUsage();
-      runtime.sessionTokenTotal = 0;
-      (this.chatMessagesById[this.curChatId] || []).forEach((message) => {
-        const messageUsage = getMessageUsage(message);
-        if (!messageUsage) return;
-        const usage = normalizeTokenUsage(messageUsage);
-        runtime.sessionTokenUsage = {
-          input_tokens: runtime.sessionTokenUsage.input_tokens + usage.input_tokens,
-          output_tokens: runtime.sessionTokenUsage.output_tokens + usage.output_tokens,
-          total_tokens: runtime.sessionTokenUsage.total_tokens + usage.total_tokens,
-        };
-      });
-      runtime.sessionTokenTotal = runtime.sessionTokenUsage.total_tokens;
-      this.chatRuntimeById[this.curChatId] = runtime;
-      this._applyRuntime(runtime);
-      return;
-    }
-
-    this.sessionTokenUsage = emptyTokenUsage();
-    this.sessionTokenTotal = 0;
-    this.messages.forEach((message) => {
-      const messageUsage = getMessageUsage(message);
-      if (messageUsage) this.addSessionTokens(messageUsage);
-    });
-  },
-
-  resetSessionTokens() {
-    if (this.curChatId) {
-      this._ensureChatEntry(this.curChatId);
-      const runtime = cloneRuntime(this.chatRuntimeById[this.curChatId]);
-      runtime.sessionTokenTotal = 0;
-      runtime.sessionTokenUsage = emptyTokenUsage();
-      this.chatRuntimeById[this.curChatId] = runtime;
-      this._applyRuntime(runtime);
-      return;
-    }
-
-    this.sessionTokenTotal = 0;
-    this.sessionTokenUsage = emptyTokenUsage();
-  },
-
-  /**
-   * 向对话数组末尾添加消息
-   */
-  pushMessages(msg) {
-    if (this.curChatId) {
-      this._ensureChatEntry(this.curChatId);
-      this.chatMessagesById[this.curChatId].push(msg);
-      this.messages = this.chatMessagesById[this.curChatId];
-      const messageUsage = getMessageUsage(msg);
-      if (messageUsage) this.addSessionTokens(messageUsage);
-      return;
-    }
-
-    this.messages.push(msg);
-    const messageUsage = getMessageUsage(msg);
-    if (messageUsage) this.addSessionTokens(messageUsage);
   },
 
   pushChatMessage(data) {
@@ -447,11 +269,7 @@ export const ChatState = {
     this._ensureChatEntry(cid);
     this.chatMessagesById[cid].push(msg);
     this.chatLoadedById[cid] = true;
-    if (cid === this.curChatId) {
-      this.messages = this.chatMessagesById[cid];
-      const messageUsage = getMessageUsage(msg);
-      if (messageUsage) this.addSessionTokens(messageUsage);
-    } else if (getMessageUsage(msg)) {
+    if (getMessageUsage(msg)) {
       const runtime = cloneRuntime(this.chatRuntimeById[cid]);
       const usage = normalizeTokenUsage(getMessageUsage(msg));
       runtime.sessionTokenUsage = {
@@ -473,40 +291,6 @@ export const ChatState = {
     this.hydrateChatSession({ cid, messages: this.chatMessagesById[cid], loaded: true });
   },
 
-  /**
-   * 删除某个特定位置的消息
-   */
-  spliceMessages(index) {
-    if (this.curChatId) {
-      this._ensureChatEntry(this.curChatId);
-      this.chatMessagesById[this.curChatId].splice(index, 1);
-      this.messages = this.chatMessagesById[this.curChatId];
-      this.recalculateSessionTokens();
-      return;
-    }
-
-    this.messages.splice(index, 1);
-    this.recalculateSessionTokens();
-  },
-
-  /**
-   * 重置消息
-   */
-  resetMessages() {
-    if (this.curChatId) {
-      this._ensureChatEntry(this.curChatId);
-      this.chatMessagesById[this.curChatId] = [];
-      this.messages = [];
-      this.resetSessionTokens();
-      this.setLlmRequestPending(false);
-      return;
-    }
-
-    this.messages = [];
-    this.resetSessionTokens();
-    this.setLlmRequestPending(false);
-  },
-
   setChatRuntime(data) {
     const cid = data?.cid;
     if (!cid) return;
@@ -515,7 +299,6 @@ export const ChatState = {
       ...this.chatRuntimeById[cid],
       ...(data.runtime || {}),
     });
-    if (cid === this.curChatId) this._applyRuntime(this.chatRuntimeById[cid]);
   },
 
   resetChatRuntime(data) {
@@ -527,6 +310,5 @@ export const ChatState = {
       ...createChatRuntime(),
       status: nextStatus,
     };
-    if (cid === this.curChatId) this._applyRuntime(this.chatRuntimeById[cid]);
   },
 };

@@ -1,19 +1,33 @@
 <template>
   <section class="image-chat-page">
-    <div ref="messageScrollRef" class="image-message-scroll">
-      <div v-if="messages.length === 0" class="image-empty-state">
-        <h1>{{ t("image.workspaceTitle") }}</h1>
-        <p>{{ t("image.workspaceDescription") }}</p>
-      </div>
+    <WorkbenchHeaderBar
+      :title="imageConversationTitle"
+      :count="messages.filter((message) => message.role === 'user').length"
+      :token-usage="imageTokenUsage"
+      :running="isCurrentConversationSubmitting"
+    />
+    <MessageTopicList
+      :topics="messageTopics"
+      :active-topic-id="activeTopicId"
+      :label="t('image.topics')"
+      @select="scrollToMessage"
+    />
+    <div ref="messageScrollRef" class="image-message-scroll" @scroll="onMessageScroll">
+      <div class="workbench-content">
+        <div v-if="messages.length === 0" class="image-empty-state">
+          <h1>{{ t("image.workspaceTitle") }}</h1>
+          <p>{{ t("image.workspaceDescription") }}</p>
+        </div>
 
-      <ImageMessageList
-        v-else
-        :messages="messages"
-        :runtime-tick="runtimeTick"
-        :reuse-disabled="isCurrentConversationSubmitting"
-        @reuse="reuseInput"
-        @edit-output="openEditDialog"
-      />
+        <ImageMessageList
+          v-else
+          :messages="messages"
+          :runtime-tick="runtimeTick"
+          :reuse-disabled="isCurrentConversationSubmitting"
+          @reuse="reuseInput"
+          @edit-output="openEditDialog"
+        />
+      </div>
     </div>
 
     <ComposerDock>
@@ -28,9 +42,9 @@
         :placeholder="mode === 'edit' ? t('image.editPromptPlaceholderShort') : t('image.generatePromptPlaceholderShort')"
         :send-disabled="isSendDisabled"
         :settings-tooltip="t('tooltip.modelSettings')"
+        @settings="onShowModelSettings"
         @paste="onPaste"
         @send="send"
-        @settings="onShowModelSettings"
       >
         <template #media>
           <div v-if="attachments.length" class="image-input-preview-row">
@@ -55,7 +69,7 @@
 
         <template #left-actions>
           <AppTooltip :text="t('tooltip.uploadImage')">
-            <button class="image-icon-button" type="button" @click="openFilePicker">
+            <button class="image-icon-button" type="button" @click="openImageSourceDialog">
               <SvgIcon :src="attachIcon" />
             </button>
           </AppTooltip>
@@ -68,6 +82,7 @@
         </template>
       </CreationComposer>
       <input ref="fileInputRef" class="image-file-input" type="file" accept="image/*" multiple @change="onFileChange" />
+      <ImageSourceDialog ref="imageSourceDialogRef" @select="addAssetImage" @local="openFilePicker" />
     </ComposerDock>
     <ImageEditDialog ref="imageEditDialogRef" @apply="applyBrushEdit" @close="focusPromptInput" />
     <ImageModal />
@@ -84,13 +99,17 @@ import AppTooltip from "@/components/AppTooltip.vue";
 import ComposerDock from "@/components/ComposerDock.vue";
 import CreationComposer from "@/components/CreationComposer.vue";
 import ImageModal from "@/components/ImageModal.vue";
+import ImageSourceDialog from "@/components/ImageSourceDialog.vue";
+import MessageTopicList from "@/components/MessageTopicList.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
+import WorkbenchHeaderBar from "@/components/WorkbenchHeaderBar.vue";
 import ImageEditDialog from "@/views/image/ImageEditDialog.vue";
 import ImageMessageList from "@/views/image/ImageMessageList.vue";
 import ImageSettings from "@/views/image/ImageSettings.vue";
 import type { ImageSettingsData } from "@/views/image/ImageSettings.vue";
 import attachIcon from "@/assets/svg/attach24.svg";
-import { addImageConversation, getImageConversationMessages, submitImageMessage } from "@/services/creation";
+import { addImageConversation, getImageConversationMessages, submitImageMessage, useCreationMessageTopics } from "@/services/creation";
+import { sumTokenUsage } from "@/models";
 import { dsAlert, getUuid, saveToLocal } from "@/utils";
 import type { ImageConversationMessage, ImageInputAttachment, ImagePayload, ImageModelConfig } from "@/types";
 
@@ -110,6 +129,7 @@ const attachments = ref<ImageInputAttachment[]>([]);
 const isSubmitting = ref(false);
 const hasEditedMask = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
+const imageSourceDialogRef = ref<{ open: () => void } | null>(null);
 const messageScrollRef = ref<HTMLElement | null>(null);
 const composerRef = ref<CreationComposerRef | null>(null);
 const imageEditDialogRef = ref<{ open: (image: ImageInputAttachment) => void } | null>(null);
@@ -132,6 +152,11 @@ const imageModelOptions = computed(() =>
 const selectedModel = computed<ImageModelConfig | null>(() => availableModels.value[selectedModelIndex.value] || null);
 const isCurrentConversationSubmitting = computed(() => Boolean(activeImageRuntime.value?.pending));
 const isSendDisabled = computed(() => isCurrentConversationSubmitting.value || !prompt.value.trim() || !selectedModel.value);
+const imageConversationTitle = computed(() =>
+  store.state.imageConversationList.find((item) => item.iid === routeImageId.value)?.iname || t("chat.newImageCreation"),
+);
+const imageTokenUsage = computed(() => sumTokenUsage(messages.value.map((message) => message.run?.result?.usage)));
+const { activeTopicId, messageTopics, onMessageScroll, scrollToMessage, updateActiveTopic } = useCreationMessageTopics(messages, messageScrollRef);
 
 function isNearScrollBottom(threshold = 120) {
   const el = messageScrollRef.value;
@@ -197,6 +222,14 @@ async function addFiles(files: FileList | File[]) {
 
 function openFilePicker() {
   fileInputRef.value?.click();
+}
+
+function openImageSourceDialog() {
+  imageSourceDialogRef.value?.open();
+}
+
+async function addAssetImage(file: File) {
+  await addFiles([file]);
 }
 
 async function onFileChange(event: Event) {
@@ -393,6 +426,7 @@ watch(
 watch(
   () => messages.value.length,
   () => {
+    nextTick(updateActiveTopic);
     if (isNearScrollBottom()) scrollToBottom();
   },
 );
@@ -432,11 +466,10 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .image-chat-page {
-  --image-page-max-width: 1080px;
-  --image-side-gap: max(24px, calc((100% - var(--image-page-max-width)) / 2));
   --image-top-gap: 28px;
   width: 100%;
   height: 100%;
+  position: relative;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -453,7 +486,7 @@ onBeforeUnmount(() => {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: oklch(var(--bc) / 0.24) transparent;
-  padding: var(--image-top-gap) var(--image-side-gap) 20px;
+  padding: var(--image-top-gap) 0 20px;
   box-sizing: border-box;
   contain: layout paint style;
 
@@ -636,13 +669,14 @@ onBeforeUnmount(() => {
   }
 
   .image-chat-page {
-    --image-side-gap: 12px;
     --image-top-gap: 16px;
   }
 
   .image-message-scroll {
     padding-top: var(--image-top-gap);
+    padding-right: 12px;
     padding-bottom: 12px;
+    padding-left: 12px;
   }
 }
 </style>

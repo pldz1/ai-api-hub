@@ -17,13 +17,15 @@ export interface ChatModelEditorState {
 }
 
 /**
- * Conversation-bound model snapshot.
+ * Last-selected conversation model snapshot.
  *
- * This captures the user-configured model currently selected for a conversation.
+ * This captures the user-configured model most recently selected for a conversation
+ * so reopening it restores the composer. Individual responses keep their exact
+ * execution model in their RunSnapshot.
  * Runtime request params and other derived metadata are intentionally excluded;
  * they are recomputed from `modelConfig` when needed.
  */
-export interface ConversationModelSnapshot {
+export interface ChatModelSnapshot {
   modelConfigId: string;
   catalogModelId: string;
   displayName: string;
@@ -46,11 +48,11 @@ export interface ChatModelSettings extends ChatParamRecord {
 /**
  * Persisted per-conversation chat settings payload written to storage.
  *
- * This keeps the normalized settings object and the bound model snapshot
+ * This keeps the normalized settings object and the latest model snapshot
  * together so imported/exported chat parameters round-trip without shape drift.
  */
 export interface PersistedChatSettings {
-  modelSnapshot: ConversationModelSnapshot | null;
+  modelSnapshot: ChatModelSnapshot;
   settings: ChatModelSettings;
 }
 

@@ -2,27 +2,40 @@
   <dialog ref="dialogRef" class="image-edit-dialog" @click="onDialogClick" @cancel.prevent="close">
     <div class="ied-shell" @click.stop>
       <header class="ied-toolbar">
-        <button class="ied-icon-button" type="button" :aria-label="t('common.close')" @click="close">
-          <SvgIcon :src="closeIcon" />
-        </button>
-        <div class="ied-toolbar-actions">
-          <!-- Download -->
-          <button class="ied-secondary-button" type="button" @click="downloadImage">{{ t("image.download") }}</button>
-          <!-- Reset -->
-          <button class="ied-secondary-button" :class="{ active: editMode }" type="button" @click="clearMask">
+        <div class="ied-toolbar-identity">
+          <button class="ied-icon-button" type="button" :aria-label="t('common.close')" @click="close">
+            <SvgIcon :src="closeIcon" />
+          </button>
+          <div class="ied-title">
+            <strong>{{ t("image.editDialogTitle") }}</strong>
+            <small>{{ sourceImage?.filename || t("assets.untitledAsset") }}</small>
+          </div>
+        </div>
+
+        <div v-if="editMode" class="ied-edit-tools">
+          <button class="ied-tool-button" type="button" @click="clearMask">
             {{ t("image.editResetAction") }}
           </button>
-          <!-- Brush size -->
-          <label class="ied-brush-control" :class="{ disabled: !editMode }">
+          <label class="ied-brush-control">
             <span>{{ t("image.brushSize") }}</span>
             <input v-model.number="brushSize" type="range" min="8" max="96" step="1" :disabled="!editMode" />
+            <output>{{ brushSize }}</output>
           </label>
-          <!-- Start editing -->
-          <button class="ied-secondary-button" :class="{ active: editMode }" type="button" @click="editMode = !editMode">
-            {{ t("image.editImageAction") }}
+        </div>
+
+        <div class="ied-toolbar-actions">
+          <button class="ied-quiet-button" type="button" @click="downloadImage">{{ t("image.download") }}</button>
+          <button
+            class="ied-edit-button"
+            :class="{ active: editMode }"
+            type="button"
+            :aria-pressed="editMode"
+            @click="editMode = !editMode"
+          >
+            <SvgIcon :src="editIcon" />
+            {{ editMode ? t("image.cancelEditAction") : t("image.editImageAction") }}
           </button>
-          <!-- Save modification -->
-          <button class="ied-save-button" type="button" @click="save">{{ t("common.save") }}</button>
+          <button class="ied-save-button" type="button" @click="save">{{ t("image.applyEditAction") }}</button>
         </div>
       </header>
 
@@ -40,6 +53,10 @@
             @pointerleave="onPointerUp"
           ></canvas>
         </div>
+        <div class="ied-stage-status" :class="{ editing: editMode }">
+          <span class="ied-status-dot"></span>
+          {{ editMode ? t("image.editDialogPaintHint") : t("image.editDialogViewHint") }}
+        </div>
       </main>
     </div>
   </dialog>
@@ -50,7 +67,8 @@ import { computed, nextTick, onBeforeUnmount, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { dsAlert } from "@/utils";
 import SvgIcon from "@/components/SvgIcon.vue";
-import closeIcon from "@/assets/svg/delete32.svg";
+import closeIcon from "@/assets/svg/close16.svg";
+import editIcon from "@/assets/svg/edit24.svg";
 import type { ImageInputAttachment } from "@/types";
 
 const emit = defineEmits<{
@@ -362,7 +380,8 @@ defineExpose({ open, close });
   background: transparent;
 
   &::backdrop {
-    background: rgba(18, 18, 18, 0.92);
+    background: rgba(7, 9, 13, 0.82);
+    backdrop-filter: blur(8px);
   }
 }
 
@@ -370,24 +389,57 @@ defineExpose({ open, close });
   width: 100%;
   height: 100%;
   display: grid;
-  grid-template-rows: 58px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   color: #fff;
-  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 42%), #242424;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255, 255, 255, 0.09), transparent 36%),
+    linear-gradient(145deg, #1d2128 0%, #111419 68%, #0d1015 100%);
 }
 
 .ied-toolbar {
-  height: 58px;
+  position: relative;
+  z-index: 2;
+  min-height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 22px;
+  gap: 18px;
+  padding: 10px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(13, 16, 21, 0.82);
+  backdrop-filter: blur(18px);
+}
+
+.ied-toolbar-identity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.ied-title {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+
+  strong { font-size: 14px; line-height: 1.2; }
+  small {
+    max-width: 210px;
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.48);
+    font-size: 11px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
 }
 
 .ied-toolbar-actions {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: flex-end;
+  gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
 
@@ -397,63 +449,98 @@ defineExpose({ open, close });
 }
 
 .ied-icon-button {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
   border: none;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.07);
   color: #fff;
-  font-size: 25px;
-  line-height: 1;
+  cursor: pointer;
+
+  &:hover { background: rgba(255, 255, 255, 0.13); }
+  :deep(.svg-icon) { width: 15px; height: 15px; }
+}
+
+.ied-edit-tools {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .ied-brush-control {
-  min-width: 148px;
+  min-width: 190px;
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   color: rgba(255, 255, 255, 0.78);
   font-size: 12px;
 
   input {
     width: 104px;
-    accent-color: #fff;
+    accent-color: #78a7ff;
   }
 
-  &.disabled {
-    opacity: 0.45;
+  output {
+    width: 26px;
+    color: rgba(255, 255, 255, 0.48);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
   }
 }
 
-.ied-secondary-button,
+.ied-tool-button,
+.ied-quiet-button,
+.ied-edit-button,
 .ied-save-button {
-  height: 50px;
-  padding: 0 22px;
+  height: 38px;
+  padding: 0 15px;
   border: none;
-  border-radius: 999px;
-  font-weight: 700;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 650;
   white-space: nowrap;
+  cursor: pointer;
 }
 
-.ied-secondary-button {
-  background: rgba(255, 255, 255, 0.12);
+.ied-tool-button,
+.ied-quiet-button {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+
+  &:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
+}
+
+.ied-edit-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
 
-  &.active {
-    background: #fff;
-    color: #111827;
-  }
+  &:hover { background: rgba(255, 255, 255, 0.16); }
+  &.active { background: rgba(120, 167, 255, 0.2); color: #b9d2ff; }
+  :deep(.svg-icon) { width: 16px; height: 16px; }
 }
 
 .ied-save-button {
-  background: #fff;
-  color: #111827;
+  background: #f4f7fb;
+  color: #121820;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+
+  &:hover { background: #fff; }
 }
 
 .ied-stage {
+  position: relative;
   min-height: 0;
   display: grid;
   place-items: center;
@@ -465,7 +552,8 @@ defineExpose({ open, close });
   position: relative;
   flex: 0 0 auto;
   background: #fff;
-  box-shadow: 0 22px 80px rgba(0, 0, 0, 0.32);
+  border-radius: 6px;
+  box-shadow: 0 26px 90px rgba(0, 0, 0, 0.42);
   overflow: hidden;
   transform-origin: center center;
   will-change: transform;
@@ -481,11 +569,13 @@ defineExpose({ open, close });
 
 .ied-mask-layer {
   cursor: grab;
-  opacity: 0.48;
+  opacity: 0;
   touch-action: none;
+  transition: opacity 0.18s ease;
 
   &.editing {
     cursor: crosshair;
+    opacity: 0.48;
   }
 
   &.panning {
@@ -493,25 +583,71 @@ defineExpose({ open, close });
   }
 }
 
-@media (max-width: 720px) {
+.ied-stage-status {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(12, 15, 20, 0.72);
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 11px;
+  pointer-events: none;
+  transform: translateX(-50%);
+  backdrop-filter: blur(12px);
+
+  &.editing { color: #c8dbff; }
+}
+
+.ied-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.ied-stage-status.editing .ied-status-dot {
+  background: #78a7ff;
+  box-shadow: 0 0 0 4px rgba(120, 167, 255, 0.12);
+}
+
+@media (max-width: 980px) {
+  .ied-title small { max-width: 120px; }
+  .ied-edit-tools { margin-left: auto; }
+  .ied-brush-control { min-width: 152px; }
+  .ied-brush-control input { width: 72px; }
+}
+
+@media (max-width: 760px) {
   .ied-toolbar {
-    padding: 0 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px 12px;
   }
 
-  .ied-brush-control {
-    min-width: 116px;
-
-    input {
-      width: 76px;
-    }
-  }
+  .ied-title { display: none; }
+  .ied-edit-tools { grid-column: 1 / -1; grid-row: 2; width: 100%; justify-content: space-between; box-sizing: border-box; }
+  .ied-toolbar-actions { min-width: 0; }
+  .ied-quiet-button { display: none; }
 
   .ied-stage {
-    padding: 14px;
+    padding: 14px 14px 48px;
   }
 
   .ied-canvas-frame {
     max-width: calc(100vw - 28px);
   }
+}
+
+@media (max-width: 430px) {
+  .ied-edit-button,
+  .ied-save-button { padding: 0 11px; }
+  .ied-brush-control { min-width: 0; flex: 1; }
+  .ied-brush-control input { min-width: 48px; width: 100%; }
 }
 </style>

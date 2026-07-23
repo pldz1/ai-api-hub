@@ -7,7 +7,7 @@
             <div class="cmbu-content-body">
               <div v-if="message.attachments?.length" class="cmbu-file-area">
                 <div v-for="attachment in message.attachments" :key="attachment.id" class="cmbu-file-item">
-                  <div class="cmbu-file-kind">{{ String(attachment.kindLabel || 'FILE').toUpperCase() }}</div>
+                  <div class="cmbu-file-kind">{{ String(attachment.kindLabel || "FILE").toUpperCase() }}</div>
                   <button class="cmbu-file-card" type="button" @click="previewAttachment(attachment)">
                     <span class="cmbu-file-label">{{ attachment.name }}</span>
                   </button>
@@ -30,7 +30,7 @@
 
               <template v-if="editingMid === message.mid">
                 <textarea ref="editTextareaRef" v-model="editingText" class="chat-message-edit-textarea" @keydown.esc="cancelEdit"></textarea>
-                <p class="chat-message-edit-note">{{ t('chat.editReplacesFollowing') }}</p>
+                <p class="chat-message-edit-note">{{ t("chat.editReplacesFollowing") }}</p>
               </template>
               <p v-else class="cmbu-content-text">{{ textContent(message) }}</p>
             </div>
@@ -38,27 +38,30 @@
 
           <div class="cmbu-options">
             <template v-if="editingMid === message.mid">
-              <button class="chat-message-text-action" type="button" @click="cancelEdit">{{ t('common.cancel') }}</button>
+              <button class="chat-message-text-action" type="button" @click="cancelEdit">{{ t("common.cancel") }}</button>
               <button class="chat-message-text-action is-primary" type="button" :disabled="!editingText.trim()" @click="saveEdit(message.mid || '')">
-                {{ t('chat.saveAndRegenerate') }}
+                {{ t("chat.saveAndRegenerate") }}
               </button>
             </template>
             <template v-else>
-              <button
-                v-if="messageIndex === messages.length - 1 && !runtime?.pending"
-                class="chat-md-bubble-options-button"
-                type="button"
-                :aria-label="t('chat.generateAnswer')"
-                @click="$emit('retry')"
-              >
-                <SvgIcon :src="regenerateIcon" />
-              </button>
-              <button class="chat-md-bubble-options-button" type="button" :aria-label="t('chat.editMessage')" @click="startEdit(message)">
-                <SvgIcon :src="editIcon" />
-              </button>
-              <button class="chat-md-bubble-options-button" type="button" :aria-label="t('chat.deleteFromHere')" @click="$emit('delete-from', message.mid || '')">
-                <SvgIcon :src="deleteIcon" />
-              </button>
+              <!-- generate answer -->
+              <AppTooltip :text="t('chat.generateAnswer')" placement="top">
+                <button v-if="messageIndex === messages.length - 1 && !runtime?.pending" class="chat-md-bubble-options-button" @click="$emit('retry')">
+                  <SvgIcon :src="regenerateIcon" />
+                </button>
+              </AppTooltip>
+              <!-- edit message -->
+              <AppTooltip :text="t('chat.editMessage')" placement="top">
+                <button class="chat-md-bubble-options-button" @click="startEdit(message)">
+                  <SvgIcon :src="editIcon" />
+                </button>
+              </AppTooltip>
+              <!-- delete -->
+              <AppTooltip :text="t('chat.deleteFromHere')" placement="top">
+                <button class="chat-md-bubble-options-button" @click="$emit('delete-from', message.mid || '')">
+                  <SvgIcon :src="deleteIcon" />
+                </button>
+              </AppTooltip>
             </template>
           </div>
         </div>
@@ -68,21 +71,31 @@
         <div class="cmba-assistant-content">
           <div v-if="message.reasoning_content" class="cmba-reasoning-content">
             <details>
-              <summary>{{ t('tooltip.reasoning') }}</summary>
+              <summary>{{ t("tooltip.reasoning") }}</summary>
               <MarkdownBlock :content="message.reasoning_content" />
             </details>
           </div>
           <MarkdownBlock :content="textContent(message)" />
           <div class="cmba-options">
-            <button class="chat-md-bubble-options-button" type="button" :aria-label="t('tooltip.copyText')" @click="copyMessage(message)">
-              <SvgIcon :src="copyIcon" />
-            </button>
-            <button class="chat-md-bubble-options-button" type="button" :aria-label="t('chat.regenerateAnswer')" @click="$emit('regenerate', message.mid || '')">
-              <SvgIcon :src="regenerateIcon" />
-            </button>
-            <button class="chat-md-bubble-options-button" type="button" :aria-label="t('chat.deleteFromHere')" @click="$emit('delete-from', message.mid || '')">
-              <SvgIcon :src="deleteIcon" />
-            </button>
+            <!-- Copy assistant anwser -->
+            <AppTooltip :text="t('tooltip.copyText')" placement="top">
+              <button class="chat-md-bubble-options-button" type="button" @click="copyMessage(message)">
+                <SvgIcon :src="copyIcon" />
+              </button>
+            </AppTooltip>
+            <!-- Regenerate assistant answer -->
+            <AppTooltip :text="t('chat.regenerateAnswer')" placement="top">
+              <button class="chat-md-bubble-options-button" type="button" @click="$emit('regenerate', message.mid || '')">
+                <SvgIcon :src="regenerateIcon" />
+              </button>
+            </AppTooltip>
+            <!-- Delete assistant answer -->
+            <AppTooltip :text="t('chat.deleteFromHere')" placement="top">
+              <button class="chat-md-bubble-options-button" type="button" @click="$emit('delete-from', message.mid || '')">
+                <SvgIcon :src="deleteIcon" />
+              </button>
+            </AppTooltip>
+            <!-- Run details for assistant answer -->
             <RunDetails :run="message.meta?.run" />
           </div>
         </div>
@@ -93,7 +106,7 @@
       <div class="cmba-assistant-content">
         <div v-if="draftReasoning" class="cmba-reasoning-content">
           <details open>
-            <summary>{{ t('tooltip.reasoning') }}</summary>
+            <summary>{{ t("tooltip.reasoning") }}</summary>
             <MarkdownBlock :content="draftReasoning" />
           </details>
         </div>
@@ -112,13 +125,14 @@ import { getChatFileSource } from "@/persistence";
 import { buildChatAttachmentDownloadFilename } from "@/services";
 import { dsAlert, saveBlobToLocal, saveTextToLocal } from "@/utils";
 import type { ChatMessageAttachment, ChatPromptMessage } from "@/types";
+import AppTooltip from "@/components/AppTooltip.vue";
 import MarkdownBlock from "@/components/MarkdownBlock.vue";
 import RunDetails from "@/components/RunDetails.vue";
 import SvgIcon from "@/components/SvgIcon.vue";
 import copyIcon from "@/assets/svg/copy16.svg";
 import deleteIcon from "@/assets/svg/delete16.svg";
 import editIcon from "@/assets/svg/edit24.svg";
-import regenerateIcon from "@/assets/svg/revert32.svg";
+import regenerateIcon from "@/assets/svg/redo16.svg";
 import saveIcon from "@/assets/svg/save18.svg";
 
 const props = defineProps<{
@@ -142,7 +156,10 @@ const editTextareaRef = ref<HTMLTextAreaElement | null>(null);
 const draftMessageId = computed(() => String(props.runtime?.draftMessageId || "chat-draft"));
 const draftContent = computed(() => String(props.runtime?.draftAssistantContent || ""));
 const draftReasoning = computed(() => String(props.runtime?.draftReasoningContent || ""));
-const showDraft = computed(() => Boolean(props.runtime?.pending));
+const showDraft = computed(() => {
+  if (!props.runtime?.pending) return false;
+  return !props.messages.some((message) => message.mid === draftMessageId.value);
+});
 
 function textContent(message: ChatPromptMessage) {
   return message.content.find((part) => part.type === "text")?.text || "";
@@ -203,8 +220,13 @@ async function copyMessage(message: ChatPromptMessage) {
 </script>
 
 <style scoped lang="scss">
-.chat-message-list { width: 100%; }
-.cmbu-content-text { margin: 0; white-space: pre-wrap; }
+.chat-message-list {
+  width: 100%;
+}
+.cmbu-content-text {
+  margin: 0;
+  white-space: pre-wrap;
+}
 .chat-message-edit-textarea {
   width: min(560px, 72vw);
   min-height: 112px;
@@ -218,8 +240,15 @@ async function copyMessage(message: ChatPromptMessage) {
   line-height: 1.55;
   outline: none;
 }
-.chat-message-edit-textarea:focus { border-color: oklch(var(--p) / 0.55); box-shadow: 0 0 0 3px oklch(var(--p) / 0.08); }
-.chat-message-edit-note { margin: 7px 2px 0; color: oklch(var(--bc) / 0.55); font-size: 12px; }
+.chat-message-edit-textarea:focus {
+  border-color: oklch(var(--p) / 0.55);
+  box-shadow: 0 0 0 3px oklch(var(--p) / 0.08);
+}
+.chat-message-edit-note {
+  margin: 7px 2px 0;
+  color: oklch(var(--bc) / 0.55);
+  font-size: 12px;
+}
 .chat-message-text-action {
   min-height: 30px;
   padding: 4px 10px;
@@ -229,18 +258,61 @@ async function copyMessage(message: ChatPromptMessage) {
   color: oklch(var(--bc) / 0.72);
   cursor: pointer;
 }
-.chat-message-text-action.is-primary { border-color: transparent; background: oklch(var(--p)); color: oklch(var(--pc)); }
-.chat-message-text-action:disabled { opacity: 0.45; cursor: default; }
-.chat-md-bubble-options-button { background: transparent; color: oklch(var(--bc) / 0.65); }
-.chat-md-bubble-options-button :deep(.svg-icon) { width: 16px; height: 16px; }
-.cmba-options :deep(.run-details) { flex-basis: 100%; }
-.chat-working { display: flex; gap: 5px; padding: 14px 2px; }
-.chat-working span { width: 7px; height: 7px; border-radius: 50%; background: oklch(var(--bc) / 0.4); animation: chat-working 1.1s ease-in-out infinite; }
-.chat-working span:nth-child(2) { animation-delay: 0.14s; }
-.chat-working span:nth-child(3) { animation-delay: 0.28s; }
-@keyframes chat-working { 0%, 60%, 100% { transform: translateY(0); opacity: 0.45; } 30% { transform: translateY(-4px); opacity: 1; } }
+.chat-message-text-action.is-primary {
+  border-color: transparent;
+  background: oklch(var(--p));
+  color: oklch(var(--pc));
+}
+.chat-message-text-action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.chat-md-bubble-options-button {
+  background: transparent;
+  color: oklch(var(--bc) / 0.65);
+}
+.chat-md-bubble-options-button :deep(.svg-icon) {
+  width: 16px;
+  height: 16px;
+}
+.cmba-options :deep(.run-details) {
+  flex-basis: 100%;
+}
+.chat-working {
+  display: flex;
+  gap: 5px;
+  padding: 14px 2px;
+}
+.chat-working span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: oklch(var(--bc) / 0.4);
+  animation: chat-working 1.1s ease-in-out infinite;
+}
+.chat-working span:nth-child(2) {
+  animation-delay: 0.14s;
+}
+.chat-working span:nth-child(3) {
+  animation-delay: 0.28s;
+}
+@keyframes chat-working {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
 
 @media (max-width: 640px) {
-  .chat-message-edit-textarea { width: 100%; min-height: 96px; }
+  .chat-message-edit-textarea {
+    width: 100%;
+    min-height: 96px;
+  }
 }
 </style>
