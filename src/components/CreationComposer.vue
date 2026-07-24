@@ -1,10 +1,5 @@
 <template>
-  <div
-    ref="composerRef"
-    class="creation-composer"
-    :class="[rootClass, { 'is-action-stacked-mobile': stackActionsOnMobile, 'is-edit-mode': isEditMode }]"
-    @paste="emit('paste', $event)"
-  >
+  <div ref="composerRef" class="creation-composer" :class="[rootClass, { 'is-action-stacked-mobile': stackActionsOnMobile }]" @paste="emit('paste', $event)">
     <slot name="media"></slot>
 
     <textarea
@@ -114,7 +109,6 @@ const emit = defineEmits<{
 
 const composerRef = ref<HTMLElement | null>(null);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
-const isEditMode = ref(false);
 
 function resizeTextarea() {
   const textarea = textareaRef.value;
@@ -142,13 +136,6 @@ function onEnter(event: KeyboardEvent) {
     return;
   }
 
-  if (event.shiftKey) {
-    isEditMode.value = true;
-    return;
-  }
-
-  if (isEditMode.value) return;
-
   event.preventDefault();
   emit("send");
 }
@@ -164,7 +151,6 @@ function getElement() {
 watch(
   () => props.modelValue,
   (value) => {
-    if (!value) isEditMode.value = false;
     nextTick(() => resizeTextarea());
   },
 );

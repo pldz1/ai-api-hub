@@ -2,7 +2,7 @@
 
 > One interface, every model. Your API keys, your data, your rules.
 
-Last reviewed: `2026-07-06`
+Last reviewed: `2026-07-24`
 
 **AI API HUB** is a unified chat & image generation frontend for multiple AI providers, running entirely in your browser—no backend, no telemetry, just you and the models having a conversation.
 
