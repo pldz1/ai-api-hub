@@ -290,7 +290,7 @@ defineExpose({
     background: transparent;
     box-shadow: none;
     color: oklch(var(--bc));
-    font-size: 16px;
+    font-size: 14px;
     line-height: 1.2;
   }
 
@@ -310,6 +310,7 @@ defineExpose({
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.25;
   }
 
   :deep(.app-select-trigger) {

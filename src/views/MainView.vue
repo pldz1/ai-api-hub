@@ -99,8 +99,8 @@ onBeforeUnmount(() => {
   .sidebar-fab {
     display: inline-flex;
     position: fixed;
-    left: 16px;
-    top: 16px;
+    left: 8px;
+    top: 8px;
     z-index: 95;
     width: 32px;
     height: 32px;

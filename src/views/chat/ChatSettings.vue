@@ -3,12 +3,12 @@
   <dialog ref="dialogRef" id="global_chat_model_settings" class="modal global-chat-model-settings">
     <div class="modal-box">
       <!-- Close and persist the edited settings when leaving the dialog. -->
-      <form method="dialog">
+      <div>
+        <span class="settings-dialog-title">{{ t("chat.settingsTitle") }}</span>
         <button class="btn btn-sm btn-circle btn-ghost dialog-close-button" type="button" @click="handleClose">
           <SvgIcon :src="closeIcon" style="width: 24px; height: 24px"></SvgIcon>
         </button>
-      </form>
-      <h3 class="settings-dialog-title">{{ t("chat.settingsTitle") }}</h3>
+      </div>
       <div class="gcms-container">
         <!-- Edit the system instruction that seeds the conversation context. -->
         <div class="gcms-setting-item">

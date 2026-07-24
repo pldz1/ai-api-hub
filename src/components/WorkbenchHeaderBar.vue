@@ -60,10 +60,6 @@ const tokenBreakdown = computed(() =>
   align-items: center;
   gap: 16px;
   padding: 8px 14px 8px 18px;
-  border-bottom: 1px solid oklch(var(--bc) / 0.06);
-  background: oklch(var(--b1) / 0.78);
-  backdrop-filter: blur(12px);
-  box-sizing: border-box;
 }
 
 .workbench-header-identity {

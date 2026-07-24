@@ -14,9 +14,6 @@
   justify-content: center;
   box-sizing: border-box;
   padding: 10px 18px max(14px, env(safe-area-inset-bottom));
-  border-top: 1px solid oklch(var(--bc) / 0.06);
-  background: oklch(var(--b1) / 0.94);
-  backdrop-filter: blur(14px);
 }
 
 @media (max-width: 640px) {
